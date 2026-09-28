@@ -24,6 +24,22 @@ interface EmailConfig {
   encryption: string; username: string | null; fromEmail: string | null; fromName: string | null;
   replyTo: string | null; active: boolean; hasSecret: boolean; updatedAt: string;
 }
+
+const SES_REGIONS = [
+  { value: "us-east-1", label: "US East (N. Virginia)" },
+  { value: "us-east-2", label: "US East (Ohio)" },
+  { value: "us-west-2", label: "US West (Oregon)" },
+  { value: "ca-central-1", label: "Canada (Central)" },
+  { value: "eu-west-1", label: "Europe (Ireland)" },
+  { value: "eu-west-2", label: "Europe (London)" },
+  { value: "eu-central-1", label: "Europe (Frankfurt)" },
+  { value: "eu-north-1", label: "Europe (Stockholm)" },
+  { value: "ap-south-1", label: "Asia Pacific (Mumbai)" },
+  { value: "ap-southeast-1", label: "Asia Pacific (Singapore)" },
+  { value: "ap-southeast-2", label: "Asia Pacific (Sydney)" },
+  { value: "ap-northeast-1", label: "Asia Pacific (Tokyo)" },
+  { value: "sa-east-1", label: "South America (São Paulo)" },
+];
 interface EmailTemplate { id: string; key: string; name: string; type: string; subject: string; status: string; updatedAt: string }
 interface NotificationLogRow { id: string; recipient: string; templateKey: string | null; subject: string | null; status: string; event: string | null; error: string | null; createdAt: string }
 
@@ -55,6 +71,27 @@ function EmailConfigTab() {
   };
 
   useEffect(load, []);
+
+  const sesRegionMatch = form.smtpHost?.match(/^email-smtp\.([a-z0-9-]+)\.amazonaws\.com$/);
+  const sesRegion = form.provider === "ses" ? sesRegionMatch?.[1] || "" : "";
+
+  const applySesRegion = (region: string) => {
+    setForm((f) => ({
+      ...f,
+      provider: "ses",
+      smtpHost: `email-smtp.${region}.amazonaws.com`,
+      smtpPort: "587",
+      encryption: "tls",
+    }));
+  };
+
+  const setProvider = (provider: string) => {
+    if (provider === "ses") {
+      applySesRegion(sesRegion || "us-east-1");
+    } else {
+      setForm((f) => ({ ...f, provider }));
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -118,6 +155,29 @@ function EmailConfigTab() {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
+          <Label>Provider</Label>
+          <Select value={form.provider === "ses" ? "ses" : "smtp"} onValueChange={setProvider}>
+            <SelectTrigger className="h-11 bg-background/60"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="smtp">Custom SMTP</SelectItem>
+              <SelectItem value="ses">Amazon SES</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {form.provider === "ses" && (
+          <div className="space-y-1.5">
+            <Label>AWS Region</Label>
+            <Select value={sesRegion} onValueChange={applySesRegion}>
+              <SelectTrigger className="h-11 bg-background/60"><SelectValue placeholder="Select a region" /></SelectTrigger>
+              <SelectContent>
+                {SES_REGIONS.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label} ({r.value})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="space-y-1.5">
           <Label>SMTP Host</Label>
           <Input className="h-11 bg-background/60" placeholder="smtp.sendgrid.net" value={form.smtpHost} onChange={(e) => setForm((f) => ({ ...f, smtpHost: e.target.value }))} />
         </div>
@@ -137,16 +197,35 @@ function EmailConfigTab() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Username</Label>
-          <Input className="h-11 bg-background/60" value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))} />
+          <Label>{form.provider === "ses" ? "SES SMTP Username" : "Username"}</Label>
+          <Input
+            className="h-11 bg-background/60"
+            placeholder={form.provider === "ses" ? "AKIA… (SES SMTP username, not your AWS access key)" : undefined}
+            value={form.username}
+            onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+          />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label>Password / API Key {config.hasSecret && <span className="text-muted-foreground font-normal">(already set — leave blank to keep)</span>}</Label>
-          <Input className="h-11 bg-background/60" type="password" placeholder={config.hasSecret ? "••••••••••••" : "Enter password or API key"} value={secret} onChange={(e) => setSecret(e.target.value)} />
+          <Label>{form.provider === "ses" ? "SES SMTP Password" : "Password / API Key"} {config.hasSecret && <span className="text-muted-foreground font-normal">(already set — leave blank to keep)</span>}</Label>
+          <Input
+            className="h-11 bg-background/60"
+            type="password"
+            placeholder={config.hasSecret ? "••••••••••••" : form.provider === "ses" ? "SES SMTP password (not your AWS secret key)" : "Enter password or API key"}
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+          />
+          {form.provider === "ses" && (
+            <p className="text-xs text-muted-foreground">
+              Generate these in the SES console under SMTP Settings → Create SMTP Credentials — they're different from your AWS access key/secret.
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>From Email</Label>
           <Input className="h-11 bg-background/60" type="email" placeholder="care@hekims.connect" value={form.fromEmail} onChange={(e) => setForm((f) => ({ ...f, fromEmail: e.target.value }))} />
+          {form.provider === "ses" && (
+            <p className="text-xs text-muted-foreground">Must be a verified identity (email or domain) in SES for this region — SES rejects sends from unverified addresses.</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>From Name</Label>
