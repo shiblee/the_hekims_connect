@@ -248,6 +248,13 @@ const EVENT_LABELS: Record<string, string> = {
   welcome_sent: "Welcome Email Sent", test_email: "Test Email",
 };
 
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    day: "numeric", month: "short", year: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true,
+  });
+}
+
 function HistoryTab() {
   const [logs, setLogs] = useState<NotificationLogRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -281,7 +288,7 @@ function HistoryTab() {
           <tbody>
             {logs.map((l) => (
               <tr key={l.id} className="border-b border-border/30 last:border-0">
-                <td className="px-4 py-3 whitespace-nowrap">{new Date(l.createdAt).toLocaleString()}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{formatDateTime(l.createdAt)}</td>
                 <td className="px-4 py-3 text-muted-foreground">{l.recipient}</td>
                 <td className="px-4 py-3 text-muted-foreground">{l.event ? EVENT_LABELS[l.event] || l.event : "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{l.subject || "—"}</td>
