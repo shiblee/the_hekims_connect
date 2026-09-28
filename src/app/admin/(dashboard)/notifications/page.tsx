@@ -266,7 +266,7 @@ function HistoryTab() {
   }
 
   return (
-    <Card className="border-border/50 bg-card/60 overflow-hidden max-w-4xl">
+    <Card className="border-border/50 bg-card/60 overflow-hidden w-full">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -284,7 +284,7 @@ function HistoryTab() {
                 <td className="px-4 py-3 whitespace-nowrap">{new Date(l.createdAt).toLocaleString()}</td>
                 <td className="px-4 py-3 text-muted-foreground">{l.recipient}</td>
                 <td className="px-4 py-3 text-muted-foreground">{l.event ? EVENT_LABELS[l.event] || l.event : "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground truncate max-w-[240px]">{l.subject || "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground">{l.subject || "—"}</td>
                 <td className="px-4 py-3">
                   {l.status === "failed" ? (
                     <Badge variant="outline" className="text-destructive border-destructive/40">Failed</Badge>
