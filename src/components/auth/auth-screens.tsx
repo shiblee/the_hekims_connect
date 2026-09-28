@@ -125,7 +125,12 @@ const validate = {
   required: (v: string, label: string) => (!v?.trim() ? `${label} is required` : ""),
   email: (v: string) => (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? "Enter a valid email address" : ""),
   phone: (v: string) => (v.replace(/\D/g, "").length !== 10 ? "Enter a valid 10-digit mobile number" : ""),
-  password: (v: string) => (v.length < 8 ? "Password must be at least 8 characters" : ""),
+  password: (v: string) => {
+    if (v.length < 8) return "Password must be at least 8 characters";
+    if (!/[A-Z]/.test(v)) return "Password must include at least one uppercase letter";
+    if (!/[0-9]/.test(v)) return "Password must include at least one number";
+    return "";
+  },
   contact: (v: string) => {
     const val = v?.trim() || "";
     if (!val) return "Email or phone is required";
@@ -202,9 +207,14 @@ function InlineVerifyBox({ iv, contact, accent = "primary" }: { iv: ReturnType<t
 
   if (iv.stage === "verified") {
     return (
-      <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-primary">
-        <Check className="h-4 w-4" /> Verified
-      </p>
+      <div className="mt-2 flex items-center gap-3">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-primary">
+          <Check className="h-4 w-4" /> Verified
+        </p>
+        <button type="button" onClick={iv.reset} className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2">
+          Edit
+        </button>
+      </div>
     );
   }
 
@@ -250,6 +260,25 @@ function InlineVerifyBox({ iv, contact, accent = "primary" }: { iv: ReturnType<t
       </div>
       <FieldError message={iv.error} />
     </div>
+  );
+}
+
+function PasswordRequirements({ value }: { value: string }) {
+  if (!value) return null;
+  const rules = [
+    { label: "At least 8 characters", ok: value.length >= 8 },
+    { label: "One uppercase letter", ok: /[A-Z]/.test(value) },
+    { label: "One number", ok: /[0-9]/.test(value) },
+  ];
+  return (
+    <ul className="mt-2 space-y-1">
+      {rules.map((r) => (
+        <li key={r.label} className={cn("flex items-center gap-1.5 text-xs", r.ok ? "text-primary" : "text-muted-foreground")}>
+          {r.ok ? <Check className="h-3 w-3 shrink-0" /> : <span className="h-3 w-3 rounded-full border border-current shrink-0" />}
+          {r.label}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -345,7 +374,7 @@ function HakimSignup() {
           <div>
             <FloatingField
               id="hakim-signup-password"
-              label="Password (min. 8 characters)"
+              label="Password"
               icon={Lock}
               error={!!errors.password}
               type={show ? "text" : "password"}
@@ -358,6 +387,7 @@ function HakimSignup() {
               }
             />
             <FieldError message={errors.password} />
+            <PasswordRequirements value={form.password} />
           </div>
           <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
@@ -565,7 +595,7 @@ function PatientSignup() {
           <div>
             <FloatingField
               id="patient-signup-password"
-              label="Password (min. 8 characters)"
+              label="Password"
               icon={Lock}
               error={!!errors.password}
               type={show ? "text" : "password"}
@@ -578,6 +608,7 @@ function PatientSignup() {
               }
             />
             <FieldError message={errors.password} />
+            <PasswordRequirements value={form.password} />
           </div>
           <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-accent text-accent-foreground hover:bg-accent/90 mt-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}

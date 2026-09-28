@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, isSecurePassword } from "@/lib/auth";
 import { makeToken, fetchPatient } from "@/lib/api-auth";
 
 const PRECHECK_VALIDITY_MS = 30 * 60 * 1000;
@@ -13,8 +13,8 @@ export async function POST(req: NextRequest) {
     if (!name || !phone || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    if (!isSecurePassword(password)) {
+      return NextResponse.json({ error: "Password must be at least 8 characters with one uppercase letter and one number" }, { status: 400 });
     }
 
     const existing = await db.patient.findUnique({ where: { phone } });

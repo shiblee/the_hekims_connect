@@ -32,6 +32,10 @@ export function isExpired(expiresAt: Date): boolean {
   return new Date(expiresAt).getTime() < Date.now();
 }
 
+export function isSecurePassword(value: string): boolean {
+  return value.length >= 8 && /[A-Z]/.test(value) && /[0-9]/.test(value);
+}
+
 export function isEmailLike(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

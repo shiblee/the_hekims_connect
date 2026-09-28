@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, normalizeContact } from "@/lib/auth";
+import { hashPassword, normalizeContact, isSecurePassword } from "@/lib/auth";
 import { makeToken, fetchHakim } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
     if (!name || !contact || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    if (!isSecurePassword(password)) {
+      return NextResponse.json({ error: "Password must be at least 8 characters with one uppercase letter and one number" }, { status: 400 });
     }
 
     const registrationEnabled = await getSetting("registration", "hakim_registration_enabled", "true");
