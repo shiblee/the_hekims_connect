@@ -1,0 +1,271 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-poppins);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-pt-serif);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+  The Hekim's Connect - brand theme
+  Light (current focus): solid white, black text, electric blue primary,
+  signal red accent. Dark theme below is untouched pending a later pass.
+*/
+:root {
+  --radius: 0.75rem;
+
+  /* Light base — solid white */
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --card: #ffffff;
+  --card-foreground: #171717;
+
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+
+  /* Brand blue primary */
+  --primary: #5271ff;
+  --primary-foreground: #ffffff;
+
+  /* Neutral secondary (tint of black on white) */
+  --secondary: #f2f3f7;
+  --secondary-foreground: #171717;
+
+  --muted: #f4f4f5;
+  --muted-foreground: #666666;
+
+  /* Brand red accent */
+  --accent: #ff3131;
+  --accent-foreground: #ffffff;
+
+  --destructive: #ff3131;
+
+  --border: #dadade;
+  --input: #c4c4ca;
+  --ring: #5271ff;
+
+  --chart-1: #5271ff;
+  --chart-2: #ff3131;
+  --chart-3: #000000;
+  --chart-4: #8fa3ff;
+  --chart-5: #ff7a7a;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #5271ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f2f3f7;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #dadade;
+  --sidebar-ring: #5271ff;
+}
+
+.dark {
+  /* Dark base */
+  --background: oklch(0.16 0.008 165);
+  --foreground: oklch(0.97 0.005 120);
+
+  --card: oklch(0.205 0.01 165);
+  --card-foreground: oklch(0.97 0.005 120);
+
+  --popover: oklch(0.205 0.01 165);
+  --popover-foreground: oklch(0.97 0.005 120);
+
+  /* Teal/mint primary */
+  --primary: oklch(0.72 0.13 175);
+  --primary-foreground: oklch(0.16 0.02 175);
+
+  /* Amber/gold secondary */
+  --secondary: oklch(0.3 0.02 165);
+  --secondary-foreground: oklch(0.95 0.02 85);
+
+  --muted: oklch(0.26 0.008 165);
+  --muted-foreground: oklch(0.68 0.015 165);
+
+  --accent: oklch(0.78 0.14 80);
+  --accent-foreground: oklch(0.18 0.02 80);
+
+  --destructive: oklch(0.62 0.21 25);
+
+  --border: oklch(0.3 0.012 165);
+  --input: oklch(0.26 0.01 165);
+  --ring: oklch(0.72 0.13 175);
+
+  --chart-1: oklch(0.72 0.13 175);
+  --chart-2: oklch(0.78 0.14 80);
+  --chart-3: oklch(0.65 0.16 145);
+  --chart-4: oklch(0.7 0.15 40);
+  --chart-5: oklch(0.6 0.18 300);
+
+  --sidebar: oklch(0.185 0.01 165);
+  --sidebar-foreground: oklch(0.95 0.005 120);
+  --sidebar-primary: oklch(0.72 0.13 175);
+  --sidebar-primary-foreground: oklch(0.16 0.02 175);
+  --sidebar-accent: oklch(0.26 0.012 165);
+  --sidebar-accent-foreground: oklch(0.97 0.005 120);
+  --sidebar-border: oklch(0.3 0.012 165);
+  --sidebar-ring: oklch(0.72 0.13 175);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  /* Poppins/PT Serif have no Arabic glyphs — swap in an Arabic-capable font for RTL locales */
+  html[dir="rtl"] body {
+    font-family: var(--font-noto-arabic), var(--font-poppins), sans-serif;
+  }
+  html[dir="rtl"] .font-serif {
+    font-family: var(--font-noto-arabic), var(--font-pt-serif), serif;
+  }
+  /* Soft ambient glow is a dark-theme-only treatment for now; light theme stays solid white */
+  .dark body {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in oklch, var(--primary) 8%, transparent) 0%, transparent 35%),
+      radial-gradient(circle at 85% 80%, color-mix(in oklch, var(--accent) 7%, transparent) 0%, transparent 35%);
+    background-attachment: fixed;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--card);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--primary) 35%, var(--card));
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--primary) 60%, transparent);
+  }
+}
+
+@layer utilities {
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #5271ff 0%, #ff3131 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .dark .text-gradient-primary {
+    background: linear-gradient(135deg, oklch(0.85 0.14 175) 0%, oklch(0.72 0.13 175) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .bg-grid {
+    background-image:
+      linear-gradient(color-mix(in oklch, var(--primary) 16%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklch, var(--primary) 16%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .glass {
+    background: color-mix(in oklch, var(--card) 72%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .glow-teal {
+    box-shadow: 0 0 24px color-mix(in oklch, var(--primary) 25%, transparent);
+  }
+  .glow-gold {
+    box-shadow: 0 0 24px color-mix(in oklch, var(--accent) 25%, transparent);
+  }
+  /* Unani geometric pattern overlay */
+  .pattern-unani {
+    background-color: transparent;
+    background-image:
+      radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--primary) 22%, transparent) 1px, transparent 0);
+    background-size: 16px 16px;
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+  .animate-pulse-slow {
+    animation: pulseSlow 4s ease-in-out infinite;
+  }
+  @keyframes pulseSlow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  /* Connector-field hero texture */
+  .connector-dot {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation-name: connectorLife;
+    animation-duration: var(--dur, 4s);
+    animation-delay: var(--delay, 0s);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @keyframes connectorLife {
+    0% { transform: translate(0, 0) scale(0.85); opacity: 0.3; }
+    25% { transform: translate(var(--dx, 3px), calc(var(--dy, 2px) * -1)) scale(1.05); opacity: 0.75; }
+    50% { transform: translate(calc(var(--dx, 3px) * -1), var(--dy, 2px)) scale(1.25); opacity: 0.95; }
+    75% { transform: translate(var(--dy, 2px), var(--dx, 3px)) scale(1.0); opacity: 0.6; }
+    100% { transform: translate(0, 0) scale(0.85); opacity: 0.3; }
+  }
+  .connector-line {
+    stroke-dasharray: 3 5;
+    opacity: 0.55;
+    animation: connectorFlow 1.8s linear infinite;
+  }
+  @keyframes connectorFlow {
+    to { stroke-dashoffset: -16; }
+  }
+}

@@ -1,0 +1,156 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import {
+  ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, ShieldCheck, ShieldOff,
+  CheckCircle2, XCircle, Loader2, Ban, Undo2, HeartPulse,
+} from "lucide-react";
+import { toast } from "sonner";
+import { adminApi } from "@/lib/admin-api";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { avatarGradient, initials } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
+
+interface PatientDetail {
+  id: string; name: string; email: string | null; phone: string; dob: string | null; gender: string | null;
+  bloodGroup: string | null; address: string | null; emergencyContact: string | null; occupation: string | null;
+  height: string | null; weight: string | null; familyHistory: string | null; medicalHistory: string | null;
+  chronicConditions: string | null; allergies: string | null; currentMedications: string | null;
+  surgicalHistory: string | null; lifestyle: string | null; mizaj: string | null; avatarColor: string;
+  verified: boolean; active: boolean; lastLoginAt: string | null; createdAt: string; updatedAt: string;
+  _count: { appointments: number; records: number; prescriptions: number; mizajAssessments: number };
+}
+
+function StatCard({ label, value }: { label: string; value: number | string }) {
+  return (
+    <Card className="p-4 border-border/50 bg-card/60">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="font-serif text-2xl font-bold mt-1">{value}</p>
+    </Card>
+  );
+}
+
+function InfoRow({ icon: Icon, children }: { icon: any; children: React.ReactNode }) {
+  return <div className="flex items-center gap-2"><Icon className="h-4 w-4 text-muted-foreground shrink-0" /> {children}</div>;
+}
+
+export default function PatientDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [patient, setPatient] = useState<PatientDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    adminApi.get<{ patient: PatientDetail }>(`/api/admin/patients/${id}`)
+      .then((res) => setPatient(res.patient))
+      .catch(() => toast.error("Could not load patient"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, [id]);
+
+  const toggleActive = async () => {
+    if (!patient) return;
+    setUpdating(true);
+    try {
+      const res = await adminApi.patch<{ patient: { active: boolean } }>(`/api/admin/patients/${id}`, { active: !patient.active });
+      setPatient({ ...patient, active: res.patient.active });
+      toast.success(res.patient.active ? "Patient account activated" : "Patient account suspended");
+    } catch (err: any) {
+      toast.error(err.message || "Could not update account status");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+      </div>
+    );
+  }
+  if (!patient) {
+    return (
+      <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
+        <p className="text-muted-foreground">Patient not found.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
+      <Link href="/admin/patients" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Patient list
+      </Link>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <div className={cn("h-16 w-16 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg shrink-0", avatarGradient(patient.avatarColor))}>
+            <span className="font-serif text-lg font-bold text-white">{initials(patient.name)}</span>
+          </div>
+          <div>
+            <h1 className="font-serif text-2xl font-bold tracking-tight">{patient.name}</h1>
+            <p className="text-muted-foreground">{patient.gender || "—"}{patient.mizaj ? ` · ${patient.mizaj} Mizaj` : ""}</p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          disabled={updating}
+          className={patient.active ? "text-destructive hover:text-destructive" : "text-emerald-400 hover:text-emerald-400"}
+          onClick={toggleActive}
+        >
+          {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : patient.active ? <Ban className="h-4 w-4" /> : <Undo2 className="h-4 w-4" />}
+          {patient.active ? "Suspend account" : "Reactivate account"}
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-8">
+        {patient.verified ? (
+          <Badge className="bg-primary/15 text-primary border-primary/30"><CheckCircle2 className="h-3 w-3 mr-1" /> Verified</Badge>
+        ) : (
+          <Badge variant="outline" className="text-muted-foreground"><XCircle className="h-3 w-3 mr-1" /> Unverified</Badge>
+        )}
+        {patient.active ? (
+          <Badge variant="outline" className="border-emerald-500/30 text-emerald-400"><ShieldCheck className="h-3 w-3 mr-1" /> Active</Badge>
+        ) : (
+          <Badge variant="outline" className="border-destructive/40 text-destructive"><ShieldOff className="h-3 w-3 mr-1" /> Suspended</Badge>
+        )}
+      </div>
+
+      <div className="grid sm:grid-cols-4 gap-4 mb-8 max-w-3xl">
+        <StatCard label="Appointments" value={patient._count.appointments} />
+        <StatCard label="Records" value={patient._count.records} />
+        <StatCard label="Prescriptions" value={patient._count.prescriptions} />
+        <StatCard label="Mizaj Assessments" value={patient._count.mizajAssessments} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-5 max-w-4xl">
+        <Card className="p-6 border-border/50 bg-card/60">
+          <h2 className="font-serif text-lg font-semibold mb-4">Contact Information</h2>
+          <dl className="space-y-3 text-sm">
+            <InfoRow icon={Mail}>{patient.email || "No email on file"}</InfoRow>
+            <InfoRow icon={Phone}>{patient.phone}</InfoRow>
+            {patient.address && <InfoRow icon={MapPin}>{patient.address}</InfoRow>}
+            {patient.occupation && <InfoRow icon={Briefcase}>{patient.occupation}</InfoRow>}
+            <InfoRow icon={Calendar}>Registered {new Date(patient.createdAt).toLocaleDateString()}</InfoRow>
+          </dl>
+        </Card>
+        <Card className="p-6 border-border/50 bg-card/60">
+          <h2 className="font-serif text-lg font-semibold mb-4">Medical Profile</h2>
+          <dl className="space-y-3 text-sm">
+            <InfoRow icon={HeartPulse}>Blood group: {patient.bloodGroup || "—"}</InfoRow>
+            <InfoRow icon={HeartPulse}>Height / Weight: {patient.height || "—"} / {patient.weight || "—"}</InfoRow>
+            {patient.chronicConditions && <InfoRow icon={HeartPulse}>Chronic: {patient.chronicConditions}</InfoRow>}
+            {patient.allergies && <InfoRow icon={HeartPulse}>Allergies: {patient.allergies}</InfoRow>}
+          </dl>
+        </Card>
+      </div>
+    </div>
+  );
+}

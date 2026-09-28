@@ -1,0 +1,350 @@
+// The Hekim's Connect - Unani Medicine Platform
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  avatarColor   String    @default("teal")
+  avatarImage   String?
+  active        Boolean   @default(true)
+  failedAttempts Int      @default(0)
+  lockedUntil   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  otpCodes     OtpCode[]
+  loginEvents  AdminLoginEvent[]
+  sessions     AdminSession[]
+  activityLogs AdminActivityLog[]
+}
+
+model AdminLoginEvent {
+  id            String   @id @default(cuid())
+  adminId       String?
+  adminName     String
+  email         String
+  ip            String?
+  browser       String?
+  os            String?
+  device        String?
+  status        String // "success" | "failed"
+  failureReason String?
+  sessionId     String?
+  createdAt     DateTime @default(now())
+
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+}
+
+model AdminSession {
+  id         String    @id @default(cuid())
+  adminId    String
+  ip         String?
+  browser    String?
+  os         String?
+  device     String?
+  loginAt    DateTime  @default(now())
+  logoutAt   DateTime?
+  logoutType String? // "manual" | "timeout" | "forced" | "password_change" | "other"
+  createdAt  DateTime  @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model AdminActivityLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  action      String
+  description String?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model Hakim {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  phone          String   @unique
+  password       String
+  license        String?
+  specialization String   @default("General Unani Practitioner")
+  experience     Int      @default(0)
+  mizaj          String   @default("Balanced")
+  rating         Float    @default(5.0)
+  bio            String?
+  avatarColor    String   @default("teal")
+  verified       Boolean  @default(false)
+  active         Boolean  @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  appointments    Appointment[]
+  mizajAssessments MizajAssessment[]
+  prescriptions   Prescription[]
+  otpCodes        OtpCode[]
+}
+
+model Patient {
+  id                String   @id @default(cuid())
+  name              String
+  email             String?  @unique
+  phone             String   @unique
+  password          String
+  dob               String?
+  gender            String?
+  bloodGroup        String?
+  address           String?
+  emergencyContact  String?
+  occupation        String?
+  height            String?
+  weight            String?
+  // Medical history
+  familyHistory     String?
+  medicalHistory    String?
+  chronicConditions String?
+  allergies         String?
+  currentMedications String?
+  surgicalHistory   String?
+  lifestyle         String?
+  mizaj             String?
+  avatarColor       String   @default("amber")
+  verified          Boolean  @default(false)
+  active            Boolean  @default(true)
+  lastLoginAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  appointments     Appointment[]
+  records          Record[]
+  mizajAssessments MizajAssessment[]
+  prescriptions    Prescription[]
+  otpCodes         OtpCode[]
+}
+
+model Appointment {
+  id        String   @id @default(cuid())
+  hakimId   String
+  patientId String
+  date      String
+  time      String
+  type      String   @default("Consultation")
+  reason    String?
+  status    String   @default("scheduled")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hakim        Hakim        @relation(fields: [hakimId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
+}
+
+model Message {
+  id           String   @id @default(cuid())
+  senderId     String
+  senderType   String
+  receiverId   String
+  receiverType String
+  content      String
+  read         Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([senderId, senderType])
+  @@index([receiverId, receiverType])
+}
+
+model Record {
+  id          String   @id @default(cuid())
+  patientId   String
+  type        String
+  fileName    String
+  fileData    String
+  mimeType    String
+  title       String
+  description String?
+  category    String   @default("General")
+  createdAt   DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model MizajAssessment {
+  id         String   @id @default(cuid())
+  patientId  String
+  hakimId    String
+  dam        Int      @default(0)
+  saffra     Int      @default(0)
+  balgham    Int      @default(0)
+  sauda      Int      @default(0)
+  result     String
+  pulse      String?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hakim   Hakim   @relation(fields: [hakimId], references: [id], onDelete: Cascade)
+}
+
+model PharmacyItem {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   @default("General")
+  form        String   @default("Powder")
+  quantity    Int      @default(0)
+  unit        String   @default("g")
+  reorderLevel Int     @default(10)
+  price       Float    @default(0)
+  expiryDate  String?
+  description String?
+  inStock     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Prescription {
+  id           String   @id @default(cuid())
+  appointmentId String?
+  patientId    String
+  hakimId      String
+  items        String
+  notes        String?
+  therapyType  String   @default("Ilaj-bil-Dawa")
+  createdAt    DateTime @default(now())
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  hakim       Hakim        @relation(fields: [hakimId], references: [id], onDelete: Cascade)
+}
+
+model SiteStat {
+  id    String @id @default("visitors")
+  count Int    @default(0)
+
+  updatedAt DateTime @updatedAt
+}
+
+model PortalSetting {
+  id        String   @id @default(cuid())
+  category  String
+  key       String
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@unique([category, key])
+}
+
+model EmailConfig {
+  id          String   @id @default(cuid())
+  provider    String   @default("smtp")
+  smtpHost    String?
+  smtpPort    Int?
+  encryption  String   @default("tls")
+  username    String?
+  secretEnc   String?
+  fromEmail   String?
+  fromName    String?
+  replyTo     String?
+  active      Boolean  @default(false)
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  type      String
+  subject   String
+  body      String
+  status    String   @default("active")
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationLog {
+  id          String   @id @default(cuid())
+  recipient   String
+  templateKey String?
+  subject     String?
+  status      String
+  event       String?
+  error       String?
+  createdAt   DateTime @default(now())
+}
+
+model OtpCode {
+  id         String   @id @default(cuid())
+  identifier String
+  code      String
+  purpose   String   @default("login")
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0)
+  hakimId   String?
+  patientId String?
+  adminId   String?
+  createdAt DateTime @default(now())
+
+  hakim   Hakim?   @relation(fields: [hakimId], references: [id], onDelete: Cascade)
+  patient Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  admin   Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model Language {
+  code        String   @id
+  name        String
+  englishName String
+  direction   String   @default("ltr")
+  enabled     Boolean  @default(false)
+  isDefault   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  values TranslationValue[]
+}
+
+model TranslationKey {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  group       String
+  description String?
+  sourceText  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  values TranslationValue[]
+}
+
+model TranslationValue {
+  id           String   @id @default(cuid())
+  keyId        String
+  languageCode String
+  text         String
+  status       String   @default("draft")
+  source       String   @default("manual")
+  updatedBy    String?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  key      TranslationKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
+  language Language       @relation(fields: [languageCode], references: [code], onDelete: Cascade)
+
+  @@unique([keyId, languageCode])
+  @@index([languageCode, status])
+}
