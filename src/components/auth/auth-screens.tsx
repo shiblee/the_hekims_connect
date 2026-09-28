@@ -126,6 +126,11 @@ const validate = {
   email: (v: string) => (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? "Enter a valid email address" : ""),
   phone: (v: string) => (v.replace(/\D/g, "").length < 10 ? "Enter a valid phone number" : ""),
   password: (v: string) => (v.length < 6 ? "Password must be at least 6 characters" : ""),
+  contact: (v: string) => {
+    const val = v?.trim() || "";
+    if (!val) return "Email or phone is required";
+    return val.includes("@") ? validate.email(val) : validate.phone(val);
+  },
 };
 
 function HakimSignup() {
@@ -133,10 +138,7 @@ function HakimSignup() {
   const setOtpPending = useAppStore((s) => s.setOtpPending);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({
-    name: "", email: "", phone: "", password: "",
-    specialization: "General Unani Practitioner", license: "",
-  });
+  const [form, setForm] = useState({ name: "", contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const setField = (key: keyof typeof form, value: string) => {
@@ -148,8 +150,7 @@ function HakimSignup() {
     e.preventDefault();
     const errs: Record<string, string> = {
       name: validate.required(form.name, "Full name"),
-      email: validate.required(form.email, "Email") || validate.email(form.email),
-      phone: validate.required(form.phone, "Phone") || validate.phone(form.phone),
+      contact: validate.contact(form.contact),
       password: validate.required(form.password, "Password") || validate.password(form.password),
     };
     const activeErrs = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
@@ -165,8 +166,7 @@ function HakimSignup() {
       toast.success("OTP sent! Check the verification screen.");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
-      if (/email/i.test(msg)) setErrors((er) => ({ ...er, email: msg }));
-      else if (/phone/i.test(msg)) setErrors((er) => ({ ...er, phone: msg }));
+      if (/email|phone/i.test(msg)) setErrors((er) => ({ ...er, contact: msg }));
       else toast.error(msg);
     } finally {
       setLoading(false);
@@ -187,15 +187,9 @@ function HakimSignup() {
             <FieldError message={errors.name} />
           </div>
           <div>
-            <FloatingField id="hakim-signup-email" label="Email" icon={Mail} type="email" error={!!errors.email} value={form.email} onChange={(e) => setField("email", e.target.value)} />
-            <FieldError message={errors.email} />
+            <FloatingField id="hakim-signup-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+            <FieldError message={errors.contact} />
           </div>
-          <div>
-            <FloatingField id="hakim-signup-phone" label="Phone" icon={Phone} error={!!errors.phone} value={form.phone} onChange={(e) => setField("phone", e.target.value)} />
-            <FieldError message={errors.phone} />
-          </div>
-          <FloatingField id="hakim-signup-specialization" label="Specialization" icon={Stethoscope} value={form.specialization} onChange={(e) => setField("specialization", e.target.value)} />
-          <FloatingField id="hakim-signup-license" label="License No. (optional)" value={form.license} onChange={(e) => setField("license", e.target.value)} />
           <div>
             <FloatingField
               id="hakim-signup-password"
@@ -237,7 +231,7 @@ function HakimLogin() {
   const setOtpPending = useAppStore((s) => s.setOtpPending);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const setField = (key: keyof typeof form, value: string) => {
@@ -248,7 +242,7 @@ function HakimLogin() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {
-      email: validate.required(form.email, "Email") || validate.email(form.email),
+      contact: validate.contact(form.contact),
       password: validate.required(form.password, "Password"),
     };
     const activeErrs = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
@@ -279,8 +273,8 @@ function HakimLogin() {
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
           <div>
-            <FloatingField id="hakim-login-email" label="Email" icon={Mail} type="email" error={!!errors.email} value={form.email} onChange={(e) => setField("email", e.target.value)} />
-            <FieldError message={errors.email} />
+            <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+            <FieldError message={errors.contact} />
           </div>
           <div>
             <FloatingField

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, generateOtp } from "@/lib/auth";
+import { hashPassword, generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, phone, password, specialization, license, experience } = body;
+    const { name, contact, password, experience } = body;
 
-    if (!name || !email || !phone || !password) {
+    if (!name || !contact || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -18,8 +18,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Hakim registration is currently closed. Please check back later." }, { status: 403 });
     }
 
+    const { value: normalizedContact, isEmail } = normalizeContact(contact);
+
     const existing = await db.hakim.findFirst({
-      where: { OR: [{ email: email.toLowerCase() }, { phone }] },
+      where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] },
     });
     if (existing) {
       return NextResponse.json(
@@ -31,11 +33,9 @@ export async function POST(req: NextRequest) {
     const hakim = await db.hakim.create({
       data: {
         name,
-        email: email.toLowerCase(),
-        phone,
+        email: isEmail ? normalizedContact : null,
+        phone: isEmail ? null : normalizedContact,
         password: hashPassword(password),
-        specialization: specialization || "General Unani Practitioner",
-        license: license || null,
         experience: experience ? parseInt(experience, 10) || 0 : 0,
         verified: false,
       },
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const code = generateOtp();
     await db.otpCode.create({
       data: {
-        identifier: hakim.email,
+        identifier: normalizedContact,
         code,
         purpose: "signup",
         hakimId: hakim.id,
@@ -55,17 +55,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await sendTemplatedEmail({
-      templateKey: "hakim_otp_verification",
-      to: hakim.email,
-      vars: { hakim_name: hakim.name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
-      event: "otp_sent",
-    });
+    if (isEmail) {
+      await sendTemplatedEmail({
+        templateKey: "hakim_otp_verification",
+        to: normalizedContact,
+        vars: { hakim_name: hakim.name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
+        event: "otp_sent",
+      });
+    }
 
     return NextResponse.json({
-      message: "OTP sent to your registered email & phone",
+      message: isEmail ? "OTP sent to your registered email" : "OTP sent to your registered phone",
       needsOtp: true,
-      contact: hakim.email,
+      contact: normalizedContact,
       role: "hakim",
       name: hakim.name,
       devOtp: code,

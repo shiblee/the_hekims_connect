@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { generateOtp } from "@/lib/auth";
+import { generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 
@@ -12,14 +12,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Contact is required" }, { status: 400 });
     }
 
+    const { value: normalizedContact } = normalizeContact(contact);
+
     const user = role === "hakim"
-      ? await db.hakim.findUnique({ where: { email: contact.toLowerCase() } })
+      ? await db.hakim.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
       : await db.patient.findUnique({ where: { phone: contact } });
     if (!user) {
       return NextResponse.json({ error: "No account found" }, { status: 404 });
     }
 
-    const identifier = role === "hakim" ? (user as { email: string }).email : (user as { phone: string }).phone;
+    const identifier = role === "hakim"
+      ? ((user as { email: string | null; phone: string | null }).email ?? (user as { phone: string }).phone)
+      : (user as { phone: string }).phone;
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
     const lastOtp = await db.otpCode.findFirst({ where: { identifier }, orderBy: { createdAt: "desc" } });
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (role === "hakim") {
+    if (role === "hakim" && (user as { email: string | null }).email) {
       const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
       await sendTemplatedEmail({
         templateKey: "hakim_otp_verification",

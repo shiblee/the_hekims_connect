@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         data: { recipient: contact, templateKey: "hakim_otp_verification", status: "verified", event: "otp_verified" },
       });
 
-      if (isSignup && hakim) {
+      if (isSignup && hakim?.email) {
         const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
         await sendTemplatedEmail({
           templateKey: "hakim_welcome",

@@ -31,3 +31,14 @@ export function generateToken(): string {
 export function isExpired(expiresAt: Date): boolean {
   return new Date(expiresAt).getTime() < Date.now();
 }
+
+export function isEmailLike(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+/** A signup/login "contact" field can be an email or a phone number — normalize and classify it. */
+export function normalizeContact(value: string): { value: string; isEmail: boolean } {
+  const trimmed = value.trim();
+  const isEmail = isEmailLike(trimmed);
+  return { value: isEmail ? trimmed.toLowerCase() : trimmed, isEmail };
+}

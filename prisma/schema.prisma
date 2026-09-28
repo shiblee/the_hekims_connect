@@ -75,8 +75,8 @@ model AdminActivityLog {
 model Hakim {
   id             String   @id @default(cuid())
   name           String
-  email          String   @unique
-  phone          String   @unique
+  email          String?  @unique
+  phone          String?  @unique
   password       String
   license        String?
   specialization String   @default("General Unani Practitioner")
