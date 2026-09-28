@@ -203,7 +203,7 @@ function useInlineVerify(role: AuthRole) {
 }
 
 function InlineVerifyBox({ iv, contact, accent = "primary" }: { iv: ReturnType<typeof useInlineVerify>; contact: string; accent?: "primary" | "accent" }) {
-  if (iv.stage === "idle") return null;
+  if (iv.stage === "idle") return iv.error ? <FieldError message={iv.error} /> : null;
 
   if (iv.stage === "verified") {
     return (
