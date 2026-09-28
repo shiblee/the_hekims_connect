@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, generateOtp } from "@/lib/auth";
+import { hashPassword } from "@/lib/auth";
+import { makeToken, fetchPatient } from "@/lib/api-auth";
+
+const PRECHECK_VALIDITY_MS = 30 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,32 +25,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const precheck = await db.otpCode.findFirst({
+      where: { identifier: phone, purpose: "precheck", verifiedAt: { not: null } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!precheck || Date.now() - new Date(precheck.verifiedAt!).getTime() > PRECHECK_VALIDITY_MS) {
+      return NextResponse.json({ error: "Please verify your phone number before registering" }, { status: 400 });
+    }
+
     const patient = await db.patient.create({
       data: {
         name,
         phone,
         password: hashPassword(password),
-      },
-    });
-
-    const code = generateOtp();
-    await db.otpCode.create({
-      data: {
-        identifier: patient.phone,
-        code,
-        purpose: "signup",
-        patientId: patient.id,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        verified: true,
+        lastLoginAt: new Date(),
       },
     });
 
     return NextResponse.json({
-      message: "OTP sent to your registered phone",
-      needsOtp: true,
-      contact: patient.phone,
+      success: true,
+      token: makeToken("patient", patient.id),
+      user: await fetchPatient(patient.id),
       role: "patient",
-      name: patient.name,
-      devOtp: code,
     });
   } catch (e) {
     console.error("Patient signup error:", e);

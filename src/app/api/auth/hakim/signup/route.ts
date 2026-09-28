@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, generateOtp, normalizeContact } from "@/lib/auth";
+import { hashPassword, normalizeContact } from "@/lib/auth";
+import { makeToken, fetchHakim } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+
+const PRECHECK_VALIDITY_MS = 30 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,6 +36,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const precheck = await db.otpCode.findFirst({
+      where: { identifier: normalizedContact, purpose: "precheck", verifiedAt: { not: null } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!precheck || Date.now() - new Date(precheck.verifiedAt!).getTime() > PRECHECK_VALIDITY_MS) {
+      return NextResponse.json({ error: "Please verify your email or phone before registering" }, { status: 400 });
+    }
+
     const hakim = await db.hakim.create({
       data: {
         name,
@@ -40,40 +51,32 @@ export async function POST(req: NextRequest) {
         phone: isEmail ? null : normalizedContact,
         password: hashPassword(password),
         experience: experience ? parseInt(experience, 10) || 0 : 0,
-        verified: false,
-      },
-    });
-
-    const otpValidityMinutes = await getSetting("verification", "otp_expiry_minutes", "10");
-    const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
-
-    const code = generateOtp();
-    await db.otpCode.create({
-      data: {
-        identifier: normalizedContact,
-        code,
-        purpose: "signup",
-        hakimId: hakim.id,
-        expiresAt: new Date(Date.now() + parseInt(otpValidityMinutes, 10) * 60 * 1000),
+        verified: true,
+        lastLoginAt: new Date(),
       },
     });
 
     if (isEmail) {
+      const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
       await sendTemplatedEmail({
-        templateKey: "hakim_otp_verification",
+        templateKey: "hakim_welcome",
         to: normalizedContact,
-        vars: { hakim_name: hakim.name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
-        event: "otp_sent",
+        vars: {
+          hakim_name: hakim.name,
+          hakim_email: normalizedContact,
+          portal_name: portalName,
+          registration_date: new Date().toLocaleDateString(),
+          login_url: `${req.nextUrl.origin}/login/hakim`,
+        },
+        event: "welcome_sent",
       });
     }
 
     return NextResponse.json({
-      message: isEmail ? "OTP sent to your registered email" : "OTP sent to your registered phone",
-      needsOtp: true,
-      contact: normalizedContact,
+      success: true,
+      token: makeToken("hakim", hakim.id),
+      user: await fetchHakim(hakim.id),
       role: "hakim",
-      name: hakim.name,
-      devOtp: code,
     });
   } catch (e) {
     console.error("Hakim signup error:", e);

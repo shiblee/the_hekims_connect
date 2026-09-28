@@ -135,25 +135,154 @@ const validate = {
 
 const digitsOnly = (v: string) => v.replace(/\D/g, "").slice(0, 10);
 
+/** Drives the inline "Send Code" → OTP → "Verified" widget next to a contact field, before any account exists. */
+function useInlineVerify(role: AuthRole) {
+  const [stage, setStage] = useState<"idle" | "sent" | "verified">("idle");
+  const [devOtp, setDevOtp] = useState("");
+  const [code, setCode] = useState("");
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  const send = async (contact: string) => {
+    setError("");
+    setSending(true);
+    try {
+      const res = await api.post<{ devOtp: string; contact: string }>("/api/auth/otp/precheck-send", { contact, role });
+      setDevOtp(res.devOtp);
+      setCode(res.devOtp);
+      setStage("sent");
+      setCooldown(30);
+      toast.success("Verification code sent");
+    } catch (err: any) {
+      setError(err.message || "Could not send code");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const verify = async (contact: string) => {
+    if (code.length !== 6) {
+      setError("Enter the 6-digit code");
+      return;
+    }
+    setError("");
+    setVerifying(true);
+    try {
+      await api.post("/api/auth/otp/precheck-verify", { contact, code, role });
+      setStage("verified");
+      toast.success("Verified");
+    } catch (err: any) {
+      setError(err.message || "Invalid code");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const reset = () => {
+    setStage("idle");
+    setDevOtp("");
+    setCode("");
+    setError("");
+    setCooldown(0);
+  };
+
+  return { stage, devOtp, code, setCode, sending, verifying, cooldown, error, send, verify, reset };
+}
+
+function InlineVerifyBox({ iv, contact, accent = "primary" }: { iv: ReturnType<typeof useInlineVerify>; contact: string; accent?: "primary" | "accent" }) {
+  if (iv.stage === "idle") return null;
+
+  if (iv.stage === "verified") {
+    return (
+      <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-primary">
+        <Check className="h-4 w-4" /> Verified
+      </p>
+    );
+  }
+
+  return (
+    <div className={cn("mt-2 rounded-lg border p-3", accent === "primary" ? "border-primary/20 bg-primary/5" : "border-accent/20 bg-accent/5")}>
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <p className="text-xs text-muted-foreground">
+          Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{iv.devOtp}</span>
+        </p>
+        <button
+          type="button"
+          onClick={() => iv.send(contact)}
+          disabled={iv.cooldown > 0 || iv.sending}
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
+        >
+          <RefreshCw className="h-3 w-3" />
+          {iv.cooldown > 0 ? `Resend in ${iv.cooldown}s` : "Resend"}
+        </button>
+      </div>
+      <div className="flex items-center gap-3">
+        <InputOTP maxLength={6} value={iv.code} onChange={iv.setCode}>
+          <InputOTPGroup>
+            <InputOTPSlot index={0} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={1} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={2} className="h-10 w-9 text-sm" />
+          </InputOTPGroup>
+          <InputOTPSeparator />
+          <InputOTPGroup>
+            <InputOTPSlot index={3} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={4} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={5} className="h-10 w-9 text-sm" />
+          </InputOTPGroup>
+        </InputOTP>
+        <Button
+          type="button"
+          size="sm"
+          disabled={iv.verifying}
+          onClick={() => iv.verify(contact)}
+          className={cn("h-10", accent === "primary" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-accent text-accent-foreground hover:bg-accent/90")}
+        >
+          {iv.verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+        </Button>
+      </div>
+      <FieldError message={iv.error} />
+    </div>
+  );
+}
+
 function HakimSignup() {
   const router = useRouter();
-  const otpPending = useAppStore((s) => s.otpPending);
-  const setOtpPending = useAppStore((s) => s.setOtpPending);
+  const setHakim = useAppStore((s) => s.setHakim);
+  const setView = useAppStore((s) => s.setView);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ name: "", contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const iv = useInlineVerify("hakim");
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => (er[key] ? { ...er, [key]: "" } : er));
+    if (key === "contact" && iv.stage !== "idle") iv.reset();
+  };
+
+  const sendCode = () => {
+    const err = validate.contact(form.contact);
+    if (err) {
+      setErrors((er) => ({ ...er, contact: err }));
+      return;
+    }
+    iv.send(form.contact);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {
       name: validate.required(form.name, "Full name"),
-      contact: validate.contact(form.contact),
+      contact: validate.contact(form.contact) || (iv.stage !== "verified" ? "Please verify your email or phone first" : ""),
       password: validate.required(form.password, "Password") || validate.password(form.password),
     };
     const activeErrs = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
@@ -163,9 +292,12 @@ function HakimSignup() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/hakim/signup", form);
-      setOtpPending({ contact: res.contact, role: "hakim", code: res.devOtp, name: res.name });
-      toast.success("OTP sent! Verify below to finish registering.");
+      const res = await api.post<{ token: string; user: any }>("/api/auth/hakim/signup", form);
+      setToken(res.token);
+      setHakim(res.user);
+      setView("hakim-dashboard");
+      toast.success("Welcome! Your account is ready.");
+      router.push("/");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
       if (/email|phone/i.test(msg)) setErrors((er) => ({ ...er, contact: msg }));
@@ -175,17 +307,13 @@ function HakimSignup() {
     }
   };
 
-  if (otpPending?.role === "hakim") {
-    return <OtpPanel role="hakim" backLabel="Edit details" onBack={() => setOtpPending(null)} />;
-  }
-
   return (
     <AuthLayout role="hakim">
       <div className="w-full max-w-md">
         <RoleTabs role="hakim" mode="signup" />
         <div className="mb-6">
           <h1 className="font-serif text-2xl font-bold">Become a Hakim</h1>
-          <p className="text-sm text-muted-foreground mt-1">Register your Unani practice — verified with OTP.</p>
+          <p className="text-sm text-muted-foreground mt-1">Register your Unani practice — verified in one step.</p>
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
           <div>
@@ -193,8 +321,26 @@ function HakimSignup() {
             <FieldError message={errors.name} />
           </div>
           <div>
-            <FloatingField id="hakim-signup-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+            <div className="flex items-start gap-2">
+              <div className="flex-1">
+                <FloatingField
+                  id="hakim-signup-contact"
+                  label="Email or phone"
+                  icon={Mail}
+                  error={!!errors.contact}
+                  value={form.contact}
+                  disabled={iv.stage === "verified"}
+                  onChange={(e) => setField("contact", e.target.value)}
+                />
+              </div>
+              {iv.stage === "idle" && (
+                <Button type="button" variant="outline" className="h-14 shrink-0" disabled={iv.sending || !form.contact} onClick={sendCode}>
+                  {iv.sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Code"}
+                </Button>
+              )}
+            </div>
             <FieldError message={errors.contact} />
+            <InlineVerifyBox iv={iv} contact={form.contact} accent="primary" />
           </div>
           <div>
             <FloatingField
@@ -215,7 +361,7 @@ function HakimSignup() {
           </div>
           <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {loading ? "Sending OTP…" : "Register & Send OTP"}
+            {loading ? "Creating account…" : "Register"}
           </Button>
         </form>
         <div className="flex items-center justify-between mt-5 text-sm">
@@ -327,23 +473,34 @@ function HakimLogin() {
 
 function PatientSignup() {
   const router = useRouter();
-  const otpPending = useAppStore((s) => s.otpPending);
-  const setOtpPending = useAppStore((s) => s.setOtpPending);
+  const setPatient = useAppStore((s) => s.setPatient);
+  const setView = useAppStore((s) => s.setView);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const iv = useInlineVerify("patient");
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => (er[key] ? { ...er, [key]: "" } : er));
+    if (key === "phone" && iv.stage !== "idle") iv.reset();
+  };
+
+  const sendCode = () => {
+    const err = validate.required(form.phone, "Phone") || validate.phone(form.phone);
+    if (err) {
+      setErrors((er) => ({ ...er, phone: err }));
+      return;
+    }
+    iv.send(form.phone);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {
       name: validate.required(form.name, "Full name"),
-      phone: validate.required(form.phone, "Phone") || validate.phone(form.phone),
+      phone: (validate.required(form.phone, "Phone") || validate.phone(form.phone)) || (iv.stage !== "verified" ? "Please verify your phone number first" : ""),
       password: validate.required(form.password, "Password") || validate.password(form.password),
     };
     const activeErrs = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
@@ -353,9 +510,12 @@ function PatientSignup() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/patient/signup", form);
-      setOtpPending({ contact: res.contact, role: "patient", code: res.devOtp, name: res.name });
-      toast.success("OTP sent! Verify below to finish registering.");
+      const res = await api.post<{ token: string; user: any }>("/api/auth/patient/signup", form);
+      setToken(res.token);
+      setPatient(res.user);
+      setView("patient-dashboard");
+      toast.success("Welcome! Your account is ready.");
+      router.push("/");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
       if (/phone/i.test(msg)) setErrors((er) => ({ ...er, phone: msg }));
@@ -365,17 +525,13 @@ function PatientSignup() {
     }
   };
 
-  if (otpPending?.role === "patient") {
-    return <OtpPanel role="patient" backLabel="Edit details" onBack={() => setOtpPending(null)} />;
-  }
-
   return (
     <AuthLayout role="patient">
       <div className="w-full max-w-md">
         <RoleTabs role="patient" mode="signup" />
         <div className="mb-6">
           <h1 className="font-serif text-2xl font-bold">Create your patient account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Begin your connected healing journey — secured with OTP.</p>
+          <p className="text-sm text-muted-foreground mt-1">Begin your connected healing journey — verified in one step.</p>
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
           <div>
@@ -383,8 +539,28 @@ function PatientSignup() {
             <FieldError message={errors.name} />
           </div>
           <div>
-            <FloatingField id="patient-signup-phone" label="Phone (10 digits)" icon={Phone} inputMode="numeric" maxLength={10} error={!!errors.phone} value={form.phone} onChange={(e) => setField("phone", digitsOnly(e.target.value))} />
+            <div className="flex items-start gap-2">
+              <div className="flex-1">
+                <FloatingField
+                  id="patient-signup-phone"
+                  label="Phone (10 digits)"
+                  icon={Phone}
+                  inputMode="numeric"
+                  maxLength={10}
+                  error={!!errors.phone}
+                  value={form.phone}
+                  disabled={iv.stage === "verified"}
+                  onChange={(e) => setField("phone", digitsOnly(e.target.value))}
+                />
+              </div>
+              {iv.stage === "idle" && (
+                <Button type="button" variant="outline" className="h-14 shrink-0" disabled={iv.sending || form.phone.length !== 10} onClick={sendCode}>
+                  {iv.sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Code"}
+                </Button>
+              )}
+            </div>
             <FieldError message={errors.phone} />
+            <InlineVerifyBox iv={iv} contact={form.phone} accent="accent" />
           </div>
           <div>
             <FloatingField
@@ -405,7 +581,7 @@ function PatientSignup() {
           </div>
           <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-accent text-accent-foreground hover:bg-accent/90 mt-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {loading ? "Sending OTP…" : "Register & Send OTP"}
+            {loading ? "Creating account…" : "Register"}
           </Button>
         </form>
         <div className="flex items-center justify-between mt-5 text-sm">

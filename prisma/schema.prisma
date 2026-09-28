@@ -293,6 +293,7 @@ model OtpCode {
   purpose   String   @default("login")
   expiresAt DateTime
   used      Boolean  @default(false)
+  verifiedAt DateTime?
   attempts  Int      @default(0)
   hakimId   String?
   patientId String?
