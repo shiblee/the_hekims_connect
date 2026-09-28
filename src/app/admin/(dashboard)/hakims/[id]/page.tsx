@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { avatarGradient, initials } from "@/lib/avatar";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 interface HakimDetail {
   id: string; name: string; email: string; phone: string; license: string | null;
@@ -137,7 +137,7 @@ export default function HakimDetailPage() {
             <div className="flex items-center gap-2"><Stethoscope className="h-4 w-4 text-muted-foreground" /> {hakim.specialization}</div>
             <div className="flex items-center gap-2"><Star className="h-4 w-4 text-muted-foreground" /> {hakim.experience} years experience · {hakim.rating.toFixed(1)}★ rating</div>
             {hakim.license && <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-muted-foreground" /> License: {hakim.license}</div>}
-            <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" /> Registered {new Date(hakim.createdAt).toLocaleDateString()}</div>
+            <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" /> Registered {formatDate(hakim.createdAt)}</div>
           </dl>
         </Card>
         {hakim.bio && (

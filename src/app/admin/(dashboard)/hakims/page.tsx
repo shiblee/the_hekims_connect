@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { avatarGradient, initials } from "@/lib/avatar";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
 
 interface HakimRow {
   id: string; name: string; email: string; phone: string; specialization: string;
@@ -112,8 +112,8 @@ export default function HakimListPage() {
                       <div className="text-xs">{h.phone}</div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{h.specialization}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(h.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{h.lastLoginAt ? new Date(h.lastLoginAt).toLocaleString() : "Never"}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(h.createdAt)}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{h.lastLoginAt ? formatDateTime(h.lastLoginAt) : "Never"}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1.5">
                         {h.verified ? (

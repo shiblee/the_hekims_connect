@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { formatDate, formatDateTime } from "@/lib/utils";
 
 interface EmailConfig {
   id: string; provider: string; smtpHost: string | null; smtpPort: number | null;
@@ -226,7 +227,7 @@ function TemplatesTab() {
                     <Badge variant="outline" className="text-muted-foreground"><XCircle className="h-3 w-3 mr-1" /> Inactive</Badge>
                   )}
                 </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(t.updatedAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(t.updatedAt)}</td>
                 <td className="px-4 py-3 text-right">
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/admin/notifications/templates/${t.key}`}>
@@ -247,13 +248,6 @@ const EVENT_LABELS: Record<string, string> = {
   otp_sent: "OTP Sent", otp_resent: "OTP Resent", otp_verified: "OTP Verified",
   welcome_sent: "Welcome Email Sent", test_email: "Test Email",
 };
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    day: "numeric", month: "short", year: "numeric",
-    hour: "numeric", minute: "2-digit", hour12: true,
-  });
-}
 
 function HistoryTab() {
   const [logs, setLogs] = useState<NotificationLogRow[]>([]);
