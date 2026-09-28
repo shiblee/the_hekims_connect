@@ -191,7 +191,7 @@ function TemplatesTab() {
   }
 
   return (
-    <Card className="border-border/50 bg-card/60 overflow-hidden max-w-5xl">
+    <Card className="border-border/50 bg-card/60 overflow-hidden w-full">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -218,7 +218,7 @@ function TemplatesTab() {
                 </td>
                 <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{t.key}</td>
                 <td className="px-4 py-3 text-muted-foreground">{t.type}</td>
-                <td className="px-4 py-3 text-muted-foreground truncate max-w-[280px]">{t.subject}</td>
+                <td className="px-4 py-3 text-muted-foreground">{t.subject}</td>
                 <td className="px-4 py-3">
                   {t.status === "active" ? (
                     <Badge className="bg-primary/15 text-primary border-primary/30"><CheckCircle2 className="h-3 w-3 mr-1" /> Active</Badge>
