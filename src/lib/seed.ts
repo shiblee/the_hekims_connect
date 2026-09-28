@@ -79,7 +79,7 @@ export async function seedDatabase() {
     data: {
       name: "Dr. Aliam Colter",
       email: "colter@hekims.connect",
-      phone: "+919876543210",
+      phone: "9876543210",
       password: hakimPassword,
       license: "UNI-2017-0432",
       specialization: "Senior Unani Specialist",
@@ -96,7 +96,7 @@ export async function seedDatabase() {
     data: {
       name: "Dr. Maira Khan",
       email: "khan@hekims.connect",
-      phone: "+919876543211",
+      phone: "9876543211",
       password: hakimPassword,
       license: "UNI-2019-0511",
       specialization: "Unani Dietotherapy",
@@ -115,7 +115,7 @@ export async function seedDatabase() {
     data: {
       name: "Mark Jaxon",
       email: "mark@patient.connect",
-      phone: "+919811100001",
+      phone: "9811100001",
       password: patientPassword,
       dob: "1989-04-12",
       gender: "Male",
@@ -141,7 +141,7 @@ export async function seedDatabase() {
     data: {
       name: "Alexa Max",
       email: "alexa@patient.connect",
-      phone: "+919811100003",
+      phone: "9811100003",
       password: patientPassword,
       dob: "1995-11-23",
       gender: "Female",
@@ -167,7 +167,7 @@ export async function seedDatabase() {
     data: {
       name: "Brick Zon",
       email: "brick@patient.connect",
-      phone: "+919811100005",
+      phone: "9811100005",
       password: patientPassword,
       dob: "1978-07-30",
       gender: "Male",

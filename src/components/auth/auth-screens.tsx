@@ -23,7 +23,7 @@ type AuthMode = "login" | "signup";
 function AuthLayout({ role, children }: { role: AuthRole; children: React.ReactNode }) {
   const isHakim = role === "hakim";
   return (
-    <div className="flex-1 grid lg:grid-cols-2">
+    <div className="flex-1 grid lg:grid-cols-2 min-h-[640px] lg:min-h-[780px]">
       {/* Left brand panel */}
       <div className={cn(
         "relative hidden lg:flex flex-col justify-center py-12 pl-6 sm:pl-16 pr-12 overflow-hidden",
@@ -124,7 +124,7 @@ function RoleTabs({ role, mode }: { role: AuthRole; mode: AuthMode }) {
 const validate = {
   required: (v: string, label: string) => (!v?.trim() ? `${label} is required` : ""),
   email: (v: string) => (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? "Enter a valid email address" : ""),
-  phone: (v: string) => (v.replace(/\D/g, "").length < 10 ? "Enter a valid phone number" : ""),
+  phone: (v: string) => (v.replace(/\D/g, "").length !== 10 ? "Enter a valid 10-digit mobile number" : ""),
   password: (v: string) => (v.length < 6 ? "Password must be at least 6 characters" : ""),
   contact: (v: string) => {
     const val = v?.trim() || "";
@@ -132,6 +132,8 @@ const validate = {
     return val.includes("@") ? validate.email(val) : validate.phone(val);
   },
 };
+
+const digitsOnly = (v: string) => v.replace(/\D/g, "").slice(0, 10);
 
 function HakimSignup() {
   const router = useRouter();
@@ -369,7 +371,7 @@ function PatientSignup() {
             <FieldError message={errors.name} />
           </div>
           <div>
-            <FloatingField id="patient-signup-phone" label="Phone" icon={Phone} error={!!errors.phone} value={form.phone} onChange={(e) => setField("phone", e.target.value)} />
+            <FloatingField id="patient-signup-phone" label="Phone (10 digits)" icon={Phone} inputMode="numeric" maxLength={10} error={!!errors.phone} value={form.phone} onChange={(e) => setField("phone", digitsOnly(e.target.value))} />
             <FieldError message={errors.phone} />
           </div>
           <div>
@@ -455,7 +457,7 @@ function PatientLogin() {
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
           <div>
-            <FloatingField id="patient-login-phone" label="Phone" icon={Phone} error={!!errors.phone} value={form.phone} onChange={(e) => setField("phone", e.target.value)} />
+            <FloatingField id="patient-login-phone" label="Phone (10 digits)" icon={Phone} inputMode="numeric" maxLength={10} error={!!errors.phone} value={form.phone} onChange={(e) => setField("phone", digitsOnly(e.target.value))} />
             <FieldError message={errors.phone} />
           </div>
           <div>
@@ -481,7 +483,7 @@ function PatientLogin() {
           </Button>
         </form>
         <div className="mt-4 rounded-lg border border-accent/20 bg-accent/5 p-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Demo Patient:</span> +919811100001 / patient123
+          <span className="font-medium text-foreground">Demo Patient:</span> 9811100001 / patient123
         </div>
         <div className="flex items-center justify-between mt-5 text-sm">
           <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
