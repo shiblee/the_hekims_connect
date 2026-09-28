@@ -167,7 +167,9 @@ function EmailConfigTab() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mt-3">
-        No live SMTP transport is connected yet in this environment — Test Email simulates delivery and logs it to Notification History.
+        {config.active
+          ? "Emails send via the SMTP settings above. Use Test Email Configuration to confirm delivery."
+          : "Email sending is disabled — toggle Enabled above and save real SMTP credentials to send live emails. Until then, OTP/welcome emails are only logged to Notification History."}
       </p>
     </Card>
   );
@@ -291,6 +293,8 @@ function HistoryTab() {
                     <Badge variant="outline" className="text-destructive border-destructive/40">Failed</Badge>
                   ) : l.status === "verified" ? (
                     <Badge className="bg-primary/15 text-primary border-primary/30">Verified</Badge>
+                  ) : l.status === "sent" ? (
+                    <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">Sent</Badge>
                   ) : (
                     <Badge variant="outline">Simulated</Badge>
                   )}

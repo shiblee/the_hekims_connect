@@ -1,51 +1,51 @@
 import { db } from "@/lib/db";
+import { sendRealEmail } from "@/lib/mailer";
 
 export function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => vars[key] ?? "");
 }
 
 /**
- * Renders and "sends" a templated email. No live SMTP transport is wired up yet
- * (see Notifications → Email Configuration), so this simulates delivery and
- * records it in Notification History rather than silently pretending to send
- * real mail. Swap the body of the `if` block for a real provider call once one
- * is configured.
+ * Renders and sends a templated email. If an active SMTP configuration exists
+ * (Notifications → Email Configuration), this actually delivers the email via
+ * `sendRealEmail`; otherwise it falls back to simulating delivery and only
+ * recording it in Notification History, so the OTP/demo flow keeps working
+ * without any provider configured.
  */
 export async function sendTemplatedEmail(opts: {
   templateKey: string;
   to: string;
   vars: Record<string, string>;
   event?: string;
-}): Promise<{ sent: boolean; subject: string | null; body: string | null }> {
+}): Promise<{ sent: boolean; delivery: "sent" | "simulated" | "failed"; subject: string | null; body: string | null; error?: string }> {
   const template = await db.emailTemplate.findUnique({ where: { key: opts.templateKey } });
 
   if (!template || template.status !== "active") {
+    const error = !template ? "Template not found" : "Template is inactive";
     await db.notificationLog.create({
-      data: {
-        recipient: opts.to,
-        templateKey: opts.templateKey,
-        status: "failed",
-        event: opts.event,
-        error: !template ? "Template not found" : "Template is inactive",
-      },
+      data: { recipient: opts.to, templateKey: opts.templateKey, status: "failed", event: opts.event, error },
     });
-    return { sent: false, subject: null, body: null };
+    return { sent: false, delivery: "failed", subject: null, body: null, error };
   }
 
   const subject = renderTemplate(template.subject, opts.vars);
   const body = renderTemplate(template.body, opts.vars);
+
+  const result = await sendRealEmail({ to: opts.to, subject, text: body });
+  const delivery = result.ok ? "sent" : result.reason === "not_configured" ? "simulated" : "failed";
 
   await db.notificationLog.create({
     data: {
       recipient: opts.to,
       templateKey: opts.templateKey,
       subject,
-      status: "simulated",
+      status: delivery,
       event: opts.event,
+      error: delivery === "failed" ? result.reason : undefined,
     },
   });
 
-  return { sent: true, subject, body };
+  return { sent: true, delivery, subject, body, error: delivery === "failed" ? result.reason : undefined };
 }
 
 export const DEFAULT_EMAIL_TEMPLATES = [
