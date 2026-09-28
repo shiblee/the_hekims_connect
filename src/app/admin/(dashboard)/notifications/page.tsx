@@ -186,30 +186,60 @@ function TemplatesTab() {
     return <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   }
 
+  if (templates.length === 0) {
+    return <p className="text-muted-foreground text-sm">No email templates found.</p>;
+  }
+
   return (
-    <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
-      {templates.map((t) => (
-        <Card key={t.key} className="p-5 border-border/50 bg-card/60">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
-              <FileText className="h-4 w-4" />
-            </div>
-            {t.status === "active" ? (
-              <Badge className="bg-primary/15 text-primary border-primary/30"><CheckCircle2 className="h-3 w-3 mr-1" /> Active</Badge>
-            ) : (
-              <Badge variant="outline" className="text-muted-foreground"><XCircle className="h-3 w-3 mr-1" /> Inactive</Badge>
-            )}
-          </div>
-          <h3 className="font-serif text-base font-semibold">{t.name}</h3>
-          <p className="text-sm text-muted-foreground mt-1 truncate">{t.subject}</p>
-          <Button variant="outline" size="sm" className="mt-4" asChild>
-            <Link href={`/admin/notifications/templates/${t.key}`}>
-              Edit template <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </Card>
-      ))}
-    </div>
+    <Card className="border-border/50 bg-card/60 overflow-hidden max-w-5xl">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border/50 text-left text-muted-foreground">
+              <th className="px-4 py-3 font-medium">Template</th>
+              <th className="px-4 py-3 font-medium">Key</th>
+              <th className="px-4 py-3 font-medium">Type</th>
+              <th className="px-4 py-3 font-medium">Subject</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Updated</th>
+              <th className="px-4 py-3 font-medium text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {templates.map((t) => (
+              <tr key={t.key} className="border-b border-border/30 last:border-0">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <span className="font-medium">{t.name}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{t.key}</td>
+                <td className="px-4 py-3 text-muted-foreground">{t.type}</td>
+                <td className="px-4 py-3 text-muted-foreground truncate max-w-[280px]">{t.subject}</td>
+                <td className="px-4 py-3">
+                  {t.status === "active" ? (
+                    <Badge className="bg-primary/15 text-primary border-primary/30"><CheckCircle2 className="h-3 w-3 mr-1" /> Active</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground"><XCircle className="h-3 w-3 mr-1" /> Inactive</Badge>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(t.updatedAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-right">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/admin/notifications/templates/${t.key}`}>
+                      Edit <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }
 
