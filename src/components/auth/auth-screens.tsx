@@ -292,6 +292,10 @@ function HakimSignup() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const iv = useInlineVerify("hakim");
 
+  useEffect(() => {
+    if (iv.stage === "verified") setErrors((er) => (er.contact ? { ...er, contact: "" } : er));
+  }, [iv.stage]);
+
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => (er[key] ? { ...er, [key]: "" } : er));
@@ -510,6 +514,10 @@ function PatientSignup() {
   const [form, setForm] = useState({ name: "", phone: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const iv = useInlineVerify("patient");
+
+  useEffect(() => {
+    if (iv.stage === "verified") setErrors((er) => (er.phone ? { ...er, phone: "" } : er));
+  }, [iv.stage]);
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
