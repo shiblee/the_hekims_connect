@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
   if (!auth || auth.type !== "hakim") {
-    return NextResponse.json({ error: "Only Hekims can create Mizaj assessments" }, { status: 403 });
+    return NextResponse.json({ error: "Only Hakims can create Mizaj assessments" }, { status: 403 });
   }
   try {
     const body = await req.json();

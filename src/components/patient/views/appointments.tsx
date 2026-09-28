@@ -56,7 +56,7 @@ export function PatientAppointmentsView() {
   }).sort((a, b) => tab === "past" ? (b.date + b.time).localeCompare(a.date + a.time) : (a.date + a.time).localeCompare(b.date + b.time));
 
   const book = async () => {
-    if (!form.hakimId) { toast.error("Select a Hekim"); return; }
+    if (!form.hakimId) { toast.error("Select a Hakim"); return; }
     if (!form.date) { toast.error("Pick a date"); return; }
     setSaving(true);
     try {
@@ -77,7 +77,7 @@ export function PatientAppointmentsView() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-xl font-bold">My Appointments</h2>
-          <p className="text-sm text-muted-foreground">Book consultations with verified Hekims.</p>
+          <p className="text-sm text-muted-foreground">Book consultations with verified Hakims.</p>
         </div>
         <Button onClick={() => setOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90"><Plus className="h-4 w-4" /> Book Appointment</Button>
       </div>
@@ -137,7 +137,7 @@ export function PatientAppointmentsView() {
           <DialogHeader><DialogTitle>Book an Appointment</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label className="mb-2 block">Choose a Hekim</Label>
+              <Label className="mb-2 block">Choose a Hakim</Label>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {hakims.map((h) => (
                   <button

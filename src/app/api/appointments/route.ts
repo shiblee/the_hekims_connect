@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     if (auth.type === "patient") {
       finalPatientId = auth.id;
       if (!finalHakimId) {
-        return NextResponse.json({ error: "Please select a Hekim" }, { status: 400 });
+        return NextResponse.json({ error: "Please select a Hakim" }, { status: 400 });
       }
     } else {
       finalHakimId = auth.id;

@@ -93,7 +93,7 @@ function RoleTabs({ role, mode }: { role: AuthRole; mode: AuthMode }) {
           />
         )}
         <span className="relative z-10 flex items-center gap-2">
-          <Stethoscope className="h-5 w-5" /> Hekim
+          <Stethoscope className="h-5 w-5" /> Hakim
         </span>
       </button>
       <button
@@ -345,7 +345,7 @@ function HakimSignup() {
       <div className="w-full max-w-md">
         <RoleTabs role="hakim" mode="signup" />
         <div className="mb-6">
-          <h1 className="font-serif text-2xl font-bold">Become a Hekim</h1>
+          <h1 className="font-serif text-2xl font-bold">Become a Hakim</h1>
           <p className="text-sm text-muted-foreground mt-1">Register your Unani practice — verified in one step.</p>
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
@@ -458,7 +458,7 @@ function HakimLogin() {
       <div className="w-full max-w-md">
         <RoleTabs role="hakim" mode="login" />
         <div className="mb-6">
-          <h1 className="font-serif text-2xl font-bold">Welcome back, Hekim</h1>
+          <h1 className="font-serif text-2xl font-bold">Welcome back, Hakim</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in securely with OTP verification.</p>
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
@@ -489,7 +489,7 @@ function HakimLogin() {
           </Button>
         </form>
         <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Demo Hekim:</span> colter@hekims.connect / hekim123
+          <span className="font-medium text-foreground">Demo Hakim:</span> colter@hekims.connect / hekim123
         </div>
         <div className="flex items-center justify-between mt-5 text-sm">
           <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-foreground flex items-center gap-1">

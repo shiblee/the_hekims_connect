@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       _count: { select: { appointments: true, prescriptions: true, mizajAssessments: true } },
     },
   });
-  if (!hakim) return NextResponse.json({ error: "Hekim not found" }, { status: 404 });
+  if (!hakim) return NextResponse.json({ error: "Hakim not found" }, { status: 404 });
 
   return NextResponse.json({ hakim });
 }
@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   await logAdminActivity(
     session.admin.id,
     "hakim_account_status_changed",
-    `Hekim "${hakim.name}" ${active ? "activated" : "suspended"}`,
+    `Hakim "${hakim.name}" ${active ? "activated" : "suspended"}`,
     getClientIp(req)
   );
 

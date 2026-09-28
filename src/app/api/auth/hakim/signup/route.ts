@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     const registrationEnabled = await getSetting("registration", "hakim_registration_enabled", "true");
     if (registrationEnabled === "false") {
-      return NextResponse.json({ error: "Hekim registration is currently closed. Please check back later." }, { status: 403 });
+      return NextResponse.json({ error: "Hakim registration is currently closed. Please check back later." }, { status: 403 });
     }
 
     const { value: normalizedContact, isEmail } = normalizeContact(contact);
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     });
     if (existing) {
       return NextResponse.json(
-        { error: "A Hekim with this email or phone already exists" },
+        { error: "A Hakim with this email or phone already exists" },
         { status: 409 }
       );
     }

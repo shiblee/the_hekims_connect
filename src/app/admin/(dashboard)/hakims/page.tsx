@@ -45,8 +45,8 @@ export default function HakimListPage() {
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
       <div className="mb-8">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Hekim Management</h1>
-        <p className="text-muted-foreground mt-1.5">{total} Hekim{total === 1 ? "" : "s"} registered on the portal.</p>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Hakim Management</h1>
+        <p className="text-muted-foreground mt-1.5">{total} Hakim{total === 1 ? "" : "s"} registered on the portal.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -80,14 +80,14 @@ export default function HakimListPage() {
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
       ) : rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No Hekims match these filters.</p>
+        <p className="text-muted-foreground text-sm">No Hakims match these filters.</p>
       ) : (
         <Card className="border-border/50 bg-card/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Hekim</th>
+                  <th className="px-4 py-3 font-medium">Hakim</th>
                   <th className="px-4 py-3 font-medium">Contact</th>
                   <th className="px-4 py-3 font-medium">Specialization</th>
                   <th className="px-4 py-3 font-medium">Registered</th>

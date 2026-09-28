@@ -59,7 +59,7 @@ export default function SitemapPage() {
 
       <StaticSection heading="In-app portals">
         <p>
-          The Hekim and Patient dashboards, sign-up, sign-in and OTP verification live inside the
+          The Hakim and Patient dashboards, sign-up, sign-in and OTP verification live inside the
           main app experience rather than as separate URLs. Use <strong>Sign In</strong> or{" "}
           <strong>Get Started</strong> from the homepage header to reach them.
         </p>

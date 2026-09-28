@@ -51,7 +51,7 @@ export async function sendTemplatedEmail(opts: {
 export const DEFAULT_EMAIL_TEMPLATES = [
   {
     key: "hakim_otp_verification",
-    name: "Hekim OTP Verification",
+    name: "Hakim OTP Verification",
     type: "OTP",
     subject: "Verify your email — {{portal_name}} OTP",
     body: `Hi {{hakim_name}},
@@ -68,7 +68,7 @@ If you did not request this, you can safely ignore this email.
   },
   {
     key: "hakim_welcome",
-    name: "Hekim Registration Success / Welcome",
+    name: "Hakim Registration Success / Welcome",
     type: "Welcome",
     subject: "Welcome to {{portal_name}}, {{hakim_name}}!",
     body: `Hi {{hakim_name}},
@@ -77,7 +77,7 @@ Congratulations! Your email address {{hakim_email}} has been successfully verifi
 
 You registered on {{registration_date}}.
 
-You can now log in and start using your Hekim portal:
+You can now log in and start using your Hakim portal:
 {{login_url}}
 
 If you have any questions, our support team is here to help.

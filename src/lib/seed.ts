@@ -86,7 +86,7 @@ export async function seedDatabase() {
       experience: 8,
       mizaj: "Safrawi",
       rating: 4.9,
-      bio: "Practicing Hekim specialising in Mizaj balance, Regimental therapy (Hijama, Dalk) and chronic disease management through classical Unani formulations.",
+      bio: "Practicing Hakim specialising in Mizaj balance, Regimental therapy (Hijama, Dalk) and chronic disease management through classical Unani formulations.",
       avatarColor: "teal",
       verified: true,
     },
