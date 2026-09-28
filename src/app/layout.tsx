@@ -34,7 +34,7 @@ const notoSansArabic = Noto_Sans_Arabic({
 export const metadata: Metadata = {
   title: "The Hekim's Connect — Ancient Wisdom, Modern Care",
   description:
-    "The Hekim's Connect is a unified Unani medicine platform connecting Hakims (practitioners) and patients. Manage consultations, Mizaj assessment, pharmacy, records and secure messaging.",
+    "The Hekim's Connect is a unified Unani medicine platform connecting Hekims (practitioners) and patients. Manage consultations, Mizaj assessment, pharmacy, records and secure messaging.",
   keywords: [
     "Unani medicine",
     "Hakim",

@@ -23,7 +23,7 @@ export default function TermsPage() {
 
       <StaticSection heading="2. Who can use the platform">
         <p>
-          Hakim accounts require a valid practitioner license, verified during signup. Patient
+          Hekim accounts require a valid practitioner license, verified during signup. Patient
           accounts are open to individuals 18 or older, or to a parent/guardian managing care on
           behalf of a minor.
         </p>
@@ -32,7 +32,7 @@ export default function TermsPage() {
       <StaticSection heading="3. Not a substitute for emergency care">
         <p>
           The Hekim&apos;s Connect facilitates consultation, assessment and prescription
-          management between you and your Hakim. It is not an emergency service. In a medical
+          management between you and your Hekim. It is not an emergency service. In a medical
           emergency, contact your local emergency services immediately.
         </p>
       </StaticSection>
@@ -46,9 +46,9 @@ export default function TermsPage() {
         </p>
       </StaticSection>
 
-      <StaticSection heading="5. Hakim obligations">
+      <StaticSection heading="5. Hekim obligations">
         <p>
-          Hakims are independently responsible for the clinical advice, Mizaj assessments and
+          Hekims are independently responsible for the clinical advice, Mizaj assessments and
           prescriptions they provide through the platform, and must hold a valid license to
           practise in their jurisdiction throughout their use of the service.
         </p>

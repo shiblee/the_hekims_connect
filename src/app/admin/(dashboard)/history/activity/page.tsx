@@ -26,7 +26,7 @@ const ACTION_META: Record<string, { label: string; icon: any }> = {
   otp_requested: { label: "OTP Requested", icon: KeyRound },
   otp_verified: { label: "OTP Verified", icon: ShieldCheck },
   failed_login: { label: "Failed Login", icon: XCircle },
-  hakim_account_status_changed: { label: "Hakim Account Status Changed", icon: Stethoscope },
+  hakim_account_status_changed: { label: "Hekim Account Status Changed", icon: Stethoscope },
   patient_account_status_changed: { label: "Patient Account Status Changed", icon: HeartPulse },
   settings_updated: { label: "Settings Updated", icon: Settings },
   email_config_updated: { label: "Email Configuration Updated", icon: Mail },

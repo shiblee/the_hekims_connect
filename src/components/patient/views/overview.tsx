@@ -57,8 +57,8 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
             <h2 className="font-serif text-2xl font-bold">Welcome back, {patient.name.split(" ")[0]}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {profileComplete
-                ? "Your medical profile is complete — your Hakim has everything needed."
-                : "Complete your medical profile so your Hakim has the full picture."}
+                ? "Your medical profile is complete — your Hekim has everything needed."
+                : "Complete your medical profile so your Hekim has the full picture."}
             </p>
           </div>
           <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate(profileComplete ? "appointments" : "profile")}>
@@ -114,7 +114,7 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
             <Card className="p-6 border-dashed border-border bg-card/60 text-center">
               <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
               <p className="text-sm font-medium">No upcoming appointments</p>
-              <p className="text-xs text-muted-foreground mb-3">Book a consultation with a verified Hakim.</p>
+              <p className="text-xs text-muted-foreground mb-3">Book a consultation with a verified Hekim.</p>
               <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate("appointments")}><Plus className="h-4 w-4 mr-1" /> Book now</Button>
             </Card>
           )}

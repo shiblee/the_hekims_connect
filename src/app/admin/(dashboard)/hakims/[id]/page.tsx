@@ -42,7 +42,7 @@ export default function HakimDetailPage() {
     setLoading(true);
     adminApi.get<{ hakim: HakimDetail }>(`/api/admin/hakims/${id}`)
       .then((res) => setHakim(res.hakim))
-      .catch(() => toast.error("Could not load Hakim"))
+      .catch(() => toast.error("Could not load Hekim"))
       .finally(() => setLoading(false));
   };
 
@@ -54,7 +54,7 @@ export default function HakimDetailPage() {
     try {
       const res = await adminApi.patch<{ hakim: { active: boolean } }>(`/api/admin/hakims/${id}`, { active: !hakim.active });
       setHakim({ ...hakim, active: res.hakim.active });
-      toast.success(res.hakim.active ? "Hakim account activated" : "Hakim account suspended");
+      toast.success(res.hakim.active ? "Hekim account activated" : "Hekim account suspended");
     } catch (err: any) {
       toast.error(err.message || "Could not update account status");
     } finally {
@@ -72,7 +72,7 @@ export default function HakimDetailPage() {
   if (!hakim) {
     return (
       <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
-        <p className="text-muted-foreground">Hakim not found.</p>
+        <p className="text-muted-foreground">Hekim not found.</p>
       </div>
     );
   }
@@ -80,7 +80,7 @@ export default function HakimDetailPage() {
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
       <Link href="/admin/hakims" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to Hakim list
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Hekim list
       </Link>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">

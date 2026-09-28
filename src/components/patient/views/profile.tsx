@@ -56,7 +56,7 @@ export function ProfileView() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-xl font-bold">Medical Profile</h2>
-          <p className="text-sm text-muted-foreground">Complete information for your Hakim & any emergency officer.</p>
+          <p className="text-sm text-muted-foreground">Complete information for your Hekim & any emergency officer.</p>
         </div>
         <Button onClick={save} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -69,7 +69,7 @@ export function ProfileView() {
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-accent shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-accent">This profile is shared with your consulting Hakim</p>
+            <p className="text-sm font-medium text-accent">This profile is shared with your consulting Hekim</p>
             <p className="text-xs text-muted-foreground mt-0.5">A complete profile enables safer prescriptions and faster emergency care. Fill every section.</p>
           </div>
         </div>

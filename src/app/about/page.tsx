@@ -19,11 +19,11 @@ export default function AboutPage() {
     <StaticPageShell
       eyebrow="About Us"
       title="Ancient wisdom, built for modern practice"
-      subtitle="The Hekim's Connect exists to give Unani Hakims and their patients a single, dependable home for the whole continuum of care."
+      subtitle="The Hekim's Connect exists to give Unani Hekims and their patients a single, dependable home for the whole continuum of care."
     >
       <StaticSection heading="Why we started">
         <p>
-          Unani medicine has survived for centuries on the strength of the Hakim–patient
+          Unani medicine has survived for centuries on the strength of the Hekim–patient
           relationship — careful Mizaj assessment, personalised formulations and continuity of
           care across many visits. What it lacked was modern infrastructure: secure records,
           real-time communication and a pharmacy that tracks itself.
@@ -32,7 +32,7 @@ export default function AboutPage() {
           The Hekim&apos;s Connect was built to close that gap without changing what makes Unani
           practice work. We didn&apos;t design a generic telehealth app and relabel it — every
           screen, from the Mizaj sliders to the Ilaj classification on a prescription, was built
-          around how a Hakim actually thinks and works.
+          around how a Hekim actually thinks and works.
         </p>
       </StaticSection>
 
@@ -52,10 +52,10 @@ export default function AboutPage() {
 
       <StaticSection heading="Where we are today">
         <p>
-          The platform connects verified Hakims with patients for consultation booking, Mizaj
+          The platform connects verified Hekims with patients for consultation booking, Mizaj
           assessment, secure messaging, digital prescriptions and pharmacy stock management — all
           under one OTP-secured account. We are actively expanding into more districts and
-          refining the tools Hakims have asked for directly.
+          refining the tools Hekims have asked for directly.
         </p>
       </StaticSection>
 

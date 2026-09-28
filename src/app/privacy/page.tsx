@@ -15,13 +15,13 @@ export default function PrivacyPage() {
     >
       <StaticSection heading="1. Information we collect">
         <p>
-          <strong>Account information:</strong> name, email, phone number, and — for Hakims —
+          <strong>Account information:</strong> name, email, phone number, and — for Hekims —
           license and specialization details, collected at signup.
         </p>
         <p>
           <strong>Health information:</strong> Mizaj assessment results, medical history,
           allergies, chronic conditions, uploaded lab reports/scans, prescriptions and appointment
-          notes, provided by you or your Hakim as part of care.
+          notes, provided by you or your Hekim as part of care.
         </p>
         <p>
           <strong>Usage information:</strong> login timestamps, device/browser type, and
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
       <StaticSection heading="2. How we use it">
         <p>
           Your data is used to operate the platform: authenticating your account, connecting you
-          with the right Hakim or patient, powering the Mizaj and prescription tools, and securing
+          with the right Hekim or patient, powering the Mizaj and prescription tools, and securing
           messages between you and your care provider. We do not sell personal or health data to
           third parties, ever.
         </p>
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
       <StaticSection heading="3. How it's protected">
         <p>
           Every account is OTP-secured at login. Passwords are hashed, never stored in plain text.
-          Access to patient records is scoped to the patient and their treating Hakim only.
+          Access to patient records is scoped to the patient and their treating Hekim only.
           Messaging and uploaded records are stored with access controls enforced at the API
           layer, not just the interface.
         </p>
