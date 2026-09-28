@@ -125,7 +125,7 @@ const validate = {
   required: (v: string, label: string) => (!v?.trim() ? `${label} is required` : ""),
   email: (v: string) => (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? "Enter a valid email address" : ""),
   phone: (v: string) => (v.replace(/\D/g, "").length !== 10 ? "Enter a valid 10-digit mobile number" : ""),
-  password: (v: string) => (v.length < 6 ? "Password must be at least 6 characters" : ""),
+  password: (v: string) => (v.length < 8 ? "Password must be at least 8 characters" : ""),
   contact: (v: string) => {
     const val = v?.trim() || "";
     if (!val) return "Email or phone is required";
@@ -137,6 +137,7 @@ const digitsOnly = (v: string) => v.replace(/\D/g, "").slice(0, 10);
 
 function HakimSignup() {
   const router = useRouter();
+  const otpPending = useAppStore((s) => s.otpPending);
   const setOtpPending = useAppStore((s) => s.setOtpPending);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
@@ -164,8 +165,7 @@ function HakimSignup() {
     try {
       const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/hakim/signup", form);
       setOtpPending({ contact: res.contact, role: "hakim", code: res.devOtp, name: res.name });
-      router.push("/verify/hakim");
-      toast.success("OTP sent! Check the verification screen.");
+      toast.success("OTP sent! Verify below to finish registering.");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
       if (/email|phone/i.test(msg)) setErrors((er) => ({ ...er, contact: msg }));
@@ -174,6 +174,10 @@ function HakimSignup() {
       setLoading(false);
     }
   };
+
+  if (otpPending?.role === "hakim") {
+    return <OtpPanel role="hakim" backLabel="Edit details" onBack={() => setOtpPending(null)} />;
+  }
 
   return (
     <AuthLayout role="hakim">
@@ -195,7 +199,7 @@ function HakimSignup() {
           <div>
             <FloatingField
               id="hakim-signup-password"
-              label="Password (min. 6 characters)"
+              label="Password (min. 8 characters)"
               icon={Lock}
               error={!!errors.password}
               type={show ? "text" : "password"}
@@ -230,6 +234,7 @@ function HakimSignup() {
 
 function HakimLogin() {
   const router = useRouter();
+  const otpPending = useAppStore((s) => s.otpPending);
   const setOtpPending = useAppStore((s) => s.setOtpPending);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
@@ -256,7 +261,6 @@ function HakimLogin() {
     try {
       const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/hakim/login", form);
       setOtpPending({ contact: res.contact, role: "hakim", code: res.devOtp, name: res.name });
-      router.push("/verify/hakim");
       toast.success("OTP sent!");
     } catch (err: any) {
       setErrors({ password: err.message || "Login failed" });
@@ -264,6 +268,10 @@ function HakimLogin() {
       setLoading(false);
     }
   };
+
+  if (otpPending?.role === "hakim") {
+    return <OtpPanel role="hakim" onBack={() => setOtpPending(null)} />;
+  }
 
   return (
     <AuthLayout role="hakim">
@@ -319,6 +327,7 @@ function HakimLogin() {
 
 function PatientSignup() {
   const router = useRouter();
+  const otpPending = useAppStore((s) => s.otpPending);
   const setOtpPending = useAppStore((s) => s.setOtpPending);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
@@ -346,8 +355,7 @@ function PatientSignup() {
     try {
       const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/patient/signup", form);
       setOtpPending({ contact: res.contact, role: "patient", code: res.devOtp, name: res.name });
-      router.push("/verify/patient");
-      toast.success("OTP sent! Check the verification screen.");
+      toast.success("OTP sent! Verify below to finish registering.");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
       if (/phone/i.test(msg)) setErrors((er) => ({ ...er, phone: msg }));
@@ -356,6 +364,10 @@ function PatientSignup() {
       setLoading(false);
     }
   };
+
+  if (otpPending?.role === "patient") {
+    return <OtpPanel role="patient" backLabel="Edit details" onBack={() => setOtpPending(null)} />;
+  }
 
   return (
     <AuthLayout role="patient">
@@ -377,7 +389,7 @@ function PatientSignup() {
           <div>
             <FloatingField
               id="patient-signup-password"
-              label="Password (min. 6 characters)"
+              label="Password (min. 8 characters)"
               icon={Lock}
               error={!!errors.password}
               type={show ? "text" : "password"}
@@ -412,6 +424,7 @@ function PatientSignup() {
 
 function PatientLogin() {
   const router = useRouter();
+  const otpPending = useAppStore((s) => s.otpPending);
   const setOtpPending = useAppStore((s) => s.setOtpPending);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
@@ -438,7 +451,6 @@ function PatientLogin() {
     try {
       const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/patient/login", form);
       setOtpPending({ contact: res.contact, role: "patient", code: res.devOtp, name: res.name });
-      router.push("/verify/patient");
       toast.success("OTP sent!");
     } catch (err: any) {
       setErrors({ password: err.message || "Login failed" });
@@ -446,6 +458,10 @@ function PatientLogin() {
       setLoading(false);
     }
   };
+
+  if (otpPending?.role === "patient") {
+    return <OtpPanel role="patient" onBack={() => setOtpPending(null)} />;
+  }
 
   return (
     <AuthLayout role="patient">
@@ -499,7 +515,7 @@ function PatientLogin() {
   );
 }
 
-function VerifyOtp({ role }: { role: AuthRole }) {
+function OtpPanel({ role, backLabel = "Different account", onBack }: { role: AuthRole; backLabel?: string; onBack: () => void }) {
   const router = useRouter();
   const { otpPending, setOtpPending, setView, setHakim, setPatient } = useAppStore();
   const [code, setCode] = useState("");
@@ -536,7 +552,7 @@ function VerifyOtp({ role }: { role: AuthRole }) {
           </p>
           <Button
             className={cn("mt-6", isHakim ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-accent text-accent-foreground hover:bg-accent/90")}
-            onClick={() => router.push(`/login/${role}`)}
+            onClick={onBack}
           >
             Back to sign in
           </Button>
@@ -647,10 +663,10 @@ function VerifyOtp({ role }: { role: AuthRole }) {
 
         <div className="flex items-center justify-between mt-5 text-sm">
           <button
-            onClick={() => { setOtpPending(null); router.push(isHakim ? "/login/hakim" : "/login/patient"); }}
+            onClick={onBack}
             className="text-muted-foreground hover:text-foreground flex items-center gap-1"
           >
-            <ArrowLeft className="h-4 w-4" /> Different account
+            <ArrowLeft className="h-4 w-4" /> {backLabel}
           </button>
           <button
             onClick={resend}
@@ -663,6 +679,18 @@ function VerifyOtp({ role }: { role: AuthRole }) {
         </div>
       </div>
     </AuthLayout>
+  );
+}
+
+/** Standalone /verify/[role] route — kept for deep links; normal signup/login now verify inline. */
+function VerifyOtp({ role }: { role: AuthRole }) {
+  const router = useRouter();
+  const setOtpPending = useAppStore((s) => s.setOtpPending);
+  return (
+    <OtpPanel
+      role={role}
+      onBack={() => { setOtpPending(null); router.push(`/login/${role}`); }}
+    />
   );
 }
 

@@ -10,6 +10,9 @@ export async function POST(req: NextRequest) {
     if (!name || !phone || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
 
     const existing = await db.patient.findUnique({ where: { phone } });
     if (existing) {

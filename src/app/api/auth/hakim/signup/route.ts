@@ -12,6 +12,9 @@ export async function POST(req: NextRequest) {
     if (!name || !contact || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
 
     const registrationEnabled = await getSetting("registration", "hakim_registration_enabled", "true");
     if (registrationEnabled === "false") {
