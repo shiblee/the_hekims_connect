@@ -416,6 +416,7 @@ function HakimLogin() {
   const router = useRouter();
   const otpPending = useAppStore((s) => s.otpPending);
   const setOtpPending = useAppStore((s) => s.setOtpPending);
+  const [mode, setMode] = useState<"password" | "otp">("password");
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ contact: "", password: "" });
@@ -449,6 +450,24 @@ function HakimLogin() {
     }
   };
 
+  const sendOtpLogin = async () => {
+    const err = validate.contact(form.contact);
+    if (err) {
+      setErrors((er) => ({ ...er, contact: err }));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "hakim" });
+      setOtpPending({ contact: res.contact, role: "hakim", code: res.devOtp, name: res.name });
+      toast.success("OTP sent!");
+    } catch (err: any) {
+      setErrors((er) => ({ ...er, contact: err.message || "Could not send OTP" }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (otpPending?.role === "hakim") {
     return <OtpPanel role="hakim" onBack={() => setOtpPending(null)} />;
   }
@@ -461,33 +480,66 @@ function HakimLogin() {
           <h1 className="font-serif text-2xl font-bold">Welcome back, Hakim</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in securely with OTP verification.</p>
         </div>
-        <form onSubmit={submit} className="space-y-5" noValidate>
-          <div>
-            <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
-            <FieldError message={errors.contact} />
+
+        <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => setMode("password")}
+            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("otp")}
+            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            OTP only
+          </button>
+        </div>
+
+        {mode === "password" ? (
+          <form onSubmit={submit} className="space-y-5" noValidate>
+            <div>
+              <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FieldError message={errors.contact} />
+            </div>
+            <div>
+              <FloatingField
+                id="hakim-login-password"
+                label="Password"
+                icon={Lock}
+                error={!!errors.password}
+                type={show ? "text" : "password"}
+                value={form.password}
+                onChange={(e) => setField("password", e.target.value)}
+                endAdornment={
+                  <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                }
+              />
+              <FieldError message={errors.password} />
+            </div>
+            <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {loading ? "Sending OTP…" : "Continue with OTP"}
+            </Button>
+          </form>
+        ) : (
+          <div className="space-y-5">
+            <div>
+              <FloatingField id="hakim-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FieldError message={errors.contact} />
+              <p className="text-xs text-muted-foreground mt-1.5">We'll email or text you a one-time code — no password needed.</p>
+            </div>
+            <Button type="button" disabled={loading} onClick={sendOtpLogin} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {loading ? "Sending OTP…" : "Send OTP"}
+            </Button>
           </div>
-          <div>
-            <FloatingField
-              id="hakim-login-password"
-              label="Password"
-              icon={Lock}
-              error={!!errors.password}
-              type={show ? "text" : "password"}
-              value={form.password}
-              onChange={(e) => setField("password", e.target.value)}
-              endAdornment={
-                <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              }
-            />
-            <FieldError message={errors.password} />
-          </div>
-          <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {loading ? "Sending OTP…" : "Continue with OTP"}
-          </Button>
-        </form>
+        )}
+
         <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Demo Hakim:</span> colter@hekims.connect / hekim123
         </div>
