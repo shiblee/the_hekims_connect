@@ -531,6 +531,44 @@ function HakimLogin() {
     setOtpError("");
   };
 
+  const otpBox = (
+    <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <p className="text-xs text-muted-foreground">
+          Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
+        </p>
+        <button
+          type="button"
+          onClick={resendLogin}
+          disabled={otpCooldown > 0}
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
+        >
+          <RefreshCw className="h-3 w-3" />
+          {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend"}
+        </button>
+      </div>
+      <div className="flex items-center gap-3">
+        <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+          <InputOTPGroup>
+            <InputOTPSlot index={0} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={1} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={2} className="h-10 w-9 text-sm" />
+          </InputOTPGroup>
+          <InputOTPSeparator />
+          <InputOTPGroup>
+            <InputOTPSlot index={3} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={4} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={5} className="h-10 w-9 text-sm" />
+          </InputOTPGroup>
+        </InputOTP>
+        <Button type="button" size="sm" disabled={otpVerifying} onClick={verifyLogin} className="h-10 bg-primary text-primary-foreground hover:bg-primary/90">
+          {otpVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+        </Button>
+      </div>
+      <FieldError message={otpError} />
+    </div>
+  );
+
   return (
     <AuthLayout role="hakim">
       <div className="w-full max-w-md">
@@ -559,91 +597,60 @@ function HakimLogin() {
           </div>
         )}
 
-        {otpStage === "otp" ? (
-          <div className="space-y-5">
-            <p className="text-sm text-muted-foreground">
-              Enter the 6-digit code sent to <span className="text-foreground font-medium">{otpContact}</span>
-            </p>
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center justify-between mb-2.5">
-                <p className="text-xs text-muted-foreground">
-                  Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
-                </p>
-                <button
-                  type="button"
-                  onClick={resendLogin}
-                  disabled={otpCooldown > 0}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend"}
-                </button>
-              </div>
-              <div className="flex justify-center py-1">
-                <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} className="h-11 w-10" />
-                    <InputOTPSlot index={1} className="h-11 w-10" />
-                    <InputOTPSlot index={2} className="h-11 w-10" />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} className="h-11 w-10" />
-                    <InputOTPSlot index={4} className="h-11 w-10" />
-                    <InputOTPSlot index={5} className="h-11 w-10" />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-              <FieldError message={otpError} />
-            </div>
-            <Button onClick={verifyLogin} disabled={otpVerifying} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90">
-              {otpVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              {otpVerifying ? "Verifying…" : "Verify & Sign In"}
-            </Button>
-            <button type="button" onClick={editDetails} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-              <ArrowLeft className="h-4 w-4" /> Edit details
-            </button>
-          </div>
-        ) : mode === "password" ? (
-          <form onSubmit={submit} className="space-y-5" noValidate>
+        {mode === "password" ? (
+          <form onSubmit={otpStage === "form" ? submit : (e) => e.preventDefault()} className="space-y-5" noValidate>
             <div>
-              <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} disabled={otpStage === "otp"} onChange={(e) => setField("contact", e.target.value)} />
               <FieldError message={errors.contact} />
+              {otpStage === "otp" && otpBox}
             </div>
-            <div>
-              <FloatingField
-                id="hakim-login-password"
-                label="Password"
-                icon={Lock}
-                error={!!errors.password}
-                type={show ? "text" : "password"}
-                value={form.password}
-                onChange={(e) => setField("password", e.target.value)}
-                endAdornment={
-                  <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                }
-              />
-              <FieldError message={errors.password} />
-            </div>
-            <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              {loading ? "Sending OTP…" : "Continue with OTP"}
-            </Button>
+            {otpStage === "form" && (
+              <>
+                <div>
+                  <FloatingField
+                    id="hakim-login-password"
+                    label="Password"
+                    icon={Lock}
+                    error={!!errors.password}
+                    type={show ? "text" : "password"}
+                    value={form.password}
+                    onChange={(e) => setField("password", e.target.value)}
+                    endAdornment={
+                      <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                  />
+                  <FieldError message={errors.password} />
+                </div>
+                <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                  {loading ? "Sending OTP…" : "Continue with OTP"}
+                </Button>
+              </>
+            )}
           </form>
         ) : (
           <div className="space-y-5">
             <div>
-              <FloatingField id="hakim-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FloatingField id="hakim-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} disabled={otpStage === "otp"} onChange={(e) => setField("contact", e.target.value)} />
               <FieldError message={errors.contact} />
-              <p className="text-xs text-muted-foreground mt-1.5">We'll email or text you a one-time code — no password needed.</p>
+              {otpStage === "otp" && otpBox}
+              {otpStage === "form" && <p className="text-xs text-muted-foreground mt-1.5">We'll email or text you a one-time code — no password needed.</p>}
             </div>
-            <Button type="button" disabled={loading} onClick={sendOtpLogin} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              {loading ? "Sending OTP…" : "Send OTP"}
-            </Button>
+            {otpStage === "form" && (
+              <Button type="button" disabled={loading} onClick={sendOtpLogin} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                {loading ? "Sending OTP…" : "Send OTP"}
+              </Button>
+            )}
           </div>
+        )}
+
+        {otpStage === "otp" && (
+          <button type="button" onClick={editDetails} className="mt-3 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <ArrowLeft className="h-4 w-4" /> Edit details
+          </button>
         )}
 
         {otpStage === "form" && (
