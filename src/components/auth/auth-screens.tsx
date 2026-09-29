@@ -531,6 +531,11 @@ function HakimLogin() {
     setOtpError("");
   };
 
+  const switchMode = (m: "password" | "otp") => {
+    if (otpStage === "otp") editDetails();
+    setMode(m);
+  };
+
   const otpBox = (
     <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-2 mb-2.5">
@@ -547,7 +552,7 @@ function HakimLogin() {
           {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend"}
         </button>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex justify-center py-1">
         <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
           <InputOTPGroup>
             <InputOTPSlot index={0} className="h-10 w-9 text-sm" />
@@ -561,9 +566,6 @@ function HakimLogin() {
             <InputOTPSlot index={5} className="h-10 w-9 text-sm" />
           </InputOTPGroup>
         </InputOTP>
-        <Button type="button" size="sm" disabled={otpVerifying} onClick={verifyLogin} className="h-10 bg-primary text-primary-foreground hover:bg-primary/90">
-          {otpVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
-        </Button>
       </div>
       <FieldError message={otpError} />
     </div>
@@ -578,57 +580,53 @@ function HakimLogin() {
           <p className="text-sm text-muted-foreground mt-1">Sign in securely with OTP verification.</p>
         </div>
 
-        {otpStage === "form" && (
-          <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
-            <button
-              type="button"
-              onClick={() => setMode("password")}
-              className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-            >
-              Password
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("otp")}
-              className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-            >
-              OTP only
-            </button>
-          </div>
-        )}
+        <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => switchMode("password")}
+            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode("otp")}
+            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            OTP only
+          </button>
+        </div>
 
         {mode === "password" ? (
-          <form onSubmit={otpStage === "form" ? submit : (e) => e.preventDefault()} className="space-y-5" noValidate>
+          <form onSubmit={otpStage === "form" ? submit : (e) => { e.preventDefault(); verifyLogin(); }} className="space-y-5" noValidate>
             <div>
               <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} disabled={otpStage === "otp"} onChange={(e) => setField("contact", e.target.value)} />
               <FieldError message={errors.contact} />
               {otpStage === "otp" && otpBox}
             </div>
             {otpStage === "form" && (
-              <>
-                <div>
-                  <FloatingField
-                    id="hakim-login-password"
-                    label="Password"
-                    icon={Lock}
-                    error={!!errors.password}
-                    type={show ? "text" : "password"}
-                    value={form.password}
-                    onChange={(e) => setField("password", e.target.value)}
-                    endAdornment={
-                      <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    }
-                  />
-                  <FieldError message={errors.password} />
-                </div>
-                <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                  {loading ? "Sending OTP…" : "Continue with OTP"}
-                </Button>
-              </>
+              <div>
+                <FloatingField
+                  id="hakim-login-password"
+                  label="Password"
+                  icon={Lock}
+                  error={!!errors.password}
+                  type={show ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => setField("password", e.target.value)}
+                  endAdornment={
+                    <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
+                />
+                <FieldError message={errors.password} />
+              </div>
             )}
+            <Button type="submit" disabled={otpStage === "form" ? loading : otpVerifying} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+              {(otpStage === "form" ? loading : otpVerifying) ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {otpStage === "form" ? (loading ? "Sending OTP…" : "Continue with OTP") : (otpVerifying ? "Verifying…" : "Verify & Sign In")}
+            </Button>
           </form>
         ) : (
           <div className="space-y-5">
@@ -638,12 +636,15 @@ function HakimLogin() {
               {otpStage === "otp" && otpBox}
               {otpStage === "form" && <p className="text-xs text-muted-foreground mt-1.5">We'll email or text you a one-time code — no password needed.</p>}
             </div>
-            {otpStage === "form" && (
-              <Button type="button" disabled={loading} onClick={sendOtpLogin} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                {loading ? "Sending OTP…" : "Send OTP"}
-              </Button>
-            )}
+            <Button
+              type="button"
+              disabled={otpStage === "form" ? loading : otpVerifying}
+              onClick={otpStage === "form" ? sendOtpLogin : verifyLogin}
+              className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 mt-2"
+            >
+              {(otpStage === "form" ? loading : otpVerifying) ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {otpStage === "form" ? (loading ? "Sending OTP…" : "Send OTP") : (otpVerifying ? "Verifying…" : "Verify & Sign In")}
+            </Button>
           </div>
         )}
 
