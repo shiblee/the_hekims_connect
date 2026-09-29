@@ -429,6 +429,7 @@ function HakimLogin() {
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [otpError, setOtpError] = useState("");
+  const [otpCopied, setOtpCopied] = useState(false);
 
   useEffect(() => {
     if (otpCooldown <= 0) return;
@@ -439,6 +440,17 @@ function HakimLogin() {
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => (er[key] ? { ...er, [key]: "" } : er));
+    if (key === "contact" && otpStage === "otp") {
+      setOtpStage("form");
+      setOtpCode("");
+      setOtpError("");
+    }
+  };
+
+  const copyOtpCode = () => {
+    navigator.clipboard?.writeText(otpDevCode).catch(() => {});
+    setOtpCopied(true);
+    setTimeout(() => setOtpCopied(false), 1500);
   };
 
   const enterOtpStage = (contact: string, devCode: string) => {
@@ -539,9 +551,19 @@ function HakimLogin() {
   const otpBox = (
     <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-2 mb-2.5">
-        <p className="text-xs text-muted-foreground">
-          Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-muted-foreground">
+            Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
+          </p>
+          <button
+            type="button"
+            onClick={copyOtpCode}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            title="Copy code"
+          >
+            {otpCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+        </div>
         <button
           type="button"
           onClick={resendLogin}
@@ -600,7 +622,7 @@ function HakimLogin() {
         {mode === "password" ? (
           <form onSubmit={otpStage === "form" ? submit : (e) => { e.preventDefault(); verifyLogin(); }} className="space-y-5" noValidate>
             <div>
-              <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} disabled={otpStage === "otp"} onChange={(e) => setField("contact", e.target.value)} />
+              <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
               <FieldError message={errors.contact} />
               {otpStage === "otp" && otpBox}
             </div>
@@ -631,7 +653,7 @@ function HakimLogin() {
         ) : (
           <div className="space-y-5">
             <div>
-              <FloatingField id="hakim-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} disabled={otpStage === "otp"} onChange={(e) => setField("contact", e.target.value)} />
+              <FloatingField id="hakim-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
               <FieldError message={errors.contact} />
               {otpStage === "otp" && otpBox}
               {otpStage === "form" && <p className="text-xs text-muted-foreground mt-1.5">We'll email or text you a one-time code — no password needed.</p>}
@@ -992,7 +1014,7 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
   };
 
   const copyCode = () => {
-    navigator.clipboard?.writeText(otpPending.code);
+    navigator.clipboard?.writeText(otpPending.code).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
