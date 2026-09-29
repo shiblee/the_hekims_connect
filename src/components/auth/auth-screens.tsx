@@ -655,9 +655,11 @@ function HakimLogin() {
 
         {otpStage === "form" && (
           <>
-            <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Demo Hakim:</span> colter@hekims.connect / hekim123
-            </div>
+            {mode === "password" && (
+              <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Demo Hakim:</span> colter@hekims.connect / hekim123
+              </div>
+            )}
             <div className="flex items-center justify-between mt-5 text-sm">
               <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
                 <ArrowLeft className="h-4 w-4" /> Home
