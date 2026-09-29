@@ -414,17 +414,40 @@ function HakimSignup() {
 
 function HakimLogin() {
   const router = useRouter();
-  const otpPending = useAppStore((s) => s.otpPending);
-  const setOtpPending = useAppStore((s) => s.setOtpPending);
+  const setHakim = useAppStore((s) => s.setHakim);
+  const setView = useAppStore((s) => s.setView);
   const [mode, setMode] = useState<"password" | "otp">("password");
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [otpStage, setOtpStage] = useState<"form" | "otp">("form");
+  const [otpContact, setOtpContact] = useState("");
+  const [otpDevCode, setOtpDevCode] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpError, setOtpError] = useState("");
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const t = setInterval(() => setOtpCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [otpCooldown]);
+
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => (er[key] ? { ...er, [key]: "" } : er));
+  };
+
+  const enterOtpStage = (contact: string, devCode: string) => {
+    setOtpContact(contact);
+    setOtpDevCode(devCode);
+    setOtpCode(devCode);
+    setOtpError("");
+    setOtpCooldown(30);
+    setOtpStage("otp");
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -441,8 +464,8 @@ function HakimLogin() {
     setLoading(true);
     try {
       const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/hakim/login", form);
-      setOtpPending({ contact: res.contact, role: "hakim", code: res.devOtp, name: res.name });
       toast.success("OTP sent!");
+      enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
       setErrors({ password: err.message || "Login failed" });
     } finally {
@@ -459,8 +482,8 @@ function HakimLogin() {
     setLoading(true);
     try {
       const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "hakim" });
-      setOtpPending({ contact: res.contact, role: "hakim", code: res.devOtp, name: res.name });
       toast.success("OTP sent!");
+      enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
       setErrors((er) => ({ ...er, contact: err.message || "Could not send OTP" }));
     } finally {
@@ -468,9 +491,45 @@ function HakimLogin() {
     }
   };
 
-  if (otpPending?.role === "hakim") {
-    return <OtpPanel role="hakim" onBack={() => setOtpPending(null)} />;
-  }
+  const verifyLogin = async () => {
+    if (otpCode.length !== 6) {
+      setOtpError("Enter the 6-digit code");
+      return;
+    }
+    setOtpVerifying(true);
+    setOtpError("");
+    try {
+      const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "hakim" });
+      setToken(res.token);
+      setHakim(res.user);
+      setView("hakim-dashboard");
+      toast.success("Verified! Welcome.");
+      router.push("/");
+    } catch (err: any) {
+      setOtpError(err.message || "Verification failed");
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  const resendLogin = async () => {
+    if (otpCooldown > 0) return;
+    try {
+      const res = await api.post<{ devOtp: string }>("/api/auth/otp/send", { contact: otpContact, role: "hakim" });
+      setOtpDevCode(res.devOtp);
+      setOtpCode(res.devOtp);
+      setOtpCooldown(30);
+      toast.success("A fresh OTP has been sent");
+    } catch (err: any) {
+      toast.error(err.message || "Could not resend OTP");
+    }
+  };
+
+  const editDetails = () => {
+    setOtpStage("form");
+    setOtpCode("");
+    setOtpError("");
+  };
 
   return (
     <AuthLayout role="hakim">
@@ -481,24 +540,71 @@ function HakimLogin() {
           <p className="text-sm text-muted-foreground mt-1">Sign in securely with OTP verification.</p>
         </div>
 
-        <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
-          <button
-            type="button"
-            onClick={() => setMode("password")}
-            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-          >
-            Password
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("otp")}
-            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-          >
-            OTP only
-          </button>
-        </div>
+        {otpStage === "form" && (
+          <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
+            <button
+              type="button"
+              onClick={() => setMode("password")}
+              className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              Password
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("otp")}
+              className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              OTP only
+            </button>
+          </div>
+        )}
 
-        {mode === "password" ? (
+        {otpStage === "otp" ? (
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Enter the 6-digit code sent to <span className="text-foreground font-medium">{otpContact}</span>
+            </p>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-xs text-muted-foreground">
+                  Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={resendLogin}
+                  disabled={otpCooldown > 0}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend"}
+                </button>
+              </div>
+              <div className="flex justify-center py-1">
+                <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} className="h-11 w-10" />
+                    <InputOTPSlot index={1} className="h-11 w-10" />
+                    <InputOTPSlot index={2} className="h-11 w-10" />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} className="h-11 w-10" />
+                    <InputOTPSlot index={4} className="h-11 w-10" />
+                    <InputOTPSlot index={5} className="h-11 w-10" />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <FieldError message={otpError} />
+            </div>
+            <Button onClick={verifyLogin} disabled={otpVerifying} className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90">
+              {otpVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {otpVerifying ? "Verifying…" : "Verify & Sign In"}
+            </Button>
+            <button type="button" onClick={editDetails} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <ArrowLeft className="h-4 w-4" /> Edit details
+            </button>
+          </div>
+        ) : mode === "password" ? (
           <form onSubmit={submit} className="space-y-5" noValidate>
             <div>
               <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
@@ -540,18 +646,22 @@ function HakimLogin() {
           </div>
         )}
 
-        <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Demo Hakim:</span> colter@hekims.connect / hekim123
-        </div>
-        <div className="flex items-center justify-between mt-5 text-sm">
-          <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <ArrowLeft className="h-4 w-4" /> Home
-          </button>
-          <span className="text-muted-foreground">
-            New here?{" "}
-            <button onClick={() => router.push("/register/hakim")} className="text-primary hover:underline font-medium">Register</button>
-          </span>
-        </div>
+        {otpStage === "form" && (
+          <>
+            <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Demo Hakim:</span> colter@hekims.connect / hekim123
+            </div>
+            <div className="flex items-center justify-between mt-5 text-sm">
+              <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <ArrowLeft className="h-4 w-4" /> Home
+              </button>
+              <span className="text-muted-foreground">
+                New here?{" "}
+                <button onClick={() => router.push("/register/hakim")} className="text-primary hover:underline font-medium">Register</button>
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </AuthLayout>
   );
