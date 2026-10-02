@@ -58,6 +58,7 @@ export const adminApi = {
     request<T>(url, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   put: <T = any>(url: string, body?: any) =>
     request<T>(url, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
+  delete: <T = any>(url: string) => request<T>(url, { method: "DELETE" }),
 };
 
 /** On admin panel boot, restore the session from the stored token. */

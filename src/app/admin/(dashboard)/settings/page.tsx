@@ -17,6 +17,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   general: { label: "General", description: "Portal identity and support contact information." },
   registration: { label: "Registration", description: "Control who can register on the portal." },
   verification: { label: "Verification", description: "OTP expiry, resend and attempt limits." },
+  subscription: { label: "Subscription", description: "Free trial length and paid plan pricing for Facility accounts." },
 };
 
 const KEY_LABELS: Record<string, string> = {
@@ -31,6 +32,9 @@ const KEY_LABELS: Record<string, string> = {
   max_otp_attempts: "Max verification attempts",
   max_login_attempts: "Max failed password attempts",
   lockout_duration_minutes: "Account lockout duration (minutes)",
+  free_trial_months: "Free trial duration (months)",
+  paid_plan_price_per_month: "Paid plan price per month",
+  currency: "Currency",
 };
 
 const BOOLEAN_KEYS = new Set([

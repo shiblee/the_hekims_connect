@@ -97,6 +97,9 @@ export async function seedDatabase() {
     { category: "verification", key: "max_otp_attempts", value: "5" },
     { category: "verification", key: "max_login_attempts", value: "5" },
     { category: "verification", key: "lockout_duration_minutes", value: "15" },
+    { category: "subscription", key: "free_trial_months", value: "3" },
+    { category: "subscription", key: "paid_plan_price_per_month", value: "999" },
+    { category: "subscription", key: "currency", value: "INR" },
   ];
   for (const s of defaultSettings) {
     await db.portalSetting.upsert({
@@ -104,6 +107,36 @@ export async function seedDatabase() {
       update: {},
       create: s,
     });
+  }
+
+  const metadataSections: { key: string; label: string; options: string[] }[] = [
+    { key: "facility_type", label: "Facility Type", options: ["Hospital", "Clinic", "Nursing Home", "Health Centre", "Other"] },
+    {
+      key: "specialization", label: "Specialization", options: [
+        "General Medicine", "Pediatrics", "Obstetrics & Gynecology", "General Surgery", "Orthopedics",
+        "Dermatology", "ENT", "Ophthalmology", "Dental", "Cardiology", "Neurology", "Psychiatry",
+        "Pulmonology", "Nephrology", "Urology", "Gastroenterology", "Radiology", "Pathology",
+        "Emergency Medicine", "Other",
+      ],
+    },
+    { key: "service_diagnostic", label: "Diagnostic Services", options: ["Laboratory", "X-Ray", "Ultrasound", "CT Scan", "MRI"] },
+    { key: "service_emergency", label: "Emergency Services", options: ["Emergency Department", "Ambulance", "24×7 Emergency"] },
+    { key: "service_maternal_child", label: "Maternal & Child Health", options: ["ANC", "PNC", "Delivery", "C-Section", "Newborn Care", "Pediatric Care", "NICU", "SNCU", "KMC"] },
+    { key: "service_other", label: "Other Services", options: ["Pharmacy", "Blood Bank", "Blood Storage", "ICU", "Operation Theatre"] },
+  ];
+  for (let i = 0; i < metadataSections.length; i++) {
+    const s = metadataSections[i];
+    const section = await db.metadataSection.upsert({
+      where: { key: s.key },
+      update: {},
+      create: { key: s.key, label: s.label, sortOrder: i },
+    });
+    const existingOptions = await db.metadataOption.count({ where: { sectionId: section.id } });
+    if (existingOptions === 0) {
+      await db.metadataOption.createMany({
+        data: s.options.map((label, idx) => ({ sectionId: section.id, label, sortOrder: idx })),
+      });
+    }
   }
 
   const facilityPassword = hashPassword("facility123");

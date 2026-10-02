@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser, fetchFacility } from "@/lib/api-auth";
+import { getSetting } from "@/lib/settings";
+import { sendTemplatedEmail } from "@/lib/notifications";
+import { getSiteUrl } from "@/lib/site-url";
 
 interface OperatingHourInput {
   dayOfWeek: number;
@@ -8,8 +11,6 @@ interface OperatingHourInput {
   openingTime?: string | null;
   closingTime?: string | null;
 }
-
-const FREE_PLAN_MONTHS = 3;
 
 export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
@@ -95,17 +96,50 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const [trialMonthsSetting, priceSetting, currencySetting, portalName] = await Promise.all([
+      getSetting("subscription", "free_trial_months", "3"),
+      getSetting("subscription", "paid_plan_price_per_month", "999"),
+      getSetting("subscription", "currency", "INR"),
+      getSetting("general", "portal_name", "The Hekim's Connect"),
+    ]);
+    const trialMonths = parseInt(trialMonthsSetting, 10) || 3;
+
     const existingSubscription = await db.facilitySubscription.findFirst({ where: { facilityId: auth.id } });
+    let subscriptionStart = existingSubscription?.startDate ?? new Date();
+    let subscriptionEnd = existingSubscription?.endDate;
     if (!existingSubscription) {
-      const startDate = new Date();
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + FREE_PLAN_MONTHS);
+      subscriptionStart = new Date();
+      subscriptionEnd = new Date(subscriptionStart);
+      subscriptionEnd.setMonth(subscriptionEnd.getMonth() + trialMonths);
       await db.facilitySubscription.create({
-        data: { facilityId: auth.id, plan: "FREE", startDate, endDate, status: "ACTIVE" },
+        data: { facilityId: auth.id, plan: "FREE", startDate: subscriptionStart, endDate: subscriptionEnd, status: "ACTIVE" },
       });
     }
 
     const facility = await fetchFacility(auth.id);
+
+    if (facility?.email && subscriptionEnd) {
+      const addressParts = [addressLine1, addressLine2, locality, city, district, state, pincode].filter(Boolean);
+      await sendTemplatedEmail({
+        templateKey: "facility_profile_completed",
+        to: facility.email,
+        vars: {
+          facility_name: facility.facilityName,
+          facility_type: facilityType,
+          hfr_number: hfrNumber,
+          address: addressParts.join(", "),
+          trial_months: String(trialMonths),
+          start_date: subscriptionStart.toLocaleDateString(),
+          end_date: subscriptionEnd.toLocaleDateString(),
+          paid_price: priceSetting,
+          currency: currencySetting,
+          portal_name: portalName,
+          login_url: `${getSiteUrl(req)}/login/facility`,
+        },
+        event: "profile_completed",
+      });
+    }
+
     return NextResponse.json({ facility });
   } catch (e) {
     console.error("Facility profile completion error:", e);

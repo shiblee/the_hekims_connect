@@ -160,6 +160,29 @@ model FacilitySubscription {
   facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
 }
 
+model MetadataSection {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options MetadataOption[]
+}
+
+model MetadataOption {
+  id        String   @id @default(cuid())
+  sectionId String
+  label     String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  section MetadataSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+}
+
 model Patient {
   id                String   @id @default(cuid())
   name              String
