@@ -12,7 +12,7 @@ import { getSetting } from "@/lib/settings";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { contact, role } = body;
+    const { contact, role, name } = body;
     if (!contact || (role !== "hakim" && role !== "patient")) {
       return NextResponse.json({ error: "Contact and role are required" }, { status: 400 });
     }
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
     const lastOtp = await db.otpCode.findFirst({
-      where: { identifier: normalizedContact, purpose: "precheck" },
+      where: { identifier: normalizedContact, purpose: "precheck", role },
       orderBy: { createdAt: "desc" },
     });
     if (lastOtp && Date.now() - new Date(lastOtp.createdAt).getTime() < cooldownSeconds * 1000) {
@@ -45,25 +45,29 @@ export async function POST(req: NextRequest) {
     await db.otpCode.create({
       data: {
         identifier: normalizedContact,
+        role,
         code,
         purpose: "precheck",
         expiresAt: new Date(Date.now() + parseInt(otpValidityMinutes, 10) * 60 * 1000),
       },
     });
 
+    let delivered = false;
     if (isEmail) {
-      await sendTemplatedEmail({
+      const result = await sendTemplatedEmail({
         templateKey: "hakim_otp_verification",
         to: normalizedContact,
-        vars: { hakim_name: "there", otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
+        vars: { hakim_name: (typeof name === "string" && name.trim()) || "there", otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_sent",
       });
+      delivered = result.delivery === "sent";
     }
 
     return NextResponse.json({
       message: isEmail ? "Code sent to your email" : "Code sent to your phone",
       contact: normalizedContact,
-      devOtp: code,
+      // Omitted once a real email is delivered — the code must only be known to whoever reads that inbox.
+      devOtp: delivered ? undefined : code,
     });
   } catch (e) {
     console.error("Precheck send error:", e);

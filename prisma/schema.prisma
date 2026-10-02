@@ -87,6 +87,8 @@ model Hakim {
   avatarColor    String   @default("teal")
   verified       Boolean  @default(false)
   active         Boolean  @default(true)
+  failedLoginAttempts Int @default(0)
+  lockedUntil    DateTime?
   lastLoginAt    DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -289,6 +291,7 @@ model NotificationLog {
 model OtpCode {
   id         String   @id @default(cuid())
   identifier String
+  role      String?
   code      String
   purpose   String   @default("login")
   expiresAt DateTime

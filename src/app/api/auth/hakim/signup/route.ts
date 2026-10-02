@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     const precheck = await db.otpCode.findFirst({
-      where: { identifier: normalizedContact, purpose: "precheck", verifiedAt: { not: null } },
+      where: { identifier: normalizedContact, purpose: "precheck", role: "hakim", verifiedAt: { not: null } },
       orderBy: { createdAt: "desc" },
     });
     if (!precheck || Date.now() - new Date(precheck.verifiedAt!).getTime() > PRECHECK_VALIDITY_MS) {

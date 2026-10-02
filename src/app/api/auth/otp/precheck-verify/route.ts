@@ -7,7 +7,7 @@ import { getSetting } from "@/lib/settings";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { contact, code } = body;
+    const { contact, code, role } = body;
     if (!contact || !code) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const { value: normalizedContact } = normalizeContact(contact);
 
     const otp = await db.otpCode.findFirst({
-      where: { identifier: normalizedContact, purpose: "precheck", used: false },
+      where: { identifier: normalizedContact, purpose: "precheck", used: false, role },
       orderBy: { createdAt: "desc" },
     });
     if (!otp) {

@@ -48,19 +48,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let delivered = false;
     if (role === "hakim" && (user as { email: string | null }).email) {
       const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
-      await sendTemplatedEmail({
+      const result = await sendTemplatedEmail({
         templateKey: "hakim_otp_verification",
         to: identifier,
         vars: { hakim_name: (user as { name: string }).name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_resent",
       });
+      delivered = result.delivery === "sent";
     }
 
     return NextResponse.json({
       message: "A fresh OTP has been sent",
-      devOtp: code,
+      devOtp: delivered ? undefined : code,
     });
   } catch (e) {
     console.error("OTP send error:", e);

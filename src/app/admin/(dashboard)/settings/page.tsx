@@ -29,6 +29,8 @@ const KEY_LABELS: Record<string, string> = {
   otp_expiry_minutes: "OTP expiry (minutes)",
   otp_resend_cooldown_seconds: "Resend cooldown (seconds)",
   max_otp_attempts: "Max verification attempts",
+  max_login_attempts: "Max failed password attempts",
+  lockout_duration_minutes: "Account lockout duration (minutes)",
 };
 
 const BOOLEAN_KEYS = new Set([

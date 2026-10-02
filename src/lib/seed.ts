@@ -95,6 +95,8 @@ export async function seedDatabase() {
     { category: "verification", key: "otp_expiry_minutes", value: "10" },
     { category: "verification", key: "otp_resend_cooldown_seconds", value: "30" },
     { category: "verification", key: "max_otp_attempts", value: "5" },
+    { category: "verification", key: "max_login_attempts", value: "5" },
+    { category: "verification", key: "lockout_duration_minutes", value: "15" },
   ];
   for (const s of defaultSettings) {
     await db.portalSetting.upsert({

@@ -156,13 +156,13 @@ function useInlineVerify(role: AuthRole) {
     return () => clearInterval(t);
   }, [cooldown]);
 
-  const send = async (contact: string) => {
+  const send = async (contact: string, name?: string) => {
     setError("");
     setSending(true);
     try {
-      const res = await api.post<{ devOtp: string; contact: string }>("/api/auth/otp/precheck-send", { contact, role });
-      setDevOtp(res.devOtp);
-      setCode(res.devOtp);
+      const res = await api.post<{ devOtp?: string; contact: string }>("/api/auth/otp/precheck-send", { contact, role, name });
+      setDevOtp(res.devOtp ?? "");
+      setCode(res.devOtp ?? "");
       setStage("sent");
       setCooldown(30);
       toast.success("Verification code sent");
@@ -202,7 +202,7 @@ function useInlineVerify(role: AuthRole) {
   return { stage, devOtp, code, setCode, sending, verifying, cooldown, error, send, verify, reset };
 }
 
-function InlineVerifyBox({ iv, contact, accent = "primary" }: { iv: ReturnType<typeof useInlineVerify>; contact: string; accent?: "primary" | "accent" }) {
+function InlineVerifyBox({ iv, contact, name, accent = "primary" }: { iv: ReturnType<typeof useInlineVerify>; contact: string; name?: string; accent?: "primary" | "accent" }) {
   if (iv.stage === "idle") return iv.error ? <FieldError message={iv.error} /> : null;
 
   if (iv.stage === "verified") {
@@ -221,12 +221,16 @@ function InlineVerifyBox({ iv, contact, accent = "primary" }: { iv: ReturnType<t
   return (
     <div className={cn("mt-2 rounded-lg border p-3", accent === "primary" ? "border-primary/20 bg-primary/5" : "border-accent/20 bg-accent/5")}>
       <div className="flex items-center justify-between gap-2 mb-2.5">
-        <p className="text-xs text-muted-foreground">
-          Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{iv.devOtp}</span>
-        </p>
+        {iv.devOtp ? (
+          <p className="text-xs text-muted-foreground">
+            Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{iv.devOtp}</span>
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">We sent a 6-digit code — check your inbox.</p>
+        )}
         <button
           type="button"
-          onClick={() => iv.send(contact)}
+          onClick={() => iv.send(contact, name)}
           disabled={iv.cooldown > 0 || iv.sending}
           className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
         >
@@ -308,7 +312,7 @@ function HakimSignup() {
       setErrors((er) => ({ ...er, contact: err }));
       return;
     }
-    iv.send(form.contact);
+    iv.send(form.contact, form.name);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -373,7 +377,7 @@ function HakimSignup() {
               )}
             </div>
             <FieldError message={errors.contact} />
-            <InlineVerifyBox iv={iv} contact={form.contact} accent="primary" />
+            <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} accent="primary" />
           </div>
           <div>
             <FloatingField
@@ -453,10 +457,10 @@ function HakimLogin() {
     setTimeout(() => setOtpCopied(false), 1500);
   };
 
-  const enterOtpStage = (contact: string, devCode: string) => {
+  const enterOtpStage = (contact: string, devCode?: string) => {
     setOtpContact(contact);
-    setOtpDevCode(devCode);
-    setOtpCode(devCode);
+    setOtpDevCode(devCode ?? "");
+    setOtpCode(devCode ?? "");
     setOtpError("");
     setOtpCooldown(30);
     setOtpStage("otp");
@@ -475,7 +479,7 @@ function HakimLogin() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/hakim/login", form);
+      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/hakim/login", form);
       toast.success("OTP sent!");
       enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
@@ -493,7 +497,7 @@ function HakimLogin() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "hakim" });
+      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "hakim" });
       toast.success("OTP sent!");
       enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
@@ -527,9 +531,9 @@ function HakimLogin() {
   const resendLogin = async () => {
     if (otpCooldown > 0) return;
     try {
-      const res = await api.post<{ devOtp: string }>("/api/auth/otp/send", { contact: otpContact, role: "hakim" });
-      setOtpDevCode(res.devOtp);
-      setOtpCode(res.devOtp);
+      const res = await api.post<{ devOtp?: string }>("/api/auth/otp/send", { contact: otpContact, role: "hakim" });
+      setOtpDevCode(res.devOtp ?? "");
+      setOtpCode(res.devOtp ?? "");
       setOtpCooldown(30);
       toast.success("A fresh OTP has been sent");
     } catch (err: any) {
@@ -551,19 +555,23 @@ function HakimLogin() {
   const otpBox = (
     <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-2 mb-2.5">
-        <div className="flex items-center gap-2">
-          <p className="text-xs text-muted-foreground">
-            Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
-          </p>
-          <button
-            type="button"
-            onClick={copyOtpCode}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-            title="Copy code"
-          >
-            {otpCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          </button>
-        </div>
+        {otpDevCode ? (
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground">
+              Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
+            </p>
+            <button
+              type="button"
+              onClick={copyOtpCode}
+              className="text-muted-foreground hover:text-foreground shrink-0"
+              title="Copy code"
+            >
+              {otpCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">We sent a 6-digit code — check your inbox.</p>
+        )}
         <button
           type="button"
           onClick={resendLogin}
