@@ -7,7 +7,7 @@ export type AppView = "landing" | "facility-dashboard" | "patient-dashboard";
 
 export interface FacilityUser {
   id: string;
-  name: string;
+  facilityName: string;
   email: string;
   phone: string;
   specialization: string;

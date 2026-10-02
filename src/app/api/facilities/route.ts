@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       ...(search
         ? {
             OR: [
-              { name: { contains: search } },
+              { facilityName: { contains: search } },
               { specialization: { contains: search } },
             ],
           }
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     },
     select: {
       id: true,
-      name: true,
+      facilityName: true,
       specialization: true,
       experience: true,
       rating: true,

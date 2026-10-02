@@ -19,15 +19,15 @@ export async function PUT(req: NextRequest) {
   }
   try {
     const body = await req.json();
-    const { name, phone, specialization, license, experience, bio, avatarColor } = body;
+    const { facilityName, phone, specialization, license, experience, bio, avatarColor } = body;
     const updated = await db.facility.update({
       where: { id: auth.id },
       data: {
-        name, phone, specialization, license,
+        facilityName, phone, specialization, license,
         experience: experience !== undefined ? parseInt(experience, 10) || 0 : undefined,
         bio, avatarColor,
       },
-      select: { id: true, name: true, email: true, phone: true, specialization: true, experience: true, rating: true, license: true, avatarColor: true, bio: true, verified: true },
+      select: { id: true, facilityName: true, email: true, phone: true, specialization: true, experience: true, rating: true, license: true, avatarColor: true, bio: true, verified: true },
     });
     return NextResponse.json({ user: updated });
   } catch (e) {

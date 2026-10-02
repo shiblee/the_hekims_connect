@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       const result = await sendTemplatedEmail({
         templateKey: "facility_otp_verification",
         to: facility.email,
-        vars: { facility_name: facility.name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
+        vars: { facility_name: facility.facilityName, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_sent",
       });
       delivered = result.delivery === "sent";
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       needsOtp: true,
       contact: identifier,
       role: "facility",
-      name: facility.name,
+      facilityName: facility.facilityName,
       devOtp: delivered ? undefined : code,
     });
   } catch (e) {

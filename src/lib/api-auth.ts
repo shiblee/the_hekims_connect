@@ -33,7 +33,7 @@ export async function fetchFacility(id: string) {
     where: { id },
     select: {
       id: true,
-      name: true,
+      facilityName: true,
       email: true,
       phone: true,
       specialization: true,

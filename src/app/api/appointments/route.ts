@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     orderBy: [{ date: "asc" }, { time: "asc" }],
     include: {
       facility: {
-        select: { id: true, name: true, specialization: true, avatarColor: true },
+        select: { id: true, facilityName: true, specialization: true, avatarColor: true },
       },
       patient: {
         select: { id: true, name: true, phone: true, avatarColor: true, mizaj: true, bloodGroup: true, gender: true, dob: true },
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         status: "scheduled",
       },
       include: {
-        facility: { select: { id: true, name: true, specialization: true, avatarColor: true } },
+        facility: { select: { id: true, facilityName: true, specialization: true, avatarColor: true } },
         patient: { select: { id: true, name: true, phone: true, avatarColor: true } },
       },
     });

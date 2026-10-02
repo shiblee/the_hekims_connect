@@ -16,7 +16,7 @@ import { avatarGradient, initials } from "@/lib/avatar";
 import { cn, formatDate } from "@/lib/utils";
 
 interface FacilityDetail {
-  id: string; name: string; email: string; phone: string; license: string | null;
+  id: string; facilityName: string; email: string; phone: string; license: string | null;
   specialization: string; experience: number; rating: number; bio: string | null;
   avatarColor: string; verified: boolean; active: boolean;
   lastLoginAt: string | null; createdAt: string; updatedAt: string;
@@ -86,10 +86,10 @@ export default function FacilityDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <div className={cn("h-16 w-16 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg shrink-0", avatarGradient(facility.avatarColor))}>
-            <span className="font-serif text-lg font-bold text-white">{initials(facility.name)}</span>
+            <span className="font-serif text-lg font-bold text-white">{initials(facility.facilityName)}</span>
           </div>
           <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight">{facility.name}</h1>
+            <h1 className="font-serif text-2xl font-bold tracking-tight">{facility.facilityName}</h1>
             <p className="text-muted-foreground">{facility.specialization}</p>
           </div>
         </div>

@@ -16,7 +16,7 @@ import {
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string;
-  facility: { id: string; name: string; specialization: string; avatarColor: string };
+  facility: { id: string; facilityName: string; specialization: string; avatarColor: string };
 }
 
 export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }) {
@@ -100,10 +100,10 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
                   <span className="text-[10px] text-muted-foreground mt-1">{nextAppt.time}</span>
                 </div>
                 <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(nextAppt.facility.avatarColor))}>
-                  {initials(nextAppt.facility.name)}
+                  {initials(nextAppt.facility.facilityName)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium">{nextAppt.facility.name}</p>
+                  <p className="font-medium">{nextAppt.facility.facilityName}</p>
                   <p className="text-xs text-muted-foreground">{nextAppt.facility.specialization}</p>
                   <p className="text-sm text-primary mt-0.5">{nextAppt.type}</p>
                   {nextAppt.reason && <p className="text-xs text-muted-foreground">{nextAppt.reason}</p>}

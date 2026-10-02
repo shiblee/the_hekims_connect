@@ -74,7 +74,7 @@ model AdminActivityLog {
 
 model Facility {
   id             String   @id @default(cuid())
-  name           String
+  facilityName   String   @map("name")
   email          String?  @unique
   phone          String?  @unique
   password       String

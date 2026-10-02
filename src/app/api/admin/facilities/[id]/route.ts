@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const facility = await db.facility.findUnique({
     where: { id },
     select: {
-      id: true, name: true, email: true, phone: true, license: true, specialization: true,
+      id: true, facilityName: true, email: true, phone: true, license: true, specialization: true,
       experience: true, rating: true, bio: true, avatarColor: true,
       verified: true, active: true, lastLoginAt: true, createdAt: true, updatedAt: true,
       _count: { select: { appointments: true, prescriptions: true, mizajAssessments: true } },
@@ -32,11 +32,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const facility = await db.facility.update({ where: { id }, data: { active }, select: { id: true, name: true, active: true } });
+  const facility = await db.facility.update({ where: { id }, data: { active }, select: { id: true, facilityName: true, active: true } });
   await logAdminActivity(
     session.admin.id,
     "facility_account_status_changed",
-    `Facility "${facility.name}" ${active ? "activated" : "suspended"}`,
+    `Facility "${facility.facilityName}" ${active ? "activated" : "suspended"}`,
     getClientIp(req)
   );
 

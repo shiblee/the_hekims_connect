@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     where,
     orderBy: { createdAt: "desc" },
     include: {
-      facility: { select: { id: true, name: true, avatarColor: true } },
+      facility: { select: { id: true, facilityName: true, avatarColor: true } },
       patient: { select: { id: true, name: true, avatarColor: true } },
     },
   });

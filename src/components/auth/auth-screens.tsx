@@ -292,7 +292,7 @@ function FacilitySignup() {
   const setView = useAppStore((s) => s.setView);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ name: "", contact: "", password: "" });
+  const [form, setForm] = useState({ facilityName: "", contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const iv = useInlineVerify("facility");
 
@@ -312,13 +312,13 @@ function FacilitySignup() {
       setErrors((er) => ({ ...er, contact: err }));
       return;
     }
-    iv.send(form.contact, form.name);
+    iv.send(form.contact, form.facilityName);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {
-      name: validate.required(form.name, "Full name"),
+      facilityName: validate.required(form.facilityName, "Facility Name"),
       contact: validate.contact(form.contact) || (iv.stage !== "verified" ? "Please verify your email or phone first" : ""),
       password: validate.required(form.password, "Password") || validate.password(form.password),
     };
@@ -354,8 +354,8 @@ function FacilitySignup() {
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
           <div>
-            <FloatingField id="facility-signup-name" label="Full name" icon={User} error={!!errors.name} value={form.name} onChange={(e) => setField("name", e.target.value)} />
-            <FieldError message={errors.name} />
+            <FloatingField id="facility-signup-name" label="Facility Name" icon={User} error={!!errors.facilityName} value={form.facilityName} onChange={(e) => setField("facilityName", e.target.value)} />
+            <FieldError message={errors.facilityName} />
           </div>
           <div>
             <div className="flex items-start gap-2">
@@ -377,7 +377,7 @@ function FacilitySignup() {
               )}
             </div>
             <FieldError message={errors.contact} />
-            <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} accent="primary" />
+            <InlineVerifyBox iv={iv} contact={form.contact} name={form.facilityName} accent="primary" />
           </div>
           <div>
             <FloatingField
@@ -479,7 +479,7 @@ function FacilityLogin() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/facility/login", form);
+      const res = await api.post<{ devOtp?: string; contact: string; facilityName: string }>("/api/auth/facility/login", form);
       toast.success("OTP sent!");
       enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {

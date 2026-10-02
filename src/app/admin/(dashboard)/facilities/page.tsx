@@ -15,7 +15,7 @@ import { avatarGradient, initials } from "@/lib/avatar";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 
 interface FacilityRow {
-  id: string; name: string; email: string; phone: string; specialization: string;
+  id: string; facilityName: string; email: string; phone: string; specialization: string;
   experience: number; rating: number; avatarColor: string;
   verified: boolean; active: boolean; lastLoginAt: string | null; createdAt: string;
 }
@@ -102,9 +102,9 @@ export default function FacilityListPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center shrink-0", avatarGradient(h.avatarColor))}>
-                          <span className="text-[10px] font-bold text-white">{initials(h.name)}</span>
+                          <span className="text-[10px] font-bold text-white">{initials(h.facilityName)}</span>
                         </div>
-                        <span className="font-medium whitespace-nowrap">{h.name}</span>
+                        <span className="font-medium whitespace-nowrap">{h.facilityName}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">

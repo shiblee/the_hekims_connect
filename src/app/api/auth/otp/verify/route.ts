@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
           templateKey: "facility_welcome",
           to: facility.email,
           vars: {
-            facility_name: facility.name,
+            facility_name: facility.facilityName,
             facility_email: facility.email,
             portal_name: portalName,
             registration_date: new Date().toLocaleDateString(),

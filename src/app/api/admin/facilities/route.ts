@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const where: any = {};
   if (q) {
     where.OR = [
-      { name: { contains: q } },
+      { facilityName: { contains: q } },
       { email: { contains: q } },
       { phone: { contains: q } },
       { specialization: { contains: q } },
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       skip: (page - 1) * pageSize,
       take: pageSize,
       select: {
-        id: true, name: true, email: true, phone: true, specialization: true,
+        id: true, facilityName: true, email: true, phone: true, specialization: true,
         experience: true, rating: true, avatarColor: true,
         verified: true, active: true, lastLoginAt: true, createdAt: true,
       },

@@ -55,10 +55,11 @@ export async function GET(req: NextRequest) {
     Array.from(conversationMap.values()).map(async (c) => {
       let partner: any = null;
       if (c.partnerType === "facility") {
-        partner = await db.facility.findUnique({
+        const f = await db.facility.findUnique({
           where: { id: c.partnerId },
-          select: { id: true, name: true, specialization: true, avatarColor: true },
+          select: { id: true, facilityName: true, specialization: true, avatarColor: true },
         });
+        partner = f ? { id: f.id, name: f.facilityName, specialization: f.specialization, avatarColor: f.avatarColor } : null;
       } else {
         partner = await db.patient.findUnique({
           where: { id: c.partnerId },

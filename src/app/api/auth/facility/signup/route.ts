@@ -11,9 +11,9 @@ const PRECHECK_VALIDITY_MS = 30 * 60 * 1000;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, contact, password, experience } = body;
+    const { facilityName, contact, password, experience } = body;
 
-    if (!name || !contact || !password) {
+    if (!facilityName || !contact || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
     if (!isSecurePassword(password)) {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     const facility = await db.facility.create({
       data: {
-        name,
+        facilityName,
         email: isEmail ? normalizedContact : null,
         phone: isEmail ? null : normalizedContact,
         password: hashPassword(password),
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         templateKey: "facility_welcome",
         to: normalizedContact,
         vars: {
-          facility_name: facility.name,
+          facility_name: facility.facilityName,
           facility_email: normalizedContact,
           portal_name: portalName,
           registration_date: new Date().toLocaleDateString(),

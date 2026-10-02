@@ -110,7 +110,7 @@ export async function seedDatabase() {
 
   const cityClinic = await db.facility.create({
     data: {
-      name: "City Unani Clinic",
+      facilityName: "City Unani Clinic",
       email: "cityunani@hekims.connect",
       phone: "9876543210",
       password: facilityPassword,
@@ -126,7 +126,7 @@ export async function seedDatabase() {
 
   const wellnessCenter = await db.facility.create({
     data: {
-      name: "Wellness Unani Center",
+      facilityName: "Wellness Unani Center",
       email: "wellness@hekims.connect",
       phone: "9876543211",
       password: facilityPassword,

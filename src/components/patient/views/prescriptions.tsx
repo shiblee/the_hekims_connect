@@ -32,7 +32,7 @@ export function PatientPrescriptionsView() {
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`
-      <html><head><title>Prescription - ${pr.facility?.name}</title>
+      <html><head><title>Prescription - ${pr.facility?.facilityName}</title>
       <style>
         body { font-family: Georgia, serif; padding: 40px; max-width: 700px; margin: auto; color: #1a1a1a; }
         h1 { color: #0f766e; margin-bottom: 0; }
@@ -45,7 +45,7 @@ export function PatientPrescriptionsView() {
       </style></head><body>
       <div class="rx">℞</div>
       <h1>The Hekim's Connect</h1>
-      <div class="meta">Prescribed by ${pr.facility?.name} · ${pr.facility?.specialization}<br/>
+      <div class="meta">Prescribed by ${pr.facility?.facilityName} · ${pr.facility?.specialization}<br/>
       ${new Date(pr.createdAt).toLocaleDateString("en-IN", { dateStyle: "full" })} · Therapy: ${pr.therapyType}</div>
       <h2>Formulation</h2>
       ${pr.items.map((it: any) => `<div class="item"><b>${it.name}</b> — ${it.dose}<br/>${it.frequency} · ${it.instructions}</div>`).join("")}
@@ -80,10 +80,10 @@ export function PatientPrescriptionsView() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5">
                     <div className={cn("h-10 w-10 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(pr.facility?.avatarColor))}>
-                      {initials(pr.facility?.name)}
+                      {initials(pr.facility?.facilityName)}
                     </div>
                     <div>
-                      <p className="font-medium">{pr.facility?.name}</p>
+                      <p className="font-medium">{pr.facility?.facilityName}</p>
                       <p className="text-[11px] text-muted-foreground">{new Date(pr.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>

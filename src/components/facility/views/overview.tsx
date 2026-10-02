@@ -163,9 +163,9 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex flex-col items-center text-center">
             <div className={cn("h-16 w-16 rounded-full bg-gradient-to-br flex items-center justify-center font-semibold text-white text-lg", avatarGradient(facility.avatarColor))}>
-              {initials(facility.name)}
+              {initials(facility.facilityName)}
             </div>
-            <p className="font-serif font-semibold mt-3">{facility.name}</p>
+            <p className="font-serif font-semibold mt-3">{facility.facilityName}</p>
             <p className="text-xs text-muted-foreground">{facility.specialization}</p>
             <div className="grid grid-cols-3 gap-2 mt-4 w-full">
               <div className="rounded-lg bg-background/50 p-2">

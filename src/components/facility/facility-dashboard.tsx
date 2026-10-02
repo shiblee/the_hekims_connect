@@ -99,10 +99,10 @@ export function FacilityDashboard() {
         <div className="p-3 border-t border-sidebar-border">
           <button onClick={() => setView("patients")} className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
             <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(facility.avatarColor))}>
-              {initials(facility.name)}
+              {initials(facility.facilityName)}
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium truncate">{facility.name}</p>
+              <p className="text-sm font-medium truncate">{facility.facilityName}</p>
               <p className="text-xs text-muted-foreground truncate">{facility.specialization}</p>
             </div>
           </button>
@@ -124,7 +124,7 @@ export function FacilityDashboard() {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="font-serif text-lg lg:text-xl font-bold truncate">
-                Hello, {facility.name} 👋
+                Hello, {facility.facilityName} 👋
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
                 {facility.specialization} · Rating {facility.rating}★

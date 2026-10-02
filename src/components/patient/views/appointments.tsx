@@ -18,7 +18,7 @@ import { CalendarDays, Clock, Plus, Loader2, Stethoscope, Star, Check, X, Drople
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string;
-  facility: { id: string; name: string; specialization: string; avatarColor: string };
+  facility: { id: string; facilityName: string; specialization: string; avatarColor: string };
 }
 
 const TYPES = ["Consultation", "Mizaj Assessment", "Follow-up", "Pharmacy Refill", "Emergency"];
@@ -110,10 +110,10 @@ export function PatientAppointmentsView() {
                   <span className="text-[10px] text-muted-foreground mt-0.5">{a.time}</span>
                 </div>
                 <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(a.facility.avatarColor))}>
-                  {initials(a.facility.name)}
+                  {initials(a.facility.facilityName)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium">{a.facility.name}</p>
+                  <p className="font-medium">{a.facility.facilityName}</p>
                   <p className="text-xs text-muted-foreground">{a.facility.specialization}</p>
                   <p className="text-sm text-accent mt-0.5">{a.type}{a.reason ? ` · ${a.reason}` : ""}</p>
                 </div>
@@ -149,10 +149,10 @@ export function PatientAppointmentsView() {
                     )}
                   >
                     <div className={cn("h-10 w-10 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarGradient(h.avatarColor))}>
-                      {initials(h.name)}
+                      {initials(h.facilityName)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{h.name}</p>
+                      <p className="text-sm font-medium truncate">{h.facilityName}</p>
                       <p className="text-xs text-muted-foreground truncate">{h.specialization}</p>
                     </div>
                     <div className="text-right shrink-0">

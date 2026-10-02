@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const identifier = (user as { email: string | null; phone: string | null }).email ?? (user as { phone: string }).phone;
+    const displayName = role === "facility" ? (user as { facilityName: string }).facilityName : (user as { name: string }).name;
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
     const lastOtp = await db.otpCode.findFirst({ where: { identifier, purpose: "login" }, orderBy: { createdAt: "desc" } });
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
       const result = await sendTemplatedEmail({
         templateKey: role === "facility" ? "facility_otp_verification" : "patient_otp_verification",
         to: identifier,
-        vars: { [nameVar]: user.name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
+        vars: { [nameVar]: displayName, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_sent",
       });
       delivered = result.delivery === "sent";
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: hasEmail ? "OTP sent to your registered email" : "OTP sent to your registered phone",
       contact: identifier,
-      name: user.name,
+      name: displayName,
       devOtp: delivered ? undefined : code,
     });
   } catch (e) {
