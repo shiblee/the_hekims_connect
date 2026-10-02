@@ -91,7 +91,6 @@ export default function FacilityListPage() {
                 <tr className="border-b border-border/50 text-left text-muted-foreground">
                   <th className="px-4 py-3 font-medium">Facility</th>
                   <th className="px-4 py-3 font-medium">Contact</th>
-                  <th className="px-4 py-3 font-medium">Specialization</th>
                   <th className="px-4 py-3 font-medium">Registered</th>
                   <th className="px-4 py-3 font-medium">Last Login</th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -113,7 +112,6 @@ export default function FacilityListPage() {
                       <div>{h.email}</div>
                       <div className="text-xs">{h.phone}</div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{h.specialization}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(h.createdAt)}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                       <button

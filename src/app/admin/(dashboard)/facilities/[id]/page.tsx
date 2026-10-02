@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Mail, Phone, Stethoscope, Star, Calendar, ShieldCheck, ShieldOff,
+  ArrowLeft, Mail, Phone, Star, Calendar, ShieldCheck, ShieldOff,
   CheckCircle2, XCircle, Loader2, Ban, Undo2, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -92,7 +92,6 @@ export default function FacilityDetailPage() {
           </div>
           <div>
             <h1 className="font-serif text-2xl font-bold tracking-tight">{facility.facilityName}</h1>
-            <p className="text-muted-foreground">{facility.specialization}</p>
           </div>
         </div>
         <Button
@@ -143,7 +142,6 @@ export default function FacilityDetailPage() {
         <Card className="p-6 border-border/50 bg-card/60">
           <h2 className="font-serif text-lg font-semibold mb-4">Professional Details</h2>
           <dl className="space-y-3 text-sm">
-            <div className="flex items-center gap-2"><Stethoscope className="h-4 w-4 text-muted-foreground" /> {facility.specialization}</div>
             <div className="flex items-center gap-2"><Star className="h-4 w-4 text-muted-foreground" /> {facility.experience} years experience · {facility.rating.toFixed(1)}★ rating</div>
             {facility.license && <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-muted-foreground" /> License: {facility.license}</div>}
             <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" /> Registered {formatDate(facility.createdAt)}</div>
