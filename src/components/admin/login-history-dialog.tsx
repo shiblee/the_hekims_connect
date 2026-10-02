@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, Loader2, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Clock, AlertCircle } from "lucide-react";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,19 +50,27 @@ interface LoginHistoryDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+type Result =
+  | { key: string; type: "data"; events: LoginRow[]; stats: Stats }
+  | { key: string; type: "error"; message: string };
+
 export function LoginHistoryDialog({ role, id, name, open, onOpenChange }: LoginHistoryDialogProps) {
-  const [events, setEvents] = useState<LoginRow[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
   const requestKey = `${role}:${id}`;
-  const loading = open && loadedFor !== requestKey;
+  const loading = open && result?.key !== requestKey;
 
   useEffect(() => {
     if (!open) return;
+    const basePath = role === "facility" ? "facilities" : "patients";
     adminApi
-      .get<{ events: LoginRow[]; stats: Stats }>(`/api/admin/${role}s/${id}/login-history`)
-      .then((res) => { setEvents(res.events); setStats(res.stats); setLoadedFor(requestKey); });
+      .get<{ events: LoginRow[]; stats: Stats }>(`/api/admin/${basePath}/${id}/login-history`)
+      .then((res) => setResult({ key: requestKey, type: "data", events: res.events, stats: res.stats }))
+      .catch((err: any) => setResult({ key: requestKey, type: "error", message: err?.message || "Could not load login history" }));
   }, [open, role, id, requestKey]);
+
+  const events = result?.type === "data" ? result.events : [];
+  const stats = result?.type === "data" ? result.stats : null;
+  const error = result?.type === "error" ? result.message : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,6 +103,8 @@ export function LoginHistoryDialog({ role, id, name, open, onOpenChange }: Login
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+        ) : error ? (
+          <div className="flex items-center gap-2 text-destructive text-sm py-6"><AlertCircle className="h-4 w-4" /> {error}</div>
         ) : events.length === 0 ? (
           <p className="text-muted-foreground text-sm py-6">No login events yet.</p>
         ) : (
