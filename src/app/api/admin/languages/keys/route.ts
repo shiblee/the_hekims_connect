@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
     include: { values: { select: { languageCode: true, status: true } } },
   });
 
-  const groups = await db.translationKey.findMany({ distinct: ["group"], select: { group: true } });
+  const groupCounts = await db.translationKey.groupBy({ by: ["group"], _count: { _all: true } });
+  const totalCount = await db.translationKey.count();
 
   return NextResponse.json({
     keys: keys.map((k) => ({
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest) {
       sourceText: k.sourceText,
       statuses: Object.fromEntries(k.values.map((v) => [v.languageCode, v.status])),
     })),
-    groups: groups.map((g) => g.group),
+    groups: groupCounts
+      .map((g) => ({ group: g.group, count: g._count._all }))
+      .sort((a, b) => a.group.localeCompare(b.group)),
+    totalCount,
   });
 }
