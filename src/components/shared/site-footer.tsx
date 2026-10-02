@@ -228,16 +228,10 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-5">
-          <p className="text-base text-muted-foreground text-center sm:text-start">
+        <div className="mt-8 border-t border-border pt-5">
+          <p className="text-base text-muted-foreground text-center">
             {t("copyright", { year: new Date().getFullYear() })}
           </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-base text-muted-foreground">
-            <Link href="/privacy" className="transition-colors hover:text-primary">{t("privacy")}</Link>
-            <Link href="/terms" className="transition-colors hover:text-primary">{t("terms")}</Link>
-            <Link href="/sitemap" className="transition-colors hover:text-primary">{t("sitemap")}</Link>
-          </div>
         </div>
       </div>
 

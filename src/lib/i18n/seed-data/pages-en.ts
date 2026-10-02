@@ -5,8 +5,33 @@ export interface PageSeed {
   body: string;
 }
 
-/** Initial English content for admin-managed pages (Pages → Privacy/Terms in the admin panel). */
+/** Initial English content for admin-managed pages (Pages → Privacy/Terms/About in the admin panel). */
 export const PAGES_EN: PageSeed[] = [
+  {
+    slug: "about",
+    title: "Ancient wisdom, built for modern practice",
+    subtitle: "The Hekim's Connect exists to give Unani Hakims and their patients a single, dependable home for the whole continuum of care.",
+    body: `## Why we started
+
+Unani medicine has survived for centuries on the strength of the Hakim–patient relationship — careful Mizaj assessment, personalised formulations and continuity of care across many visits. What it lacked was modern infrastructure: secure records, real-time communication and a pharmacy that tracks itself.
+
+The Hekim's Connect was built to close that gap without changing what makes Unani practice work. We didn't design a generic telehealth app and relabel it — every screen, from the Mizaj sliders to the Ilaj classification on a prescription, was built around how a Hakim actually thinks and works.
+
+## What we believe
+
+- **Clinical rigor** — Every Mizaj assessment, prescription and record on the platform follows classical Unani methodology, digitised without diluting it.
+- **Patient first** — From onboarding to appointment booking, every screen is designed around what a patient actually needs in the moment.
+- **Privacy by default** — OTP-secured accounts, access-controlled records and encrypted messaging are the baseline, not an add-on.
+- **Rooted in tradition** — We build for the Four Akhlat and the Four Modes of Ilaj as they are taught — not a watered-down wellness summary.
+
+## Where we are today
+
+The platform connects verified Hakims with patients for consultation booking, Mizaj assessment, secure messaging, digital prescriptions and pharmacy stock management — all under one OTP-secured account. We are actively expanding into more districts and refining the tools Hakims have asked for directly.
+
+## Get in touch
+
+Questions, partnership enquiries or feedback on the platform are always welcome at [care@hekims.connect](mailto:care@hekims.connect).`,
+  },
   {
     slug: "privacy",
     title: "Privacy Policy",
