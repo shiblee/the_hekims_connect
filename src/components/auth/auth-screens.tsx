@@ -332,7 +332,7 @@ function FacilitySignup() {
       const res = await api.post<{ token: string; user: any }>("/api/auth/facility/signup", form);
       setToken(res.token);
       setFacility(res.user);
-      setView("facility-dashboard");
+      setView(res.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
       toast.success("Welcome! Your account is ready.");
       router.push("/");
     } catch (err: any) {
@@ -518,7 +518,7 @@ function FacilityLogin() {
       const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "facility" });
       setToken(res.token);
       setFacility(res.user);
-      setView("facility-dashboard");
+      setView(res.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
       toast.success("Verified! Welcome.");
       router.push("/");
     } catch (err: any) {
@@ -1187,7 +1187,7 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
       setToken(res.token);
       if (otpPending.role === "facility") {
         setFacility(res.user);
-        setView("facility-dashboard");
+        setView(res.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
       } else {
         setPatient(res.user);
         setView("patient-dashboard");

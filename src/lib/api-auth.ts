@@ -43,6 +43,7 @@ export async function fetchFacility(id: string) {
       avatarColor: true,
       bio: true,
       verified: true,
+      profileCompleted: true,
     },
   });
 }

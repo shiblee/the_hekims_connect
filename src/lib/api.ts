@@ -75,7 +75,7 @@ export async function restoreSession() {
     const { setFacility, setPatient, setView } = useAppStore.getState();
     if (data.role === "facility") {
       setFacility(data.user);
-      setView("facility-dashboard");
+      setView(data.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
     } else {
       setPatient(data.user);
       setView("patient-dashboard");

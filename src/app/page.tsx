@@ -5,6 +5,7 @@ import { useAppStore } from "@/lib/store";
 import { restoreSession } from "@/lib/api";
 import { LandingPage } from "@/components/landing/landing-page";
 import { FacilityDashboard } from "@/components/facility/facility-dashboard";
+import { FacilityProfileSetup } from "@/components/facility/facility-profile-setup";
 import { PatientDashboard } from "@/components/patient/patient-dashboard";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
@@ -33,6 +34,7 @@ export default function Home() {
   if (!hydrated) return <LoadingScreen />;
 
   // Dashboard views
+  if (view === "facility-profile-setup") return <FacilityProfileSetup />;
   if (view === "facility-dashboard") return <FacilityDashboard />;
   if (view === "patient-dashboard") return <PatientDashboard />;
 

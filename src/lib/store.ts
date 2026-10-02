@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type AppView = "landing" | "facility-dashboard" | "patient-dashboard";
+export type AppView = "landing" | "facility-dashboard" | "facility-profile-setup" | "patient-dashboard";
 
 export interface FacilityUser {
   id: string;
@@ -16,6 +16,7 @@ export interface FacilityUser {
   license: string | null;
   avatarColor: string;
   bio: string | null;
+  profileCompleted: boolean;
 }
 
 export interface PatientUser {
