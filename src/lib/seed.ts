@@ -70,8 +70,8 @@ export async function seedDatabase() {
   await seedPages();
 
   // Check if already seeded
-  const hakimCount = await db.hakim.count();
-  if (hakimCount > 0) return false;
+  const facilityCount = await db.facility.count();
+  if (facilityCount > 0) return false;
 
   await db.admin.create({
     data: {
@@ -89,9 +89,9 @@ export async function seedDatabase() {
     { category: "general", key: "portal_name", value: "The Hekim's Connect" },
     { category: "general", key: "support_email", value: "care@hekims.connect" },
     { category: "general", key: "support_phone", value: "+91 98765 43210" },
-    { category: "registration", key: "hakim_registration_enabled", value: "true" },
+    { category: "registration", key: "facility_registration_enabled", value: "true" },
     { category: "registration", key: "patient_registration_enabled", value: "true" },
-    { category: "registration", key: "require_license_for_hakim", value: "false" },
+    { category: "registration", key: "require_license_for_facility", value: "false" },
     { category: "verification", key: "otp_expiry_minutes", value: "10" },
     { category: "verification", key: "otp_resend_cooldown_seconds", value: "30" },
     { category: "verification", key: "max_otp_attempts", value: "5" },
@@ -106,35 +106,33 @@ export async function seedDatabase() {
     });
   }
 
-  const hakimPassword = hashPassword("hekim123");
+  const facilityPassword = hashPassword("facility123");
 
-  const drColter = await db.hakim.create({
+  const cityClinic = await db.facility.create({
     data: {
-      name: "Dr. Aliam Colter",
-      email: "colter@hekims.connect",
+      name: "City Unani Clinic",
+      email: "cityunani@hekims.connect",
       phone: "9876543210",
-      password: hakimPassword,
+      password: facilityPassword,
       license: "UNI-2017-0432",
-      specialization: "Senior Unani Specialist",
+      specialization: "Senior Unani Practice",
       experience: 8,
-      mizaj: "Safrawi",
       rating: 4.9,
-      bio: "Practicing Hakim specialising in Mizaj balance, Regimental therapy (Hijama, Dalk) and chronic disease management through classical Unani formulations.",
+      bio: "A multi-practitioner Unani clinic specialising in Mizaj balance, Regimental therapy (Hijama, Dalk) and chronic disease management through classical Unani formulations.",
       avatarColor: "teal",
       verified: true,
     },
   });
 
-  const drKhan = await db.hakim.create({
+  const wellnessCenter = await db.facility.create({
     data: {
-      name: "Dr. Maira Khan",
-      email: "khan@hekims.connect",
+      name: "Wellness Unani Center",
+      email: "wellness@hekims.connect",
       phone: "9876543211",
-      password: hakimPassword,
+      password: facilityPassword,
       license: "UNI-2019-0511",
       specialization: "Unani Dietotherapy",
       experience: 6,
-      mizaj: "Balghami",
       rating: 4.8,
       bio: "Focused on Ilaj-bil-Ghadha (dietotherapy) and lifestyle correction for metabolic disorders.",
       avatarColor: "amber",
@@ -227,7 +225,7 @@ export async function seedDatabase() {
   await db.appointment.createMany({
     data: [
       {
-        hakimId: drColter.id,
+        facilityId: cityClinic.id,
         patientId: mark.id,
         date: today,
         time: "08:00",
@@ -236,7 +234,7 @@ export async function seedDatabase() {
         status: "scheduled",
       },
       {
-        hakimId: drColter.id,
+        facilityId: cityClinic.id,
         patientId: alexa.id,
         date: today,
         time: "09:30",
@@ -245,7 +243,7 @@ export async function seedDatabase() {
         status: "scheduled",
       },
       {
-        hakimId: drColter.id,
+        facilityId: cityClinic.id,
         patientId: brick.id,
         date: today,
         time: "12:30",
@@ -254,7 +252,7 @@ export async function seedDatabase() {
         status: "scheduled",
       },
       {
-        hakimId: drKhan.id,
+        facilityId: wellnessCenter.id,
         patientId: mark.id,
         date: today,
         time: "15:00",
@@ -271,20 +269,20 @@ export async function seedDatabase() {
       {
         senderId: alexa.id,
         senderType: "patient",
-        receiverId: drColter.id,
-        receiverType: "hakim",
+        receiverId: cityClinic.id,
+        receiverType: "facility",
         content: "Hi, Doctor. My knee hurts again.",
       },
       {
         senderId: alexa.id,
         senderType: "patient",
-        receiverId: drColter.id,
-        receiverType: "hakim",
+        receiverId: cityClinic.id,
+        receiverType: "facility",
         content: "Should I increase the dose of the herbal balm?",
       },
       {
-        senderId: drColter.id,
-        senderType: "hakim",
+        senderId: cityClinic.id,
+        senderType: "facility",
         receiverId: alexa.id,
         receiverType: "patient",
         content:
@@ -297,7 +295,7 @@ export async function seedDatabase() {
   await db.mizajAssessment.create({
     data: {
       patientId: mark.id,
-      hakimId: drColter.id,
+      facilityId: cityClinic.id,
       dam: 35,
       saffra: 55,
       balgham: 20,
@@ -326,7 +324,7 @@ export async function seedDatabase() {
   await db.prescription.create({
     data: {
       patientId: mark.id,
-      hakimId: drColter.id,
+      facilityId: cityClinic.id,
       therapyType: "Ilaj-bil-Dawa",
       items: JSON.stringify([
         { name: "Majoon Suranjan", dose: "5g", frequency: "Twice daily", instructions: "After meals with lukewarm water" },

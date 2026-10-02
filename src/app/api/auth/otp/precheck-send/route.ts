@@ -6,21 +6,21 @@ import { getSetting } from "@/lib/settings";
 
 /**
  * Sends a code to verify ownership of an email/phone BEFORE an account exists —
- * used by the inline "Send Code" widget on the registration form. No Hakim/Patient
+ * used by the inline "Send Code" widget on the registration form. No Facility/Patient
  * row is created here; see precheck-verify + the signup routes for the rest.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { contact, role, name } = body;
-    if (!contact || (role !== "hakim" && role !== "patient")) {
+    if (!contact || (role !== "facility" && role !== "patient")) {
       return NextResponse.json({ error: "Contact and role are required" }, { status: 400 });
     }
 
     const { value: normalizedContact, isEmail } = normalizeContact(contact);
 
-    const existing = role === "hakim"
-      ? await db.hakim.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
+    const existing = role === "facility"
+      ? await db.facility.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
       : await db.patient.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } });
     if (existing) {
       return NextResponse.json(
@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
 
     let delivered = false;
     if (isEmail) {
-      const nameVar = role === "hakim" ? "hakim_name" : "patient_name";
+      const nameVar = role === "facility" ? "facility_name" : "patient_name";
       const result = await sendTemplatedEmail({
-        templateKey: role === "hakim" ? "hakim_otp_verification" : "patient_otp_verification",
+        templateKey: role === "facility" ? "facility_otp_verification" : "patient_otp_verification",
         to: normalizedContact,
         vars: { [nameVar]: (typeof name === "string" && name.trim()) || "there", otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_sent",

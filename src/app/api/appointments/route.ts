@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const date = searchParams.get("date");
 
   const where: any = {};
-  if (auth.type === "hakim") where.hakimId = auth.id;
+  if (auth.type === "facility") where.facilityId = auth.id;
   else where.patientId = auth.id;
   if (status) where.status = status;
   if (date) where.date = date;
@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
     where,
     orderBy: [{ date: "asc" }, { time: "asc" }],
     include: {
-      hakim: {
-        select: { id: true, name: true, specialization: true, avatarColor: true, mizaj: true },
+      facility: {
+        select: { id: true, name: true, specialization: true, avatarColor: true },
       },
       patient: {
         select: { id: true, name: true, phone: true, avatarColor: true, mizaj: true, bloodGroup: true, gender: true, dob: true },
@@ -40,22 +40,22 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json();
-    const { hakimId, patientId, date, time, type, reason } = body;
+    const { facilityId, patientId, date, time, type, reason } = body;
 
     if (!date || !time) {
       return NextResponse.json({ error: "Date and time are required" }, { status: 400 });
     }
 
-    let finalHakimId = hakimId;
+    let finalFacilityId = facilityId;
     let finalPatientId = patientId;
 
     if (auth.type === "patient") {
       finalPatientId = auth.id;
-      if (!finalHakimId) {
-        return NextResponse.json({ error: "Please select a Hakim" }, { status: 400 });
+      if (!finalFacilityId) {
+        return NextResponse.json({ error: "Please select a Facility" }, { status: 400 });
       }
     } else {
-      finalHakimId = auth.id;
+      finalFacilityId = auth.id;
       if (!finalPatientId) {
         return NextResponse.json({ error: "Please select a patient" }, { status: 400 });
       }
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     const appointment = await db.appointment.create({
       data: {
-        hakimId: finalHakimId,
+        facilityId: finalFacilityId,
         patientId: finalPatientId,
         date,
         time,
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         status: "scheduled",
       },
       include: {
-        hakim: { select: { id: true, name: true, specialization: true, avatarColor: true } },
+        facility: { select: { id: true, name: true, specialization: true, avatarColor: true } },
         patient: { select: { id: true, name: true, phone: true, avatarColor: true } },
       },
     });

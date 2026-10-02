@@ -10,12 +10,12 @@ export const PAGES_EN: PageSeed[] = [
   {
     slug: "about",
     title: "Ancient wisdom, built for modern practice",
-    subtitle: "The Hekim's Connect exists to give Unani Hakims and their patients a single, dependable home for the whole continuum of care.",
+    subtitle: "The Hekim's Connect exists to give Unani Facilities and their patients a single, dependable home for the whole continuum of care.",
     body: `## Why we started
 
-Unani medicine has survived for centuries on the strength of the Hakim–patient relationship — careful Mizaj assessment, personalised formulations and continuity of care across many visits. What it lacked was modern infrastructure: secure records, real-time communication and a pharmacy that tracks itself.
+Unani medicine has survived for centuries on the strength of the practitioner–patient relationship — careful Mizaj assessment, personalised formulations and continuity of care across many visits. What it lacked was modern infrastructure: secure records, real-time communication and a pharmacy that tracks itself.
 
-The Hekim's Connect was built to close that gap without changing what makes Unani practice work. We didn't design a generic telehealth app and relabel it — every screen, from the Mizaj sliders to the Ilaj classification on a prescription, was built around how a Hakim actually thinks and works.
+The Hekim's Connect was built to close that gap without changing what makes Unani practice work. We didn't design a generic telehealth app and relabel it — every screen, from the Mizaj sliders to the Ilaj classification on a prescription, was built around how a Facility actually operates day to day.
 
 ## What we believe
 
@@ -26,7 +26,7 @@ The Hekim's Connect was built to close that gap without changing what makes Unan
 
 ## Where we are today
 
-The platform connects verified Hakims with patients for consultation booking, Mizaj assessment, secure messaging, digital prescriptions and pharmacy stock management — all under one OTP-secured account. We are actively expanding into more districts and refining the tools Hakims have asked for directly.
+The platform connects verified Facilities with patients for consultation booking, Mizaj assessment, secure messaging, digital prescriptions and pharmacy stock management — all under one OTP-secured account. We are actively expanding into more districts and refining the tools Facilities have asked for directly.
 
 ## Get in touch
 
@@ -38,19 +38,19 @@ Questions, partnership enquiries or feedback on the platform are always welcome 
     subtitle: "Last updated 21 September 2026. This explains what we collect, why, and how it's protected.",
     body: `## 1. Information we collect
 
-**Account information:** name, email, phone number, and — for Hakims — license and specialization details, collected at signup.
+**Account information:** name, email, phone number, and — for Facilities — license and specialization details, collected at signup.
 
-**Health information:** Mizaj assessment results, medical history, allergies, chronic conditions, uploaded lab reports/scans, prescriptions and appointment notes, provided by you or your Hakim as part of care.
+**Health information:** Mizaj assessment results, medical history, allergies, chronic conditions, uploaded lab reports/scans, prescriptions and appointment notes, provided by you or your Facility as part of care.
 
 **Usage information:** login timestamps, device/browser type, and aggregate, non-identifying site-traffic metrics used to keep the platform reliable.
 
 ## 2. How we use it
 
-Your data is used to operate the platform: authenticating your account, connecting you with the right Hakim or patient, powering the Mizaj and prescription tools, and securing messages between you and your care provider. We do not sell personal or health data to third parties, ever.
+Your data is used to operate the platform: authenticating your account, connecting you with the right Facility or patient, powering the Mizaj and prescription tools, and securing messages between you and your care provider. We do not sell personal or health data to third parties, ever.
 
 ## 3. How it's protected
 
-Every account is OTP-secured at login. Passwords are hashed, never stored in plain text. Access to patient records is scoped to the patient and their treating Hakim only. Messaging and uploaded records are stored with access controls enforced at the API layer, not just the interface.
+Every account is OTP-secured at login. Passwords are hashed, never stored in plain text. Access to patient records is scoped to the patient and their treating Facility only. Messaging and uploaded records are stored with access controls enforced at the API layer, not just the interface.
 
 ## 4. Your rights
 
@@ -74,19 +74,19 @@ By creating an account or using The Hekim's Connect, you agree to these terms. I
 
 ## 2. Who can use the platform
 
-Hakim accounts require a valid practitioner license, verified during signup. Patient accounts are open to individuals 18 or older, or to a parent/guardian managing care on behalf of a minor.
+Facility accounts require a valid practitioner license, verified during signup. Patient accounts are open to individuals 18 or older, or to a parent/guardian managing care on behalf of a minor.
 
 ## 3. Not a substitute for emergency care
 
-The Hekim's Connect facilitates consultation, assessment and prescription management between you and your Hakim. It is not an emergency service. In a medical emergency, contact your local emergency services immediately.
+The Hekim's Connect facilitates consultation, assessment and prescription management between you and your Facility. It is not an emergency service. In a medical emergency, contact your local emergency services immediately.
 
 ## 4. Your responsibilities
 
 Keep your login credentials and OTP codes confidential. Provide accurate medical history — the quality of a Mizaj assessment and any prescription depends on it. Do not use the platform to share content that is unlawful, abusive or infringes another person's rights.
 
-## 5. Hakim obligations
+## 5. Facility obligations
 
-Hakims are independently responsible for the clinical advice, Mizaj assessments and prescriptions they provide through the platform, and must hold a valid license to practise in their jurisdiction throughout their use of the service.
+Facilities are independently responsible for the clinical advice, Mizaj assessments and prescriptions they provide through the platform, and must hold a valid license to practise in their jurisdiction throughout their use of the service.
 
 ## 6. Payments
 

@@ -97,7 +97,7 @@ export function LandingPage() {
     heroMy.set(0.5);
   }
 
-  const [howTab, setHowTab] = useState<"hakim" | "patient">("hakim");
+  const [howTab, setHowTab] = useState<"facility" | "patient">("facility");
   const [testimonialApi, setTestimonialApi] = useState<CarouselApi>();
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [testimonialPaused, setTestimonialPaused] = useState(false);
@@ -124,12 +124,12 @@ export function LandingPage() {
     return () => clearInterval(id);
   }, [testimonialApi, testimonialPaused]);
 
-  const hakimSteps = [
-    { slug: "register", icon: ShieldCheck, a: () => router.push("/register/hakim") },
-    { slug: "profile", icon: Stethoscope, a: () => router.push("/login/hakim") },
-    { slug: "queue", icon: CalendarCheck, a: () => router.push("/login/hakim") },
-    { slug: "mizaj", icon: Activity, a: () => router.push("/login/hakim") },
-    { slug: "consult", icon: MessageSquare, a: () => router.push("/login/hakim") },
+  const facilitySteps = [
+    { slug: "register", icon: ShieldCheck, a: () => router.push("/register/facility") },
+    { slug: "profile", icon: Stethoscope, a: () => router.push("/login/facility") },
+    { slug: "queue", icon: CalendarCheck, a: () => router.push("/login/facility") },
+    { slug: "mizaj", icon: Activity, a: () => router.push("/login/facility") },
+    { slug: "consult", icon: MessageSquare, a: () => router.push("/login/facility") },
   ];
   const patientSteps = [
     { slug: "profile", icon: Heart, a: () => router.push("/register/patient") },
@@ -166,9 +166,9 @@ export function LandingPage() {
               <Button
                 size="lg"
                 className="group h-14 px-8 text-lg gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 glow-teal transition-all duration-300 hover:scale-[1.04] hover:shadow-[0_0_36px_oklch(0.72_0.13_175/0.4)] active:scale-[0.97]"
-                onClick={() => router.push("/register/hakim")}
+                onClick={() => router.push("/register/facility")}
               >
-                <Stethoscope className="h-6 w-6 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /> {t("landing.hero.hakim_cta")}
+                <Stethoscope className="h-6 w-6 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /> {t("landing.hero.facility_cta")}
               </Button>
               <Button
                 size="lg"
@@ -189,7 +189,7 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-8 lg:py-10">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { n: "500+", key: "hakims_label", i: Stethoscope },
+              { n: "500+", key: "facilities_label", i: Stethoscope },
               { n: "8,400+", key: "mizaj_label", i: Activity },
               { n: "1,200+", key: "pharmacy_label", i: Pill },
               { n: "96k+", key: "messages_label", i: MessageSquare },
@@ -331,17 +331,17 @@ export function LandingPage() {
           <motion.div {...fadeUp} className="text-center mb-14">
             <h2 className="font-serif text-xl sm:text-4xl lg:text-5xl font-bold tracking-tight whitespace-nowrap">{t("landing.how_it_works.heading")}</h2>
           </motion.div>
-          <Tabs value={howTab} onValueChange={(v) => setHowTab(v as "hakim" | "patient")}>
+          <Tabs value={howTab} onValueChange={(v) => setHowTab(v as "facility" | "patient")}>
             <TabsList className="relative grid w-full max-w-2xl mx-auto grid-cols-2 gap-3 mb-10 bg-transparent p-0 h-auto">
-              <TabsTrigger value="hakim" className="relative overflow-hidden rounded-full h-14 text-lg border border-border bg-card shadow-sm transition-colors duration-300 data-[state=active]:border-transparent data-[state=active]:text-primary-foreground hover:text-foreground">
-                {howTab === "hakim" && (
+              <TabsTrigger value="facility" className="relative overflow-hidden rounded-full h-14 text-lg border border-border bg-card shadow-sm transition-colors duration-300 data-[state=active]:border-transparent data-[state=active]:text-primary-foreground hover:text-foreground">
+                {howTab === "facility" && (
                   <motion.span
                     layoutId="how-tab-pill"
                     className="absolute inset-0 rounded-full bg-primary glow-teal"
                     transition={{ type: "spring", stiffness: 400, damping: 32 }}
                   />
                 )}
-                <span className="relative z-10 flex items-center"><Stethoscope className="me-2 h-5 w-5" /> {t("landing.how_it_works.tab_hakim")}</span>
+                <span className="relative z-10 flex items-center"><Stethoscope className="me-2 h-5 w-5" /> {t("landing.how_it_works.tab_facility")}</span>
               </TabsTrigger>
               <TabsTrigger value="patient" className="relative overflow-hidden rounded-full h-14 text-lg border border-border bg-card shadow-sm transition-colors duration-300 data-[state=active]:border-transparent data-[state=active]:text-accent-foreground hover:text-foreground">
                 {howTab === "patient" && (
@@ -354,9 +354,9 @@ export function LandingPage() {
                 <span className="relative z-10 flex items-center"><Heart className="me-2 h-5 w-5" /> {t("landing.how_it_works.tab_patient")}</span>
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="hakim">
+            <TabsContent value="facility">
               <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                {hakimSteps.map((s, i) => (
+                {facilitySteps.map((s, i) => (
                   <motion.div key={s.slug} whileHover={{ y: -6, scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Card
                       onClick={s.a}
@@ -367,8 +367,8 @@ export function LandingPage() {
                         <div className="h-11 w-11 rounded-full bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{i + 1}</div>
                         <s.icon className="h-6 w-6 text-primary/50" />
                       </div>
-                      <h3 className="relative font-serif text-2xl font-semibold mb-2">{t(`landing.how_it_works.hakim.${s.slug}.title`)}</h3>
-                      <p className="relative text-lg text-muted-foreground leading-relaxed">{t(`landing.how_it_works.hakim.${s.slug}.desc`)}</p>
+                      <h3 className="relative font-serif text-2xl font-semibold mb-2">{t(`landing.how_it_works.facility.${s.slug}.title`)}</h3>
+                      <p className="relative text-lg text-muted-foreground leading-relaxed">{t(`landing.how_it_works.facility.${s.slug}.desc`)}</p>
                       <Button variant="link" className="relative px-0 mt-4 text-base text-primary" onClick={s.a}>
                         {t("landing.how_it_works.get_started")} <ArrowRight className="ms-1 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1" />
                       </Button>
@@ -497,9 +497,9 @@ export function LandingPage() {
                   <Button
                     size="lg"
                     className="group h-14 px-8 text-lg gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 glow-teal transition-all duration-300 hover:scale-[1.04] hover:shadow-[0_0_36px_oklch(0.72_0.13_175/0.4)] active:scale-[0.97]"
-                    onClick={() => router.push("/register/hakim")}
+                    onClick={() => router.push("/register/facility")}
                   >
-                    <Stethoscope className="h-6 w-6 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /> {t("landing.cta.hakim_portal")}
+                    <Stethoscope className="h-6 w-6 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /> {t("landing.cta.facility_portal")}
                   </Button>
                   <Button
                     size="lg"

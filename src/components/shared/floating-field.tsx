@@ -16,7 +16,7 @@ export function FieldError({ message }: { message?: string }) {
 /**
  * A text field whose label sits inside the box by default and floats up
  * onto the border on focus or once it has a value (the same field format
- * used across the site — admin login, Hakim/Patient auth screens, etc).
+ * used across the site — admin login, Facility/Patient auth screens, etc).
  */
 export function FloatingField({
   id,

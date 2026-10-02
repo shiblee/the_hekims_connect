@@ -69,13 +69,13 @@ export async function restoreSession() {
   const token = getToken();
   if (!token) return null;
   try {
-    const data = await api.get<{ user: any; role: "hakim" | "patient" }>(
+    const data = await api.get<{ user: any; role: "facility" | "patient" }>(
       "/api/auth/me"
     );
-    const { setHakim, setPatient, setView } = useAppStore.getState();
-    if (data.role === "hakim") {
-      setHakim(data.user);
-      setView("hakim-dashboard");
+    const { setFacility, setPatient, setView } = useAppStore.getState();
+    if (data.role === "facility") {
+      setFacility(data.user);
+      setView("facility-dashboard");
     } else {
       setPatient(data.user);
       setView("patient-dashboard");

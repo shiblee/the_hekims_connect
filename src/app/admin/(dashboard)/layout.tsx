@@ -33,7 +33,7 @@ function LoadingScreen() {
 
 const navLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/hakims", label: "Hakim", icon: Stethoscope },
+  { href: "/admin/facilities", label: "Facility", icon: Stethoscope },
   { href: "/admin/patients", label: "Patient", icon: HeartPulse },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/notifications", label: "Notifications", icon: BellRing },

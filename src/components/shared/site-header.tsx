@@ -42,7 +42,7 @@ export function SiteHeader() {
               className="group relative overflow-hidden bg-primary text-primary-foreground hover:bg-primary/90 glow-teal transition-all duration-300 hover:scale-105 hover:shadow-[0_0_28px_color-mix(in_oklch,var(--primary)_45%,transparent)] active:scale-95"
               asChild
             >
-              <Link href="/register/hakim">
+              <Link href="/register/facility">
                 <span className="absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
                 <span className="relative z-10 flex items-center gap-1">
                   {t("get_started")} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 rtl:rotate-180" />
@@ -76,7 +76,7 @@ export function SiteHeader() {
               className="group relative flex-1 overflow-hidden bg-primary text-primary-foreground hover:bg-primary/90 glow-teal transition-all duration-300 active:scale-95"
               asChild
             >
-              <Link href="/register/hakim" onClick={() => setNavOpen(false)}>
+              <Link href="/register/facility" onClick={() => setNavOpen(false)}>
                 <span className="absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
                 <span className="relative z-10 flex items-center justify-center gap-1">
                   {t("get_started")} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 rtl:rotate-180" />

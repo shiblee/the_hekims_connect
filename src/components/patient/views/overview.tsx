@@ -16,7 +16,7 @@ import {
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string;
-  hakim: { id: string; name: string; specialization: string; avatarColor: string; mizaj: string };
+  facility: { id: string; name: string; specialization: string; avatarColor: string };
 }
 
 export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }) {
@@ -57,8 +57,8 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
             <h2 className="font-serif text-2xl font-bold">Welcome back, {patient.name.split(" ")[0]}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {profileComplete
-                ? "Your medical profile is complete — your Hakim has everything needed."
-                : "Complete your medical profile so your Hakim has the full picture."}
+                ? "Your medical profile is complete — your Facility has everything needed."
+                : "Complete your medical profile so your Facility has the full picture."}
             </p>
           </div>
           <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate(profileComplete ? "appointments" : "profile")}>
@@ -99,12 +99,12 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
                   <span className="font-serif text-2xl font-bold text-primary leading-none">{new Date(nextAppt.date).getDate()}</span>
                   <span className="text-[10px] text-muted-foreground mt-1">{nextAppt.time}</span>
                 </div>
-                <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(nextAppt.hakim.avatarColor))}>
-                  {initials(nextAppt.hakim.name)}
+                <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(nextAppt.facility.avatarColor))}>
+                  {initials(nextAppt.facility.name)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium">{nextAppt.hakim.name}</p>
-                  <p className="text-xs text-muted-foreground">{nextAppt.hakim.specialization}</p>
+                  <p className="font-medium">{nextAppt.facility.name}</p>
+                  <p className="text-xs text-muted-foreground">{nextAppt.facility.specialization}</p>
                   <p className="text-sm text-primary mt-0.5">{nextAppt.type}</p>
                   {nextAppt.reason && <p className="text-xs text-muted-foreground">{nextAppt.reason}</p>}
                 </div>
@@ -114,7 +114,7 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
             <Card className="p-6 border-dashed border-border bg-card/60 text-center">
               <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
               <p className="text-sm font-medium">No upcoming appointments</p>
-              <p className="text-xs text-muted-foreground mb-3">Book a consultation with a verified Hakim.</p>
+              <p className="text-xs text-muted-foreground mb-3">Book a consultation with a verified Facility.</p>
               <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate("appointments")}><Plus className="h-4 w-4 mr-1" /> Book now</Button>
             </Card>
           )}

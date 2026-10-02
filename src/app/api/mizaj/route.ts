@@ -12,14 +12,14 @@ export async function GET(req: NextRequest) {
 
   const where: any = {};
   if (patientId) where.patientId = patientId;
-  if (auth.type === "hakim") where.hakimId = auth.id;
+  if (auth.type === "facility") where.facilityId = auth.id;
   if (auth.type === "patient") where.patientId = auth.id;
 
   const assessments = await db.mizajAssessment.findMany({
     where,
     orderBy: { createdAt: "desc" },
     include: {
-      hakim: { select: { id: true, name: true, specialization: true, avatarColor: true } },
+      facility: { select: { id: true, name: true, specialization: true, avatarColor: true } },
       patient: { select: { id: true, name: true, avatarColor: true, mizaj: true } },
     },
   });
@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
-  if (!auth || auth.type !== "hakim") {
-    return NextResponse.json({ error: "Only Hakims can create Mizaj assessments" }, { status: 403 });
+  if (!auth || auth.type !== "facility") {
+    return NextResponse.json({ error: "Only Facilities can create Mizaj assessments" }, { status: 403 });
   }
   try {
     const body = await req.json();
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const assessment = await db.mizajAssessment.create({
       data: {
         patientId,
-        hakimId: auth.id,
+        facilityId: auth.id,
         dam: d,
         saffra: s,
         balgham: b,

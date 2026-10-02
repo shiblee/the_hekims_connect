@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { makeToken, fetchHakim, fetchPatient } from "@/lib/api-auth";
+import { makeToken, fetchFacility, fetchPatient } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
@@ -41,26 +41,26 @@ export async function POST(req: NextRequest) {
 
     await db.otpCode.update({ where: { id: otp.id }, data: { used: true } });
 
-    if (role === "hakim" && otp.hakimId) {
+    if (role === "facility" && otp.facilityId) {
       const isSignup = otp.purpose === "signup";
-      await db.hakim.update({ where: { id: otp.hakimId }, data: { verified: true, lastLoginAt: new Date() } });
-      const hakim = await fetchHakim(otp.hakimId);
+      await db.facility.update({ where: { id: otp.facilityId }, data: { verified: true, lastLoginAt: new Date() } });
+      const facility = await fetchFacility(otp.facilityId);
 
       await db.notificationLog.create({
-        data: { recipient: contact, templateKey: "hakim_otp_verification", status: "verified", event: "otp_verified" },
+        data: { recipient: contact, templateKey: "facility_otp_verification", status: "verified", event: "otp_verified" },
       });
 
-      if (isSignup && hakim?.email) {
+      if (isSignup && facility?.email) {
         const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
         await sendTemplatedEmail({
-          templateKey: "hakim_welcome",
-          to: hakim.email,
+          templateKey: "facility_welcome",
+          to: facility.email,
           vars: {
-            hakim_name: hakim.name,
-            hakim_email: hakim.email,
+            facility_name: facility.name,
+            facility_email: facility.email,
             portal_name: portalName,
             registration_date: new Date().toLocaleDateString(),
-            login_url: `${getSiteUrl(req)}/login/hakim`,
+            login_url: `${getSiteUrl(req)}/login/facility`,
           },
           event: "welcome_sent",
         });
@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        token: makeToken("hakim", otp.hakimId),
-        user: hakim,
-        role: "hakim",
+        token: makeToken("facility", otp.facilityId),
+        user: facility,
+        role: "facility",
       });
     } else if (role === "patient" && otp.patientId) {
       await db.patient.update({ where: { id: otp.patientId }, data: { verified: true, lastLoginAt: new Date() } });

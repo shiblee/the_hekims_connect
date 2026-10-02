@@ -19,8 +19,10 @@ import {
 interface EmailTemplate { id: string; key: string; name: string; type: string; subject: string; body: string; status: string; updatedAt: string; updatedBy: string | null }
 
 const PLACEHOLDER_HINTS: Record<string, string[]> = {
-  hakim_otp_verification: ["{{hakim_name}}", "{{otp}}", "{{otp_validity}}", "{{portal_name}}"],
-  hakim_welcome: ["{{hakim_name}}", "{{hakim_email}}", "{{portal_name}}", "{{registration_date}}", "{{login_url}}"],
+  facility_otp_verification: ["{{facility_name}}", "{{otp}}", "{{otp_validity}}", "{{portal_name}}"],
+  facility_welcome: ["{{facility_name}}", "{{facility_email}}", "{{portal_name}}", "{{registration_date}}", "{{login_url}}"],
+  patient_otp_verification: ["{{patient_name}}", "{{otp}}", "{{otp_validity}}", "{{portal_name}}"],
+  patient_welcome: ["{{patient_name}}", "{{patient_email}}", "{{portal_name}}", "{{registration_date}}", "{{login_url}}"],
 };
 
 export default function EmailTemplateEditorPage() {

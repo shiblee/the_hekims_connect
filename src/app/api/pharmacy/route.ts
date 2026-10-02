@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   const auth = getAuthUser(req);
-  if (!auth || auth.type !== "hakim") {
+  if (!auth || auth.type !== "facility") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { searchParams } = new URL(req.url);
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
-  if (!auth || auth.type !== "hakim") {
+  if (!auth || auth.type !== "facility") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {

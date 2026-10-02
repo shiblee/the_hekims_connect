@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { restoreSession } from "@/lib/api";
 import { LandingPage } from "@/components/landing/landing-page";
-import { HakimDashboard } from "@/components/hakim/hakim-dashboard";
+import { FacilityDashboard } from "@/components/facility/facility-dashboard";
 import { PatientDashboard } from "@/components/patient/patient-dashboard";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
@@ -33,7 +33,7 @@ export default function Home() {
   if (!hydrated) return <LoadingScreen />;
 
   // Dashboard views
-  if (view === "hakim-dashboard") return <HakimDashboard />;
+  if (view === "facility-dashboard") return <FacilityDashboard />;
   if (view === "patient-dashboard") return <PatientDashboard />;
 
   // Default landing

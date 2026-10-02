@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 
 export interface AuthUser {
   id: string;
-  type: "hakim" | "patient";
+  type: "facility" | "patient";
 }
 
 /**
@@ -16,7 +16,7 @@ export function getAuthUser(req: NextRequest): AuthUser | null {
   try {
     const decoded = Buffer.from(raw, "base64").toString("utf-8");
     const [type, id] = decoded.split("|");
-    if (type !== "hakim" && type !== "patient") return null;
+    if (type !== "facility" && type !== "patient") return null;
     if (!id) return null;
     return { type, id };
   } catch {
@@ -24,12 +24,12 @@ export function getAuthUser(req: NextRequest): AuthUser | null {
   }
 }
 
-export function makeToken(type: "hakim" | "patient", id: string): string {
+export function makeToken(type: "facility" | "patient", id: string): string {
   return Buffer.from(`${type}|${id}`, "utf-8").toString("base64");
 }
 
-export async function fetchHakim(id: string) {
-  return db.hakim.findUnique({
+export async function fetchFacility(id: string) {
+  return db.facility.findUnique({
     where: { id },
     select: {
       id: true,
@@ -38,7 +38,6 @@ export async function fetchHakim(id: string) {
       phone: true,
       specialization: true,
       experience: true,
-      mizaj: true,
       rating: true,
       license: true,
       avatarColor: true,

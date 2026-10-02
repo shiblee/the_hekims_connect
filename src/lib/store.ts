@@ -3,16 +3,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type AppView = "landing" | "hakim-dashboard" | "patient-dashboard";
+export type AppView = "landing" | "facility-dashboard" | "patient-dashboard";
 
-export interface HakimUser {
+export interface FacilityUser {
   id: string;
   name: string;
   email: string;
   phone: string;
   specialization: string;
   experience: number;
-  mizaj: string;
   rating: number;
   license: string | null;
   avatarColor: string;
@@ -44,20 +43,20 @@ export interface PatientUser {
 }
 
 interface OtpPending {
-  contact: string; // email for hakim, phone for patient
-  role: "hakim" | "patient";
+  contact: string; // email for facility, phone for patient
+  role: "facility" | "patient";
   code: string; // dev-mode visible code
   name?: string;
 }
 
 interface AppState {
   view: AppView;
-  hakim: HakimUser | null;
+  facility: FacilityUser | null;
   patient: PatientUser | null;
   otpPending: OtpPending | null;
 
   setView: (v: AppView) => void;
-  setHakim: (h: HakimUser | null) => void;
+  setFacility: (h: FacilityUser | null) => void;
   setPatient: (p: PatientUser | null) => void;
   setOtpPending: (o: OtpPending | null) => void;
   logout: () => void;
@@ -67,23 +66,23 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       view: "landing",
-      hakim: null,
+      facility: null,
       patient: null,
       otpPending: null,
       setView: (view) => set({ view }),
-      setHakim: (hakim) => set({ hakim }),
+      setFacility: (facility) => set({ facility }),
       setPatient: (patient) => set({ patient }),
       setOtpPending: (otpPending) => set({ otpPending }),
       logout: () => {
         localStorage.removeItem("hekims-connect-token");
-        set({ view: "landing", hakim: null, patient: null, otpPending: null });
+        set({ view: "landing", facility: null, patient: null, otpPending: null });
       },
     }),
     {
       name: "hekims-connect-store",
       partialize: (s) => ({
         view: s.view,
-        hakim: s.hakim,
+        facility: s.facility,
         patient: s.patient,
         otpPending: s.otpPending,
       }),

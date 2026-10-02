@@ -18,7 +18,7 @@ import { CalendarDays, Clock, Plus, Loader2, Stethoscope, Star, Check, X, Drople
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string;
-  hakim: { id: string; name: string; specialization: string; avatarColor: string; mizaj: string };
+  facility: { id: string; name: string; specialization: string; avatarColor: string };
 }
 
 const TYPES = ["Consultation", "Mizaj Assessment", "Follow-up", "Pharmacy Refill", "Emergency"];
@@ -26,22 +26,22 @@ const TIME_SLOTS = ["08:00", "09:00", "09:30", "10:30", "11:00", "12:00", "12:30
 
 export function PatientAppointmentsView() {
   const [appts, setAppts] = useState<Appt[]>([]);
-  const [hakims, setHakims] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("upcoming");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ hakimId: "", date: "", time: "09:00", type: "Consultation", reason: "" });
+  const [form, setForm] = useState({ facilityId: "", date: "", time: "09:00", type: "Consultation", reason: "" });
 
   const load = async () => {
     setLoading(true);
     try {
       const [a, h] = await Promise.all([
         api.get<{ appointments: Appt[] }>("/api/appointments"),
-        api.get<{ hakims: any[] }>("/api/hakims"),
+        api.get<{ facilities: any[] }>("/api/facilities"),
       ]);
       setAppts(a.appointments || []);
-      setHakims(h.hakims || []);
+      setFacilities(h.facilities || []);
     } catch (e: any) { toast.error(e.message); } finally { setLoading(false); }
   };
 
@@ -56,14 +56,14 @@ export function PatientAppointmentsView() {
   }).sort((a, b) => tab === "past" ? (b.date + b.time).localeCompare(a.date + a.time) : (a.date + a.time).localeCompare(b.date + b.time));
 
   const book = async () => {
-    if (!form.hakimId) { toast.error("Select a Hakim"); return; }
+    if (!form.facilityId) { toast.error("Select a Facility"); return; }
     if (!form.date) { toast.error("Pick a date"); return; }
     setSaving(true);
     try {
       await api.post("/api/appointments", form);
       toast.success("Appointment booked!");
       setOpen(false);
-      setForm({ hakimId: "", date: "", time: "09:00", type: "Consultation", reason: "" });
+      setForm({ facilityId: "", date: "", time: "09:00", type: "Consultation", reason: "" });
       load();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
@@ -77,7 +77,7 @@ export function PatientAppointmentsView() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-xl font-bold">My Appointments</h2>
-          <p className="text-sm text-muted-foreground">Book consultations with verified Hakims.</p>
+          <p className="text-sm text-muted-foreground">Book consultations with verified Facilities.</p>
         </div>
         <Button onClick={() => setOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90"><Plus className="h-4 w-4" /> Book Appointment</Button>
       </div>
@@ -109,12 +109,12 @@ export function PatientAppointmentsView() {
                   <span className="font-serif text-xl font-bold text-accent leading-none">{new Date(a.date).getDate()}</span>
                   <span className="text-[10px] text-muted-foreground mt-0.5">{a.time}</span>
                 </div>
-                <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(a.hakim.avatarColor))}>
-                  {initials(a.hakim.name)}
+                <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(a.facility.avatarColor))}>
+                  {initials(a.facility.name)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium">{a.hakim.name}</p>
-                  <p className="text-xs text-muted-foreground">{a.hakim.specialization}</p>
+                  <p className="font-medium">{a.facility.name}</p>
+                  <p className="text-xs text-muted-foreground">{a.facility.specialization}</p>
                   <p className="text-sm text-accent mt-0.5">{a.type}{a.reason ? ` · ${a.reason}` : ""}</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -137,15 +137,15 @@ export function PatientAppointmentsView() {
           <DialogHeader><DialogTitle>Book an Appointment</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label className="mb-2 block">Choose a Hakim</Label>
+              <Label className="mb-2 block">Choose a Facility</Label>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {hakims.map((h) => (
+                {facilities.map((h) => (
                   <button
                     key={h.id}
-                    onClick={() => setForm({ ...form, hakimId: h.id })}
+                    onClick={() => setForm({ ...form, facilityId: h.id })}
                     className={cn(
                       "w-full flex items-center gap-3 p-2.5 rounded-lg border transition-colors text-left",
-                      form.hakimId === h.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/40 bg-background/40"
+                      form.facilityId === h.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/40 bg-background/40"
                     )}
                   >
                     <div className={cn("h-10 w-10 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarGradient(h.avatarColor))}>

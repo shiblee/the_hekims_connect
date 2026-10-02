@@ -23,9 +23,9 @@ const KEY_LABELS: Record<string, string> = {
   portal_name: "Portal name",
   support_email: "Support email",
   support_phone: "Support phone",
-  hakim_registration_enabled: "Allow new Hakim registrations",
+  facility_registration_enabled: "Allow new Facility registrations",
   patient_registration_enabled: "Allow new patient registrations",
-  require_license_for_hakim: "Require license number for Hakim signup",
+  require_license_for_facility: "Require license number for Facility signup",
   otp_expiry_minutes: "OTP expiry (minutes)",
   otp_resend_cooldown_seconds: "Resend cooldown (seconds)",
   max_otp_attempts: "Max verification attempts",
@@ -34,7 +34,7 @@ const KEY_LABELS: Record<string, string> = {
 };
 
 const BOOLEAN_KEYS = new Set([
-  "hakim_registration_enabled", "patient_registration_enabled", "require_license_for_hakim",
+  "facility_registration_enabled", "patient_registration_enabled", "require_license_for_facility",
 ]);
 
 export default function SettingsPage() {

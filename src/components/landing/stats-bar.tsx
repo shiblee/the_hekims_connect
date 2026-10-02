@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ShieldCheck, Activity, Pill, MessageSquare } from "lucide-react";
 
 const STATS = [
-  { label: "Verified Hakims", value: "500+", icon: ShieldCheck },
+  { label: "Verified Facilities", value: "500+", icon: ShieldCheck },
   { label: "Mizaj Assessments", value: "8.4k", icon: Activity },
   { label: "Pharmacy Items", value: "1.2k", icon: Pill },
   { label: "Secure Messages", value: "94k", icon: MessageSquare },

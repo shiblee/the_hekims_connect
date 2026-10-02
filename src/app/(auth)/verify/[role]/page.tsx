@@ -8,6 +8,6 @@ export const metadata: Metadata = {
 
 export default async function VerifyOtpPage({ params }: { params: Promise<{ role: string }> }) {
   const { role } = await params;
-  if (role !== "hakim" && role !== "patient") notFound();
+  if (role !== "facility" && role !== "patient") notFound();
   return <VerifyOtp role={role} />;
 }

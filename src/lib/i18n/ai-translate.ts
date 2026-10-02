@@ -30,7 +30,7 @@ export async function translateString(opts: {
       "You translate short user-interface strings for a Unani-medicine telehealth platform called " +
       "\"The Hekim's Connect\". Preserve tone (warm, professional, trustworthy). Keep any {{placeholder}} " +
       "or {curly} interpolation tokens unchanged, exactly as written. Keep domain terms transliterated, not " +
-      "translated, unless a standard localized medical term exists: Hekim, Hakim, Mizaj, Unani, Akhlat, Dam, " +
+      "translated, unless a standard localized medical term exists: Hekim, Mizaj, Unani, Akhlat, Dam, " +
       "Safra, Balgham, Sauda, Ilaj-bil-Tadbeer, Ilaj-bil-Ghadha, Ilaj-bil-Dawa, Ilaj-bil-Yad. Match the " +
       "length and register of a UI label or heading — do not add sentences or explanations. Return ONLY the " +
       "translated string, no quotes, no commentary.",

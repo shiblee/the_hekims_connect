@@ -72,16 +72,15 @@ model AdminActivityLog {
   admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }
 
-model Hakim {
+model Facility {
   id             String   @id @default(cuid())
   name           String
   email          String?  @unique
   phone          String?  @unique
   password       String
   license        String?
-  specialization String   @default("General Unani Practitioner")
+  specialization String   @default("General Unani Practice")
   experience     Int      @default(0)
-  mizaj          String   @default("Balanced")
   rating         Float    @default(5.0)
   bio            String?
   avatarColor    String   @default("teal")
@@ -97,6 +96,8 @@ model Hakim {
   mizajAssessments MizajAssessment[]
   prescriptions   Prescription[]
   otpCodes        OtpCode[]
+
+  @@map("Hakim")
 }
 
 model Patient {
@@ -140,7 +141,7 @@ model Patient {
 
 model Appointment {
   id        String   @id @default(cuid())
-  hakimId   String
+  facilityId String  @map("hakimId")
   patientId String
   date      String
   time      String
@@ -151,7 +152,7 @@ model Appointment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  hakim        Hakim        @relation(fields: [hakimId], references: [id], onDelete: Cascade)
+  facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
   prescriptions Prescription[]
 }
@@ -188,7 +189,7 @@ model Record {
 model MizajAssessment {
   id         String   @id @default(cuid())
   patientId  String
-  hakimId    String
+  facilityId String   @map("hakimId")
   dam        Int      @default(0)
   saffra     Int      @default(0)
   balgham    Int      @default(0)
@@ -198,8 +199,8 @@ model MizajAssessment {
   notes      String?
   createdAt  DateTime @default(now())
 
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  hakim   Hakim   @relation(fields: [hakimId], references: [id], onDelete: Cascade)
+  patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
 }
 
 model PharmacyItem {
@@ -222,7 +223,7 @@ model Prescription {
   id           String   @id @default(cuid())
   appointmentId String?
   patientId    String
-  hakimId      String
+  facilityId   String   @map("hakimId")
   items        String
   notes        String?
   therapyType  String   @default("Ilaj-bil-Dawa")
@@ -230,7 +231,7 @@ model Prescription {
 
   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  hakim       Hakim        @relation(fields: [hakimId], references: [id], onDelete: Cascade)
+  facility    Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
 }
 
 model SiteStat {
@@ -300,14 +301,14 @@ model OtpCode {
   used      Boolean  @default(false)
   verifiedAt DateTime?
   attempts  Int      @default(0)
-  hakimId   String?
+  facilityId String? @map("hakimId")
   patientId String?
   adminId   String?
   createdAt DateTime @default(now())
 
-  hakim   Hakim?   @relation(fields: [hakimId], references: [id], onDelete: Cascade)
-  patient Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  admin   Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  facility Facility? @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  admin    Admin?    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }
 
 model Language {

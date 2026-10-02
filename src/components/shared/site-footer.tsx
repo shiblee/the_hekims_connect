@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const platformLinks = [
-  { key: "link_for_hakims", href: "/#how" },
+  { key: "link_for_facilities", href: "/#how" },
   { key: "link_for_patients", href: "/#how" },
   { key: "link_mizaj", href: "/#features" },
   { key: "link_pharmacy", href: "/#features" },

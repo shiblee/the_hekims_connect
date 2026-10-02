@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const patientId = searchParams.get("patientId");
 
   const where: any = {};
-  if (auth.type === "hakim") where.hakimId = auth.id;
+  if (auth.type === "facility") where.facilityId = auth.id;
   if (auth.type === "patient") where.patientId = auth.id;
   if (patientId) where.patientId = patientId;
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     where,
     orderBy: { createdAt: "desc" },
     include: {
-      hakim: { select: { id: true, name: true, avatarColor: true } },
+      facility: { select: { id: true, name: true, avatarColor: true } },
       patient: { select: { id: true, name: true, avatarColor: true } },
     },
   });
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
-  if (!auth || auth.type !== "hakim") {
-    return NextResponse.json({ error: "Only Hakims can create prescriptions" }, { status: 403 });
+  if (!auth || auth.type !== "facility") {
+    return NextResponse.json({ error: "Only Facilities can create prescriptions" }, { status: 403 });
   }
   try {
     const body = await req.json();
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const prescription = await db.prescription.create({
       data: {
         patientId,
-        hakimId: auth.id,
+        facilityId: auth.id,
         appointmentId: appointmentId || null,
         items: JSON.stringify(items),
         notes: notes || "",

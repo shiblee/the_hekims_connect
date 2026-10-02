@@ -19,7 +19,7 @@ export async function PATCH(
     if (!existing) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
-    if (auth.type === "hakim" && existing.hakimId !== auth.id) {
+    if (auth.type === "facility" && existing.facilityId !== auth.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (auth.type === "patient" && existing.patientId !== auth.id) {
@@ -54,7 +54,7 @@ export async function DELETE(
   if (!existing) {
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
-  if (auth.type === "hakim" && existing.hakimId !== auth.id) {
+  if (auth.type === "facility" && existing.facilityId !== auth.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (auth.type === "patient" && existing.patientId !== auth.id) {

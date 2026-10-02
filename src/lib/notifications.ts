@@ -98,7 +98,7 @@ const EMAIL_FOOTER = `<tr>
 <div style="border-top:1px solid #e3d9c0; padding-top:18px; text-align:center;">
 <div style="color:#c7963f; font-size:12px; letter-spacing:3px; margin-bottom:10px;">&#10087;</div>
 <p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:12px; line-height:1.7; color:#9a9183;">
-{{portal_name}} &mdash; connecting Hakims and patients for the full continuum of Unani care.<br/>
+{{portal_name}} &mdash; connecting Facilities and patients for the full continuum of Unani care.<br/>
 This is an automated message, please do not reply directly to this email.
 </p>
 </div>
@@ -124,13 +124,13 @@ ${EMAIL_FOOTER}
 
 export const DEFAULT_EMAIL_TEMPLATES = [
   {
-    key: "hakim_otp_verification",
-    name: "Hakim OTP Verification",
+    key: "facility_otp_verification",
+    name: "Facility OTP Verification",
     type: "OTP",
     subject: "Verify your email — {{portal_name}} OTP",
     body: emailShell(`<tr>
 <td style="padding:20px 40px 8px 40px; font-family:Georgia, 'Times New Roman', serif;">
-<p style="margin:0 0 18px 0; font-size:17px; color:#2b2420;">Dear Dr. {{hakim_name}},</p>
+<p style="margin:0 0 18px 0; font-size:17px; color:#2b2420;">Dear {{facility_name}},</p>
 <p style="margin:0 0 22px 0; font-size:15px; line-height:1.7; color:#4a4238; font-family:Helvetica, Arial, sans-serif;">
 Please use the verification code below to confirm your email on <strong>{{portal_name}}</strong> &mdash; your home for Unani practice, Mizaj assessment and patient care.
 </p>
@@ -159,15 +159,15 @@ If you did not request this code, you can safely ignore this email.
 </tr>`),
   },
   {
-    key: "hakim_welcome",
-    name: "Hakim Registration Success / Welcome",
+    key: "facility_welcome",
+    name: "Facility Registration Success / Welcome",
     type: "Welcome",
-    subject: "Welcome to {{portal_name}}, {{hakim_name}}!",
+    subject: "Welcome to {{portal_name}}, {{facility_name}}!",
     body: emailShell(`<tr>
 <td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
-<div style="font-size:23px; color:#0f5c52; font-weight:700;">Welcome, Dr. {{hakim_name}}</div>
+<div style="font-size:23px; color:#0f5c52; font-weight:700;">Welcome, {{facility_name}}</div>
 <p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
-Your registration on {{portal_name}} is complete, and your practice is ready to begin.
+Your registration on {{portal_name}} is complete, and your facility is ready to begin taking patients.
 </p>
 </td>
 </tr>
@@ -179,7 +179,7 @@ Your registration on {{portal_name}} is complete, and your practice is ready to 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr>
 <td style="padding:5px 0; font-size:13px; color:#9a9183; width:140px;">Registered email</td>
-<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{hakim_email}}</td>
+<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{facility_email}}</td>
 </tr>
 <tr>
 <td style="padding:5px 0; font-size:13px; color:#9a9183;">Registration date</td>
@@ -194,7 +194,7 @@ Your registration on {{portal_name}} is complete, and your practice is ready to 
 <tr>
 <td style="padding:22px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
 <p style="margin:0; font-size:14px; line-height:1.75; color:#4a4238;">
-You now join a community of Hakims carrying forward the classical tradition of Mizaj assessment and personalised Ilaj, supported by modern tools for consultations, prescriptions and patient records &mdash; all under one secure, OTP-protected account.
+You now join a network of facilities carrying forward the classical tradition of Mizaj assessment and personalised Ilaj, supported by modern tools for consultations, prescriptions and patient records &mdash; all under one secure, OTP-protected account.
 </p>
 </td>
 </tr>
@@ -281,7 +281,7 @@ Your registration on {{portal_name}} is complete, and your care journey is ready
 <tr>
 <td style="padding:22px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
 <p style="margin:0; font-size:14px; line-height:1.75; color:#4a4238;">
-You can now book consultations with verified Hakims, receive a personalised Mizaj assessment, and keep your prescriptions and records all in one secure, OTP-protected account.
+You can now book consultations with verified Facilities, receive a personalised Mizaj assessment, and keep your prescriptions and records all in one secure, OTP-protected account.
 </p>
 </td>
 </tr>
@@ -300,13 +300,13 @@ You can now book consultations with verified Hakims, receive a personalised Miza
 ];
 
 export const SAMPLE_VARS: Record<string, string> = {
-  hakim_name: "Aliam Colter",
-  hakim_email: "colter@hekims.connect",
+  facility_name: "City Unani Clinic",
+  facility_email: "contact@cityunani.example.com",
   patient_name: "Sarah Ahmed",
   patient_email: "sarah.ahmed@example.com",
   otp: "482913",
   otp_validity: "10",
   portal_name: "The Hekim's Connect",
   registration_date: new Date().toLocaleDateString(),
-  login_url: "https://hekims.connect/login/hakim",
+  login_url: "https://hekims.connect/login/facility",
 };

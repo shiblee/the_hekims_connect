@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 
 /**
- * Admin session token, intentionally separate from the hakim/patient token
+ * Admin session token, intentionally separate from the facility/patient token
  * mechanism (own header, own payload) so an admin session can never be
- * confused with a hakim/patient session or vice versa.
+ * confused with a facility/patient session or vice versa.
  *
  * Reads the token from the `x-hekim-admin-auth` header.
  * Token format: base64(`admin|${adminId}|${sessionId}`).

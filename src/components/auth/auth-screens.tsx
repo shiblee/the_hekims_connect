@@ -17,24 +17,24 @@ import {
 import { FloatingField, FieldError } from "@/components/shared/floating-field";
 import { cn } from "@/lib/utils";
 
-type AuthRole = "hakim" | "patient";
+type AuthRole = "facility" | "patient";
 type AuthMode = "login" | "signup";
 
 function AuthLayout({ role, children }: { role: AuthRole; children: React.ReactNode }) {
-  const isHakim = role === "hakim";
+  const isFacility = role === "facility";
   return (
     <div className="flex-1 grid lg:grid-cols-2 min-h-[640px] lg:min-h-[780px]">
       {/* Left brand panel */}
       <div className={cn(
         "relative hidden lg:flex flex-col justify-center py-12 pl-6 sm:pl-16 pr-12 overflow-hidden",
-        isHakim ? "bg-gradient-to-br from-primary/10 via-card to-card" : "bg-gradient-to-br from-accent/10 via-card to-card"
+        isFacility ? "bg-gradient-to-br from-primary/10 via-card to-card" : "bg-gradient-to-br from-accent/10 via-card to-card"
       )}>
         <div className="absolute inset-0 pattern-unani opacity-40" />
-        <div className={cn("absolute -top-24 -left-24 h-72 w-72 rounded-full blur-3xl", isHakim ? "bg-primary/20" : "bg-accent/20")} />
+        <div className={cn("absolute -top-24 -left-24 h-72 w-72 rounded-full blur-3xl", isFacility ? "bg-primary/20" : "bg-accent/20")} />
         <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full blur-3xl bg-primary/10" />
         <div className="relative">
           <h2 className="font-serif text-4xl font-bold leading-tight max-w-md">
-            {isHakim
+            {isFacility
               ? "Restore balance, one Mizaj at a time."
               : "Your healing, harmonised and in your hands."}
           </h2>
@@ -77,15 +77,15 @@ function RoleTabs({ role, mode }: { role: AuthRole; mode: AuthMode }) {
     <div className="mb-8 grid grid-cols-2 gap-3">
       <button
         type="button"
-        onClick={() => go("hakim")}
+        onClick={() => go("facility")}
         className={cn(
           "relative flex h-12 items-center justify-center gap-2 overflow-hidden rounded-full border text-base font-medium transition-colors duration-300",
-          role === "hakim"
+          role === "facility"
             ? "border-transparent text-primary-foreground"
             : "border-input bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
         )}
       >
-        {role === "hakim" && (
+        {role === "facility" && (
           <motion.span
             layoutId="role-tab-pill"
             className="absolute inset-0 rounded-full bg-primary glow-teal"
@@ -93,7 +93,7 @@ function RoleTabs({ role, mode }: { role: AuthRole; mode: AuthMode }) {
           />
         )}
         <span className="relative z-10 flex items-center gap-2">
-          <Stethoscope className="h-5 w-5" /> Hakim
+          <Stethoscope className="h-5 w-5" /> Facility
         </span>
       </button>
       <button
@@ -286,15 +286,15 @@ function PasswordRequirements({ value }: { value: string }) {
   );
 }
 
-function HakimSignup() {
+function FacilitySignup() {
   const router = useRouter();
-  const setHakim = useAppStore((s) => s.setHakim);
+  const setFacility = useAppStore((s) => s.setFacility);
   const setView = useAppStore((s) => s.setView);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ name: "", contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const iv = useInlineVerify("hakim");
+  const iv = useInlineVerify("facility");
 
   useEffect(() => {
     if (iv.stage === "verified") setErrors((er) => (er.contact ? { ...er, contact: "" } : er));
@@ -329,10 +329,10 @@ function HakimSignup() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ token: string; user: any }>("/api/auth/hakim/signup", form);
+      const res = await api.post<{ token: string; user: any }>("/api/auth/facility/signup", form);
       setToken(res.token);
-      setHakim(res.user);
-      setView("hakim-dashboard");
+      setFacility(res.user);
+      setView("facility-dashboard");
       toast.success("Welcome! Your account is ready.");
       router.push("/");
     } catch (err: any) {
@@ -345,23 +345,23 @@ function HakimSignup() {
   };
 
   return (
-    <AuthLayout role="hakim">
+    <AuthLayout role="facility">
       <div className="w-full max-w-md">
-        <RoleTabs role="hakim" mode="signup" />
+        <RoleTabs role="facility" mode="signup" />
         <div className="mb-6">
-          <h1 className="font-serif text-2xl font-bold">Become a Hakim</h1>
+          <h1 className="font-serif text-2xl font-bold">Register your Facility</h1>
           <p className="text-sm text-muted-foreground mt-1">Register your Unani practice — verified in one step.</p>
         </div>
         <form onSubmit={submit} className="space-y-5" noValidate>
           <div>
-            <FloatingField id="hakim-signup-name" label="Full name" icon={User} error={!!errors.name} value={form.name} onChange={(e) => setField("name", e.target.value)} />
+            <FloatingField id="facility-signup-name" label="Full name" icon={User} error={!!errors.name} value={form.name} onChange={(e) => setField("name", e.target.value)} />
             <FieldError message={errors.name} />
           </div>
           <div>
             <div className="flex items-start gap-2">
               <div className="flex-1">
                 <FloatingField
-                  id="hakim-signup-contact"
+                  id="facility-signup-contact"
                   label="Email or phone"
                   icon={Mail}
                   error={!!errors.contact}
@@ -381,7 +381,7 @@ function HakimSignup() {
           </div>
           <div>
             <FloatingField
-              id="hakim-signup-password"
+              id="facility-signup-password"
               label="Password"
               icon={Lock}
               error={!!errors.password}
@@ -408,7 +408,7 @@ function HakimSignup() {
           </button>
           <span className="text-muted-foreground">
             Already registered?{" "}
-            <button onClick={() => router.push("/login/hakim")} className="text-primary hover:underline font-medium">Sign in</button>
+            <button onClick={() => router.push("/login/facility")} className="text-primary hover:underline font-medium">Sign in</button>
           </span>
         </div>
       </div>
@@ -416,9 +416,9 @@ function HakimSignup() {
   );
 }
 
-function HakimLogin() {
+function FacilityLogin() {
   const router = useRouter();
-  const setHakim = useAppStore((s) => s.setHakim);
+  const setFacility = useAppStore((s) => s.setFacility);
   const setView = useAppStore((s) => s.setView);
   const [mode, setMode] = useState<"password" | "otp">("password");
   const [loading, setLoading] = useState(false);
@@ -479,7 +479,7 @@ function HakimLogin() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/hakim/login", form);
+      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/facility/login", form);
       toast.success("OTP sent!");
       enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
@@ -497,7 +497,7 @@ function HakimLogin() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "hakim" });
+      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "facility" });
       toast.success("OTP sent!");
       enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
@@ -515,10 +515,10 @@ function HakimLogin() {
     setOtpVerifying(true);
     setOtpError("");
     try {
-      const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "hakim" });
+      const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "facility" });
       setToken(res.token);
-      setHakim(res.user);
-      setView("hakim-dashboard");
+      setFacility(res.user);
+      setView("facility-dashboard");
       toast.success("Verified! Welcome.");
       router.push("/");
     } catch (err: any) {
@@ -531,7 +531,7 @@ function HakimLogin() {
   const resendLogin = async () => {
     if (otpCooldown > 0) return;
     try {
-      const res = await api.post<{ devOtp?: string }>("/api/auth/otp/send", { contact: otpContact, role: "hakim" });
+      const res = await api.post<{ devOtp?: string }>("/api/auth/otp/send", { contact: otpContact, role: "facility" });
       setOtpDevCode(res.devOtp ?? "");
       setOtpCode(res.devOtp ?? "");
       setOtpCooldown(30);
@@ -602,11 +602,11 @@ function HakimLogin() {
   );
 
   return (
-    <AuthLayout role="hakim">
+    <AuthLayout role="facility">
       <div className="w-full max-w-md">
-        <RoleTabs role="hakim" mode="login" />
+        <RoleTabs role="facility" mode="login" />
         <div className="mb-6">
-          <h1 className="font-serif text-2xl font-bold">Welcome back, Hakim</h1>
+          <h1 className="font-serif text-2xl font-bold">Welcome back</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in securely with OTP verification.</p>
         </div>
 
@@ -630,14 +630,14 @@ function HakimLogin() {
         {mode === "password" ? (
           <form onSubmit={otpStage === "form" ? submit : (e) => { e.preventDefault(); verifyLogin(); }} className="space-y-5" noValidate>
             <div>
-              <FloatingField id="hakim-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FloatingField id="facility-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
               <FieldError message={errors.contact} />
               {otpStage === "otp" && otpBox}
             </div>
             {otpStage === "form" && (
               <div>
                 <FloatingField
-                  id="hakim-login-password"
+                  id="facility-login-password"
                   label="Password"
                   icon={Lock}
                   error={!!errors.password}
@@ -661,7 +661,7 @@ function HakimLogin() {
         ) : (
           <div className="space-y-5">
             <div>
-              <FloatingField id="hakim-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FloatingField id="facility-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
               <FieldError message={errors.contact} />
               {otpStage === "otp" && otpBox}
               {otpStage === "form" && <p className="text-xs text-muted-foreground mt-1.5">We'll email or text you a one-time code — no password needed.</p>}
@@ -688,7 +688,7 @@ function HakimLogin() {
           <>
             {mode === "password" && (
               <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Demo Hakim:</span> colter@hekims.connect / hekim123
+                <span className="font-medium text-foreground">Demo Facility:</span> cityunani@hekims.connect / facility123
               </div>
             )}
             <div className="flex items-center justify-between mt-5 text-sm">
@@ -697,7 +697,7 @@ function HakimLogin() {
               </button>
               <span className="text-muted-foreground">
                 New here?{" "}
-                <button onClick={() => router.push("/register/hakim")} className="text-primary hover:underline font-medium">Register</button>
+                <button onClick={() => router.push("/register/facility")} className="text-primary hover:underline font-medium">Register</button>
               </span>
             </div>
           </>
@@ -1130,7 +1130,7 @@ function PatientLogin() {
 
 function OtpPanel({ role, backLabel = "Different account", onBack }: { role: AuthRole; backLabel?: string; onBack: () => void }) {
   const router = useRouter();
-  const { otpPending, setOtpPending, setView, setHakim, setPatient } = useAppStore();
+  const { otpPending, setOtpPending, setView, setFacility, setPatient } = useAppStore();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1146,7 +1146,7 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
     return () => clearInterval(t);
   }, [cooldown]);
 
-  const isHakim = role === "hakim";
+  const isFacility = role === "facility";
 
   // No pending verification for this role (e.g. link opened directly, or the
   // dev-mode OTP session expired) — point the user back to sign in instead of
@@ -1155,7 +1155,7 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
     return (
       <AuthLayout role={role}>
         <div className="w-full max-w-md text-center">
-          <div className={cn("mx-auto h-14 w-14 rounded-2xl flex items-center justify-center mb-4", isHakim ? "bg-primary/15 text-primary" : "bg-accent/15 text-accent")}>
+          <div className={cn("mx-auto h-14 w-14 rounded-2xl flex items-center justify-center mb-4", isFacility ? "bg-primary/15 text-primary" : "bg-accent/15 text-accent")}>
             <KeyRound className="h-7 w-7" />
           </div>
           <h1 className="font-serif text-2xl font-bold">Nothing to verify</h1>
@@ -1164,7 +1164,7 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
             Sign in again to receive a fresh OTP.
           </p>
           <Button
-            className={cn("mt-6", isHakim ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-accent text-accent-foreground hover:bg-accent/90")}
+            className={cn("mt-6", isFacility ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-accent text-accent-foreground hover:bg-accent/90")}
             onClick={onBack}
           >
             Back to sign in
@@ -1185,9 +1185,9 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
         contact: otpPending.contact, code, role: otpPending.role,
       });
       setToken(res.token);
-      if (otpPending.role === "hakim") {
-        setHakim(res.user);
-        setView("hakim-dashboard");
+      if (otpPending.role === "facility") {
+        setFacility(res.user);
+        setView("facility-dashboard");
       } else {
         setPatient(res.user);
         setView("patient-dashboard");
@@ -1228,7 +1228,7 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
       <div className="w-full max-w-md">
         <RoleTabs role={otpPending.role} mode="login" />
         <div className="mb-6 text-center">
-          <div className={cn("mx-auto h-14 w-14 rounded-2xl flex items-center justify-center mb-4", isHakim ? "bg-primary/15 text-primary" : "bg-accent/15 text-accent")}>
+          <div className={cn("mx-auto h-14 w-14 rounded-2xl flex items-center justify-center mb-4", isFacility ? "bg-primary/15 text-primary" : "bg-accent/15 text-accent")}>
             <KeyRound className="h-7 w-7" />
           </div>
           <h1 className="font-serif text-2xl font-bold">Secure Verification</h1>
@@ -1269,7 +1269,7 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
           </InputOTP>
         </div>
 
-        <Button onClick={verify} disabled={loading} className={cn("w-full h-12 text-base", isHakim ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-accent text-accent-foreground hover:bg-accent/90")}>
+        <Button onClick={verify} disabled={loading} className={cn("w-full h-12 text-base", isFacility ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-accent text-accent-foreground hover:bg-accent/90")}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
           {loading ? "Verifying…" : "Verify & Continue"}
         </Button>
@@ -1307,4 +1307,4 @@ function VerifyOtp({ role }: { role: AuthRole }) {
   );
 }
 
-export { HakimSignup, HakimLogin, PatientSignup, PatientLogin, VerifyOtp };
+export { FacilitySignup, FacilityLogin, PatientSignup, PatientLogin, VerifyOtp };

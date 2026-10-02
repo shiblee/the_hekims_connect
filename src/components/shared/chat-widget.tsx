@@ -40,9 +40,9 @@ interface ChatWidgetProps {
 }
 
 export function ChatWidget({ partnerId, partnerType, partnerName, compact }: ChatWidgetProps) {
-  const hakim = useAppStore((s) => s.hakim);
+  const facility = useAppStore((s) => s.facility);
   const patient = useAppStore((s) => s.patient);
-  const me = hakim ? { id: hakim.id, type: "hakim" as const } : patient ? { id: patient.id, type: "patient" as const } : null;
+  const me = facility ? { id: facility.id, type: "facility" as const } : patient ? { id: patient.id, type: "patient" as const } : null;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activePartner, setActivePartner] = useState<{ id: string; type: string; name: string } | null>(
     partnerId && partnerType && partnerName ? { id: partnerId, type: partnerType, name: partnerName } : null

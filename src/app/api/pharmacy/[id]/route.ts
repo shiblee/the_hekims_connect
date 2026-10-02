@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = getAuthUser(req);
-  if (!auth || auth.type !== "hakim") {
+  if (!auth || auth.type !== "facility") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
@@ -40,7 +40,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = getAuthUser(req);
-  if (!auth || auth.type !== "hakim") {
+  if (!auth || auth.type !== "facility") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
