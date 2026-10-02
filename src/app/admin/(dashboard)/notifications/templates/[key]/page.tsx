@@ -162,7 +162,7 @@ export default function EmailTemplateEditorPage() {
       </div>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Email preview</DialogTitle>
             <DialogDescription>Rendered with sample data, exactly as a recipient would see it.</DialogDescription>
@@ -175,8 +175,8 @@ export default function EmailTemplateEditorPage() {
                 <p className="text-xs text-muted-foreground mb-1">Subject</p>
                 <p className="text-sm font-medium">{preview.subject}</p>
               </div>
-              <div className="rounded-lg border border-border/50 bg-background/40 p-4 max-h-80 overflow-y-auto">
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{preview.body}</p>
+              <div className="rounded-lg border border-border/50 overflow-hidden">
+                <iframe title="Email preview" srcDoc={preview.body} sandbox="" className="w-full h-[480px] bg-white" />
               </div>
             </div>
           ) : null}

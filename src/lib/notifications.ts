@@ -5,6 +5,39 @@ export function renderTemplate(template: string, vars: Record<string, string>): 
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => vars[key] ?? "");
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Same as renderTemplate, but HTML-escapes each value first — use for HTML email bodies. */
+export function renderHtmlTemplate(template: string, vars: Record<string, string>): string {
+  const escaped = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, escapeHtml(v)]));
+  return renderTemplate(template, escaped);
+}
+
+/** Crude HTML-to-text fallback for the plain-text part of an HTML email. */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/tr>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /**
  * Renders and sends a templated email. If an active SMTP configuration exists
  * (Notifications → Email Configuration), this actually delivers the email via
@@ -29,9 +62,9 @@ export async function sendTemplatedEmail(opts: {
   }
 
   const subject = renderTemplate(template.subject, opts.vars);
-  const body = renderTemplate(template.body, opts.vars);
+  const body = renderHtmlTemplate(template.body, opts.vars);
 
-  const result = await sendRealEmail({ to: opts.to, subject, text: body });
+  const result = await sendRealEmail({ to: opts.to, subject, html: body, text: htmlToText(body) });
   const delivery = result.ok ? "sent" : result.reason === "not_configured" ? "simulated" : "failed";
 
   await db.notificationLog.create({
@@ -48,46 +81,139 @@ export async function sendTemplatedEmail(opts: {
   return { sent: true, delivery, subject, body, error: delivery === "failed" ? result.reason : undefined };
 }
 
+const EMAIL_HEADER = `<tr>
+<td style="background-color:#0f5c52; padding:28px 36px; text-align:center;">
+<div style="font-family:Georgia, 'Times New Roman', serif; font-size:21px; letter-spacing:0.5px; color:#f6ead0; font-weight:700;">{{portal_name}}</div>
+<div style="font-family:Georgia, serif; font-size:11px; letter-spacing:2.5px; text-transform:uppercase; color:#b7d9cf; margin-top:6px;">Unani Medicine &middot; Modern Care</div>
+</td>
+</tr>
+<tr>
+<td style="padding:8px 0 0 0; text-align:center;">
+<div style="color:#c7963f; font-size:14px; letter-spacing:4px; padding:14px 0 0 0;">&#10087;</div>
+</td>
+</tr>`;
+
+const EMAIL_FOOTER = `<tr>
+<td style="padding:28px 40px 32px 40px;">
+<div style="border-top:1px solid #e3d9c0; padding-top:18px; text-align:center;">
+<div style="color:#c7963f; font-size:12px; letter-spacing:3px; margin-bottom:10px;">&#10087;</div>
+<p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:12px; line-height:1.7; color:#9a9183;">
+{{portal_name}} &mdash; connecting Hakims and patients for the full continuum of Unani care.<br/>
+This is an automated message, please do not reply directly to this email.
+</p>
+</div>
+</td>
+</tr>`;
+
+function emailShell(innerRows: string): string {
+  return `<!doctype html>
+<html lang="en">
+<body style="margin:0; padding:0; background-color:#f3ede0; font-family:Georgia, 'Times New Roman', serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3ede0; padding:32px 16px;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#fffdf8; border:1px solid #e3d9c0; border-radius:10px; overflow:hidden;">
+${EMAIL_HEADER}
+${innerRows}
+${EMAIL_FOOTER}
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export const DEFAULT_EMAIL_TEMPLATES = [
   {
     key: "hakim_otp_verification",
     name: "Hakim OTP Verification",
     type: "OTP",
     subject: "Verify your email — {{portal_name}} OTP",
-    body: `Hi {{hakim_name}},
-
-Your One-Time Password (OTP) to verify your email on {{portal_name}} is:
-
-{{otp}}
-
-This code is valid for {{otp_validity}} minutes. Please do not share it with anyone.
-
-If you did not request this, you can safely ignore this email.
-
-— {{portal_name}} Team`,
+    body: emailShell(`<tr>
+<td style="padding:20px 40px 8px 40px; font-family:Georgia, 'Times New Roman', serif;">
+<p style="margin:0 0 18px 0; font-size:17px; color:#2b2420;">Dear Dr. {{hakim_name}},</p>
+<p style="margin:0 0 22px 0; font-size:15px; line-height:1.7; color:#4a4238; font-family:Helvetica, Arial, sans-serif;">
+Please use the verification code below to confirm your email on <strong>{{portal_name}}</strong> &mdash; your home for Unani practice, Mizaj assessment and patient care.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:0 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf3e1; border:1px dashed #c7963f; border-radius:8px;">
+<tr>
+<td style="padding:22px 20px; text-align:center;">
+<div style="font-family:'Courier New', monospace; font-size:34px; font-weight:700; letter-spacing:10px; color:#0f5c52;">{{otp}}</div>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:18px 40px 4px 40px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0 0 10px 0; font-size:13.5px; line-height:1.6; color:#6b6155;">
+This code is valid for <strong>{{otp_validity}} minutes</strong> and can only be used once. Please do not share it with anyone &mdash; our team will never ask you for it.
+</p>
+<p style="margin:0; font-size:13.5px; line-height:1.6; color:#6b6155;">
+If you did not request this code, you can safely ignore this email.
+</p>
+</td>
+</tr>`),
   },
   {
     key: "hakim_welcome",
     name: "Hakim Registration Success / Welcome",
     type: "Welcome",
     subject: "Welcome to {{portal_name}}, {{hakim_name}}!",
-    body: `Hi {{hakim_name}},
-
-Congratulations! Your email address {{hakim_email}} has been successfully verified and your registration on {{portal_name}} is now complete.
-
-You registered on {{registration_date}}.
-
-You can now log in and start using your Hakim portal:
-{{login_url}}
-
-If you have any questions, our support team is here to help.
-
-— {{portal_name}} Team`,
+    body: emailShell(`<tr>
+<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
+<div style="font-size:23px; color:#0f5c52; font-weight:700;">Welcome, Dr. {{hakim_name}}</div>
+<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
+Your registration on {{portal_name}} is complete, and your practice is ready to begin.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:22px 40px 4px 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf3e1; border:1px solid #e3d9c0; border-radius:8px;">
+<tr>
+<td style="padding:18px 22px; font-family:Helvetica, Arial, sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td style="padding:5px 0; font-size:13px; color:#9a9183; width:140px;">Registered email</td>
+<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{hakim_email}}</td>
+</tr>
+<tr>
+<td style="padding:5px 0; font-size:13px; color:#9a9183;">Registration date</td>
+<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{registration_date}}</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:22px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0; font-size:14px; line-height:1.75; color:#4a4238;">
+You now join a community of Hakims carrying forward the classical tradition of Mizaj assessment and personalised Ilaj, supported by modern tools for consultations, prescriptions and patient records &mdash; all under one secure, OTP-protected account.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:14px 40px 30px 40px; text-align:center;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+<tr>
+<td style="background-color:#c7963f; border-radius:6px;">
+<a href="{{login_url}}" style="display:inline-block; padding:13px 34px; font-family:Helvetica, Arial, sans-serif; font-size:14.5px; font-weight:700; color:#fffdf8; text-decoration:none; letter-spacing:0.3px;">Enter Your Portal</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>`),
   },
 ];
 
 export const SAMPLE_VARS: Record<string, string> = {
-  hakim_name: "Dr. Aliam Colter",
+  hakim_name: "Aliam Colter",
   hakim_email: "colter@hekims.connect",
   otp: "482913",
   otp_validity: "10",

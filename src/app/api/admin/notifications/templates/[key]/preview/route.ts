@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
-import { renderTemplate, SAMPLE_VARS } from "@/lib/notifications";
+import { renderTemplate, renderHtmlTemplate, SAMPLE_VARS } from "@/lib/notifications";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   const session = await requireAdmin(req);
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
 
   return NextResponse.json({
     subject: renderTemplate(subject, SAMPLE_VARS),
-    body: renderTemplate(content, SAMPLE_VARS),
+    body: renderHtmlTemplate(content, SAMPLE_VARS),
     sampleVars: SAMPLE_VARS,
   });
 }

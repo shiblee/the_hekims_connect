@@ -14,7 +14,7 @@ interface SendResult {
  * throwing when there's nothing to send with, so callers can fall back to
  * simulated/logged-only behavior.
  */
-export async function sendRealEmail(opts: { to: string; subject: string; text: string }): Promise<SendResult> {
+export async function sendRealEmail(opts: { to: string; subject: string; text: string; html?: string }): Promise<SendResult> {
   const config = await db.emailConfig.findFirst();
   if (!config || !config.active || !config.smtpHost || !config.smtpPort || !config.fromEmail) {
     return { ok: false, reason: "not_configured" };
@@ -37,6 +37,7 @@ export async function sendRealEmail(opts: { to: string; subject: string; text: s
       replyTo: config.replyTo || undefined,
       subject: opts.subject,
       text: opts.text,
+      html: opts.html,
     });
 
     return { ok: true };

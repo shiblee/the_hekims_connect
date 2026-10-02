@@ -4,6 +4,7 @@ import { hashPassword, normalizeContact, isSecurePassword } from "@/lib/auth";
 import { makeToken, fetchHakim } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+import { getSiteUrl } from "@/lib/site-url";
 
 const PRECHECK_VALIDITY_MS = 30 * 60 * 1000;
 
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
           hakim_email: normalizedContact,
           portal_name: portalName,
           registration_date: new Date().toLocaleDateString(),
-          login_url: `${req.nextUrl.origin}/login/hakim`,
+          login_url: `${getSiteUrl(req)}/login/hakim`,
         },
         event: "welcome_sent",
       });

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { makeToken, fetchHakim, fetchPatient } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+import { getSiteUrl } from "@/lib/site-url";
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
             hakim_email: hakim.email,
             portal_name: portalName,
             registration_date: new Date().toLocaleDateString(),
-            login_url: `${req.nextUrl.origin}/login/hakim`,
+            login_url: `${getSiteUrl(req)}/login/hakim`,
           },
           event: "welcome_sent",
         });
