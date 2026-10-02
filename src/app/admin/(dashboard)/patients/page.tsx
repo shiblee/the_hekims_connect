@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
+import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
 interface PatientRow {
   id: string; name: string; email: string | null; phone: string | null; gender: string | null; dob: string | null;
@@ -29,6 +30,7 @@ export default function PatientListPage() {
   const [status, setStatus] = useState("all");
   const [verified, setVerified] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [historyTarget, setHistoryTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -113,7 +115,15 @@ export default function PatientListPage() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{p.gender || "—"} {p.dob ? `· ${p.dob}` : ""}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(p.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{p.lastLoginAt ? new Date(p.lastLoginAt).toLocaleString() : "Never"}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      <button
+                        type="button"
+                        className="hover:text-primary hover:underline transition-colors"
+                        onClick={() => setHistoryTarget({ id: p.id, name: p.name })}
+                      >
+                        {p.lastLoginAt ? new Date(p.lastLoginAt).toLocaleString() : "Never"}
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1.5">
                         {p.verified ? (
@@ -153,6 +163,16 @@ export default function PatientListPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {historyTarget && (
+        <LoginHistoryDialog
+          role="patient"
+          id={historyTarget.id}
+          name={historyTarget.name}
+          open={!!historyTarget}
+          onOpenChange={(o) => { if (!o) setHistoryTarget(null); }}
+        />
       )}
     </div>
   );

@@ -4,11 +4,14 @@ import { makeToken, fetchFacility, fetchPatient } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
+import { getClientIp, parseUserAgent } from "@/lib/request-info";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { contact, code, role } = body;
+    const ip = getClientIp(req);
+    const { browser, os, device } = parseUserAgent(req.headers.get("user-agent"));
 
     if (!contact || !code || !role) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -66,6 +69,18 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      if (facility) {
+        const session = await db.userSession.create({
+          data: { facilityId: facility.id, ip, browser, os, device },
+        });
+        await db.loginEvent.create({
+          data: {
+            facilityId: facility.id, identifier: contact, displayName: facility.facilityName,
+            ip, browser, os, device, status: "success", sessionId: session.id,
+          },
+        });
+      }
+
       return NextResponse.json({
         success: true,
         token: makeToken("facility", otp.facilityId),
@@ -75,6 +90,19 @@ export async function POST(req: NextRequest) {
     } else if (role === "patient" && otp.patientId) {
       await db.patient.update({ where: { id: otp.patientId }, data: { verified: true, lastLoginAt: new Date() } });
       const patient = await fetchPatient(otp.patientId);
+
+      if (patient) {
+        const session = await db.userSession.create({
+          data: { patientId: patient.id, ip, browser, os, device },
+        });
+        await db.loginEvent.create({
+          data: {
+            patientId: patient.id, identifier: contact, displayName: patient.name,
+            ip, browser, os, device, status: "success", sessionId: session.id,
+          },
+        });
+      }
+
       return NextResponse.json({
         success: true,
         token: makeToken("patient", otp.patientId),

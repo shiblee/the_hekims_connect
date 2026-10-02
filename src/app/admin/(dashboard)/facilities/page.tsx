@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
+import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
 interface FacilityRow {
   id: string; facilityName: string; email: string; phone: string; specialization: string;
@@ -29,6 +30,7 @@ export default function FacilityListPage() {
   const [status, setStatus] = useState("all");
   const [verified, setVerified] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [historyTarget, setHistoryTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -113,7 +115,15 @@ export default function FacilityListPage() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{h.specialization}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(h.createdAt)}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{h.lastLoginAt ? formatDateTime(h.lastLoginAt) : "Never"}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      <button
+                        type="button"
+                        className="hover:text-primary hover:underline transition-colors"
+                        onClick={() => setHistoryTarget({ id: h.id, name: h.facilityName })}
+                      >
+                        {h.lastLoginAt ? formatDateTime(h.lastLoginAt) : "Never"}
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1.5">
                         {h.verified ? (
@@ -153,6 +163,16 @@ export default function FacilityListPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {historyTarget && (
+        <LoginHistoryDialog
+          role="facility"
+          id={historyTarget.id}
+          name={historyTarget.name}
+          open={!!historyTarget}
+          onOpenChange={(o) => { if (!o) setHistoryTarget(null); }}
+        />
       )}
     </div>
   );

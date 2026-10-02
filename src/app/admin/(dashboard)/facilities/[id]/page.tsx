@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Mail, Phone, Stethoscope, Star, Calendar, ShieldCheck, ShieldOff,
-  CheckCircle2, XCircle, Loader2, Ban, Undo2,
+  CheckCircle2, XCircle, Loader2, Ban, Undo2, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
@@ -13,7 +13,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { avatarGradient, initials } from "@/lib/avatar";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
+import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
 interface FacilityDetail {
   id: string; facilityName: string; email: string; phone: string; license: string | null;
@@ -37,6 +38,7 @@ export default function FacilityDetailPage() {
   const [facility, setFacility] = useState<FacilityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -129,6 +131,13 @@ export default function FacilityDetailPage() {
           <dl className="space-y-3 text-sm">
             <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {facility.email}</div>
             <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {facility.phone}</div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              Last login:{" "}
+              <button type="button" className="hover:text-primary hover:underline transition-colors" onClick={() => setHistoryOpen(true)}>
+                {facility.lastLoginAt ? formatDateTime(facility.lastLoginAt) : "Never"}
+              </button>
+            </div>
           </dl>
         </Card>
         <Card className="p-6 border-border/50 bg-card/60">
@@ -147,6 +156,14 @@ export default function FacilityDetailPage() {
           </Card>
         )}
       </div>
+
+      <LoginHistoryDialog
+        role="facility"
+        id={facility.id}
+        name={facility.facilityName}
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+      />
     </div>
   );
 }

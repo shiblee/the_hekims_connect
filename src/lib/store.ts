@@ -74,6 +74,10 @@ export const useAppStore = create<AppState>()(
       setPatient: (patient) => set({ patient }),
       setOtpPending: (otpPending) => set({ otpPending }),
       logout: () => {
+        const token = localStorage.getItem("hekims-connect-token");
+        if (token) {
+          fetch("/api/auth/logout", { method: "POST", headers: { "x-hekim-auth": token } }).catch(() => {});
+        }
         localStorage.removeItem("hekims-connect-token");
         set({ view: "landing", facility: null, patient: null, otpPending: null });
       },

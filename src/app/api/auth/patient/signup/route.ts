@@ -5,6 +5,7 @@ import { makeToken, fetchPatient } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
+import { getClientIp, parseUserAgent } from "@/lib/request-info";
 
 const PRECHECK_VALIDITY_MS = 30 * 60 * 1000;
 
@@ -12,6 +13,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, contact, password } = body;
+    const ip = getClientIp(req);
+    const { browser, os, device } = parseUserAgent(req.headers.get("user-agent"));
 
     if (!name || !contact || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -71,6 +74,16 @@ export async function POST(req: NextRequest) {
         event: "welcome_sent",
       });
     }
+
+    const session = await db.userSession.create({
+      data: { patientId: patient.id, ip, browser, os, device },
+    });
+    await db.loginEvent.create({
+      data: {
+        patientId: patient.id, identifier: normalizedContact, displayName: patient.name,
+        ip, browser, os, device, status: "success", sessionId: session.id,
+      },
+    });
 
     return NextResponse.json({
       success: true,

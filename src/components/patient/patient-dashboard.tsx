@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { clearToken } from "@/lib/api";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
@@ -47,7 +46,7 @@ export function PatientDashboard() {
       .catch(() => {});
   }, [view]);
 
-  const onLogout = () => { clearToken(); logout(); };
+  const onLogout = () => { logout(); };
   if (!patient) return null;
 
   return (

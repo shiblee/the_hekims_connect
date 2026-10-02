@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, ShieldCheck, ShieldOff,
   CheckCircle2, XCircle, Loader2, Ban, Undo2, HeartPulse, Cake, Users, Pill,
-  Activity, FileText, Leaf,
+  Activity, FileText, Leaf, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
+import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
 interface PatientDetail {
   id: string; name: string; email: string | null; phone: string | null; dob: string | null; gender: string | null;
@@ -44,6 +45,7 @@ export default function PatientDetailPage() {
   const [patient, setPatient] = useState<PatientDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -143,6 +145,12 @@ export default function PatientDetailPage() {
             <InfoRow icon={Briefcase}>{patient.occupation || "Occupation not provided"}</InfoRow>
             <InfoRow icon={Phone}>Emergency contact: {patient.emergencyContact || "Not provided"}</InfoRow>
             <InfoRow icon={Calendar}>Registered {new Date(patient.createdAt).toLocaleDateString()}</InfoRow>
+            <InfoRow icon={Clock}>
+              Last login:{" "}
+              <button type="button" className="hover:text-primary hover:underline transition-colors" onClick={() => setHistoryOpen(true)}>
+                {patient.lastLoginAt ? new Date(patient.lastLoginAt).toLocaleString() : "Never"}
+              </button>
+            </InfoRow>
           </dl>
         </Card>
         <Card className="p-6 border-border/50 bg-card/60">
@@ -161,6 +169,14 @@ export default function PatientDetailPage() {
           </dl>
         </Card>
       </div>
+
+      <LoginHistoryDialog
+        role="patient"
+        id={patient.id}
+        name={patient.name}
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+      />
     </div>
   );
 }

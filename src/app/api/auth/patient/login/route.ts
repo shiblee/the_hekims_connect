@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { verifyPassword, generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+import { getClientIp, parseUserAgent } from "@/lib/request-info";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +15,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { value: normalizedContact } = normalizeContact(contact);
+    const ip = getClientIp(req);
+    const { browser, os, device } = parseUserAgent(req.headers.get("user-agent"));
 
     const patient = await db.patient.findFirst({
       where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] },
@@ -37,12 +40,24 @@ export async function POST(req: NextRequest) {
             where: { id: patient.id },
             data: { failedLoginAttempts: 0, lockedUntil: new Date(Date.now() + lockoutMinutes * 60 * 1000) },
           });
+          await db.loginEvent.create({
+            data: {
+              patientId: patient.id, identifier: normalizedContact, displayName: patient.name,
+              ip, browser, os, device, status: "failed", failureReason: "Account locked",
+            },
+          });
           return NextResponse.json(
             { error: `Too many failed attempts. Try again in ${lockoutMinutes} minutes.` },
             { status: 429 }
           );
         }
         await db.patient.update({ where: { id: patient.id }, data: { failedLoginAttempts: attempts } });
+        await db.loginEvent.create({
+          data: {
+            patientId: patient.id, identifier: normalizedContact, displayName: patient.name,
+            ip, browser, os, device, status: "failed", failureReason: "Incorrect password",
+          },
+        });
       }
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }

@@ -96,6 +96,8 @@ model Facility {
   mizajAssessments MizajAssessment[]
   prescriptions   Prescription[]
   otpCodes        OtpCode[]
+  loginEvents     LoginEvent[]
+  sessions        UserSession[]
 
   @@map("Hakim")
 }
@@ -137,6 +139,8 @@ model Patient {
   mizajAssessments MizajAssessment[]
   prescriptions    Prescription[]
   otpCodes         OtpCode[]
+  loginEvents      LoginEvent[]
+  sessions         UserSession[]
 }
 
 model Appointment {
@@ -309,6 +313,42 @@ model OtpCode {
   facility Facility? @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   admin    Admin?    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model LoginEvent {
+  id            String   @id @default(cuid())
+  facilityId    String?
+  patientId     String?
+  identifier    String
+  displayName   String
+  ip            String?
+  browser       String?
+  os            String?
+  device        String?
+  status        String
+  failureReason String?
+  sessionId     String?
+  createdAt     DateTime @default(now())
+
+  facility Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+}
+
+model UserSession {
+  id         String    @id @default(cuid())
+  facilityId String?
+  patientId  String?
+  ip         String?
+  browser    String?
+  os         String?
+  device     String?
+  loginAt    DateTime  @default(now())
+  logoutAt   DateTime?
+  logoutType String?
+  createdAt  DateTime  @default(now())
+
+  facility Facility? @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 model Language {
