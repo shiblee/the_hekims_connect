@@ -144,17 +144,6 @@ export default function MetaPage() {
     }
   };
 
-  const deleteOption = async (option: Option) => {
-    if (!confirm(`Delete "${option.label}"?`)) return;
-    try {
-      await adminApi.delete(`/api/admin/metadata/options/${option.id}`);
-      setOptions((o) => o.filter((x) => x.id !== option.id));
-      if (selected) setSections((s) => s.map((sec) => sec.id === selected.id ? { ...sec, _count: { options: sec._count.options - 1 } } : sec));
-    } catch (err: any) {
-      toast.error(err.message || "Could not delete option");
-    }
-  };
-
   const move = async (index: number, dir: -1 | 1) => {
     const target = index + dir;
     if (target < 0 || target >= options.length) return;
@@ -282,9 +271,6 @@ export default function MetaPage() {
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Switch checked={o.active} onCheckedChange={() => toggleActive(o)} />
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => deleteOption(o)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
                         </>
                       )}
                     </div>
