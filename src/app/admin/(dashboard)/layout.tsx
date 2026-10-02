@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, LogOut, User, ListChecks, LogIn, ChevronDown, Lock, Bell,
-  Stethoscope, HeartPulse, Settings, BellRing, Languages,
+  Stethoscope, HeartPulse, Settings, BellRing, Languages, FileText,
 } from "lucide-react";
 import { adminApi, restoreAdminSession } from "@/lib/admin-api";
 import { useAdminStore } from "@/lib/admin-store";
@@ -38,6 +38,7 @@ const navLinks = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/notifications", label: "Notifications", icon: BellRing },
   { href: "/admin/languages", label: "Languages", icon: Languages },
+  { href: "/admin/pages", label: "Pages", icon: FileText },
 ];
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {

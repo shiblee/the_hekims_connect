@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/lib/notifications";
 import { LANDING_EN_STRINGS } from "@/lib/i18n/seed-data/landing-en";
+import { PAGES_EN } from "@/lib/i18n/seed-data/pages-en";
 
 const AVATAR_COLORS = ["teal", "amber", "emerald", "rose", "violet", "cyan"];
 
@@ -35,8 +36,38 @@ export async function seedTranslations() {
   }
 }
 
+/**
+ * Idempotent — only creates a page/English content if it doesn't already exist,
+ * so re-running never clobbers content an admin has since edited.
+ */
+export async function seedPages() {
+  for (const p of PAGES_EN) {
+    const page = await db.page.upsert({
+      where: { slug: p.slug },
+      update: {},
+      create: { slug: p.slug, title: p.title },
+    });
+    const existing = await db.pageContent.findUnique({
+      where: { pageId_languageCode: { pageId: page.id, languageCode: "en" } },
+    });
+    if (!existing) {
+      await db.pageContent.create({
+        data: {
+          pageId: page.id,
+          languageCode: "en",
+          title: p.title,
+          subtitle: p.subtitle,
+          body: p.body,
+          status: "published",
+        },
+      });
+    }
+  }
+}
+
 export async function seedDatabase() {
   await seedTranslations();
+  await seedPages();
 
   // Check if already seeded
   const hakimCount = await db.hakim.count();

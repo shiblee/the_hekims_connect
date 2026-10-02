@@ -317,7 +317,37 @@ model Language {
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
 
-  values TranslationValue[]
+  values       TranslationValue[]
+  pageContents PageContent[]
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contents PageContent[]
+}
+
+model PageContent {
+  id           String   @id @default(cuid())
+  pageId       String
+  languageCode String
+  title        String
+  subtitle     String?
+  body         String
+  status       String   @default("draft")
+  updatedBy    String?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  page     Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageCode], references: [code], onDelete: Cascade)
+
+  @@unique([pageId, languageCode])
+  @@index([languageCode, status])
 }
 
 model TranslationKey {

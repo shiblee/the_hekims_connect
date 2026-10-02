@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 import { ArrowLeft } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { SiteFooter } from "@/components/shared/site-footer";
@@ -67,5 +68,28 @@ export function StaticSection({
         {children}
       </div>
     </div>
+  );
+}
+
+/** Renders admin-managed Markdown page content (## headings become sections) in the same visual style as StaticSection. */
+export function MarkdownBody({ body }: { body: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        h2: ({ children }) => <h2 className="font-serif text-xl sm:text-2xl font-semibold mb-3 mt-10 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="font-serif text-lg font-semibold mb-2 mt-6">{children}</h3>,
+        p: ({ children }) => <p className="text-base text-muted-foreground leading-relaxed mb-3">{children}</p>,
+        strong: ({ children }) => <strong className="text-foreground font-medium">{children}</strong>,
+        a: ({ href, children }) => (
+          <a href={href} className="text-primary hover:underline">
+            {children}
+          </a>
+        ),
+        ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 text-base text-muted-foreground leading-relaxed mb-3">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 text-base text-muted-foreground leading-relaxed mb-3">{children}</ol>,
+      }}
+    >
+      {body}
+    </ReactMarkdown>
   );
 }
