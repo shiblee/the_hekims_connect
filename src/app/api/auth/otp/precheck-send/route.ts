@@ -54,10 +54,11 @@ export async function POST(req: NextRequest) {
 
     let delivered = false;
     if (isEmail) {
+      const nameVar = role === "hakim" ? "hakim_name" : "patient_name";
       const result = await sendTemplatedEmail({
-        templateKey: "hakim_otp_verification",
+        templateKey: role === "hakim" ? "hakim_otp_verification" : "patient_otp_verification",
         to: normalizedContact,
-        vars: { hakim_name: (typeof name === "string" && name.trim()) || "there", otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
+        vars: { [nameVar]: (typeof name === "string" && name.trim()) || "there", otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_sent",
       });
       delivered = result.delivery === "sent";

@@ -713,34 +713,34 @@ function PatientSignup() {
   const setView = useAppStore((s) => s.setView);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", password: "" });
+  const [form, setForm] = useState({ name: "", contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const iv = useInlineVerify("patient");
 
   useEffect(() => {
-    if (iv.stage === "verified") setErrors((er) => (er.phone ? { ...er, phone: "" } : er));
+    if (iv.stage === "verified") setErrors((er) => (er.contact ? { ...er, contact: "" } : er));
   }, [iv.stage]);
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => (er[key] ? { ...er, [key]: "" } : er));
-    if (key === "phone" && iv.stage !== "idle") iv.reset();
+    if (key === "contact" && iv.stage !== "idle") iv.reset();
   };
 
   const sendCode = () => {
-    const err = validate.required(form.phone, "Phone") || validate.phone(form.phone);
+    const err = validate.contact(form.contact);
     if (err) {
-      setErrors((er) => ({ ...er, phone: err }));
+      setErrors((er) => ({ ...er, contact: err }));
       return;
     }
-    iv.send(form.phone);
+    iv.send(form.contact, form.name);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {
       name: validate.required(form.name, "Full name"),
-      phone: (validate.required(form.phone, "Phone") || validate.phone(form.phone)) || (iv.stage !== "verified" ? "Please verify your phone number first" : ""),
+      contact: validate.contact(form.contact) || (iv.stage !== "verified" ? "Please verify your email or phone first" : ""),
       password: validate.required(form.password, "Password") || validate.password(form.password),
     };
     const activeErrs = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
@@ -758,7 +758,7 @@ function PatientSignup() {
       router.push("/");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
-      if (/phone/i.test(msg)) setErrors((er) => ({ ...er, phone: msg }));
+      if (/email|phone/i.test(msg)) setErrors((er) => ({ ...er, contact: msg }));
       else toast.error(msg);
     } finally {
       setLoading(false);
@@ -782,25 +782,23 @@ function PatientSignup() {
             <div className="flex items-start gap-2">
               <div className="flex-1">
                 <FloatingField
-                  id="patient-signup-phone"
-                  label="Phone (10 digits)"
-                  icon={Phone}
-                  inputMode="numeric"
-                  maxLength={10}
-                  error={!!errors.phone}
-                  value={form.phone}
+                  id="patient-signup-contact"
+                  label="Email or phone"
+                  icon={Mail}
+                  error={!!errors.contact}
+                  value={form.contact}
                   disabled={iv.stage === "verified"}
-                  onChange={(e) => setField("phone", digitsOnly(e.target.value))}
+                  onChange={(e) => setField("contact", e.target.value)}
                 />
               </div>
               {iv.stage === "idle" && (
-                <Button type="button" variant="outline" className="h-14 shrink-0" disabled={iv.sending || form.phone.length !== 10} onClick={sendCode}>
+                <Button type="button" variant="outline" className="h-14 shrink-0" disabled={iv.sending || !form.contact} onClick={sendCode}>
                   {iv.sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Code"}
                 </Button>
               )}
             </div>
-            <FieldError message={errors.phone} />
-            <InlineVerifyBox iv={iv} contact={form.phone} accent="accent" />
+            <FieldError message={errors.contact} />
+            <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} accent="accent" />
           </div>
           <div>
             <FloatingField
@@ -841,22 +839,58 @@ function PatientSignup() {
 
 function PatientLogin() {
   const router = useRouter();
-  const otpPending = useAppStore((s) => s.otpPending);
-  const setOtpPending = useAppStore((s) => s.setOtpPending);
+  const setPatient = useAppStore((s) => s.setPatient);
+  const setView = useAppStore((s) => s.setView);
+  const [mode, setMode] = useState<"password" | "otp">("password");
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ phone: "", password: "" });
+  const [form, setForm] = useState({ contact: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [otpStage, setOtpStage] = useState<"form" | "otp">("form");
+  const [otpContact, setOtpContact] = useState("");
+  const [otpDevCode, setOtpDevCode] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpError, setOtpError] = useState("");
+  const [otpCopied, setOtpCopied] = useState(false);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const t = setInterval(() => setOtpCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [otpCooldown]);
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => (er[key] ? { ...er, [key]: "" } : er));
+    if (key === "contact" && otpStage === "otp") {
+      setOtpStage("form");
+      setOtpCode("");
+      setOtpError("");
+    }
+  };
+
+  const copyOtpCode = () => {
+    navigator.clipboard?.writeText(otpDevCode).catch(() => {});
+    setOtpCopied(true);
+    setTimeout(() => setOtpCopied(false), 1500);
+  };
+
+  const enterOtpStage = (contact: string, devCode?: string) => {
+    setOtpContact(contact);
+    setOtpDevCode(devCode ?? "");
+    setOtpCode(devCode ?? "");
+    setOtpError("");
+    setOtpCooldown(30);
+    setOtpStage("otp");
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {
-      phone: validate.required(form.phone, "Phone") || validate.phone(form.phone),
+      contact: validate.contact(form.contact),
       password: validate.required(form.password, "Password"),
     };
     const activeErrs = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
@@ -866,9 +900,9 @@ function PatientLogin() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp: string; contact: string; name: string }>("/api/auth/patient/login", form);
-      setOtpPending({ contact: res.contact, role: "patient", code: res.devOtp, name: res.name });
+      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/patient/login", form);
       toast.success("OTP sent!");
+      enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
       setErrors({ password: err.message || "Login failed" });
     } finally {
@@ -876,9 +910,117 @@ function PatientLogin() {
     }
   };
 
-  if (otpPending?.role === "patient") {
-    return <OtpPanel role="patient" onBack={() => setOtpPending(null)} />;
-  }
+  const sendOtpLogin = async () => {
+    const err = validate.contact(form.contact);
+    if (err) {
+      setErrors((er) => ({ ...er, contact: err }));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "patient" });
+      toast.success("OTP sent!");
+      enterOtpStage(res.contact, res.devOtp);
+    } catch (err: any) {
+      setErrors((er) => ({ ...er, contact: err.message || "Could not send OTP" }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyLogin = async () => {
+    if (otpCode.length !== 6) {
+      setOtpError("Enter the 6-digit code");
+      return;
+    }
+    setOtpVerifying(true);
+    setOtpError("");
+    try {
+      const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "patient" });
+      setToken(res.token);
+      setPatient(res.user);
+      setView("patient-dashboard");
+      toast.success("Verified! Welcome.");
+      router.push("/");
+    } catch (err: any) {
+      setOtpError(err.message || "Verification failed");
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  const resendLogin = async () => {
+    if (otpCooldown > 0) return;
+    try {
+      const res = await api.post<{ devOtp?: string }>("/api/auth/otp/send", { contact: otpContact, role: "patient" });
+      setOtpDevCode(res.devOtp ?? "");
+      setOtpCode(res.devOtp ?? "");
+      setOtpCooldown(30);
+      toast.success("A fresh OTP has been sent");
+    } catch (err: any) {
+      toast.error(err.message || "Could not resend OTP");
+    }
+  };
+
+  const editDetails = () => {
+    setOtpStage("form");
+    setOtpCode("");
+    setOtpError("");
+  };
+
+  const switchMode = (m: "password" | "otp") => {
+    if (otpStage === "otp") editDetails();
+    setMode(m);
+  };
+
+  const otpBox = (
+    <div className="mt-2 rounded-lg border border-accent/20 bg-accent/5 p-3">
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        {otpDevCode ? (
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground">
+              Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{otpDevCode}</span>
+            </p>
+            <button
+              type="button"
+              onClick={copyOtpCode}
+              className="text-muted-foreground hover:text-foreground shrink-0"
+              title="Copy code"
+            >
+              {otpCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">We sent a 6-digit code — check your inbox.</p>
+        )}
+        <button
+          type="button"
+          onClick={resendLogin}
+          disabled={otpCooldown > 0}
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
+        >
+          <RefreshCw className="h-3 w-3" />
+          {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend"}
+        </button>
+      </div>
+      <div className="flex justify-center py-1">
+        <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+          <InputOTPGroup>
+            <InputOTPSlot index={0} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={1} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={2} className="h-10 w-9 text-sm" />
+          </InputOTPGroup>
+          <InputOTPSeparator />
+          <InputOTPGroup>
+            <InputOTPSlot index={3} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={4} className="h-10 w-9 text-sm" />
+            <InputOTPSlot index={5} className="h-10 w-9 text-sm" />
+          </InputOTPGroup>
+        </InputOTP>
+      </div>
+      <FieldError message={otpError} />
+    </div>
+  );
 
   return (
     <AuthLayout role="patient">
@@ -888,45 +1030,99 @@ function PatientLogin() {
           <h1 className="font-serif text-2xl font-bold">Welcome back</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to continue your healing journey.</p>
         </div>
-        <form onSubmit={submit} className="space-y-5" noValidate>
-          <div>
-            <FloatingField id="patient-login-phone" label="Phone (10 digits)" icon={Phone} inputMode="numeric" maxLength={10} error={!!errors.phone} value={form.phone} onChange={(e) => setField("phone", digitsOnly(e.target.value))} />
-            <FieldError message={errors.phone} />
-          </div>
-          <div>
-            <FloatingField
-              id="patient-login-password"
-              label="Password"
-              icon={Lock}
-              error={!!errors.password}
-              type={show ? "text" : "password"}
-              value={form.password}
-              onChange={(e) => setField("password", e.target.value)}
-              endAdornment={
-                <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              }
-            />
-            <FieldError message={errors.password} />
-          </div>
-          <Button type="submit" disabled={loading} className="w-full h-12 text-base bg-accent text-accent-foreground hover:bg-accent/90 mt-2">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {loading ? "Sending OTP…" : "Continue with OTP"}
-          </Button>
-        </form>
-        <div className="mt-4 rounded-lg border border-accent/20 bg-accent/5 p-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Demo Patient:</span> 9811100001 / patient123
-        </div>
-        <div className="flex items-center justify-between mt-5 text-sm">
-          <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <ArrowLeft className="h-4 w-4" /> Home
+
+        <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => switchMode("password")}
+            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "password" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            Password
           </button>
-          <span className="text-muted-foreground">
-            New here?{" "}
-            <button onClick={() => router.push("/register/patient")} className="text-accent hover:underline font-medium">Register</button>
-          </span>
+          <button
+            type="button"
+            onClick={() => switchMode("otp")}
+            className={cn("h-9 rounded-md text-sm font-medium transition-colors", mode === "otp" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            OTP only
+          </button>
         </div>
+
+        {mode === "password" ? (
+          <form onSubmit={otpStage === "form" ? submit : (e) => { e.preventDefault(); verifyLogin(); }} className="space-y-5" noValidate>
+            <div>
+              <FloatingField id="patient-login-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FieldError message={errors.contact} />
+              {otpStage === "otp" && otpBox}
+            </div>
+            {otpStage === "form" && (
+              <div>
+                <FloatingField
+                  id="patient-login-password"
+                  label="Password"
+                  icon={Lock}
+                  error={!!errors.password}
+                  type={show ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => setField("password", e.target.value)}
+                  endAdornment={
+                    <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
+                />
+                <FieldError message={errors.password} />
+              </div>
+            )}
+            <Button type="submit" disabled={otpStage === "form" ? loading : otpVerifying} className="w-full h-12 text-base bg-accent text-accent-foreground hover:bg-accent/90 mt-2">
+              {(otpStage === "form" ? loading : otpVerifying) ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {otpStage === "form" ? (loading ? "Sending OTP…" : "Continue with OTP") : (otpVerifying ? "Verifying…" : "Verify & Sign In")}
+            </Button>
+          </form>
+        ) : (
+          <div className="space-y-5">
+            <div>
+              <FloatingField id="patient-login-otp-contact" label="Email or phone" icon={Mail} error={!!errors.contact} value={form.contact} onChange={(e) => setField("contact", e.target.value)} />
+              <FieldError message={errors.contact} />
+              {otpStage === "otp" && otpBox}
+              {otpStage === "form" && <p className="text-xs text-muted-foreground mt-1.5">We'll email or text you a one-time code — no password needed.</p>}
+            </div>
+            <Button
+              type="button"
+              disabled={otpStage === "form" ? loading : otpVerifying}
+              onClick={otpStage === "form" ? sendOtpLogin : verifyLogin}
+              className="w-full h-12 text-base bg-accent text-accent-foreground hover:bg-accent/90 mt-2"
+            >
+              {(otpStage === "form" ? loading : otpVerifying) ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {otpStage === "form" ? (loading ? "Sending OTP…" : "Send OTP") : (otpVerifying ? "Verifying…" : "Verify & Sign In")}
+            </Button>
+          </div>
+        )}
+
+        {otpStage === "otp" && (
+          <button type="button" onClick={editDetails} className="mt-3 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <ArrowLeft className="h-4 w-4" /> Edit details
+          </button>
+        )}
+
+        {otpStage === "form" && (
+          <>
+            {mode === "password" && (
+              <div className="mt-4 rounded-lg border border-accent/20 bg-accent/5 p-3 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Demo Patient:</span> 9811100001 / patient123
+              </div>
+            )}
+            <div className="flex items-center justify-between mt-5 text-sm">
+              <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <ArrowLeft className="h-4 w-4" /> Home
+              </button>
+              <span className="text-muted-foreground">
+                New here?{" "}
+                <button onClick={() => router.push("/register/patient")} className="text-accent hover:underline font-medium">Register</button>
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </AuthLayout>
   );

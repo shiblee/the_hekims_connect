@@ -16,14 +16,12 @@ export async function POST(req: NextRequest) {
 
     const user = role === "hakim"
       ? await db.hakim.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
-      : await db.patient.findUnique({ where: { phone: contact } });
+      : await db.patient.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } });
     if (!user) {
       return NextResponse.json({ error: "No account found" }, { status: 404 });
     }
 
-    const identifier = role === "hakim"
-      ? ((user as { email: string | null; phone: string | null }).email ?? (user as { phone: string }).phone)
-      : (user as { phone: string }).phone;
+    const identifier = (user as { email: string | null; phone: string | null }).email ?? (user as { phone: string }).phone;
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
     const lastOtp = await db.otpCode.findFirst({ where: { identifier }, orderBy: { createdAt: "desc" } });
@@ -49,12 +47,13 @@ export async function POST(req: NextRequest) {
     });
 
     let delivered = false;
-    if (role === "hakim" && (user as { email: string | null }).email) {
+    if ((user as { email: string | null }).email) {
       const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
+      const nameVar = role === "hakim" ? "hakim_name" : "patient_name";
       const result = await sendTemplatedEmail({
-        templateKey: "hakim_otp_verification",
+        templateKey: role === "hakim" ? "hakim_otp_verification" : "patient_otp_verification",
         to: identifier,
-        vars: { hakim_name: (user as { name: string }).name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
+        vars: { [nameVar]: (user as { name: string }).name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_resent",
       });
       delivered = result.delivery === "sent";

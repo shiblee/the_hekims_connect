@@ -15,7 +15,7 @@ import { CalendarDays, Clock, Check, X, Loader2, Search, Phone, Droplet } from "
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string; notes: string | null;
-  patient: { id: string; name: string; avatarColor: string; mizaj: string; bloodGroup: string; phone: string };
+  patient: { id: string; name: string; avatarColor: string; mizaj: string; bloodGroup: string; phone: string | null };
 }
 
 export function AppointmentsView() {
@@ -98,7 +98,7 @@ export function AppointmentsView() {
                       {a.patient.bloodGroup && <Badge variant="outline" className="text-red-300 border-red-500/30 bg-red-500/10"><Droplet className="h-3 w-3 mr-0.5" />{a.patient.bloodGroup}</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{a.type}{a.reason ? ` · ${a.reason}` : ""}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><Phone className="h-3 w-3" />{a.patient.phone}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><Phone className="h-3 w-3" />{a.patient.phone || "—"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {a.status === "scheduled" && (

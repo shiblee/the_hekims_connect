@@ -15,7 +15,7 @@ import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 
 interface PatientRow {
-  id: string; name: string; email: string | null; phone: string; gender: string | null; dob: string | null;
+  id: string; name: string; email: string | null; phone: string | null; gender: string | null; dob: string | null;
   bloodGroup: string | null; mizaj: string | null; avatarColor: string;
   verified: boolean; active: boolean; lastLoginAt: string | null; createdAt: string;
 }
@@ -109,7 +109,7 @@ export default function PatientListPage() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       <div>{p.email || "—"}</div>
-                      <div className="text-xs">{p.phone}</div>
+                      <div className="text-xs">{p.phone || "—"}</div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{p.gender || "—"} {p.dob ? `· ${p.dob}` : ""}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(p.createdAt).toLocaleDateString()}</td>

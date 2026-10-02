@@ -103,8 +103,10 @@ model Patient {
   id                String   @id @default(cuid())
   name              String
   email             String?  @unique
-  phone             String   @unique
+  phone             String?  @unique
   password          String
+  failedLoginAttempts Int @default(0)
+  lockedUntil       DateTime?
   dob               String?
   gender            String?
   bloodGroup        String?

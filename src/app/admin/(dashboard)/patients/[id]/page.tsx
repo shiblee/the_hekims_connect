@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, ShieldCheck, ShieldOff,
-  CheckCircle2, XCircle, Loader2, Ban, Undo2, HeartPulse,
+  CheckCircle2, XCircle, Loader2, Ban, Undo2, HeartPulse, Cake, Users, Pill,
+  Activity, FileText, Leaf,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
@@ -16,7 +17,7 @@ import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 
 interface PatientDetail {
-  id: string; name: string; email: string | null; phone: string; dob: string | null; gender: string | null;
+  id: string; name: string; email: string | null; phone: string | null; dob: string | null; gender: string | null;
   bloodGroup: string | null; address: string | null; emergencyContact: string | null; occupation: string | null;
   height: string | null; weight: string | null; familyHistory: string | null; medicalHistory: string | null;
   chronicConditions: string | null; allergies: string | null; currentMedications: string | null;
@@ -135,19 +136,28 @@ export default function PatientDetailPage() {
           <h2 className="font-serif text-lg font-semibold mb-4">Contact Information</h2>
           <dl className="space-y-3 text-sm">
             <InfoRow icon={Mail}>{patient.email || "No email on file"}</InfoRow>
-            <InfoRow icon={Phone}>{patient.phone}</InfoRow>
-            {patient.address && <InfoRow icon={MapPin}>{patient.address}</InfoRow>}
-            {patient.occupation && <InfoRow icon={Briefcase}>{patient.occupation}</InfoRow>}
+            <InfoRow icon={Phone}>{patient.phone || "No phone on file"}</InfoRow>
+            <InfoRow icon={Cake}>DOB: {patient.dob || "Not provided"}</InfoRow>
+            <InfoRow icon={Users}>Gender: {patient.gender || "Not provided"}</InfoRow>
+            <InfoRow icon={MapPin}>{patient.address || "Address not provided"}</InfoRow>
+            <InfoRow icon={Briefcase}>{patient.occupation || "Occupation not provided"}</InfoRow>
+            <InfoRow icon={Phone}>Emergency contact: {patient.emergencyContact || "Not provided"}</InfoRow>
             <InfoRow icon={Calendar}>Registered {new Date(patient.createdAt).toLocaleDateString()}</InfoRow>
           </dl>
         </Card>
         <Card className="p-6 border-border/50 bg-card/60">
           <h2 className="font-serif text-lg font-semibold mb-4">Medical Profile</h2>
           <dl className="space-y-3 text-sm">
+            <InfoRow icon={Leaf}>Mizaj: {patient.mizaj || "Not assessed"}</InfoRow>
             <InfoRow icon={HeartPulse}>Blood group: {patient.bloodGroup || "—"}</InfoRow>
             <InfoRow icon={HeartPulse}>Height / Weight: {patient.height || "—"} / {patient.weight || "—"}</InfoRow>
-            {patient.chronicConditions && <InfoRow icon={HeartPulse}>Chronic: {patient.chronicConditions}</InfoRow>}
-            {patient.allergies && <InfoRow icon={HeartPulse}>Allergies: {patient.allergies}</InfoRow>}
+            <InfoRow icon={HeartPulse}>Chronic conditions: {patient.chronicConditions || "None on file"}</InfoRow>
+            <InfoRow icon={HeartPulse}>Allergies: {patient.allergies || "None on file"}</InfoRow>
+            <InfoRow icon={Pill}>Current medications: {patient.currentMedications || "None on file"}</InfoRow>
+            <InfoRow icon={FileText}>Medical history: {patient.medicalHistory || "Not provided"}</InfoRow>
+            <InfoRow icon={Users}>Family history: {patient.familyHistory || "Not provided"}</InfoRow>
+            <InfoRow icon={FileText}>Surgical history: {patient.surgicalHistory || "Not provided"}</InfoRow>
+            <InfoRow icon={Activity}>Lifestyle: {patient.lifestyle || "Not provided"}</InfoRow>
           </dl>
         </Card>
       </div>

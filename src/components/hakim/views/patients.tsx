@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Search, Users, Loader2, Phone, MapPin, Droplet, Calendar, Activity, FileText, MessageSquare, Clock } from "lucide-react";
 
 interface PatientRow {
-  id: string; name: string; email: string; phone: string; dob: string | null; gender: string | null;
+  id: string; name: string; email: string; phone: string | null; dob: string | null; gender: string | null;
   bloodGroup: string | null; mizaj: string | null; avatarColor: string; chronicConditions: string | null;
   address: string | null; appointmentCount: number; lastVisit: string | null;
 }
@@ -78,7 +78,7 @@ export function PatientsView() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{p.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{p.phone}</p>
+                  <p className="text-xs text-muted-foreground truncate">{p.phone || "—"}</p>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                     {p.mizaj && <Badge variant="outline" className={cn("border", mizajBadge(p.mizaj))}>{p.mizaj}</Badge>}
                     {p.bloodGroup && <Badge variant="outline" className="text-red-300 border-red-500/30 bg-red-500/10 text-[10px]">{p.bloodGroup}</Badge>}
@@ -106,7 +106,7 @@ export function PatientsView() {
                   </div>
                   <div>
                     <p>{selected.name}</p>
-                    <p className="text-xs font-normal text-muted-foreground">{selected.email} · {selected.phone}</p>
+                    <p className="text-xs font-normal text-muted-foreground">{selected.email} · {selected.phone || "—"}</p>
                   </div>
                 </DialogTitle>
               </DialogHeader>

@@ -26,9 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "This account has been suspended. Contact support." }, { status: 403 });
     }
 
-    const identifier = role === "hakim"
-      ? ((user as { email: string | null; phone: string | null }).email ?? (user as { phone: string }).phone)
-      : (user as { phone: string }).phone;
+    const identifier = (user as { email: string | null; phone: string | null }).email ?? (user as { phone: string }).phone;
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
     const lastOtp = await db.otpCode.findFirst({ where: { identifier, purpose: "login" }, orderBy: { createdAt: "desc" } });
@@ -50,20 +48,22 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const hasEmail = !!(user as { email: string | null }).email;
     let delivered = false;
-    if (role === "hakim" && (user as { email: string | null }).email) {
+    if (hasEmail) {
       const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
+      const nameVar = role === "hakim" ? "hakim_name" : "patient_name";
       const result = await sendTemplatedEmail({
-        templateKey: "hakim_otp_verification",
+        templateKey: role === "hakim" ? "hakim_otp_verification" : "patient_otp_verification",
         to: identifier,
-        vars: { hakim_name: user.name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
+        vars: { [nameVar]: user.name, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_sent",
       });
       delivered = result.delivery === "sent";
     }
 
     return NextResponse.json({
-      message: role === "hakim" && (user as { email: string | null }).email ? "OTP sent to your registered email" : "OTP sent to your registered phone",
+      message: hasEmail ? "OTP sent to your registered email" : "OTP sent to your registered phone",
       contact: identifier,
       name: user.name,
       devOtp: delivered ? undefined : code,
