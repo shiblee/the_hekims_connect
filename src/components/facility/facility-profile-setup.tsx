@@ -249,16 +249,12 @@ export function FacilityProfileSetup() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-primary/15 via-background to-accent/10">
-      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/20 blur-[100px]" />
-      <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-accent/20 blur-[100px]" />
-      <div className="pointer-events-none absolute inset-0 bg-background/40" />
-
-      <div className="relative z-10 min-h-screen flex flex-col">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/55 backdrop-blur-[3px]">
+      <div className="min-h-full flex flex-col">
         <header className="px-4 lg:px-0 py-5">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <BrandLogo size={32} />
-            <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground hover:text-foreground">
+            <BrandLogo size={32} className="brightness-0 invert" />
+            <Button variant="ghost" size="sm" onClick={logout} className="text-white/80 hover:text-white hover:bg-white/10">
               <LogOut className="h-4 w-4 mr-1.5" /> Logout
             </Button>
           </div>
@@ -267,8 +263,8 @@ export function FacilityProfileSetup() {
         <main className="flex-1 px-4 lg:px-0 py-6 flex items-start justify-center">
           <div className="w-full max-w-2xl">
             <div className="text-center mb-7">
-              <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Complete Your Facility Profile</h1>
-              <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-white">Complete Your Facility Profile</h1>
+              <p className="text-white/70 mt-2 max-w-md mx-auto">
                 Help us understand your facility. This information personalises your experience and the services available to you.
               </p>
             </div>
@@ -281,14 +277,14 @@ export function FacilityProfileSetup() {
                       <div
                         className={cn(
                           "h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 transition-all",
-                          i < step ? "bg-primary text-primary-foreground" : i === step ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110" : "bg-muted text-muted-foreground"
+                          i < step ? "bg-primary text-primary-foreground" : i === step ? "bg-primary text-primary-foreground ring-4 ring-primary/30 scale-110" : "bg-white/15 text-white/70"
                         )}
                       >
                         {i < step ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
                       </div>
-                      <span className={cn("text-[11px] whitespace-nowrap", i === step ? "font-semibold text-foreground" : "text-muted-foreground")}>{label}</span>
+                      <span className={cn("text-[11px] whitespace-nowrap", i === step ? "font-semibold text-white" : "text-white/50")}>{label}</span>
                     </div>
-                    {i < STEPS.length - 1 && <div className={cn("h-0.5 w-6 sm:w-10 mx-1 -mt-5 rounded-full", i < step ? "bg-primary" : "bg-border")} />}
+                    {i < STEPS.length - 1 && <div className={cn("h-0.5 w-6 sm:w-10 mx-1 -mt-5 rounded-full", i < step ? "bg-primary" : "bg-white/20")} />}
                   </div>
                 ))}
               </div>

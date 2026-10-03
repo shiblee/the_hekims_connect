@@ -36,14 +36,9 @@ const NAV: { id: View; label: string; icon: any }[] = [
 export function FacilityDashboard() {
   const facility = useAppStore((s) => s.facility);
   const logout = useAppStore((s) => s.logout);
-  const setAppView = useAppStore((s) => s.setView);
   const [view, setView] = useState<View>("dashboard");
   const [mobileNav, setMobileNav] = useState(false);
   const [stats, setStats] = useState<any>(null);
-
-  useEffect(() => {
-    if (facility && !facility.profileCompleted) setAppView("facility-profile-setup");
-  }, [facility, setAppView]);
 
   useEffect(() => {
     let active = true;
@@ -58,7 +53,7 @@ export function FacilityDashboard() {
 
   const onLogout = () => { logout(); };
 
-  if (!facility || !facility.profileCompleted) return null;
+  if (!facility) return null;
 
   return (
     <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/5">
