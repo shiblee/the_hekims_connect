@@ -6,7 +6,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth || auth.type !== "patient") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

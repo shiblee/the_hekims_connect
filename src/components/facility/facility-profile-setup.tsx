@@ -12,11 +12,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { FloatingField, FieldError } from "@/components/shared/floating-field";
 import {
   Building2, MapPin, MapPinned, Clock, Stethoscope, Sparkles, LogOut, ChevronLeft,
   ChevronRight, CheckCircle2, Loader2, Hospital, HeartPulse, Hash, Calendar,
-  Phone, Globe, Landmark, BedDouble, Users, Activity, Siren, Ambulance,
+  Phone, Globe, Landmark, BedDouble, Users, Siren, Ambulance, Gift, Lock,
 } from "lucide-react";
 
 const DAYS: { value: number; label: string }[] = [
@@ -30,14 +31,10 @@ const DAYS: { value: number; label: string }[] = [
 ];
 const DEFAULT_OPEN_DAYS = [1, 2, 3, 4, 5, 6];
 
+// ABDM Health Facility Registry ID format: "IN" followed by 10 digits (e.g. IN0123456789).
+const HFR_PATTERN = /^IN\d{10}$/i;
+
 const STEPS = ["Facility", "Location", "Capacity", "Services", "Plan"];
-const STEP_INTROS = [
-  "Let's start with some basic information about your facility.",
-  "This helps patients find you and powers facility mapping.",
-  "Tell us your scale and when you're open for patients.",
-  "What specialties and services does this facility provide?",
-  "Your free plan is already on us — no action needed.",
-];
 
 const FACILITY_TYPE_ICONS: Record<string, any> = {
   Hospital, Clinic: Stethoscope, "Nursing Home": HeartPulse, "Health Centre": Building2,
@@ -55,6 +52,8 @@ interface Metadata {
 interface HourRow {
   open: string;
   close: string;
+  open2: string;
+  close2: string;
 }
 
 interface WizardForm {
@@ -72,9 +71,7 @@ interface WizardForm {
   pincode: string;
   alternateContactNumber: string;
   bedCapacity: string;
-  isOperational: boolean;
   dailyOpdCount: string;
-  dailyAdmissions: string;
   operatingDays: number[];
   is24x7: boolean;
   hours: Record<number, HourRow>;
@@ -86,19 +83,19 @@ interface WizardForm {
 
 function defaultHours(): Record<number, HourRow> {
   const hours: Record<number, HourRow> = {};
-  for (const d of DAYS) hours[d.value] = { open: "09:00", close: "17:00" };
+  for (const d of DAYS) hours[d.value] = { open: "09:00", close: "17:00", open2: "", close2: "" };
   return hours;
 }
 
-function StepHeader({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
+function StepHeader({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle?: string }) {
   return (
-    <div className="flex items-start gap-3 mb-6">
+    <div className="flex items-center gap-3 mb-6">
       <div className="h-11 w-11 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
         <Icon className="h-5 w-5 text-primary" />
       </div>
       <div>
         <h2 className="font-serif text-xl font-bold">{title}</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+        {subtitle && <p className="text-[15px] font-medium text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -111,7 +108,7 @@ function ToggleChip({ active, onClick, children }: { active: boolean; onClick: (
       onClick={onClick}
       whileTap={{ scale: 0.95 }}
       className={cn(
-        "px-3 py-1.5 rounded-full text-sm border transition-colors",
+        "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
         active ? "bg-primary text-primary-foreground border-primary" : "bg-background/60 border-border/60 text-muted-foreground hover:border-primary/50"
       )}
     >
@@ -131,8 +128,8 @@ function ToggleRow({ icon: Icon, title, subtitle, checked, onCheckedChange }: { 
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium">{title}</p>
-          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+          <p className="text-[15px] font-semibold">{title}</p>
+          {subtitle && <p className="text-xs font-medium text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
@@ -149,6 +146,7 @@ export function FacilityProfileSetup() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [meta, setMeta] = useState<Metadata | null>(null);
   const [metaLoading, setMetaLoading] = useState(true);
 
@@ -174,9 +172,7 @@ export function FacilityProfileSetup() {
     pincode: "",
     alternateContactNumber: "",
     bedCapacity: "",
-    isOperational: true,
     dailyOpdCount: "",
-    dailyAdmissions: "",
     operatingDays: DEFAULT_OPEN_DAYS,
     is24x7: false,
     hours: defaultHours(),
@@ -186,7 +182,10 @@ export function FacilityProfileSetup() {
     ambulanceAvailable: false,
   }));
 
-  const set = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setFieldErrors((e) => (e[key as string] ? { ...e, [key]: "" } : e));
+  };
 
   const toggleInList = (key: "specializations" | "services" | "operatingDays", value: any) => {
     setForm((f) => {
@@ -194,6 +193,7 @@ export function FacilityProfileSetup() {
       const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
       return { ...f, [key]: next };
     });
+    setFieldErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
   };
 
   const planDates = useMemo(() => {
@@ -214,26 +214,45 @@ export function FacilityProfileSetup() {
 
   const isHospital = form.facilityType === "Hospital";
 
-  const stepErrors: Record<number, string | null> = {
-    0: !form.facilityName ? "Facility Name is required" : !form.facilityType ? "Please select a Facility Type" : !form.hfrNumber ? "HFR Number is required" : null,
-    1: !form.addressLine1 ? "Address is required" : !form.city ? "City is required" : !form.state ? "State is required" : !form.pincode ? "PIN Code is required" : null,
-    2: isHospital && !form.bedCapacity ? "Bed Capacity is required for a Hospital" : !form.dailyOpdCount ? "Average Daily OPD is required" : null,
-    3: form.specializations.length === 0 ? "Select at least one Specialization" : form.services.length === 0 ? "Select at least one Service" : null,
-    4: null,
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
+  const validateStep = (i: number): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (i === 0) {
+      if (!form.facilityName) errs.facilityName = "Facility Name is required";
+      if (!form.facilityType) errs.facilityType = "Please select a Facility Type";
+      if (!form.hfrNumber) errs.hfrNumber = "HFR Number is required";
+      else if (!HFR_PATTERN.test(form.hfrNumber)) errs.hfrNumber = "Should be IN followed by 10 digits (e.g. IN0123456789)";
+      if (form.establishmentDate && form.establishmentDate > currentMonth) errs.establishmentDate = "Cannot be in the future";
+    } else if (i === 1) {
+      if (!form.addressLine1) errs.addressLine1 = "Address is required";
+      if (!form.city) errs.city = "City is required";
+      if (!form.state) errs.state = "State is required";
+      if (!form.pincode) errs.pincode = "PIN Code is required";
+    } else if (i === 2) {
+      if (isHospital && !form.bedCapacity) errs.bedCapacity = "Required for a Hospital";
+      if (!form.dailyOpdCount) errs.dailyOpdCount = "Average Daily OPD is required";
+    } else if (i === 3) {
+      if (form.specializations.length === 0) errs.specializations = "Select at least one Specialization";
+      if (form.services.length === 0) errs.services = "Select at least one Service";
+    }
+    return errs;
   };
 
   const goNext = () => {
-    const err = stepErrors[step];
-    if (err) { setError(err); return; }
-    setError(null);
+    const errs = validateStep(step);
+    if (Object.keys(errs).length) { setFieldErrors(errs); return; }
+    setFieldErrors({});
     setStep((s) => Math.min(s + 1, 5));
   };
-  const goBack = () => { setError(null); setStep((s) => Math.max(s - 1, 0)); };
+  const goBack = () => { setFieldErrors({}); setStep((s) => Math.max(s - 1, 0)); };
 
   const submit = async () => {
     for (let i = 0; i <= 3; i++) {
-      if (stepErrors[i]) { setError(stepErrors[i]); setStep(i); return; }
+      const errs = validateStep(i);
+      if (Object.keys(errs).length) { setFieldErrors(errs); setStep(i); return; }
     }
+    setFieldErrors({});
     setSubmitting(true);
     setError(null);
     try {
@@ -251,16 +270,16 @@ export function FacilityProfileSetup() {
         country: form.country,
         pincode: form.pincode,
         alternateContactNumber: form.alternateContactNumber,
-        bedCapacity: isHospital ? form.bedCapacity : null,
-        isOperational: form.isOperational,
+        bedCapacity: form.bedCapacity || null,
         dailyOpdCount: form.dailyOpdCount,
-        dailyAdmissions: form.dailyAdmissions,
         is24x7: form.is24x7,
         operatingHours: DAYS.map((d) => ({
           dayOfWeek: d.value,
           isOpen: form.operatingDays.includes(d.value),
           openingTime: form.hours[d.value]?.open,
           closingTime: form.hours[d.value]?.close,
+          openingTime2: form.hours[d.value]?.open2,
+          closingTime2: form.hours[d.value]?.close2,
         })),
         specializations: form.specializations,
         services: form.services,
@@ -297,13 +316,10 @@ export function FacilityProfileSetup() {
           <div className="w-full max-w-2xl">
             <div className="text-center mb-7">
               <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Complete Your Facility Profile</h1>
-              <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                Help us understand your facility. This information personalises your experience and the services available to you.
-              </p>
             </div>
 
             {step < 5 && (
-              <div className="flex items-center justify-center gap-1 mb-7 overflow-x-auto pb-1 px-2">
+              <div className="flex items-center justify-center gap-1 mb-7 overflow-x-auto overflow-y-visible py-2 px-2">
                 {STEPS.map((label, i) => (
                   <div key={label} className="flex items-center shrink-0">
                     <div className="flex flex-col items-center gap-1.5">
@@ -352,19 +368,23 @@ export function FacilityProfileSetup() {
                     >
                       {step === 0 && (
                         <div>
-                          <StepHeader icon={Building2} title="About Your Facility" subtitle={STEP_INTROS[0]} />
+                          <StepHeader icon={Building2} title="About Your Facility" />
                           <div className="space-y-5">
-                            <FloatingField
-                              id="facilityName"
-                              label="Facility Name"
-                              icon={Building2}
-                              maxLength={150}
-                              value={form.facilityName}
-                              onChange={(e) => set("facilityName", e.target.value)}
-                            />
                             <div>
-                              <p className="text-sm font-medium mb-2">What type of facility is this?</p>
-                              <div className="grid sm:grid-cols-3 gap-2">
+                              <FloatingField
+                                id="facilityName"
+                                label="Facility Name"
+                                icon={Building2}
+                                maxLength={150}
+                                error={!!fieldErrors.facilityName}
+                                value={form.facilityName}
+                                onChange={(e) => set("facilityName", e.target.value)}
+                              />
+                              <FieldError message={fieldErrors.facilityName} />
+                            </div>
+                            <div>
+                              <p className="text-[15px] font-semibold mb-2">What type of facility is this?</p>
+                              <div className={cn("grid sm:grid-cols-3 gap-2 rounded-xl", fieldErrors.facilityType && "ring-2 ring-destructive/50 p-2 -mx-2 -mt-2 mb-1")}>
                                 {facilityTypes.map((t) => {
                                   const TypeIcon = facilityTypeIcon(t);
                                   const active = form.facilityType === t;
@@ -388,43 +408,68 @@ export function FacilityProfileSetup() {
                                   );
                                 })}
                               </div>
+                              <FieldError message={fieldErrors.facilityType} />
                             </div>
-                            <FloatingField
-                              id="hfrNumber"
-                              label="HFR Number"
-                              icon={Hash}
-                              value={form.hfrNumber}
-                              onChange={(e) => set("hfrNumber", e.target.value)}
-                            />
-                            <FloatingField
-                              id="establishmentDate"
-                              label="When was this facility established?"
-                              icon={Calendar}
-                              type="date"
-                              value={form.establishmentDate}
-                              onChange={(e) => set("establishmentDate", e.target.value)}
-                            />
+                            <div>
+                              <FloatingField
+                                id="hfrNumber"
+                                label="HFR Number"
+                                icon={Hash}
+                                maxLength={12}
+                                error={!!fieldErrors.hfrNumber}
+                                value={form.hfrNumber}
+                                onChange={(e) => set("hfrNumber", e.target.value.toUpperCase())}
+                              />
+                              {fieldErrors.hfrNumber ? (
+                                <FieldError message={fieldErrors.hfrNumber} />
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-1.5 ml-1">Format: IN followed by 10 digits, e.g. IN0123456789</p>
+                              )}
+                            </div>
+                            <div>
+                              <FloatingField
+                                id="establishmentDate"
+                                label="When was this facility established? (month & year)"
+                                icon={Calendar}
+                                type="month"
+                                max={new Date().toISOString().slice(0, 7)}
+                                error={!!fieldErrors.establishmentDate}
+                                value={form.establishmentDate}
+                                onChange={(e) => set("establishmentDate", e.target.value)}
+                              />
+                              <FieldError message={fieldErrors.establishmentDate} />
+                            </div>
                           </div>
                         </div>
                       )}
 
                       {step === 1 && (
                         <div>
-                          <StepHeader icon={MapPin} title="Where Are You Located?" subtitle={STEP_INTROS[1]} />
+                          <StepHeader icon={MapPin} title="Where Are You Located?" />
                           <div className="space-y-5">
                             <div className="grid sm:grid-cols-2 gap-4">
                               <div className="sm:col-span-2">
-                                <FloatingField id="addressLine1" label="Address Line 1" icon={MapPin} value={form.addressLine1} onChange={(e) => set("addressLine1", e.target.value)} />
+                                <FloatingField id="addressLine1" label="Address Line 1" icon={MapPin} error={!!fieldErrors.addressLine1} value={form.addressLine1} onChange={(e) => set("addressLine1", e.target.value)} />
+                                <FieldError message={fieldErrors.addressLine1} />
                               </div>
                               <div className="sm:col-span-2">
                                 <FloatingField id="addressLine2" label="Address Line 2" icon={MapPin} value={form.addressLine2} onChange={(e) => set("addressLine2", e.target.value)} />
                               </div>
                               <FloatingField id="locality" label="Locality" icon={MapPinned} value={form.locality} onChange={(e) => set("locality", e.target.value)} />
-                              <FloatingField id="city" label="City" icon={Landmark} value={form.city} onChange={(e) => set("city", e.target.value)} />
+                              <div>
+                                <FloatingField id="city" label="City" icon={Landmark} error={!!fieldErrors.city} value={form.city} onChange={(e) => set("city", e.target.value)} />
+                                <FieldError message={fieldErrors.city} />
+                              </div>
                               <FloatingField id="district" label="District" icon={Landmark} value={form.district} onChange={(e) => set("district", e.target.value)} />
-                              <FloatingField id="state" label="State" icon={Landmark} value={form.state} onChange={(e) => set("state", e.target.value)} />
+                              <div>
+                                <FloatingField id="state" label="State" icon={Landmark} error={!!fieldErrors.state} value={form.state} onChange={(e) => set("state", e.target.value)} />
+                                <FieldError message={fieldErrors.state} />
+                              </div>
                               <FloatingField id="country" label="Country" icon={Globe} value={form.country} onChange={(e) => set("country", e.target.value)} />
-                              <FloatingField id="pincode" label="PIN Code" icon={Hash} value={form.pincode} onChange={(e) => set("pincode", e.target.value)} />
+                              <div>
+                                <FloatingField id="pincode" label="PIN Code" icon={Hash} error={!!fieldErrors.pincode} value={form.pincode} onChange={(e) => set("pincode", e.target.value)} />
+                                <FieldError message={fieldErrors.pincode} />
+                              </div>
                             </div>
                             <div className="grid sm:grid-cols-2 gap-4">
                               <FloatingField id="contactNumber" label="Facility Contact Number" icon={Phone} value={facility.phone || facility.email} disabled />
@@ -436,22 +481,24 @@ export function FacilityProfileSetup() {
 
                       {step === 2 && (
                         <div>
-                          <StepHeader icon={Clock} title="Capacity & Schedule" subtitle={STEP_INTROS[2]} />
+                          <StepHeader icon={Clock} title="Capacity & Schedule" />
                           <div className="space-y-5">
                             <div className="grid sm:grid-cols-2 gap-4">
-                              {isHospital && (
-                                <FloatingField id="bedCapacity" label="Total Bed Capacity" icon={BedDouble} type="number" min={0} value={form.bedCapacity} onChange={(e) => set("bedCapacity", e.target.value)} />
-                              )}
-                              <FloatingField id="dailyOpd" label="Average Daily OPD Patients" icon={Users} type="number" min={0} value={form.dailyOpdCount} onChange={(e) => set("dailyOpdCount", e.target.value)} />
-                              <FloatingField id="dailyAdmissions" label="Average Daily Admissions" icon={Activity} type="number" min={0} value={form.dailyAdmissions} onChange={(e) => set("dailyAdmissions", e.target.value)} />
+                              <div>
+                                <FloatingField id="bedCapacity" label="Total Bed Capacity" icon={BedDouble} type="number" min={0} error={!!fieldErrors.bedCapacity} value={form.bedCapacity} onChange={(e) => set("bedCapacity", e.target.value)} />
+                                <FieldError message={fieldErrors.bedCapacity} />
+                              </div>
+                              <div>
+                                <FloatingField id="dailyOpd" label="Average Daily OPD Patients" icon={Users} type="number" min={0} error={!!fieldErrors.dailyOpdCount} value={form.dailyOpdCount} onChange={(e) => set("dailyOpdCount", e.target.value)} />
+                                <FieldError message={fieldErrors.dailyOpdCount} />
+                              </div>
                             </div>
 
-                            <ToggleRow icon={CheckCircle2} title="Is the facility currently operational?" checked={form.isOperational} onCheckedChange={(v) => set("isOperational", v)} />
-                            <ToggleRow icon={Clock} title="Operational 24×7?" subtitle="Turning this on skips individual day timings below." checked={form.is24x7} onCheckedChange={(v) => set("is24x7", v)} />
+                            <ToggleRow icon={Clock} title="Operational 24×7?" checked={form.is24x7} onCheckedChange={(v) => set("is24x7", v)} />
 
                             {!form.is24x7 && (
                               <div>
-                                <p className="text-sm font-medium mb-2">Which days is the facility operational?</p>
+                                <p className="text-[15px] font-semibold mb-2">Which days is the facility operational?</p>
                                 <div className="flex flex-wrap gap-2">
                                   {DAYS.map((d) => (
                                     <ToggleChip key={d.value} active={form.operatingDays.includes(d.value)} onClick={() => toggleInList("operatingDays", d.value)}>
@@ -460,13 +507,19 @@ export function FacilityProfileSetup() {
                                   ))}
                                 </div>
 
-                                <div className="mt-4 border border-border/60 rounded-xl overflow-hidden">
-                                  <table className="w-full text-sm">
+                                <div className="mt-3 border border-border/60 rounded-xl overflow-hidden">
+                                  <table className="w-full table-fixed text-sm">
                                     <thead>
                                       <tr className="border-b border-border/50 text-left text-muted-foreground bg-background/40">
-                                        <th className="px-3 py-2 font-medium">Day</th>
-                                        <th className="px-3 py-2 font-medium">Opening</th>
-                                        <th className="px-3 py-2 font-medium">Closing</th>
+                                        <th className="w-12 px-1.5 py-2 font-medium" rowSpan={2}>Day</th>
+                                        <th className="px-1 py-2 font-medium text-center" colSpan={2}>Shift 1</th>
+                                        <th className="px-1 py-2 font-medium text-center" colSpan={2}>Shift 2 (optional)</th>
+                                      </tr>
+                                      <tr className="border-b border-border/50 text-left text-muted-foreground bg-background/40">
+                                        <th className="px-1 py-1.5 font-medium text-[11px]">Open</th>
+                                        <th className="px-1 py-1.5 font-medium text-[11px]">Close</th>
+                                        <th className="px-1 py-1.5 font-medium text-[11px]">Open</th>
+                                        <th className="px-1 py-1.5 font-medium text-[11px]">Close</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -474,23 +527,41 @@ export function FacilityProfileSetup() {
                                         const open = form.operatingDays.includes(d.value);
                                         return (
                                           <tr key={d.value} className="border-b border-border/30 last:border-0">
-                                            <td className="px-3 py-2">{d.label}</td>
-                                            <td className="px-3 py-2">
+                                            <td className="px-1.5 py-2 whitespace-nowrap">{d.label.slice(0, 3)}</td>
+                                            <td className="px-1 py-2">
                                               <input
                                                 type="time"
                                                 disabled={!open}
-                                                className="h-8 w-full rounded-md border border-input bg-background/60 px-2 text-sm disabled:opacity-40"
+                                                className="h-8 w-full rounded-md border border-input bg-background/60 px-1 text-xs disabled:opacity-40"
                                                 value={form.hours[d.value]?.open || ""}
                                                 onChange={(e) => setForm((f) => ({ ...f, hours: { ...f.hours, [d.value]: { ...f.hours[d.value], open: e.target.value } } }))}
                                               />
                                             </td>
-                                            <td className="px-3 py-2">
+                                            <td className="px-1 py-2">
                                               <input
                                                 type="time"
                                                 disabled={!open}
-                                                className="h-8 w-full rounded-md border border-input bg-background/60 px-2 text-sm disabled:opacity-40"
+                                                className="h-8 w-full rounded-md border border-input bg-background/60 px-1 text-xs disabled:opacity-40"
                                                 value={form.hours[d.value]?.close || ""}
                                                 onChange={(e) => setForm((f) => ({ ...f, hours: { ...f.hours, [d.value]: { ...f.hours[d.value], close: e.target.value } } }))}
+                                              />
+                                            </td>
+                                            <td className="px-1 py-2">
+                                              <input
+                                                type="time"
+                                                disabled={!open}
+                                                className="h-8 w-full rounded-md border border-input bg-background/60 px-1 text-xs disabled:opacity-40"
+                                                value={form.hours[d.value]?.open2 || ""}
+                                                onChange={(e) => setForm((f) => ({ ...f, hours: { ...f.hours, [d.value]: { ...f.hours[d.value], open2: e.target.value } } }))}
+                                              />
+                                            </td>
+                                            <td className="px-1 py-2">
+                                              <input
+                                                type="time"
+                                                disabled={!open}
+                                                className="h-8 w-full rounded-md border border-input bg-background/60 px-1 text-xs disabled:opacity-40"
+                                                value={form.hours[d.value]?.close2 || ""}
+                                                onChange={(e) => setForm((f) => ({ ...f, hours: { ...f.hours, [d.value]: { ...f.hours[d.value], close2: e.target.value } } }))}
                                               />
                                             </td>
                                           </tr>
@@ -523,36 +594,42 @@ export function FacilityProfileSetup() {
 
                       {step === 3 && (
                         <div>
-                          <StepHeader icon={Stethoscope} title="Services & Specialization" subtitle={STEP_INTROS[3]} />
+                          <StepHeader icon={Stethoscope} title="Services & Specialization" />
                           <div className="space-y-6">
                             <div>
-                              <p className="text-sm font-medium mb-2">Major medical specializations available</p>
-                              <div className="flex flex-wrap gap-2">
+                              <p className="text-[15px] font-semibold mb-2">Major medical specializations available</p>
+                              <div className={cn("flex flex-wrap gap-2 rounded-xl", fieldErrors.specializations && "ring-2 ring-destructive/50 p-2 -mx-2 -mt-2 mb-1")}>
                                 {specializationOptions.map((s) => (
                                   <ToggleChip key={s} active={form.specializations.includes(s)} onClick={() => toggleInList("specializations", s)}>{s}</ToggleChip>
                                 ))}
                               </div>
+                              <FieldError message={fieldErrors.specializations} />
                             </div>
 
-                            {serviceGroups.map(([key, group]) => (
-                              <div key={key}>
-                                <p className="text-sm font-medium mb-2">{group.label}</p>
-                                <div className="grid sm:grid-cols-2 gap-2">
-                                  {group.options.map((item) => {
-                                    const checked = form.services.includes(item);
-                                    return (
-                                      <label key={item} className={cn(
-                                        "flex items-center gap-2 text-sm px-3 py-2 rounded-lg border cursor-pointer transition-colors",
-                                        checked ? "border-primary/40 bg-primary/5" : "border-border/60 bg-background/60"
-                                      )}>
-                                        <Checkbox checked={checked} onCheckedChange={() => toggleInList("services", item)} />
-                                        {item}
-                                      </label>
-                                    );
-                                  })}
+                            <Separator className="bg-border/50" />
+
+                            <div className={cn("space-y-6 rounded-xl", fieldErrors.services && "ring-2 ring-destructive/50 p-2 -mx-2 -mt-2 mb-1")}>
+                              {serviceGroups.map(([key, group]) => (
+                                <div key={key}>
+                                  <p className="text-[15px] font-semibold mb-2">{group.label}</p>
+                                  <div className="grid sm:grid-cols-2 gap-2">
+                                    {group.options.map((item) => {
+                                      const checked = form.services.includes(item);
+                                      return (
+                                        <label key={item} className={cn(
+                                          "flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border cursor-pointer transition-colors",
+                                          checked ? "border-primary/40 bg-primary/5" : "border-border/60 bg-background/60"
+                                        )}>
+                                          <Checkbox checked={checked} onCheckedChange={() => toggleInList("services", item)} />
+                                          {item}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                              <FieldError message={fieldErrors.services} />
+                            </div>
 
                             <ToggleRow icon={Siren} title="Does this facility provide emergency services?" checked={form.emergencyServices} onCheckedChange={(v) => set("emergencyServices", v)} />
                             <ToggleRow icon={Ambulance} title="Does the facility have an ambulance service?" checked={form.ambulanceAvailable} onCheckedChange={(v) => set("ambulanceAvailable", v)} />
@@ -562,31 +639,84 @@ export function FacilityProfileSetup() {
 
                       {step === 4 && (
                         <div>
-                          <StepHeader icon={Sparkles} title="Your Service Plan" subtitle={STEP_INTROS[4]} />
-                          <Card className="p-5 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/[0.02]">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Badge className="bg-primary/15 text-primary border-primary/30 mb-2">FREE — {meta?.subscription.trialMonths} Months</Badge>
-                                <p className="text-sm text-muted-foreground">Get access to the basic facility services free for the first {meta?.subscription.trialMonths} months.</p>
-                              </div>
-                              <CheckCircle2 className="h-6 w-6 text-primary shrink-0" />
-                            </div>
-                            <div className="mt-4 text-sm space-y-1">
-                              <p><span className="text-muted-foreground">Activated:</span> {planDates.start.toLocaleDateString()}</p>
-                              <p><span className="text-muted-foreground">Valid until:</span> {planDates.end.toLocaleDateString()}</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-3">
-                              Your free service period will automatically expire on the above date. You can renew or upgrade after expiry.
-                            </p>
-                          </Card>
+                          <StepHeader icon={Sparkles} title="Your Service Plan" />
 
-                          <div className="mt-4">
-                            <Card className="p-5 border-border/50 bg-card/60 opacity-60">
-                              <p className="font-medium">Premium</p>
-                              <p className="text-xs text-muted-foreground mt-1">{meta?.subscription.currency} {meta?.subscription.price} / month after your free period.</p>
-                              <Button disabled size="sm" variant="outline" className="mt-3">Available after Free Period</Button>
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                          >
+                            <Card className="relative overflow-hidden p-6 border-primary/30 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent">
+                              <div className="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+
+                              <div className="relative flex items-center justify-between mb-1">
+                                <Badge className="bg-primary text-primary-foreground text-sm px-3 py-1 shadow-sm">
+                                  <Gift className="h-3.5 w-3.5 mr-1.5" /> FREE — {meta?.subscription.trialMonths} Months
+                                </Badge>
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.15 }}
+                                  className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center ring-1 ring-primary/30"
+                                >
+                                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                                </motion.div>
+                              </div>
+                              <p className="relative font-serif text-2xl font-bold mt-3">Your Trial is Active</p>
+                              <p className="relative text-sm text-muted-foreground mt-1">Full access to get started — completely on us.</p>
+
+                              <div className="relative grid grid-cols-2 gap-3 mt-5">
+                                <div className="rounded-xl bg-background/60 border border-border/50 p-3">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Activated</p>
+                                  <p className="text-sm font-semibold mt-1">{planDates.start.toLocaleDateString()}</p>
+                                </div>
+                                <div className="rounded-xl bg-background/60 border border-border/50 p-3">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Valid Until</p>
+                                  <p className="text-sm font-semibold mt-1">{planDates.end.toLocaleDateString()}</p>
+                                </div>
+                              </div>
+
+                              <div className="relative mt-5 space-y-2">
+                                {["Full dashboard & patient management", "Appointments & prescriptions", "Mizaj assessments & messaging"].map((f, i) => (
+                                  <motion.div
+                                    key={f}
+                                    initial={{ opacity: 0, x: -8 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.2 + i * 0.08 }}
+                                    className="flex items-center gap-2 text-sm"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> {f}
+                                  </motion.div>
+                                ))}
+                              </div>
+
+                              <p className="relative text-xs text-muted-foreground mt-4 pt-4 border-t border-border/40">
+                                Your free service period automatically expires on the date above. You can renew or upgrade anytime after.
+                              </p>
                             </Card>
-                          </div>
+                          </motion.div>
+
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="mt-4"
+                          >
+                            <Card className="relative overflow-hidden p-6 border-dashed border-border/60 bg-card/40">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <Lock className="h-4 w-4 text-muted-foreground" />
+                                    <p className="font-semibold text-muted-foreground">Premium</p>
+                                  </div>
+                                  <p className="text-xl font-bold mt-2">{meta?.subscription.currency} {meta?.subscription.price}<span className="text-sm font-normal text-muted-foreground">/month</span></p>
+                                  <p className="text-xs text-muted-foreground mt-1">Unlocks automatically once your free trial ends.</p>
+                                </div>
+                                <Badge variant="outline" className="text-muted-foreground shrink-0">Locked</Badge>
+                              </div>
+                              <Button disabled size="sm" variant="outline" className="mt-4 w-full">Available after Free Period</Button>
+                            </Card>
+                          </motion.div>
                         </div>
                       )}
 
@@ -605,8 +735,8 @@ export function FacilityProfileSetup() {
                             <div>
                               <p className="font-medium mb-1.5">Capacity & Operations</p>
                               <p className="text-muted-foreground">
-                                {isHospital && form.bedCapacity ? `${form.bedCapacity} beds · ` : ""}
-                                {form.dailyOpdCount} daily OPD{form.dailyAdmissions ? ` · ${form.dailyAdmissions} daily admissions` : ""}
+                                {form.bedCapacity ? `${form.bedCapacity} beds · ` : ""}
+                                {form.dailyOpdCount} daily OPD
                                 {" · "}{form.is24x7 ? "Open 24×7" : `Open ${form.operatingDays.length} day(s)/week`}
                               </p>
                             </div>
@@ -633,18 +763,20 @@ export function FacilityProfileSetup() {
                   <FieldError message={error || undefined} />
 
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/50">
-                    <Button variant="outline" onClick={goBack} disabled={step === 0 || submitting}>
-                      <ChevronLeft className="h-4 w-4 mr-1" /> Back
-                    </Button>
+                    {step > 0 ? (
+                      <Button variant="outline" size="lg" onClick={goBack} disabled={submitting}>
+                        <ChevronLeft className="h-4 w-4 mr-1" /> Back
+                      </Button>
+                    ) : <span />}
                     {step < 5 ? (
-                      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                        <Button onClick={goNext} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                          Continue <ChevronRight className="h-4 w-4 ml-1" />
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
+                        <Button onClick={goNext} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
+                          Continue <ChevronRight className="h-5 w-5 ml-1" />
                         </Button>
                       </motion.div>
                     ) : (
-                      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                        <Button onClick={submit} disabled={submitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
+                        <Button onClick={submit} disabled={submitting} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
                           {submitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
                           Complete Profile
                         </Button>

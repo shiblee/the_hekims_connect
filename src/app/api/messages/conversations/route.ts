@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/api-auth";
 
 // List conversations for the current user
 export async function GET(req: NextRequest) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

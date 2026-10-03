@@ -69,7 +69,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   if (!checked || !admin) return <LoadingScreen />;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background text-[15px] font-medium">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <div className="flex h-16 items-center justify-between gap-4">

@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/api-auth";
 import { getSetting } from "@/lib/settings";
 
 export async function GET(req: NextRequest) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth || auth.type !== "facility") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

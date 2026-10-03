@@ -20,8 +20,9 @@ import { AppointmentsView } from "./views/appointments";
 import { PatientsView } from "./views/patients";
 import { MessagesView } from "./views/messages";
 import { PrescriptionsView } from "./views/prescriptions";
+import { ProfileView } from "./views/profile";
 
-type View = "dashboard" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions";
+type View = "dashboard" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions" | "profile";
 
 const NAV: { id: View; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -99,7 +100,13 @@ export function FacilityDashboard() {
         </ScrollArea>
 
         <div className="p-3 border-t border-sidebar-border">
-          <button onClick={() => setView("patients")} className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
+          <button
+            onClick={() => { setView("profile"); setMobileNav(false); }}
+            className={cn(
+              "w-full flex items-center gap-2.5 p-2 rounded-lg transition-colors",
+              view === "profile" ? "bg-sidebar-accent" : "hover:bg-sidebar-accent"
+            )}
+          >
             <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(facility.avatarColor))}>
               {initials(facility.facilityName)}
             </div>
@@ -154,6 +161,7 @@ export function FacilityDashboard() {
           {view === "patients" && <PatientsView />}
           {view === "messages" && <MessagesView />}
           {view === "prescriptions" && <PrescriptionsView />}
+          {view === "profile" && <ProfileView />}
         </main>
       </div>
     </div>

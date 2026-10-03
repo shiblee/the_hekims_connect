@@ -134,12 +134,15 @@ model Facility {
 }
 
 model FacilityOperatingHours {
-  id          String   @id @default(cuid())
-  facilityId  String
-  dayOfWeek   Int
-  isOpen      Boolean  @default(true)
-  openingTime String?
-  closingTime String?
+  id           String   @id @default(cuid())
+  facilityId   String
+  dayOfWeek    Int
+  isOpen       Boolean  @default(true)
+  openingTime  String?
+  closingTime  String?
+  // Optional second shift the same day (e.g. a morning + evening clinic schedule).
+  openingTime2 String?
+  closingTime2 String?
 
   facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
 

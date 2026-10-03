@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, fetchFacility, fetchPatient } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

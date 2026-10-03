@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/api-auth";
 
 // GET messages between current user and a partner (?partnerId=&partnerType=)
 export async function GET(req: NextRequest) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

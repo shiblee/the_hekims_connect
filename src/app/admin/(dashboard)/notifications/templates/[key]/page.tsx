@@ -134,7 +134,7 @@ export default function EmailTemplateEditorPage() {
               <Textarea className="min-h-[280px] bg-background/60 font-mono text-sm" value={body} onChange={(e) => setBody(e.target.value)} />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mt-6">
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={saving} onClick={save}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Template
             </Button>

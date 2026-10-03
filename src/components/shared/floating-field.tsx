@@ -3,6 +3,7 @@
 import type { ComponentType, InputHTMLAttributes, ReactNode } from "react";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -41,7 +42,7 @@ export function FloatingField({
         id={id}
         placeholder=" "
         className={cn(
-          "peer h-14 w-full rounded-lg border bg-transparent pr-3.5 text-base text-foreground outline-none transition-colors",
+          "peer h-14 w-full rounded-lg border bg-transparent pr-3.5 text-base font-medium text-foreground outline-none transition-colors",
           Icon ? "pl-10" : "pl-3.5",
           endAdornment && "pr-11",
           error ? "border-destructive" : "border-input focus:border-primary",
@@ -52,16 +53,68 @@ export function FloatingField({
       <label
         htmlFor={id}
         className={cn(
-          "pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap bg-card px-1.5 text-base text-muted-foreground transition-all duration-150",
+          "pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap bg-card px-1.5 text-base font-medium text-muted-foreground transition-all duration-150",
           Icon ? "left-10" : "left-3.5",
-          "peer-focus:top-0 peer-focus:left-3 peer-focus:text-sm peer-focus:font-medium",
-          "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:left-3 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-medium",
+          "peer-focus:top-0 peer-focus:left-3 peer-focus:text-sm peer-focus:font-semibold",
+          "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:left-3 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
           error ? "text-destructive" : "peer-focus:text-primary"
         )}
       >
         {label}
       </label>
       {endAdornment}
+    </div>
+  );
+}
+
+/**
+ * A Select dropdown styled to match FloatingField (icon-prefixed box, label
+ * floated onto the border) so dropdowns and text fields read as one system.
+ */
+export function FloatingSelect({
+  id,
+  label,
+  icon: Icon,
+  error,
+  value,
+  onValueChange,
+  placeholder,
+  children,
+}: {
+  id?: string;
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+  error?: boolean;
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="relative">
+      {Icon && <Icon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />}
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger
+          id={id}
+          className={cn(
+            "!h-14 w-full rounded-lg border bg-transparent text-base font-medium",
+            Icon ? "pl-10" : "pl-3.5",
+            error ? "border-destructive" : "border-input"
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
+      <label
+        className={cn(
+          "pointer-events-none absolute -top-2.5 z-10 whitespace-nowrap bg-card px-1.5 text-sm font-semibold",
+          Icon ? "left-10" : "left-3",
+          error ? "text-destructive" : "text-primary"
+        )}
+      >
+        {label}
+      </label>
     </div>
   );
 }

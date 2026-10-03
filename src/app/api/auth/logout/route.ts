@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/api-auth";
 
 /** Closes the most recent still-open session for the authenticated Facility/Patient. */
 export async function POST(req: NextRequest) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

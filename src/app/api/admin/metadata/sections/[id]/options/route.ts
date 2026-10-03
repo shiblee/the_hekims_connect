@@ -7,8 +7,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const { id } = await params;
-  const options = await db.metadataOption.findMany({ where: { sectionId: id }, orderBy: { sortOrder: "asc" } });
-  return NextResponse.json({ options });
+  const section = await db.metadataSection.findUnique({ where: { id }, select: { key: true } });
+  if (!section) return NextResponse.json({ error: "Section not found" }, { status: 404 });
+
+  const [options, totalFacilities] = await Promise.all([
+    db.metadataOption.findMany({ where: { sectionId: id }, orderBy: { sortOrder: "asc" } }),
+    db.facility.count(),
+  ]);
+
+  const counted = await Promise.all(options.map(async (o) => {
+    let count = 0;
+    if (section.key === "facility_type") {
+      count = await db.facility.count({ where: { facilityType: o.label } });
+    } else if (section.key === "specialization") {
+      count = await db.facility.count({ where: { specializations: { contains: `"${o.label}"` } } });
+    } else if (section.key.startsWith("service_")) {
+      count = await db.facility.count({ where: { services: { contains: `"${o.label}"` } } });
+    }
+    return { ...o, count };
+  }));
+
+  return NextResponse.json({ options: counted, totalFacilities });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

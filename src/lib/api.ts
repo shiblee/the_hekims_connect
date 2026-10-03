@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
 
 const TOKEN_KEY = "hekims-connect-token";
@@ -40,6 +41,14 @@ async function request<T = any>(
 
   const res = await fetch(url, { ...options, headers });
   const data = await res.json().catch(() => ({}));
+
+  // A previously-valid token can stop working mid-session (e.g. an admin
+  // suspended the account) — when that happens, force the user back to the
+  // login screen immediately rather than leaving them on a broken dashboard.
+  if (res.status === 401 && token) {
+    useAppStore.getState().logout();
+    toast.error("Your session has ended. Please log in again.");
+  }
 
   if (!res.ok) {
     const msg = (data as any)?.error || `Request failed (${res.status})`;
@@ -82,7 +91,7 @@ export async function restoreSession() {
     }
     return data;
   } catch {
-    clearToken();
+    useAppStore.getState().logout();
     return null;
   }
 }

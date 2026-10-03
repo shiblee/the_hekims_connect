@@ -117,7 +117,7 @@ export function MizajView() {
           </div>
 
           {/* Visual balance bar */}
-          <div className="mt-6">
+          <div>
             <p className="text-xs text-muted-foreground mb-1.5">Humoural balance</p>
             <div className="flex h-3 rounded-full overflow-hidden">
               {AKHLAT.map((a) => (

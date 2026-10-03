@@ -10,10 +10,15 @@ interface OperatingHourInput {
   isOpen: boolean;
   openingTime?: string | null;
   closingTime?: string | null;
+  openingTime2?: string | null;
+  closingTime2?: string | null;
 }
 
+// ABDM Health Facility Registry ID format: "IN" followed by 10 digits (e.g. IN0123456789).
+const HFR_PATTERN = /^IN\d{10}$/i;
+
 export async function POST(req: NextRequest) {
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth || auth.type !== "facility") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -24,7 +29,7 @@ export async function POST(req: NextRequest) {
       facilityName, facilityType, hfrNumber, establishmentDate,
       addressLine1, addressLine2, locality, city, district, state, country, pincode,
       alternateContactNumber,
-      bedCapacity, isOperational, dailyOpdCount, dailyAdmissions,
+      bedCapacity, dailyOpdCount, dailyAdmissions,
       is24x7, operatingHours,
       specializations, services, emergencyServices, ambulanceAvailable,
     } = body;
@@ -42,6 +47,14 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(specializations) || specializations.length === 0) missing.push("At least one Specialization");
     if (!Array.isArray(services) || services.length === 0) missing.push("At least one Service");
 
+    if (establishmentDate && establishmentDate > new Date().toISOString().slice(0, 7)) {
+      return NextResponse.json({ error: "Establishment month/year cannot be in the future" }, { status: 400 });
+    }
+
+    if (hfrNumber && !HFR_PATTERN.test(hfrNumber)) {
+      return NextResponse.json({ error: "HFR Number should be IN followed by 10 digits (e.g. IN0123456789)" }, { status: 400 });
+    }
+
     if (missing.length) {
       return NextResponse.json({ error: `Missing required fields: ${missing.join(", ")}` }, { status: 400 });
     }
@@ -55,7 +68,7 @@ export async function POST(req: NextRequest) {
         facilityName,
         registeredFacilityName: existing.registeredFacilityName ?? existing.facilityName,
         facilityType,
-        hfrNumber,
+        hfrNumber: hfrNumber.toUpperCase(),
         establishmentDate: establishmentDate ? new Date(establishmentDate) : null,
         addressLine1,
         addressLine2: addressLine2 || null,
@@ -67,7 +80,6 @@ export async function POST(req: NextRequest) {
         pincode,
         alternateContactNumber: alternateContactNumber || null,
         bedCapacity: bedCapacity !== undefined && bedCapacity !== null && bedCapacity !== "" ? parseInt(bedCapacity, 10) || null : null,
-        isOperational: isOperational !== false,
         dailyOpdCount: parseInt(dailyOpdCount, 10) || 0,
         dailyAdmissions: dailyAdmissions !== undefined && dailyAdmissions !== null && dailyAdmissions !== "" ? parseInt(dailyAdmissions, 10) || null : null,
         is24x7: !!is24x7,
@@ -90,6 +102,8 @@ export async function POST(req: NextRequest) {
           isOpen: !!h.isOpen,
           openingTime: h.isOpen ? h.openingTime || null : null,
           closingTime: h.isOpen ? h.closingTime || null : null,
+          openingTime2: h.isOpen ? h.openingTime2 || null : null,
+          closingTime2: h.isOpen ? h.closingTime2 || null : null,
         }));
       if (rows.length) {
         await db.facilityOperatingHours.createMany({ data: rows });

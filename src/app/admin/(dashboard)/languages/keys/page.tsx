@@ -54,7 +54,7 @@ export default function TranslationKeysPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Languages
       </Link>
 
-      <div className="mb-6">
+      <div className="mb-8">
         <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Translation Keys</h1>
         <p className="text-muted-foreground mt-1.5">{totalCount} keys across {groups.length} groups · click a group, then a key to edit its translations.</p>
       </div>

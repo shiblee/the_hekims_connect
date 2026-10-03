@@ -9,8 +9,12 @@ export interface AuthUser {
 /**
  * Reads the simple session token from the `x-hekim-auth` header.
  * Token format: base64(`${type}|${userId}`).
+ *
+ * Also re-checks the account's `active` flag on every call, so a facility or
+ * patient suspended by an admin loses API access immediately — not just on
+ * their next login — even with an already-issued token in hand.
  */
-export function getAuthUser(req: NextRequest): AuthUser | null {
+export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   const raw = req.headers.get("x-hekim-auth");
   if (!raw) return null;
   try {
@@ -18,6 +22,12 @@ export function getAuthUser(req: NextRequest): AuthUser | null {
     const [type, id] = decoded.split("|");
     if (type !== "facility" && type !== "patient") return null;
     if (!id) return null;
+
+    const account = type === "facility"
+      ? await db.facility.findUnique({ where: { id }, select: { active: true } })
+      : await db.patient.findUnique({ where: { id }, select: { active: true } });
+    if (!account || !account.active) return null;
+
     return { type, id };
   } catch {
     return null;
