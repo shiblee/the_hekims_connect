@@ -61,7 +61,10 @@ export function FacilityDashboard() {
   if (!facility || !facility.profileCompleted) return null;
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/5">
+      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/15 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-[100px]" />
+
       {/* Sidebar */}
       <aside className={cn(
         "fixed lg:sticky top-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform lg:translate-x-0",
@@ -119,7 +122,7 @@ export function FacilityDashboard() {
       {mobileNav && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setMobileNav(false)} />}
 
       {/* Main */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="relative z-10 flex-1 min-w-0 flex flex-col">
         {/* Topbar */}
         <header className="sticky top-0 z-20 glass border-b border-border">
           <div className="flex items-center gap-3 px-4 lg:px-6 py-3">
