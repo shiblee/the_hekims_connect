@@ -34,16 +34,7 @@ export default function Home() {
   if (!hydrated) return <LoadingScreen />;
 
   // Dashboard views
-  if (view === "facility-profile-setup") {
-    return (
-      <>
-        <div aria-hidden className="fixed inset-0 overflow-hidden pointer-events-none select-none blur-sm scale-[1.02] brightness-[0.65] saturate-75">
-          <FacilityDashboard />
-        </div>
-        <FacilityProfileSetup />
-      </>
-    );
-  }
+  if (view === "facility-profile-setup") return <FacilityProfileSetup />;
   if (view === "facility-dashboard") return <FacilityDashboard />;
   if (view === "patient-dashboard") return <PatientDashboard />;
 
