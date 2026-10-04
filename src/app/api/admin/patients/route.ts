@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       take: pageSize,
       select: {
         id: true, name: true, email: true, phone: true, gender: true, dob: true,
-        bloodGroup: true, mizaj: true, avatarColor: true,
+        bloodGroup: true, mizaj: true, photo: true, avatarColor: true,
         verified: true, active: true, lastLoginAt: true, createdAt: true,
         visits: {
           orderBy: { visitDate: "desc" },

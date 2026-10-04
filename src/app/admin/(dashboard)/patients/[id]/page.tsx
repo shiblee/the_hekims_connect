@@ -6,23 +6,28 @@ import Link from "next/link";
 import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, ShieldCheck, ShieldOff,
   CheckCircle2, XCircle, Loader2, Ban, Undo2, HeartPulse, Cake, Users, Pill,
-  Activity, FileText, Leaf, Clock, Building2, Stethoscope, Wallet,
+  Activity, FileText, Leaf, Clock, Building2, Stethoscope, Wallet, IdCard, Ruler, Scale,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { formatAge } from "@/lib/age";
+import { calculateBmi, bmiBand } from "@/lib/bmi";
+import { cmToFeetInches } from "@/lib/units";
+import { findLatestWithField, type VisitVitals, type VisitWithVitals } from "@/lib/vitals-trend";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
+import { VitalsPanel } from "@/components/facility/views/vitals-panel";
 import { cn } from "@/lib/utils";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
 interface PatientDetail {
-  id: string; name: string; email: string | null; phone: string | null; dob: string | null; gender: string | null;
+  id: string; patientCode: string | null; name: string; email: string | null; phone: string | null; dob: string | null; gender: string | null;
   bloodGroup: string | null; address: string | null; emergencyContact: string | null; occupation: string | null;
   height: string | null; weight: string | null; familyHistory: string | null; medicalHistory: string | null;
   chronicConditions: string | null; allergies: string | null; currentMedications: string | null;
-  surgicalHistory: string | null; lifestyle: string | null; mizaj: string | null; avatarColor: string;
+  surgicalHistory: string | null; lifestyle: string | null; mizaj: string | null; photo: string | null; avatarColor: string;
   verified: boolean; active: boolean; lastLoginAt: string | null; createdAt: string; updatedAt: string;
   _count: { appointments: number; records: number; prescriptions: number; mizajAssessments: number };
 }
@@ -32,6 +37,7 @@ interface VisitRow {
   facility: { id: string; facilityName: string };
   doctor: { id: string; name: string; staffCode: string } | null;
   payments: { id: string; paymentCode: string; amount: number; mode: string; status: string }[];
+  vitalSigns: VisitVitals | null;
 }
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
@@ -97,20 +103,35 @@ export default function PatientDetailPage() {
     );
   }
 
+  const latestHeightCm = findLatestWithField(visits as VisitWithVitals[], "heightCm");
+  const latestWeightKg = findLatestWithField(visits as VisitWithVitals[], "weightKg");
+  const latestBmi = calculateBmi(latestHeightCm, latestWeightKg);
+  const latestBmiBand = bmiBand(latestBmi);
+
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
       <Link href="/admin/patients" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Patient list
       </Link>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
-          <div className={cn("h-16 w-16 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg shrink-0", avatarGradient(patient.avatarColor))}>
-            <span className="font-serif text-lg font-bold text-white">{initials(patient.name)}</span>
-          </div>
-          <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight">{patient.name}</h1>
-            <p className="text-muted-foreground">{patient.gender || "—"}{patient.mizaj ? ` · ${patient.mizaj} Mizaj` : ""}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <EntityAvatar name={patient.name} photo={patient.photo} avatarColor={patient.avatarColor} size="lg" className="h-16 w-16 text-lg shadow-lg" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-serif text-2xl font-bold tracking-tight">{patient.name}</h1>
+              {patient.patientCode && (
+                <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono text-[10px] flex items-center gap-1">
+                  <IdCard className="h-3 w-3" /> {patient.patientCode}
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span>{patient.gender || "—"}</span>
+              <span className="text-border">·</span>
+              <span>{formatAge(patient.dob)}</span>
+              {patient.mizaj && (<><span className="text-border">·</span><span>{patient.mizaj} Mizaj</span></>)}
+            </p>
           </div>
         </div>
         <Button
@@ -135,6 +156,31 @@ export default function PatientDetailPage() {
         ) : (
           <Badge variant="outline" className="border-destructive/40 text-destructive"><ShieldOff className="h-3 w-3 mr-1" /> Suspended</Badge>
         )}
+        {latestHeightCm != null && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 bg-muted/60 rounded-full px-2 py-0.5">
+            <Ruler className="h-3 w-3 text-muted-foreground" /> Qad: {latestHeightCm} cm <span className="text-muted-foreground font-normal">({cmToFeetInches(latestHeightCm)})</span>
+          </span>
+        )}
+        {latestWeightKg != null && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 bg-muted/60 rounded-full px-2 py-0.5">
+            <Scale className="h-3 w-3 text-muted-foreground" /> Wazan: {latestWeightKg} kg
+          </span>
+        )}
+        {latestBmi != null && latestBmiBand && (
+          <Badge variant="outline" className={cn("border text-[11px] font-medium", latestBmiBand.bg, latestBmiBand.tint)}>
+            BMI {latestBmi.toFixed(1)} · {latestBmiBand.label}
+          </Badge>
+        )}
+      </div>
+
+      <div className="mb-8 max-w-4xl">
+        <VitalsPanel
+          visits={visits as VisitWithVitals[]}
+          patientId={patient.id}
+          apiClient={adminApi}
+          insightPath={`/api/admin/patients/${patient.id}/vitals-insight`}
+          showNewVisitButton={false}
+        />
       </div>
 
       <Card className="p-6 border-border/50 bg-card/60 mb-8 max-w-4xl">
@@ -155,6 +201,7 @@ export default function PatientDetailPage() {
                   <span>{v.visitCode}</span>
                   {v.doctor && <span className="flex items-center gap-1"><Stethoscope className="h-3 w-3" /> {v.doctor.name}</span>}
                   <Badge variant="outline" className="text-[10px]">{v.status}</Badge>
+                  {v.vitalSigns && <Badge variant="outline" className="text-[10px] flex items-center gap-1"><Activity className="h-2.5 w-2.5" /> Vitals recorded</Badge>}
                 </p>
                 {v.reasonForVisit && <p className="text-xs text-muted-foreground mt-1">{v.reasonForVisit}</p>}
                 {v.payments.length > 0 && (

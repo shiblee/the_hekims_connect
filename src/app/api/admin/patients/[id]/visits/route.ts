@@ -16,6 +16,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       facility: { select: { id: true, facilityName: true } },
       doctor: { select: { id: true, name: true, staffCode: true } },
       payments: { select: { id: true, paymentCode: true, amount: true, mode: true, status: true, createdAt: true } },
+      vitalSigns: {
+        select: {
+          pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true, oxygenLitres: true,
+          temperatureF: true, temperatureC: true, respiratoryRate: true, consciousnessLevel: true,
+          heightCm: true, weightKg: true, updatedAt: true,
+        },
+      },
     },
     orderBy: { visitDate: "desc" },
   });

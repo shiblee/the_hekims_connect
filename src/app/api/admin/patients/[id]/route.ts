@@ -11,10 +11,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const patient = await db.patient.findUnique({
     where: { id },
     select: {
-      id: true, name: true, email: true, phone: true, dob: true, gender: true, bloodGroup: true,
+      id: true, patientCode: true, name: true, email: true, phone: true, dob: true, gender: true, bloodGroup: true,
       address: true, emergencyContact: true, occupation: true, height: true, weight: true,
       familyHistory: true, medicalHistory: true, chronicConditions: true, allergies: true,
-      currentMedications: true, surgicalHistory: true, lifestyle: true, mizaj: true, avatarColor: true,
+      currentMedications: true, surgicalHistory: true, lifestyle: true, mizaj: true, photo: true, avatarColor: true,
       verified: true, active: true, lastLoginAt: true, createdAt: true, updatedAt: true,
       _count: { select: { appointments: true, records: true, prescriptions: true, mizajAssessments: true } },
     },

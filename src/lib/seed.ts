@@ -101,7 +101,7 @@ export async function seedMetadata() {
         "Hammam (Bath / Steam Therapy)", "Fasd (Venesection)", "Jarahat Theatre (Operation Theatre)", "Other",
       ],
     },
-    { key: "staff_employee_type", label: "Employee Type", category: "Staff", options: ["Hakim (Unani Physician)", "Nurse", "Counsellor", "ANM", "ASHA", "Data Entry Operator", "Other"] },
+    { key: "staff_employee_type", label: "Employee Type", category: "Staff", options: ["Hakim (Unani Physician)", "Nurse", "Counsellor", "ANM", "ASHA", "Data Entry Operator", "Cashier", "Other"] },
     {
       // Mirrors the facility-level "specialization" list exactly, so a Hakim's individual
       // specialization is always selectable from the same set the facility itself offers.
@@ -192,10 +192,15 @@ export async function seedMetadata() {
       update: { category: s.category },
       create: { key: s.key, label: s.label, category: s.category, sortOrder: i },
     });
-    const existingOptions = await db.metadataOption.count({ where: { sectionId: section.id } });
-    if (existingOptions === 0) {
+    // Add-only: only create options that don't exist yet by label, so re-running
+    // this seed can introduce newly-added options (e.g. a new role) to a section
+    // that already has data, without touching anything an admin has since edited.
+    const existingOptions = await db.metadataOption.findMany({ where: { sectionId: section.id }, select: { label: true } });
+    const existingLabels = new Set(existingOptions.map((o) => o.label));
+    const missing = s.options.filter((label) => !existingLabels.has(label));
+    if (missing.length) {
       await db.metadataOption.createMany({
-        data: s.options.map((label, idx) => ({ sectionId: section.id, label, sortOrder: idx })),
+        data: missing.map((label, idx) => ({ sectionId: section.id, label, sortOrder: existingOptions.length + idx })),
       });
     }
   }

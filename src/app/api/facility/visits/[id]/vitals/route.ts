@@ -5,7 +5,8 @@ import { getAuthUser } from "@/lib/api-auth";
 const VITALS_SELECT = {
   pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true, spo2Context: true,
   oxygenLitres: true, temperatureF: true, temperatureC: true, respiratoryRate: true,
-  consciousnessLevel: true, mood: true, heightCm: true, weightKg: true, updatedAt: true,
+  consciousnessLevel: true, mood: true, heightCm: true, weightKg: true,
+  waistCm: true, hipCm: true, wristCm: true, neckCm: true, updatedAt: true,
 };
 
 async function assertOwnedVisit(id: string, facilityId: string) {
@@ -81,6 +82,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     mood: body.mood || null,
     heightCm: toFloat(body.heightCm),
     weightKg: toFloat(body.weightKg),
+    waistCm: toFloat(body.waistCm),
+    hipCm: toFloat(body.hipCm),
+    wristCm: toFloat(body.wristCm),
+    neckCm: toFloat(body.neckCm),
   };
 
   const vitals = await db.vitalSigns.upsert({

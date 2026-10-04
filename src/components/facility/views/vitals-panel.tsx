@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  HeartPulse, Gauge, Droplets, Thermometer, Wind, Plus,
+  HeartPulse, Gauge, Droplets, Thermometer, Wind, Plus, Lightbulb,
   Sparkles, Loader2, ShieldAlert, Activity, ArrowUp, ArrowDown, Minus,
 } from "lucide-react";
 import {
@@ -55,7 +55,18 @@ function ColorDot(range: [number, number] | undefined, color: string) {
   };
 }
 
-export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; patientId: string }) {
+export function VitalsPanel({
+  visits, patientId, apiClient = api, insightPath, showNewVisitButton = true,
+}: {
+  visits: VisitWithVitals[];
+  patientId: string;
+  /** Defaults to the facility `api` client; admin passes `adminApi` (same shape, different auth header). */
+  apiClient?: { post: <T = any>(url: string, body?: any) => Promise<T> };
+  /** Defaults to the facility-scoped vitals-insight route; admin passes its own cross-facility route. */
+  insightPath?: string;
+  /** Facility accounts can start a new visit/assessment from here; admin stays view-only. */
+  showNewVisitButton?: boolean;
+}) {
   const router = useRouter();
   const [insight, setInsight] = useState<string | null>(null);
   const [insightState, setInsightState] = useState<"idle" | "loading" | "not_configured" | "no_data">("idle");
@@ -65,7 +76,7 @@ export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; 
   const startNewVisit = async () => {
     setStartingVisit(true);
     try {
-      const res = await api.post<{ visit: { id: string } }>("/api/facility/visits", { patientId });
+      const res = await apiClient.post<{ visit: { id: string } }>("/api/facility/visits", { patientId });
       router.push(`/facility/visits/${res.visit.id}/vitals`);
     } catch (e: any) {
       toast.error(e.message || "Could not start a new visit");
@@ -109,7 +120,8 @@ export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; 
   const getInsight = async () => {
     setInsightState("loading");
     try {
-      const res = await api.post<{ insight: string | null; reason?: string }>(`/api/facility/patients/${patientId}/vitals-insight`, {});
+      const path = insightPath || `/api/facility/patients/${patientId}/vitals-insight`;
+      const res = await apiClient.post<{ insight: string | null; reason?: string }>(path, {});
       if (res.insight) {
         setInsight(res.insight);
         setInsightState("idle");
@@ -126,18 +138,20 @@ export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; 
     return (
       <Card className="p-5 border-border/50 bg-card/60 text-center">
         <Activity className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-        <p className="text-sm text-muted-foreground mb-3">No vitals recorded yet.</p>
-        <Button size="sm" onClick={startNewVisit} disabled={startingVisit}>
-          {startingVisit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} New Visit — Assess Today
-        </Button>
+        <p className="text-sm text-muted-foreground mb-3">No vitals recorded yet{showNewVisitButton ? "." : " at any facility."}</p>
+        {showNewVisitButton && (
+          <Button size="sm" onClick={startNewVisit} disabled={startingVisit}>
+            {startingVisit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} New Visit — Assess Today
+          </Button>
+        )}
       </Card>
     );
   }
 
   const METRICS: MetricConfig[] = [
     { key: "pulse", label: "Pulse (Nabz)", icon: HeartPulse, unit: "bpm", color: "#ef4444", range: VITAL_RANGES.pulse },
-    { key: "bpSystolic", secondaryKey: "bpDiastolic", label: "Blood Pressure", icon: Gauge, unit: "mmHg", color: "#f97316", secondaryColor: "#fb923c", range: VITAL_RANGES.bpSystolic },
-    { key: "spo2", label: "SpO₂", icon: Droplets, unit: "%", color: "#3b82f6", range: VITAL_RANGES.spo2 },
+    { key: "bpSystolic", secondaryKey: "bpDiastolic", label: "Blood Pressure (Dabao-e-Khoon)", icon: Gauge, unit: "mmHg", color: "#f97316", secondaryColor: "#fb923c", range: VITAL_RANGES.bpSystolic },
+    { key: "spo2", label: "SpO₂ (Oxygen)", icon: Droplets, unit: "%", color: "#3b82f6", range: VITAL_RANGES.spo2 },
     { key: "temperatureF", label: "Temperature (Hararat)", icon: Thermometer, unit: "°F", color: "#f59e0b", range: TEMP_RANGE_F },
     { key: "respiratoryRate", label: "Respiratory Rate (Tanaffus)", icon: Wind, unit: "/min", color: "#8b5cf6", range: VITAL_RANGES.respiratoryRate },
   ];
@@ -186,9 +200,11 @@ export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; 
               <ShieldAlert className="h-3 w-3" /> Clinical Alert Score {ews.total} · {ews.label}
             </Badge>
           )}
-          <Button size="sm" className="h-7 text-xs" onClick={startNewVisit} disabled={startingVisit}>
-            {startingVisit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} New Visit — Assess Today
-          </Button>
+          {showNewVisitButton && (
+            <Button size="sm" className="h-7 text-xs" onClick={startNewVisit} disabled={startingVisit}>
+              {startingVisit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} New Visit — Assess Today
+            </Button>
+          )}
         </div>
       </div>
 
@@ -257,6 +273,17 @@ export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; 
         const delta = latestVal != null && previousVal != null ? latestVal - previousVal : null;
         const latestOut = latestVal != null && metric.range ? latestVal < metric.range[0] || latestVal > metric.range[1] : false;
 
+        const insightParts: string[] = [];
+        if (latestVal != null && metric.range) {
+          if (latestVal < metric.range[0]) insightParts.push(`Below the normal range (${metric.range[0]}–${metric.range[1]} ${metric.unit})`);
+          else if (latestVal > metric.range[1]) insightParts.push(`Above the normal range (${metric.range[0]}–${metric.range[1]} ${metric.unit})`);
+          else insightParts.push(`Within the normal range (${metric.range[0]}–${metric.range[1]} ${metric.unit})`);
+        }
+        if (delta != null) {
+          insightParts.push(delta === 0 ? "unchanged since the last reading" : `${delta > 0 ? "increased" : "decreased"} by ${Math.abs(delta).toFixed(1)} ${metric.unit} since the last reading`);
+        }
+        const insightText = insightParts.length ? insightParts.join(", ") + "." : null;
+
         return (
           <Dialog open onOpenChange={(o) => !o && setDetailKey(null)}>
             <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto">
@@ -270,55 +297,33 @@ export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; 
               </DialogHeader>
 
               <div className="space-y-5">
-                {/* Summary strip */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-stretch">
-                  <Card className={cn("p-3 flex flex-col justify-between gap-2", latestOut ? "border-destructive/40 bg-destructive/5" : "border-primary/30 bg-primary/5")}>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Latest</p>
-                      <p className={cn("text-lg font-bold mt-0.5 leading-tight break-words", latestOut && "text-destructive")}>
-                        {latestVal ?? "—"}{metric.secondaryKey && readings[0] ? `/${readings[0][metric.secondaryKey] ?? "—"}` : ""}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">{metric.unit}</p>
-                    </div>
-                    <p className={cn("text-[11px] flex items-center gap-0.5", delta == null ? "text-muted-foreground/60" : delta > 0 ? "text-amber-600 dark:text-amber-400" : delta < 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")}>
-                      {delta == null ? "First reading" : delta === 0 ? <><Minus className="h-3 w-3 shrink-0" /> No change</> : (
-                        <>{delta > 0 ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />}{Math.abs(delta).toFixed(1)} vs last</>
-                      )}
-                    </p>
-                  </Card>
-                  <Card className="p-3 border-border/50 bg-card/60 flex flex-col justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Average</p>
-                      <p className="text-lg font-bold mt-0.5 leading-tight">{avg != null ? avg.toFixed(1) : "—"}</p>
-                      <p className="text-[11px] text-muted-foreground">{metric.unit}</p>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/60">across all readings</p>
-                  </Card>
-                  <Card className="p-3 border-border/50 bg-card/60 flex flex-col justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Minimum</p>
-                      <p className="text-lg font-bold mt-0.5 leading-tight">{min ?? "—"}</p>
-                      <p className="text-[11px] text-muted-foreground">{metric.unit}</p>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/60">lowest recorded</p>
-                  </Card>
-                  <Card className="p-3 border-border/50 bg-card/60 flex flex-col justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Maximum</p>
-                      <p className="text-lg font-bold mt-0.5 leading-tight">{max ?? "—"}</p>
-                      <p className="text-[11px] text-muted-foreground">{metric.unit}</p>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/60">highest recorded</p>
-                  </Card>
-                  <Card className="p-3 border-border/50 bg-card/60 flex flex-col justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Readings</p>
-                      <p className="text-lg font-bold mt-0.5 leading-tight">{readings.length}</p>
-                      <p className="text-[11px] text-muted-foreground">&nbsp;</p>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/60">{readings.length === 1 ? "visit" : "visits"} on record</p>
-                  </Card>
-                </div>
+                {/* Summary — single line */}
+                <Card className={cn("p-3 flex flex-row items-center flex-wrap gap-x-5 gap-y-2", latestOut ? "border-destructive/40 bg-destructive/5" : "border-primary/30 bg-primary/5")}>
+                  <span className="flex items-baseline gap-1.5">
+                    <span className={cn("text-2xl font-bold leading-none", latestOut && "text-destructive")}>
+                      {latestVal ?? "—"}{metric.secondaryKey && readings[0] ? `/${readings[0][metric.secondaryKey] ?? "—"}` : ""}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{metric.unit}</span>
+                  </span>
+                  <span className={cn("text-xs flex items-center gap-0.5", delta == null ? "text-muted-foreground/60" : delta > 0 ? "text-amber-600 dark:text-amber-400" : delta < 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")}>
+                    {delta == null ? "First reading" : delta === 0 ? <><Minus className="h-3 w-3 shrink-0" /> No change</> : (
+                      <>{delta > 0 ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />}{Math.abs(delta).toFixed(1)} vs last</>
+                    )}
+                  </span>
+                  <span className="text-border">·</span>
+                  <span className="text-xs text-muted-foreground">Avg {avg != null ? avg.toFixed(1) : "—"}</span>
+                  <span className="text-border">·</span>
+                  <span className="text-xs text-muted-foreground">Range {min ?? "—"}–{max ?? "—"}</span>
+                  <span className="text-border">·</span>
+                  <span className="text-xs text-muted-foreground">{readings.length} {readings.length === 1 ? "reading" : "readings"}</span>
+                </Card>
+
+                {insightText && (
+                  <p className="text-sm text-muted-foreground flex items-start gap-1.5 px-1">
+                    <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+                    {insightText}
+                  </p>
+                )}
 
                 {/* Big chart */}
                 <Card className="p-4 border-border/50 bg-card/60">
@@ -351,30 +356,6 @@ export function VitalsPanel({ visits, patientId }: { visits: VisitWithVitals[]; 
                   )}
                 </Card>
 
-                {/* Full readings history */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">All readings</p>
-                  <div className="max-h-64 overflow-y-auto grid sm:grid-cols-2 gap-1.5 pr-1">
-                    {readings.map((r, i) => {
-                      const v = r[metric.key] as number;
-                      const out = metric.range ? v < metric.range[0] || v > metric.range[1] : false;
-                      return (
-                        <div key={i} className={cn("flex items-center justify-between text-sm px-3 py-2 rounded-lg transition-colors hover:bg-muted/60", out ? "bg-destructive/5 border border-destructive/20" : "bg-background/40")}>
-                          <span className="flex items-center gap-2 min-w-0">
-                            <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", out ? "bg-destructive" : "bg-emerald-500")} />
-                            <span className="min-w-0">
-                              <span className="text-foreground/90 block truncate">{r.fullDate}</span>
-                              <span className="text-[11px] text-muted-foreground">{r.time} · {r.relativeDate}</span>
-                            </span>
-                          </span>
-                          <span className={cn("font-semibold shrink-0 ml-2", out && "text-destructive")}>
-                            {metric.secondaryKey ? `${v}/${r[metric.secondaryKey] ?? "—"}` : v} {metric.unit}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             </DialogContent>
           </Dialog>

@@ -19,13 +19,17 @@ type Tab = "dashboard" | "mizaj" | "pharmacy" | "appointments" | "patients" | "m
 
 const NAV: { id: Tab; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "patients", label: "Patients", icon: Users },
   { id: "mizaj", label: "Mizaj Assessment", icon: Activity },
   { id: "pharmacy", label: "Pharmacy", icon: Pill },
   { id: "appointments", label: "Appointments", icon: CalendarDays },
-  { id: "patients", label: "Patients", icon: Users },
   { id: "messages", label: "Messages", icon: MessageSquare },
   { id: "prescriptions", label: "Prescriptions", icon: FilePlus2 },
 ];
+
+// Visit/assessment pages (/facility/visits/...) are part of the patient
+// workflow — they should highlight the Patients tab, not go unhighlighted.
+const PATH_TO_TAB: Record<string, Tab> = { visits: "patients" };
 
 const FacilityStatsContext = createContext<any>(null);
 export function useFacilityStats() {
@@ -37,7 +41,8 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
   const logout = useAppStore((s) => s.logout);
   const router = useRouter();
   const pathname = usePathname();
-  const active = (pathname.split("/")[2] || "dashboard") as Tab;
+  const rawSegment = pathname.split("/")[2] || "dashboard";
+  const active = (PATH_TO_TAB[rawSegment] ?? rawSegment) as Tab;
   const [mobileNav, setMobileNav] = useState(false);
   const [stats, setStats] = useState<any>(null);
 

@@ -362,6 +362,10 @@ model VitalSigns {
   mood               String?
   heightCm           Float?
   weightKg           Float?
+  waistCm            Float?
+  hipCm              Float?
+  wristCm            Float?
+  neckCm             Float?
   recordedById       String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

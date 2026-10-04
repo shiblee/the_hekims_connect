@@ -16,13 +16,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { FloatingField, FloatingSelect, FloatingSplitField, FieldError } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { estimateDobFromAgeValue, type AgeUnit } from "@/lib/age";
-import { avatarGradient, initials } from "@/lib/avatar";
-import { cn } from "@/lib/utils";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
 interface PatientRow {
   id: string; name: string; email: string | null; phone: string | null; gender: string | null; dob: string | null;
-  bloodGroup: string | null; mizaj: string | null; avatarColor: string;
+  bloodGroup: string | null; mizaj: string | null; photo: string | null; avatarColor: string;
   verified: boolean; active: boolean; lastLoginAt: string | null; createdAt: string;
   facilityName: string | null;
 }
@@ -183,9 +182,7 @@ export default function PatientListPage() {
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{p.facilityName || "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center shrink-0", avatarGradient(p.avatarColor))}>
-                          <span className="text-[10px] font-bold text-white">{initials(p.name)}</span>
-                        </div>
+                        <EntityAvatar name={p.name} photo={p.photo} avatarColor={p.avatarColor} size="sm" />
                         <span className="font-medium whitespace-nowrap">{p.name}</span>
                       </div>
                     </td>

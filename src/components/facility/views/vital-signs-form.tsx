@@ -15,7 +15,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect, FloatingSplitField } from "@/components/shared/floating-field";
-import { ChevronLeft, Loader2, Save, AlertTriangle, History, IdCard } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronLeft, Loader2, Save, AlertTriangle, History, IdCard, Wallet, HelpCircle } from "lucide-react";
 
 interface MetaSections {
   [key: string]: { label: string; options: string[] };
@@ -32,7 +33,8 @@ interface Vitals {
   pulse: number | null; bpSystolic: number | null; bpDiastolic: number | null;
   spo2: number | null; spo2Context: string | null; oxygenLitres: number | null;
   temperatureF: number | null; temperatureC: number | null; respiratoryRate: number | null;
-  consciousnessLevel: string | null; mood: string | null; heightCm: number | null; weightKg: number | null; updatedAt?: string;
+  consciousnessLevel: string | null; mood: string | null; heightCm: number | null; weightKg: number | null;
+  waistCm: number | null; hipCm: number | null; wristCm: number | null; neckCm: number | null; updatedAt?: string;
 }
 
 interface Previous extends Vitals { visitCode: string; visitDate: string }
@@ -68,6 +70,29 @@ function unitAdornment(unit: string) {
   return <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{unit}</span>;
 }
 
+function measurementAdornment(hint: string) {
+  return (
+    <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-muted-foreground">
+      cm
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="pointer-events-auto hover:text-foreground transition-colors">
+            <HelpCircle className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[220px] text-center">{hint}</TooltipContent>
+      </Tooltip>
+    </span>
+  );
+}
+
+const MEASURE_HINTS: Record<string, string> = {
+  waist: "Measure around the narrowest part of the torso, at the level of the navel.",
+  hip: "Measure around the widest part of the hips and buttocks.",
+  wrist: "Measure around the wrist bone, where the tape sits naturally.",
+  neck: "Measure around the base of the neck, just below the Adam's apple.",
+};
+
 export function VitalSignsForm({ visitId }: { visitId: string }) {
   const router = useRouter();
   const [meta, setMeta] = useState<MetaSections>({});
@@ -87,6 +112,14 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
   const [mood, setMood] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
+  const [waistCm, setWaistCm] = useState("");
+  const [hipCm, setHipCm] = useState("");
+  const [wristCm, setWristCm] = useState("");
+  const [neckCm, setNeckCm] = useState("");
+
+  const [paymentMode, setPaymentMode] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentSaving, setPaymentSaving] = useState(false);
 
   useEffect(() => {
     api.get<{ sections: MetaSections }>("/api/facility/metadata")
@@ -119,8 +152,16 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         // changed. Every other field always starts blank for a fresh assessment.
         const lastHeight = res.vitals?.heightCm ?? res.previous?.heightCm;
         const lastWeight = res.vitals?.weightKg ?? res.previous?.weightKg;
+        const lastWaist = res.vitals?.waistCm ?? res.previous?.waistCm;
+        const lastHip = res.vitals?.hipCm ?? res.previous?.hipCm;
+        const lastWrist = res.vitals?.wristCm ?? res.previous?.wristCm;
+        const lastNeck = res.vitals?.neckCm ?? res.previous?.neckCm;
         setHeightCm(lastHeight?.toString() ?? "");
         setWeightKg(lastWeight?.toString() ?? "");
+        setWaistCm(lastWaist?.toString() ?? "");
+        setHipCm(lastHip?.toString() ?? "");
+        setWristCm(lastWrist?.toString() ?? "");
+        setNeckCm(lastNeck?.toString() ?? "");
       })
       .catch(() => toast.error("Could not load this visit"))
       .finally(() => setLoading(false));
@@ -150,7 +191,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
       await api.post(`/api/facility/visits/${visitId}/vitals`, {
         pulse, bpSystolic, bpDiastolic, spo2,
         temperatureF, temperatureC, respiratoryRate, consciousnessLevel, mood,
-        heightCm, weightKg,
+        heightCm, weightKg, waistCm, hipCm, wristCm, neckCm,
       });
       toast.success("Vitals saved");
       if (visit) router.push(`/facility/patients/${visit.patient.id}`);
@@ -158,6 +199,23 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
       toast.error(e.message || "Could not save vitals");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const savePayment = async () => {
+    if (!paymentAmount || !paymentMode) {
+      toast.error("Enter an amount and payment mode");
+      return;
+    }
+    setPaymentSaving(true);
+    try {
+      await api.post("/api/facility/payments", { visitId, amount: paymentAmount, mode: paymentMode, status: "paid" });
+      toast.success("Payment recorded");
+      setPaymentAmount(""); setPaymentMode("");
+    } catch (e: any) {
+      toast.error(e.message || "Could not record payment");
+    } finally {
+      setPaymentSaving(false);
     }
   };
 
@@ -232,16 +290,16 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
             <RangeHint field="pulse" value={pulse} />
           </div>
           <div>
-            <FloatingField id="bpSystolic" label="BP Systolic" type="number" inputMode="decimal" value={bpSystolic} onChange={(e) => touch(setBpSystolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
+            <FloatingField id="bpSystolic" label="BP Systolic (Dabao-e-Khoon)" type="number" inputMode="decimal" value={bpSystolic} onChange={(e) => touch(setBpSystolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
             <RangeHint field="bpSystolic" value={bpSystolic} />
           </div>
           <div>
-            <FloatingField id="bpDiastolic" label="BP Diastolic" type="number" inputMode="decimal" value={bpDiastolic} onChange={(e) => touch(setBpDiastolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
+            <FloatingField id="bpDiastolic" label="BP Diastolic (Dabao-e-Khoon)" type="number" inputMode="decimal" value={bpDiastolic} onChange={(e) => touch(setBpDiastolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
             <RangeHint field="bpDiastolic" value={bpDiastolic} />
           </div>
 
           <div>
-            <FloatingField id="spo2" label="SpO₂" type="number" inputMode="decimal" value={spo2} onChange={(e) => touch(setSpo2)(e.target.value)} endAdornment={unitAdornment("%")} />
+            <FloatingField id="spo2" label="SpO₂ (Oxygen)" type="number" inputMode="decimal" value={spo2} onChange={(e) => touch(setSpo2)(e.target.value)} endAdornment={unitAdornment("%")} />
             <RangeHint field="spo2" value={spo2} />
           </div>
           <div>
@@ -302,6 +360,19 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
             })()}
           </div>
 
+          <div>
+            <FloatingField id="waistCm" label="Waist (Kamar)" type="number" inputMode="decimal" value={waistCm} onChange={(e) => touch(setWaistCm)(e.target.value)} endAdornment={measurementAdornment(MEASURE_HINTS.waist)} />
+          </div>
+          <div>
+            <FloatingField id="hipCm" label="Hip (Sareen)" type="number" inputMode="decimal" value={hipCm} onChange={(e) => touch(setHipCm)(e.target.value)} endAdornment={measurementAdornment(MEASURE_HINTS.hip)} />
+          </div>
+          <div>
+            <FloatingField id="wristCm" label="Wrist (Kalai)" type="number" inputMode="decimal" value={wristCm} onChange={(e) => touch(setWristCm)(e.target.value)} endAdornment={measurementAdornment(MEASURE_HINTS.wrist)} />
+          </div>
+          <div>
+            <FloatingField id="neckCm" label="Neck (Gardan)" type="number" inputMode="decimal" value={neckCm} onChange={(e) => touch(setNeckCm)(e.target.value)} endAdornment={measurementAdornment(MEASURE_HINTS.neck)} />
+          </div>
+
           {meta.consciousness_level && (
             <FloatingSelect id="consciousnessLevel" label="Level of Consciousness (Hosh)" value={consciousnessLevel} onValueChange={touch(setConsciousnessLevel)} placeholder="Select">
               {meta.consciousness_level.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -339,6 +410,25 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button size="lg" onClick={save} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Vitals
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="p-4 mt-5 border-border/40 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+          <Wallet className="h-3.5 w-3.5" /> Record Payment
+        </p>
+        <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+          <FloatingField id="paymentAmount" label="Amount (₹)" type="number" inputMode="decimal" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+          {meta.payment_mode ? (
+            <FloatingSelect id="paymentMode" label="Payment Mode" value={paymentMode} onValueChange={setPaymentMode} placeholder="Select">
+              {meta.payment_mode.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </FloatingSelect>
+          ) : (
+            <FloatingField id="paymentMode" label="Payment Mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} />
+          )}
+          <Button onClick={savePayment} disabled={paymentSaving} className="h-11">
+            {paymentSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Payment
           </Button>
         </div>
       </Card>
