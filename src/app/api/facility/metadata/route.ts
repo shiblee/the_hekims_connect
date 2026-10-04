@@ -19,14 +19,17 @@ export async function GET(req: NextRequest) {
     sections[s.key] = { label: s.label, options: s.options.map((o) => o.label) };
   }
 
-  const [trialMonths, price, currency] = await Promise.all([
+  const [trialMonths, price, currency, defaultState, defaultCity] = await Promise.all([
     getSetting("subscription", "free_trial_months", "3"),
     getSetting("subscription", "paid_plan_price_per_month", "999"),
     getSetting("subscription", "currency", "INR"),
+    getSetting("patient_defaults", "default_state", "Uttar Pradesh"),
+    getSetting("patient_defaults", "default_city", "Lucknow"),
   ]);
 
   return NextResponse.json({
     sections,
     subscription: { trialMonths: parseInt(trialMonths, 10) || 3, price: parseInt(price, 10) || 0, currency },
+    patientDefaults: { state: defaultState, city: defaultCity },
   });
 }

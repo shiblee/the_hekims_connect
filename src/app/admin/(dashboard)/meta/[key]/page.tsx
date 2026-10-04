@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { FloatingField } from "@/components/shared/floating-field";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Plus, ChevronUp, ChevronDown, ListChecks, Pencil, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ interface Section {
   id: string;
   key: string;
   label: string;
+  category: string;
   sortOrder: number;
   _count: { options: number };
 }
@@ -45,7 +47,9 @@ export default function MetaSectionPage() {
 
   const [addSectionOpen, setAddSectionOpen] = useState(false);
   const [newSectionLabel, setNewSectionLabel] = useState("");
+  const [newSectionCategory, setNewSectionCategory] = useState("");
   const [savingSection, setSavingSection] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const [newOption, setNewOption] = useState("");
   const [addingOption, setAddingOption] = useState(false);
@@ -53,6 +57,24 @@ export default function MetaSectionPage() {
   const [editingLabel, setEditingLabel] = useState("");
 
   const selected = useMemo(() => sections.find((s) => s.key === key) || null, [sections, key]);
+
+  const categories = useMemo(() => {
+    const seen: string[] = [];
+    for (const s of sections) if (!seen.includes(s.category)) seen.push(s.category);
+    return seen;
+  }, [sections]);
+
+  // Keep the active tab in sync with whichever section the URL points at
+  // (so deep-linking /admin/meta/[key] lands on the right category tab).
+  useEffect(() => {
+    if (selected) setActiveCategory(selected.category);
+    else if (!activeCategory && categories.length) setActiveCategory(categories[0]);
+  }, [selected, categories]);
+
+  const sectionsInActiveCategory = useMemo(
+    () => sections.filter((s) => s.category === activeCategory),
+    [sections, activeCategory]
+  );
 
   const loadSections = () => {
     setLoadingSections(true);
@@ -88,11 +110,13 @@ export default function MetaSectionPage() {
     try {
       const res = await adminApi.post<{ section: Section }>("/api/admin/metadata/sections", {
         label: newSectionLabel,
+        category: newSectionCategory,
       });
       toast.success("Section created");
       setAddSectionOpen(false);
       setNewSectionLabel("");
       setSections((s) => [...s, { ...res.section, _count: { options: 0 } }]);
+      setActiveCategory(res.section.category);
       router.push(`/admin/meta/${res.section.key}`);
     } catch (err: any) {
       toast.error(err.message || "Could not create section");
@@ -162,10 +186,20 @@ export default function MetaSectionPage() {
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Meta ({sections.length})</h1>
         </div>
-        <Button size="sm" onClick={() => setAddSectionOpen(true)}>
+        <Button size="sm" onClick={() => { setNewSectionCategory(activeCategory || ""); setAddSectionOpen(true); }}>
           <Plus className="h-4 w-4 mr-1.5" /> Add Section
         </Button>
       </div>
+
+      {categories.length > 0 && (
+        <Tabs value={activeCategory || categories[0]} onValueChange={setActiveCategory} className="mb-6">
+          <TabsList>
+            {categories.map((c) => (
+              <TabsTrigger key={c} value={c}>{c}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
 
       <div className="grid md:grid-cols-[260px_1fr] gap-6">
         <Card className="p-2 border-border/50 bg-card/60 h-fit">
@@ -173,7 +207,7 @@ export default function MetaSectionPage() {
             <div className="flex items-center gap-2 text-muted-foreground text-sm p-4"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
           ) : (
             <div className="space-y-1">
-              {sections.map((s) => (
+              {sectionsInActiveCategory.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => router.push(`/admin/meta/${s.key}`)}
@@ -191,7 +225,7 @@ export default function MetaSectionPage() {
                   </Badge>
                 </button>
               ))}
-              {sections.length === 0 && <p className="text-sm text-muted-foreground p-3">No sections yet.</p>}
+              {sectionsInActiveCategory.length === 0 && <p className="text-sm text-muted-foreground p-3">No sections in this category yet.</p>}
             </div>
           )}
         </Card>
@@ -293,6 +327,16 @@ export default function MetaSectionPage() {
               value={newSectionLabel}
               onChange={(e) => setNewSectionLabel(e.target.value)}
             />
+            <FloatingField
+              id="sectionCategory"
+              label="Category"
+              value={newSectionCategory}
+              onChange={(e) => setNewSectionCategory(e.target.value)}
+              list="meta-categories"
+            />
+            <datalist id="meta-categories">
+              {categories.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddSectionOpen(false)}>Cancel</Button>

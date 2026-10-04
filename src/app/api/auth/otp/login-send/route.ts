@@ -15,16 +15,26 @@ export async function POST(req: NextRequest) {
 
     const { value: normalizedContact } = normalizeContact(contact);
 
+    // A phone can belong to multiple Patient rows (family members registered
+    // under one mobile) — resolve all matches and only bind the OTP to a
+    // specific patient when there's exactly one, same as every other role.
+    const patientMatches = role === "patient"
+      ? await db.patient.findMany({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
+      : [];
+
     const user = role === "facility"
       ? await db.facility.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
       : role === "patient"
-      ? await db.patient.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
+      ? patientMatches[0] ?? null
       : await db.staff.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } });
 
     if (!user) {
       return NextResponse.json({ error: "No account found with this email or phone" }, { status: 404 });
     }
-    if (!user.active) {
+    if (!patientMatches.some((p) => p.active) && role === "patient") {
+      return NextResponse.json({ error: "This account has been suspended. Contact support." }, { status: 403 });
+    }
+    if (role !== "patient" && !user.active) {
       return NextResponse.json({ error: "This account has been suspended. Contact support." }, { status: 403 });
     }
 
@@ -32,6 +42,7 @@ export async function POST(req: NextRequest) {
     const displayName = role === "facility"
       ? (user as { facilityName: string }).facilityName
       : (user as { name: string }).name;
+    const ambiguousPatient = role === "patient" && patientMatches.length > 1;
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
     const lastOtp = await db.otpCode.findFirst({ where: { identifier, purpose: "login" }, orderBy: { createdAt: "desc" } });
@@ -48,7 +59,7 @@ export async function POST(req: NextRequest) {
         code,
         purpose: "login",
         facilityId: role === "facility" ? user.id : undefined,
-        patientId: role === "patient" ? user.id : undefined,
+        patientId: role === "patient" && !ambiguousPatient ? user.id : undefined,
         staffId: role === "staff" ? user.id : undefined,
         expiresAt: new Date(Date.now() + parseInt(otpValidityMinutes, 10) * 60 * 1000),
       },
@@ -72,7 +83,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: hasEmail ? "OTP sent to your registered email" : "OTP sent to your registered phone",
       contact: identifier,
-      name: displayName,
+      name: ambiguousPatient ? undefined : displayName,
       devOtp: delivered ? undefined : code,
     });
   } catch (e) {

@@ -130,6 +130,7 @@ model Facility {
   operatingHours  FacilityOperatingHours[]
   subscriptions   FacilitySubscription[]
   staff           Staff[]
+  visits          Visit[]
 
   @@map("Hakim")
 }
@@ -161,6 +162,10 @@ model Staff {
 
   facility Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   otpCodes OtpCode[]
+  doctorVisits       Visit[]      @relation("VisitDoctor")
+  registeredVisits   Visit[]      @relation("VisitRegisteredBy")
+  recordedPayments   Payment[]
+  recordedVitalSigns VitalSigns[]
 }
 
 model FacilityOperatingHours {
@@ -197,6 +202,7 @@ model MetadataSection {
   id        String   @id @default(cuid())
   key       String   @unique
   label     String
+  category  String   @default("General")
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -218,17 +224,35 @@ model MetadataOption {
 
 model Patient {
   id                String   @id @default(cuid())
+  // Platform-wide display code, e.g. "PT00001234" — backfilled for pre-existing
+  // rows, generated at creation going forward (see scripts/backfill-patient-codes.ts).
+  patientCode       String?  @unique
   name              String
   email             String?  @unique
-  phone             String?  @unique
+  // Not unique: one mobile number can register multiple family members
+  // (self/spouse/child/etc.) as distinct Patient rows.
+  phone             String?
   password          String
   failedLoginAttempts Int @default(0)
   lockedUntil       DateTime?
+  titlePrefix       String?
+  // Meta: registration_for (Self/Spouse/Child/Parent/Other) — set once at creation,
+  // describes this patient's relation to whoever registered them.
+  registrationFor  String?
+  relationship      String?
   dob               String?
+  // True when the exact date of birth isn't known and `dob` holds an
+  // approximate, calculated-from-age value instead of a real DOB.
+  dobApprox         Boolean  @default(false)
   gender            String?
+  maritalStatus     String?
   bloodGroup        String?
   address           String?
+  state             String?
+  city              String?
   emergencyContact  String?
+  emergencyContactName   String?
+  emergencyRelationship  String?
   occupation        String?
   height            String?
   weight            String?
@@ -241,6 +265,7 @@ model Patient {
   surgicalHistory   String?
   lifestyle         String?
   mizaj             String?
+  photo             String?
   avatarColor       String   @default("amber")
   verified          Boolean  @default(false)
   active            Boolean  @default(true)
@@ -255,6 +280,7 @@ model Patient {
   otpCodes         OtpCode[]
   loginEvents      LoginEvent[]
   sessions         UserSession[]
+  visits           Visit[]
 }
 
 model Appointment {
@@ -273,6 +299,86 @@ model Appointment {
   facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
   prescriptions Prescription[]
+}
+
+// A single encounter: a patient physically registered at a facility on a given
+// day. Distinct from Appointment (which is the patient's own advance-booking
+// self-service flow) — the two aren't unified yet, see the Patient Module plan.
+model Visit {
+  id              String   @id @default(cuid())
+  visitCode       String   @unique
+  patientId       String
+  facilityId      String
+  doctorId        String?
+  // Staff.id of whoever registered this visit; null when the acting user was
+  // the Facility account itself rather than a logged-in staff member.
+  registeredById  String?
+  reasonForVisit  String?
+  status          String   @default("registered")
+  visitDate       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility     Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  doctor       Staff?   @relation("VisitDoctor", fields: [doctorId], references: [id], onDelete: SetNull)
+  registeredBy Staff?   @relation("VisitRegisteredBy", fields: [registeredById], references: [id], onDelete: SetNull)
+  payments     Payment[]
+  vitalSigns   VitalSigns?
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  paymentCode     String   @unique
+  visitId         String
+  amount          Float
+  mode            String
+  status          String   @default("paid")
+  amountReceived  Float?
+  referenceNumber String?
+  recordedById    String?
+  createdAt       DateTime @default(now())
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Basic vitals captured once per Visit (Phase 2 of the Patient Module — see
+// the Patient Module plan). Reference ranges for soft-validation live as
+// plain constants in the form component, not here; this is just the record.
+model VitalSigns {
+  id                 String   @id @default(cuid())
+  visitId            String   @unique
+  pulse              Int?
+  bpSystolic         Int?
+  bpDiastolic        Int?
+  spo2               Int?
+  spo2Context        String?
+  oxygenLitres       Float?
+  temperatureF       Float?
+  temperatureC       Float?
+  respiratoryRate    Int?
+  consciousnessLevel String?
+  mood               String?
+  heightCm           Float?
+  weightKg           Float?
+  recordedById       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Encrypted storage for third-party integration keys (e.g. Gemini), one row per
+// provider. Deliberately separate from PortalSetting, whose values are returned
+// in the clear to the admin Settings UI — secrets never belong in that table.
+model IntegrationConfig {
+  id        String   @id @default(cuid())
+  provider  String   @unique
+  keyEnc    String?
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
 }
 
 model Message {

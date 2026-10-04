@@ -17,6 +17,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   registration: { label: "Registration", description: "Control who can register on the portal." },
   verification: { label: "Verification", description: "OTP expiry, resend and attempt limits." },
   subscription: { label: "Subscription", description: "Free trial length and paid plan pricing for Facility accounts." },
+  patient_defaults: { label: "Patient Defaults", description: "Default address values pre-filled when registering a new patient." },
 };
 
 const KEY_LABELS: Record<string, string> = {
@@ -34,6 +35,8 @@ const KEY_LABELS: Record<string, string> = {
   free_trial_months: "Free trial duration (months)",
   paid_plan_price_per_month: "Paid plan price per month",
   currency: "Currency",
+  default_state: "Default state",
+  default_city: "Default city",
 };
 
 const BOOLEAN_KEYS = new Set([

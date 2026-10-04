@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, ShieldCheck, ShieldOff,
   CheckCircle2, XCircle, Loader2, Ban, Undo2, HeartPulse, Cake, Users, Pill,
-  Activity, FileText, Leaf, Clock,
+  Activity, FileText, Leaf, Clock, Building2, Stethoscope, Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
@@ -27,6 +27,13 @@ interface PatientDetail {
   _count: { appointments: number; records: number; prescriptions: number; mizajAssessments: number };
 }
 
+interface VisitRow {
+  id: string; visitCode: string; status: string; reasonForVisit: string | null; visitDate: string;
+  facility: { id: string; facilityName: string };
+  doctor: { id: string; name: string; staffCode: string } | null;
+  payments: { id: string; paymentCode: string; amount: number; mode: string; status: string }[];
+}
+
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <Card className="p-4 border-border/50 bg-card/60">
@@ -43,6 +50,7 @@ function InfoRow({ icon: Icon, children }: { icon: any; children: React.ReactNod
 export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [patient, setPatient] = useState<PatientDetail | null>(null);
+  const [visits, setVisits] = useState<VisitRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -53,6 +61,9 @@ export default function PatientDetailPage() {
       .then((res) => setPatient(res.patient))
       .catch(() => toast.error("Could not load patient"))
       .finally(() => setLoading(false));
+    adminApi.get<{ visits: VisitRow[] }>(`/api/admin/patients/${id}/visits`)
+      .then((res) => setVisits(res.visits || []))
+      .catch(() => {});
   };
 
   useEffect(() => { load(); }, [id]);
@@ -125,6 +136,41 @@ export default function PatientDetailPage() {
           <Badge variant="outline" className="border-destructive/40 text-destructive"><ShieldOff className="h-3 w-3 mr-1" /> Suspended</Badge>
         )}
       </div>
+
+      <Card className="p-6 border-border/50 bg-card/60 mb-8 max-w-4xl">
+        <h2 className="font-serif text-lg font-semibold mb-4 flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> Facilities & Visits</h2>
+        {visits.length === 0 ? (
+          <p className="text-sm text-muted-foreground">This patient has no visits at any facility yet.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {visits.map((v) => (
+              <div key={v.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
+                <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" /> {v.facility.facilityName}
+                  </p>
+                  <span className="text-xs text-muted-foreground">{new Date(v.visitDate).toLocaleDateString()}</span>
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-3 flex-wrap">
+                  <span>{v.visitCode}</span>
+                  {v.doctor && <span className="flex items-center gap-1"><Stethoscope className="h-3 w-3" /> {v.doctor.name}</span>}
+                  <Badge variant="outline" className="text-[10px]">{v.status}</Badge>
+                </p>
+                {v.reasonForVisit && <p className="text-xs text-muted-foreground mt-1">{v.reasonForVisit}</p>}
+                {v.payments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {v.payments.map((pay) => (
+                      <Badge key={pay.id} variant="outline" className="text-[10px] flex items-center gap-1">
+                        <Wallet className="h-2.5 w-2.5" /> ₹{pay.amount} · {pay.mode} · {pay.status}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <div className="grid sm:grid-cols-4 gap-4 mb-8 max-w-3xl">
         <StatCard label="Appointments" value={patient._count.appointments} />

@@ -9,7 +9,7 @@ import { getClientIp, parseUserAgent } from "@/lib/request-info";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { contact, code, role } = body;
+    const { contact, code, role, patientId: chosenPatientId } = body;
     const ip = getClientIp(req);
     const { browser, os, device } = parseUserAgent(req.headers.get("user-agent"));
 
@@ -40,6 +40,35 @@ export async function POST(req: NextRequest) {
     if (otp.code !== code) {
       await db.otpCode.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
       return NextResponse.json({ error: "Invalid verification code" }, { status: 400 });
+    }
+
+    // A phone can match more than one Patient row (family members sharing a
+    // mobile). The code was correct, but we don't yet know which profile to
+    // log in as — ask the frontend to pick one, without consuming the OTP yet.
+    if (role === "patient" && !otp.patientId && !chosenPatientId) {
+      const candidates = await db.patient.findMany({
+        where: { OR: [{ email: otp.identifier }, { phone: otp.identifier }] },
+        select: { id: true, patientCode: true, name: true, gender: true, dob: true, avatarColor: true, active: true },
+      });
+      const selectable = candidates.filter((c) => c.active);
+      if (selectable.length > 1) {
+        return NextResponse.json({ multiple: true, candidates: selectable });
+      }
+      if (selectable.length === 0) {
+        return NextResponse.json({ error: "This account has been suspended. Contact support." }, { status: 403 });
+      }
+      // Exactly one active match after all — fall through and complete login as them.
+    }
+
+    let resolvedPatientId = otp.patientId;
+    if (role === "patient" && !resolvedPatientId && chosenPatientId) {
+      const chosen = await db.patient.findFirst({
+        where: { id: chosenPatientId, OR: [{ email: otp.identifier }, { phone: otp.identifier }] },
+      });
+      if (!chosen || !chosen.active) {
+        return NextResponse.json({ error: "Could not verify OTP" }, { status: 400 });
+      }
+      resolvedPatientId = chosen.id;
     }
 
     await db.otpCode.update({ where: { id: otp.id }, data: { used: true } });
@@ -87,9 +116,9 @@ export async function POST(req: NextRequest) {
         user: facility,
         role: "facility",
       });
-    } else if (role === "patient" && otp.patientId) {
-      await db.patient.update({ where: { id: otp.patientId }, data: { verified: true, lastLoginAt: new Date() } });
-      const patient = await fetchPatient(otp.patientId);
+    } else if (role === "patient" && resolvedPatientId) {
+      await db.patient.update({ where: { id: resolvedPatientId }, data: { verified: true, lastLoginAt: new Date() } });
+      const patient = await fetchPatient(resolvedPatientId);
 
       if (patient) {
         const session = await db.userSession.create({
@@ -105,7 +134,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        token: makeToken("patient", otp.patientId),
+        token: makeToken("patient", resolvedPatientId),
         user: patient,
         role: "patient",
       });

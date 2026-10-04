@@ -70,10 +70,10 @@ export async function seedMetadata() {
   // platform, never allopathic/Ayurvedic/homeopathic terminology (facility_type and
   // service_emergency are institution/operational categories, not medical-system-specific,
   // so they're left generic).
-  const metadataSections: { key: string; label: string; options: string[] }[] = [
-    { key: "facility_type", label: "Facility Type", options: ["Hospital", "Clinic", "Nursing Home", "Health Centre", "Other"] },
+  const metadataSections: { key: string; label: string; category: string; options: string[] }[] = [
+    { key: "facility_type", label: "Facility Type", category: "Facility", options: ["Hospital", "Clinic", "Nursing Home", "Health Centre", "Other"] },
     {
-      key: "specialization", label: "Specialization", options: [
+      key: "specialization", label: "Specialization", category: "Facility", options: [
         "Moalijat (General Medicine)", "Qabalat-o-Amraze Niswan (Gynaecology & Obstetrics)",
         "Amraze Atfal (Paediatrics)", "Jarahat (Surgery)", "Ilaj-bil-Tadbeer (Regimenal Therapy)",
         "Ilaj-bil-Ghiza (Dietotherapy)", "Amraze Jild wa Tazeeniyat (Dermatology & Cosmetology)",
@@ -83,29 +83,29 @@ export async function seedMetadata() {
       ],
     },
     {
-      key: "service_diagnostic", label: "Diagnostic & Examination Services", options: [
+      key: "service_diagnostic", label: "Diagnostic & Examination Services", category: "Facility", options: [
         "Nabz Shanasi (Pulse Diagnosis)", "Qarurat Mualaina (Urine Examination)",
         "Baraz Mualaina (Stool Examination)", "Mizaj Tashkhis (Temperament Diagnosis)", "Other",
       ],
     },
-    { key: "service_emergency", label: "Emergency Services", options: ["Emergency Department", "Ambulance", "24×7 Emergency"] },
+    { key: "service_emergency", label: "Emergency Services", category: "Facility", options: ["Emergency Department", "Ambulance", "24×7 Emergency"] },
     {
-      key: "service_maternal_child", label: "Qabalat-o-Amraze Niswan wa Atfal (Maternal & Child Health)", options: [
+      key: "service_maternal_child", label: "Qabalat-o-Amraze Niswan wa Atfal (Maternal & Child Health)", category: "Facility", options: [
         "Qabalat (Delivery / Obstetric Care)", "Amraze Niswan (Gynaecological Care)",
         "Amraze Atfal (Paediatric Care)", "Ilaj-bil-Ghiza for Mother & Child", "Other",
       ],
     },
     {
-      key: "service_other", label: "Other Unani Services", options: [
+      key: "service_other", label: "Other Unani Services", category: "Facility", options: [
         "Dawakhana (Unani Pharmacy)", "Hijama (Cupping Therapy)", "Dalk (Massage Therapy)",
         "Hammam (Bath / Steam Therapy)", "Fasd (Venesection)", "Jarahat Theatre (Operation Theatre)", "Other",
       ],
     },
-    { key: "staff_employee_type", label: "Employee Type", options: ["Hakim (Unani Physician)", "Nurse", "Counsellor", "ANM", "ASHA", "Data Entry Operator", "Other"] },
+    { key: "staff_employee_type", label: "Employee Type", category: "Staff", options: ["Hakim (Unani Physician)", "Nurse", "Counsellor", "ANM", "ASHA", "Data Entry Operator", "Other"] },
     {
       // Mirrors the facility-level "specialization" list exactly, so a Hakim's individual
       // specialization is always selectable from the same set the facility itself offers.
-      key: "staff_specialization", label: "Staff Specialization", options: [
+      key: "staff_specialization", label: "Staff Specialization", category: "Staff", options: [
         "Moalijat (General Medicine)", "Qabalat-o-Amraze Niswan (Gynaecology & Obstetrics)",
         "Amraze Atfal (Paediatrics)", "Jarahat (Surgery)", "Ilaj-bil-Tadbeer (Regimenal Therapy)",
         "Ilaj-bil-Ghiza (Dietotherapy)", "Amraze Jild wa Tazeeniyat (Dermatology & Cosmetology)",
@@ -114,17 +114,83 @@ export async function seedMetadata() {
         "Munafeul Aza (Physiology)", "Other",
       ],
     },
-    { key: "staff_qualification", label: "Staff Qualification", options: ["BUMS (Bachelor of Unani Medicine & Surgery)", "MD (Unani)", "Diploma in Unani Medicine (DUMS)", "B.Sc Nursing", "GNM", "ANM", "Other"] },
-    { key: "staff_designation", label: "Staff Designation", options: ["Resident Hakim", "Senior Hakim", "Consultant Hakim", "Staff Nurse", "Senior Nurse", "Counsellor", "Data Entry Operator", "Receptionist", "Other"] },
-    { key: "staff_role", label: "Staff Role", options: ["Hakim", "Staff Nurse", "Counsellor", "Administrator", "Support Staff", "Other"] },
-    { key: "staff_responsibility", label: "Staff Responsibility", options: ["Patient Consultation", "Mizaj Assessment", "Ilaj-bil-Tadbeer", "Prescription Management", "Appointment Scheduling", "Patient Follow-up", "Front Desk", "Other"] },
+    { key: "staff_qualification", label: "Staff Qualification", category: "Staff", options: ["BUMS (Bachelor of Unani Medicine & Surgery)", "MD (Unani)", "Diploma in Unani Medicine (DUMS)", "B.Sc Nursing", "GNM", "ANM", "Other"] },
+    { key: "staff_designation", label: "Staff Designation", category: "Staff", options: ["Resident Hakim", "Senior Hakim", "Consultant Hakim", "Staff Nurse", "Senior Nurse", "Counsellor", "Data Entry Operator", "Receptionist", "Other"] },
+    { key: "staff_role", label: "Staff Role", category: "Staff", options: ["Hakim", "Staff Nurse", "Counsellor", "Administrator", "Support Staff", "Other"] },
+    { key: "staff_responsibility", label: "Staff Responsibility", category: "Staff", options: ["Patient Consultation", "Mizaj Assessment", "Ilaj-bil-Tadbeer", "Prescription Management", "Appointment Scheduling", "Patient Follow-up", "Front Desk", "Other"] },
+    { key: "patient_title", label: "Patient Title", category: "Patient", options: ["Mr.", "Mrs.", "Ms.", "Miss", "Master", "Baby", "Dr.", "Other"] },
+    { key: "registration_for", label: "Registration For", category: "Patient", options: ["Self", "Spouse", "Child", "Parent", "Other Family Member"] },
+    { key: "relationship", label: "Relationship", category: "Patient", options: ["Self", "Spouse", "Son", "Daughter", "Father", "Mother", "Other"] },
+    { key: "emergency_relationship", label: "Emergency Contact Relationship", category: "Patient", options: ["Spouse", "Son", "Daughter", "Father", "Mother", "Sibling", "Friend", "Other"] },
+    { key: "gender", label: "Gender", category: "Patient", options: ["Male", "Female", "Other", "Prefer not to say"] },
+    { key: "marital_status", label: "Marital Status", category: "Patient", options: ["Single", "Married", "Widowed", "Divorced", "Separated", "Other"] },
+    { key: "blood_group", label: "Blood Group", category: "Patient", options: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"] },
+    { key: "payment_mode", label: "Payment Mode", category: "Payment", options: ["Cash", "UPI", "Card", "Bank Transfer", "Other"] },
+    { key: "payment_status", label: "Payment Status", category: "Payment", options: ["Paid", "Partially Paid", "Pending", "Waived"] },
+    {
+      // Merged city+state picker for patient registration — each option is
+      // "City, State" so selecting one resolves both fields at once. A starting
+      // set of major cities/towns across every state & union territory; admins
+      // can add more through this same Meta section, same as any other list.
+      key: "city", label: "City", category: "Patient", options: [
+        "Lucknow, Uttar Pradesh", "Kanpur, Uttar Pradesh", "Varanasi, Uttar Pradesh", "Agra, Uttar Pradesh",
+        "Meerut, Uttar Pradesh", "Prayagraj, Uttar Pradesh", "Noida, Uttar Pradesh", "Ghaziabad, Uttar Pradesh",
+        "Bareilly, Uttar Pradesh", "Aligarh, Uttar Pradesh", "Moradabad, Uttar Pradesh", "Gorakhpur, Uttar Pradesh",
+        "Saharanpur, Uttar Pradesh", "Jhansi, Uttar Pradesh", "Ayodhya, Uttar Pradesh",
+        "Mumbai, Maharashtra", "Pune, Maharashtra", "Nagpur, Maharashtra", "Nashik, Maharashtra",
+        "Aurangabad, Maharashtra", "Thane, Maharashtra", "Solapur, Maharashtra", "Kolhapur, Maharashtra",
+        "New Delhi, Delhi", "Delhi, Delhi",
+        "Bengaluru, Karnataka", "Mysuru, Karnataka", "Hubballi, Karnataka", "Mangaluru, Karnataka", "Belagavi, Karnataka",
+        "Chennai, Tamil Nadu", "Coimbatore, Tamil Nadu", "Madurai, Tamil Nadu", "Tiruchirappalli, Tamil Nadu",
+        "Salem, Tamil Nadu", "Tirunelveli, Tamil Nadu",
+        "Hyderabad, Telangana", "Warangal, Telangana", "Nizamabad, Telangana",
+        "Ahmedabad, Gujarat", "Surat, Gujarat", "Vadodara, Gujarat", "Rajkot, Gujarat",
+        "Bhavnagar, Gujarat", "Jamnagar, Gujarat", "Gandhinagar, Gujarat",
+        "Jaipur, Rajasthan", "Jodhpur, Rajasthan", "Udaipur, Rajasthan", "Kota, Rajasthan",
+        "Ajmer, Rajasthan", "Bikaner, Rajasthan",
+        "Kolkata, West Bengal", "Howrah, West Bengal", "Durgapur, West Bengal",
+        "Asansol, West Bengal", "Siliguri, West Bengal",
+        "Bhopal, Madhya Pradesh", "Indore, Madhya Pradesh", "Gwalior, Madhya Pradesh",
+        "Jabalpur, Madhya Pradesh", "Ujjain, Madhya Pradesh",
+        "Patna, Bihar", "Gaya, Bihar", "Bhagalpur, Bihar", "Muzaffarpur, Bihar", "Darbhanga, Bihar",
+        "Thiruvananthapuram, Kerala", "Kochi, Kerala", "Kozhikode, Kerala", "Thrissur, Kerala", "Kollam, Kerala",
+        "Guwahati, Assam", "Silchar, Assam", "Dibrugarh, Assam",
+        "Ranchi, Jharkhand", "Jamshedpur, Jharkhand", "Dhanbad, Jharkhand", "Bokaro, Jharkhand",
+        "Bhubaneswar, Odisha", "Cuttack, Odisha", "Rourkela, Odisha",
+        "Ludhiana, Punjab", "Amritsar, Punjab", "Jalandhar, Punjab", "Patiala, Punjab", "Mohali, Punjab",
+        "Gurugram, Haryana", "Faridabad, Haryana", "Panipat, Haryana", "Ambala, Haryana", "Hisar, Haryana",
+        "Raipur, Chhattisgarh", "Bhilai, Chhattisgarh", "Bilaspur, Chhattisgarh",
+        "Dehradun, Uttarakhand", "Haridwar, Uttarakhand", "Nainital, Uttarakhand", "Haldwani, Uttarakhand",
+        "Shimla, Himachal Pradesh", "Dharamshala, Himachal Pradesh", "Manali, Himachal Pradesh",
+        "Srinagar, Jammu and Kashmir", "Jammu, Jammu and Kashmir",
+        "Leh, Ladakh",
+        "Chandigarh, Chandigarh",
+        "Panaji, Goa", "Margao, Goa",
+        "Visakhapatnam, Andhra Pradesh", "Vijayawada, Andhra Pradesh", "Guntur, Andhra Pradesh",
+        "Nellore, Andhra Pradesh", "Tirupati, Andhra Pradesh",
+        "Itanagar, Arunachal Pradesh",
+        "Imphal, Manipur",
+        "Shillong, Meghalaya",
+        "Aizawl, Mizoram",
+        "Kohima, Nagaland", "Dimapur, Nagaland",
+        "Agartala, Tripura",
+        "Gangtok, Sikkim",
+        "Puducherry, Puducherry",
+        "Port Blair, Andaman and Nicobar Islands",
+        "Daman, Dadra and Nagar Haveli and Daman and Diu", "Silvassa, Dadra and Nagar Haveli and Daman and Diu",
+        "Kavaratti, Lakshadweep",
+      ],
+    },
+    { key: "spo2_context", label: "SpO2 Context", category: "Patient", options: ["Known Oxygen Sensitivity", "High CO2 or COPD", "None"] },
+    { key: "consciousness_level", label: "Level of Consciousness", category: "Patient", options: ["Alert (A)", "Verbal (V)", "Pain (P)", "Unresponsive (U)"] },
+    { key: "mood", label: "Mood", category: "Patient", options: ["Very Good", "Good", "Neutral", "Bad", "Very Bad"] },
   ];
   for (let i = 0; i < metadataSections.length; i++) {
     const s = metadataSections[i];
     const section = await db.metadataSection.upsert({
       where: { key: s.key },
-      update: {},
-      create: { key: s.key, label: s.label, sortOrder: i },
+      update: { category: s.category },
+      create: { key: s.key, label: s.label, category: s.category, sortOrder: i },
     });
     const existingOptions = await db.metadataOption.count({ where: { sectionId: section.id } });
     if (existingOptions === 0) {
@@ -133,6 +199,17 @@ export async function seedMetadata() {
       });
     }
   }
+
+  await db.portalSetting.upsert({
+    where: { category_key: { category: "patient_defaults", key: "default_state" } },
+    update: {},
+    create: { category: "patient_defaults", key: "default_state", value: "Uttar Pradesh" },
+  });
+  await db.portalSetting.upsert({
+    where: { category_key: { category: "patient_defaults", key: "default_city" } },
+    update: {},
+    create: { category: "patient_defaults", key: "default_city", value: "Lucknow" },
+  });
 }
 
 export async function seedEmailTemplates() {

@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const { label } = await req.json();
+  const { label, category } = await req.json();
   if (!label || !String(label).trim()) {
     return NextResponse.json({ error: "Label is required" }, { status: 400 });
   }
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const maxOrder = await db.metadataSection.aggregate({ _max: { sortOrder: true } });
   const section = await db.metadataSection.create({
-    data: { key, label, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
+    data: { key, label, category: category && String(category).trim() ? String(category).trim() : "General", sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
   });
   return NextResponse.json({ section });
 }
