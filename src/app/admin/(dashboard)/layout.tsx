@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, LogOut, User, ListChecks, LogIn, ChevronDown, Lock, Bell,
-  Stethoscope, HeartPulse, Settings, BellRing, Languages, FileText, Database,
+  Stethoscope, HeartPulse, Settings, BellRing, Languages, FileText, Database, UserCog,
 } from "lucide-react";
 import { adminApi, restoreAdminSession } from "@/lib/admin-api";
 import { useAdminStore } from "@/lib/admin-store";
@@ -35,6 +35,7 @@ const navLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/facilities", label: "Facility", icon: Stethoscope },
   { href: "/admin/patients", label: "Patient", icon: HeartPulse },
+  { href: "/admin/staff", label: "Staff", icon: UserCog },
   { href: "/admin/meta", label: "Meta", icon: Database },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/notifications", label: "Notifications", icon: BellRing },

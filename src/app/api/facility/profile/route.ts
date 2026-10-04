@@ -48,6 +48,14 @@ export async function PATCH(req: NextRequest) {
   if (body.hfrNumber && !HFR_PATTERN.test(body.hfrNumber)) {
     return NextResponse.json({ error: "HFR Number should be IN followed by 10 digits (e.g. IN0123456789)" }, { status: 400 });
   }
+  if (body.hfrNumber) {
+    const hfrConflict = await db.facility.findFirst({
+      where: { hfrNumber: String(body.hfrNumber).toUpperCase(), id: { not: auth.id } },
+    });
+    if (hfrConflict) {
+      return NextResponse.json({ error: "This HFR Number is already registered to another facility" }, { status: 409 });
+    }
+  }
   if (body.establishmentDate && body.establishmentDate > new Date().toISOString().slice(0, 7)) {
     return NextResponse.json({ error: "Establishment month/year cannot be in the future" }, { status: 400 });
   }

@@ -280,6 +280,183 @@ You currently have full access to the free service package. After {{end_date}}, 
 </tr>`),
   },
   {
+    key: "facility_suspended",
+    name: "Facility Account Suspended",
+    type: "Account",
+    subject: "Your account has been suspended — {{portal_name}}",
+    body: emailShell(`<tr>
+<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
+<div style="font-size:23px; color:#a13f3f; font-weight:700;">Account Suspended</div>
+<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
+Dear {{facility_name}}, your account on {{portal_name}} has been suspended by our team.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:22px 40px 4px 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf1f1; border:1px solid #e3c2c2; border-radius:8px;">
+<tr>
+<td style="padding:18px 22px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0; font-size:13.5px; line-height:1.7; color:#4a4238;">
+While your account is suspended, you will not be able to log in or access your facility dashboard. Your data remains safely on file.
+</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:18px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0; font-size:13.5px; line-height:1.75; color:#4a4238;">
+If you believe this was a mistake or would like to know more, please reach out to us at <a href="mailto:{{support_email}}" style="color:#0f5c52;">{{support_email}}</a>.
+</p>
+</td>
+</tr>`),
+  },
+  {
+    key: "facility_reactivated",
+    name: "Facility Account Reactivated",
+    type: "Account",
+    subject: "Your account has been reactivated — {{portal_name}}",
+    body: emailShell(`<tr>
+<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
+<div style="font-size:23px; color:#0f5c52; font-weight:700;">Welcome Back, {{facility_name}}</div>
+<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
+Your account on {{portal_name}} has been reactivated and you can now log in again.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:22px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0; font-size:13.5px; line-height:1.75; color:#4a4238;">
+Everything you had on file &mdash; your profile, schedule, team and records &mdash; is exactly as you left it.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:14px 40px 30px 40px; text-align:center;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+<tr>
+<td style="background-color:#c7963f; border-radius:6px;">
+<a href="{{login_url}}" style="display:inline-block; padding:13px 34px; font-family:Helvetica, Arial, sans-serif; font-size:14.5px; font-weight:700; color:#fffdf8; text-decoration:none; letter-spacing:0.3px;">Go to Your Dashboard</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>`),
+  },
+  {
+    key: "staff_otp_verification",
+    name: "Staff Contact Verification OTP",
+    type: "OTP",
+    subject: "Verify your contact — {{portal_name}}",
+    body: emailShell(`<tr>
+<td style="padding:20px 40px 8px 40px; font-family:Georgia, 'Times New Roman', serif;">
+<p style="margin:0 0 18px 0; font-size:17px; color:#2b2420;">Dear {{staff_name}},</p>
+<p style="margin:0 0 22px 0; font-size:15px; line-height:1.7; color:#4a4238; font-family:Helvetica, Arial, sans-serif;">
+Please use the verification code below to confirm your contact details on <strong>{{portal_name}}</strong>.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:0 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf3e1; border:1px dashed #c7963f; border-radius:8px;">
+<tr>
+<td style="padding:22px 20px; text-align:center;">
+<div style="font-family:'Courier New', monospace; font-size:34px; font-weight:700; letter-spacing:10px; color:#0f5c52;">{{otp}}</div>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:18px 40px 4px 40px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0 0 10px 0; font-size:13.5px; line-height:1.6; color:#6b6155;">
+This code is valid for <strong>{{otp_validity}} minutes</strong> and can only be used once. Please do not share it with anyone.
+</p>
+<p style="margin:0; font-size:13.5px; line-height:1.6; color:#6b6155;">
+If you did not expect this email, you can safely ignore it.
+</p>
+</td>
+</tr>`),
+  },
+  {
+    key: "staff_added",
+    name: "Staff Account Added",
+    type: "Account",
+    subject: "Your account has been added — {{portal_name}}",
+    body: emailShell(`<tr>
+<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
+<div style="font-size:23px; color:#0f5c52; font-weight:700;">Welcome, {{staff_name}}</div>
+<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
+You've been added as a staff member of <strong>{{facility_name}}</strong> on {{portal_name}}.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:22px 40px 4px 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf3e1; border:1px solid #e3d9c0; border-radius:8px;">
+<tr>
+<td style="padding:18px 22px; font-family:Helvetica, Arial, sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td style="padding:5px 0; font-size:13px; color:#9a9183; width:140px;">Staff ID</td>
+<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{staff_code}}</td>
+</tr>
+<tr>
+<td style="padding:5px 0; font-size:13px; color:#9a9183;">Employee Type</td>
+<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{employee_type}}</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:18px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0; font-size:13.5px; line-height:1.75; color:#4a4238;">
+This is an informational notice — your facility administrator will let you know if and when you'll be able to log in yourself.
+</p>
+</td>
+</tr>`),
+  },
+  {
+    key: "staff_deactivated",
+    name: "Staff Account Deactivated",
+    type: "Account",
+    subject: "Your account has been deactivated — {{portal_name}}",
+    body: emailShell(`<tr>
+<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
+<div style="font-size:23px; color:#a13f3f; font-weight:700;">Account Deactivated</div>
+<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
+Dear {{staff_name}}, your staff account at <strong>{{facility_name}}</strong> on {{portal_name}} has been deactivated.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:18px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
+<p style="margin:0; font-size:13.5px; line-height:1.75; color:#4a4238;">
+If you believe this was a mistake, please reach out to your facility administrator.
+</p>
+</td>
+</tr>`),
+  },
+  {
+    key: "staff_reactivated",
+    name: "Staff Account Reactivated",
+    type: "Account",
+    subject: "Your account has been reactivated — {{portal_name}}",
+    body: emailShell(`<tr>
+<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
+<div style="font-size:23px; color:#0f5c52; font-weight:700;">Welcome Back, {{staff_name}}</div>
+<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
+Your staff account at <strong>{{facility_name}}</strong> on {{portal_name}} has been reactivated.
+</p>
+</td>
+</tr>`),
+  },
+  {
     key: "patient_otp_verification",
     name: "Patient OTP Verification",
     type: "OTP",

@@ -1,28 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
+import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   LayoutDashboard, FileImage, ClipboardList, CalendarDays, MessageSquare,
-  FileText, LogOut, Search, Bell, Heart, ChevronRight,
+  FileText, LogOut, Bell,
 } from "lucide-react";
-import { PatientOverview } from "./views/overview";
-import { RecordsView } from "./views/records";
-import { ProfileView } from "./views/profile";
-import { PatientAppointmentsView } from "./views/appointments";
-import { PatientMessagesView } from "./views/messages";
-import { PatientPrescriptionsView } from "./views/prescriptions";
 
-type View = "dashboard" | "records" | "profile" | "appointments" | "messages" | "prescriptions";
+type Tab = "dashboard" | "records" | "profile" | "appointments" | "messages" | "prescriptions";
 
-const NAV: { id: View; label: string; icon: any }[] = [
+const NAV: { id: Tab; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "records", label: "My Records", icon: FileImage },
   { id: "profile", label: "Medical Profile", icon: ClipboardList },
@@ -31,22 +25,25 @@ const NAV: { id: View; label: string; icon: any }[] = [
   { id: "prescriptions", label: "Prescriptions", icon: FileText },
 ];
 
-export function PatientDashboard() {
+export function PatientShell({ children }: { children: React.ReactNode }) {
   const patient = useAppStore((s) => s.patient);
   const logout = useAppStore((s) => s.logout);
-  const [view, setView] = useState<View>("dashboard");
+  const router = useRouter();
+  const pathname = usePathname();
+  const active = (pathname.split("/")[2] || "dashboard") as Tab;
   const [mobileNav, setMobileNav] = useState(false);
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
-    // light unread count fetch
     fetch("/api/messages/conversations", { headers: { "x-hekim-auth": localStorage.getItem("hekims-connect-token") || "" } })
       .then((r) => r.json())
       .then((d) => setUnread((d.conversations || []).reduce((s: number, c: any) => s + c.unread, 0)))
       .catch(() => {});
-  }, [view]);
+  }, [pathname]);
 
-  const onLogout = () => { logout(); };
+  const go = (tab: string) => { router.push(`/patient/${tab}`); setMobileNav(false); };
+  const onLogout = () => { logout(); router.push("/"); };
+
   if (!patient) return null;
 
   return (
@@ -65,10 +62,10 @@ export function PatientDashboard() {
             {NAV.map((n) => (
               <button
                 key={n.id}
-                onClick={() => { setView(n.id); setMobileNav(false); }}
+                onClick={() => go(n.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  view === n.id ? "bg-accent text-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  active === n.id ? "bg-accent text-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
               >
                 <n.icon className="h-4 w-4 shrink-0" />
@@ -84,7 +81,7 @@ export function PatientDashboard() {
           </nav>
 
           <div className="mt-6 px-3">
-            <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setView("appointments")}>
+            <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => go("appointments")}>
               <CalendarDays className="mr-2 h-4 w-4" /> Book Appointment
             </Button>
           </div>
@@ -122,7 +119,7 @@ export function PatientDashboard() {
                 {patient.bloodGroup ? `Blood ${patient.bloodGroup} · ` : ""}Your healing journey, harmonised.
               </p>
             </div>
-            <Button variant="ghost" size="icon" className="relative" onClick={() => setView("messages")}>
+            <Button variant="ghost" size="icon" className="relative" onClick={() => go("messages")}>
               <Bell className="h-5 w-5" />
               {unread > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />}
             </Button>
@@ -130,12 +127,7 @@ export function PatientDashboard() {
         </header>
 
         <main className="flex-1 p-4 lg:p-6">
-          {view === "dashboard" && <PatientOverview onNavigate={setView} />}
-          {view === "records" && <RecordsView />}
-          {view === "profile" && <ProfileView />}
-          {view === "appointments" && <PatientAppointmentsView />}
-          {view === "messages" && <PatientMessagesView />}
-          {view === "prescriptions" && <PatientPrescriptionsView />}
+          {children}
         </main>
       </div>
     </div>

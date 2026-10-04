@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/lib/store";
@@ -138,10 +139,11 @@ function ToggleRow({ icon: Icon, title, subtitle, checked, onCheckedChange }: { 
 }
 
 export function FacilityProfileSetup() {
+  const router = useRouter();
   const facility = useAppStore((s) => s.facility);
   const setFacility = useAppStore((s) => s.setFacility);
-  const setView = useAppStore((s) => s.setView);
   const logout = useAppStore((s) => s.logout);
+  const onLogout = () => { logout(); router.push("/"); };
 
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -287,8 +289,8 @@ export function FacilityProfileSetup() {
         ambulanceAvailable: form.ambulanceAvailable,
       });
       setFacility(res.facility);
-      setView("facility-dashboard");
       toast.success("Facility profile completed!");
+      router.push("/facility/dashboard");
     } catch (err: any) {
       setError(err.message || "Could not save your profile");
     } finally {
@@ -306,7 +308,7 @@ export function FacilityProfileSetup() {
         <header className="px-4 lg:px-0 py-5">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <BrandLogo size={32} />
-            <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={onLogout} className="text-muted-foreground hover:text-foreground">
               <LogOut className="h-4 w-4 mr-1.5" /> Logout
             </Button>
           </div>

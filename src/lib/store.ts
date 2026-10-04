@@ -3,8 +3,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type AppView = "landing" | "facility-dashboard" | "facility-profile-setup" | "patient-dashboard";
-
 export interface FacilityUser {
   id: string;
   facilityName: string;
@@ -43,22 +41,40 @@ export interface PatientUser {
   avatarColor: string;
 }
 
+export interface StaffUser {
+  id: string;
+  staffCode: string;
+  name: string;
+  photo: string | null;
+  email: string | null;
+  phone: string | null;
+  employeeType: string;
+  specialization: string | null;
+  qualification: string | null;
+  designation: string | null;
+  registrationNumber: string | null;
+  experience: number | null;
+  role: string | null;
+  responsibilities: string | null;
+  facility: { id: string; facilityName: string };
+}
+
 interface OtpPending {
   contact: string; // email for facility, phone for patient
-  role: "facility" | "patient";
+  role: "facility" | "patient" | "staff";
   code: string; // dev-mode visible code
   name?: string;
 }
 
 interface AppState {
-  view: AppView;
   facility: FacilityUser | null;
   patient: PatientUser | null;
+  staff: StaffUser | null;
   otpPending: OtpPending | null;
 
-  setView: (v: AppView) => void;
   setFacility: (h: FacilityUser | null) => void;
   setPatient: (p: PatientUser | null) => void;
+  setStaff: (s: StaffUser | null) => void;
   setOtpPending: (o: OtpPending | null) => void;
   logout: () => void;
 }
@@ -66,13 +82,13 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      view: "landing",
       facility: null,
       patient: null,
+      staff: null,
       otpPending: null,
-      setView: (view) => set({ view }),
       setFacility: (facility) => set({ facility }),
       setPatient: (patient) => set({ patient }),
+      setStaff: (staff) => set({ staff }),
       setOtpPending: (otpPending) => set({ otpPending }),
       logout: () => {
         const token = localStorage.getItem("hekims-connect-token");
@@ -80,15 +96,15 @@ export const useAppStore = create<AppState>()(
           fetch("/api/auth/logout", { method: "POST", headers: { "x-hekim-auth": token } }).catch(() => {});
         }
         localStorage.removeItem("hekims-connect-token");
-        set({ view: "landing", facility: null, patient: null, otpPending: null });
+        set({ facility: null, patient: null, staff: null, otpPending: null });
       },
     }),
     {
       name: "hekims-connect-store",
       partialize: (s) => ({
-        view: s.view,
         facility: s.facility,
         patient: s.patient,
+        staff: s.staff,
         otpPending: s.otpPending,
       }),
     }

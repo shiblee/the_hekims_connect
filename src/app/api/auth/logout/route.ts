@@ -9,6 +9,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Staff logins don't create a UserSession row (no staff-facing login history yet), so
+  // there's nothing to close — just acknowledge the logout.
+  if (auth.type === "staff") {
+    return NextResponse.json({ success: true });
+  }
+
   const where = auth.type === "facility" ? { facilityId: auth.id } : { patientId: auth.id };
   const openSession = await db.userSession.findFirst({
     where: { ...where, logoutAt: null },

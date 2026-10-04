@@ -75,9 +75,8 @@ export default function LanguagesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <LanguagesIcon className="h-6 w-6 text-primary" /> Language Management
+            <LanguagesIcon className="h-6 w-6 text-primary" /> Language ({languages.length})
           </h1>
-          <p className="text-muted-foreground mt-1.5">Enable languages, set the default, and manage translations.</p>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link href="/admin/languages/keys"><ListChecks className="h-4 w-4" /> Browse translation keys</Link>

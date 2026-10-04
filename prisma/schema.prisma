@@ -95,7 +95,7 @@ model Facility {
   // Facility Profile Completion (onboarding wizard)
   registeredFacilityName String?
   facilityType           String?
-  hfrNumber               String?
+  hfrNumber               String?  @unique
   establishmentDate       DateTime?
   alternateContactNumber  String?
   addressLine1            String?
@@ -129,8 +129,38 @@ model Facility {
   sessions        UserSession[]
   operatingHours  FacilityOperatingHours[]
   subscriptions   FacilitySubscription[]
+  staff           Staff[]
 
   @@map("Hakim")
+}
+
+model Staff {
+  id                 String   @id @default(cuid())
+  staffCode          String   @unique
+  facilityId         String
+  name               String
+  photo              String?
+  email              String?
+  phone              String?
+  // When the email/phone above was OTP-verified, for audit purposes — carried over
+  // from the verified OtpCode row at creation time.
+  contactVerifiedAt  DateTime?
+  employeeType       String
+  specialization     String?
+  qualification      String?
+  designation        String?
+  registrationNumber String?
+  experience         Int?
+  role               String?
+  // JSON-stringified array, same convention as Facility.specializations/services.
+  responsibilities   String?
+  active             Boolean  @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  facility Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  otpCodes OtpCode[]
 }
 
 model FacilityOperatingHours {
@@ -392,11 +422,13 @@ model OtpCode {
   facilityId String? @map("hakimId")
   patientId String?
   adminId   String?
+  staffId   String?
   createdAt DateTime @default(now())
 
   facility Facility? @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   admin    Admin?    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  staff    Staff?    @relation(fields: [staffId], references: [id], onDelete: Cascade)
 }
 
 model LoginEvent {

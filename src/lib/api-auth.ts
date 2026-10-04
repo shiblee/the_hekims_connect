@@ -3,16 +3,16 @@ import { db } from "@/lib/db";
 
 export interface AuthUser {
   id: string;
-  type: "facility" | "patient";
+  type: "facility" | "patient" | "staff";
 }
 
 /**
  * Reads the simple session token from the `x-hekim-auth` header.
  * Token format: base64(`${type}|${userId}`).
  *
- * Also re-checks the account's `active` flag on every call, so a facility or
- * patient suspended by an admin loses API access immediately — not just on
- * their next login — even with an already-issued token in hand.
+ * Also re-checks the account's `active` flag on every call, so a facility,
+ * patient or staff member suspended/deactivated loses API access immediately —
+ * not just on their next login — even with an already-issued token in hand.
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   const raw = req.headers.get("x-hekim-auth");
@@ -20,12 +20,14 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   try {
     const decoded = Buffer.from(raw, "base64").toString("utf-8");
     const [type, id] = decoded.split("|");
-    if (type !== "facility" && type !== "patient") return null;
+    if (type !== "facility" && type !== "patient" && type !== "staff") return null;
     if (!id) return null;
 
     const account = type === "facility"
       ? await db.facility.findUnique({ where: { id }, select: { active: true } })
-      : await db.patient.findUnique({ where: { id }, select: { active: true } });
+      : type === "patient"
+      ? await db.patient.findUnique({ where: { id }, select: { active: true } })
+      : await db.staff.findUnique({ where: { id }, select: { active: true } });
     if (!account || !account.active) return null;
 
     return { type, id };
@@ -34,7 +36,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   }
 }
 
-export function makeToken(type: "facility" | "patient", id: string): string {
+export function makeToken(type: "facility" | "patient" | "staff", id: string): string {
   return Buffer.from(`${type}|${id}`, "utf-8").toString("base64");
 }
 
@@ -54,6 +56,29 @@ export async function fetchFacility(id: string) {
       bio: true,
       verified: true,
       profileCompleted: true,
+    },
+  });
+}
+
+export async function fetchStaff(id: string) {
+  return db.staff.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      staffCode: true,
+      name: true,
+      photo: true,
+      email: true,
+      phone: true,
+      employeeType: true,
+      specialization: true,
+      qualification: true,
+      designation: true,
+      registrationNumber: true,
+      experience: true,
+      role: true,
+      responsibilities: true,
+      facility: { select: { id: true, facilityName: true } },
     },
   });
 }

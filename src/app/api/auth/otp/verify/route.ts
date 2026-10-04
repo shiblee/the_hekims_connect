@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { makeToken, fetchFacility, fetchPatient } from "@/lib/api-auth";
+import { makeToken, fetchFacility, fetchPatient, fetchStaff } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
@@ -108,6 +108,16 @@ export async function POST(req: NextRequest) {
         token: makeToken("patient", otp.patientId),
         user: patient,
         role: "patient",
+      });
+    } else if (role === "staff" && otp.staffId) {
+      await db.staff.update({ where: { id: otp.staffId }, data: { lastLoginAt: new Date() } });
+      const staff = await fetchStaff(otp.staffId);
+
+      return NextResponse.json({
+        success: true,
+        token: makeToken("staff", otp.staffId),
+        user: staff,
+        role: "staff",
       });
     }
 

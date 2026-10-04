@@ -78,17 +78,13 @@ export async function restoreSession() {
   const token = getToken();
   if (!token) return null;
   try {
-    const data = await api.get<{ user: any; role: "facility" | "patient" }>(
+    const data = await api.get<{ user: any; role: "facility" | "patient" | "staff" }>(
       "/api/auth/me"
     );
-    const { setFacility, setPatient, setView } = useAppStore.getState();
-    if (data.role === "facility") {
-      setFacility(data.user);
-      setView(data.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
-    } else {
-      setPatient(data.user);
-      setView("patient-dashboard");
-    }
+    const { setFacility, setPatient, setStaff } = useAppStore.getState();
+    if (data.role === "facility") setFacility(data.user);
+    else if (data.role === "staff") setStaff(data.user);
+    else setPatient(data.user);
     return data;
   } catch {
     useAppStore.getState().logout();

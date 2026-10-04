@@ -160,7 +160,7 @@ export default function MetaSectionPage() {
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Meta Management</h1>
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Meta ({sections.length})</h1>
         </div>
         <Button size="sm" onClick={() => setAddSectionOpen(true)}>
           <Plus className="h-4 w-4 mr-1.5" /> Add Section

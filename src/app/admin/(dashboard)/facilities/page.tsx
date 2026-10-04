@@ -47,8 +47,7 @@ export default function FacilityListPage() {
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
       <div className="mb-8">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Facility Management</h1>
-        <p className="text-muted-foreground mt-1.5">{total} Facilit{total === 1 ? "y" : "ies"} registered on the portal.</p>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Facility ({total})</h1>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">

@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import { restoreSession } from "@/lib/api";
+import { useSessionReady } from "@/components/providers/session-boundary";
 import { LandingPage } from "@/components/landing/landing-page";
-import { FacilityDashboard } from "@/components/facility/facility-dashboard";
-import { FacilityProfileSetup } from "@/components/facility/facility-profile-setup";
-import { PatientDashboard } from "@/components/patient/patient-dashboard";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
 function LoadingScreen() {
@@ -24,20 +22,21 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const view = useAppStore((s) => s.view);
-  const [hydrated, setHydrated] = useState(false);
+  const router = useRouter();
+  const ready = useSessionReady();
+  const facility = useAppStore((s) => s.facility);
+  const patient = useAppStore((s) => s.patient);
+  const staff = useAppStore((s) => s.staff);
 
   useEffect(() => {
-    restoreSession().finally(() => setHydrated(true));
-  }, []);
+    if (!ready) return;
+    if (facility) router.replace(facility.profileCompleted ? "/facility/dashboard" : "/facility/profile-setup");
+    else if (staff) router.replace("/staff");
+    else if (patient) router.replace("/patient/dashboard");
+  }, [ready, facility, patient, staff, router]);
 
-  if (!hydrated) return <LoadingScreen />;
+  if (!ready) return <LoadingScreen />;
+  if (facility || patient || staff) return <LoadingScreen />;
 
-  // Dashboard views
-  if (view === "facility-profile-setup") return <FacilityProfileSetup />;
-  if (view === "facility-dashboard") return <FacilityDashboard />;
-  if (view === "patient-dashboard") return <PatientDashboard />;
-
-  // Default landing
   return <LandingPage />;
 }

@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { contact, role } = body;
-    if (!contact || (role !== "facility" && role !== "patient")) {
+    if (!contact || (role !== "facility" && role !== "patient" && role !== "staff")) {
       return NextResponse.json({ error: "Contact and role are required" }, { status: 400 });
     }
 
@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
 
     const user = role === "facility"
       ? await db.facility.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
-      : await db.patient.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } });
+      : role === "patient"
+      ? await db.patient.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
+      : await db.staff.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } });
 
     if (!user) {
       return NextResponse.json({ error: "No account found with this email or phone" }, { status: 404 });
@@ -27,7 +29,9 @@ export async function POST(req: NextRequest) {
     }
 
     const identifier = (user as { email: string | null; phone: string | null }).email ?? (user as { phone: string }).phone;
-    const displayName = role === "facility" ? (user as { facilityName: string }).facilityName : (user as { name: string }).name;
+    const displayName = role === "facility"
+      ? (user as { facilityName: string }).facilityName
+      : (user as { name: string }).name;
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
     const lastOtp = await db.otpCode.findFirst({ where: { identifier, purpose: "login" }, orderBy: { createdAt: "desc" } });
@@ -45,6 +49,7 @@ export async function POST(req: NextRequest) {
         purpose: "login",
         facilityId: role === "facility" ? user.id : undefined,
         patientId: role === "patient" ? user.id : undefined,
+        staffId: role === "staff" ? user.id : undefined,
         expiresAt: new Date(Date.now() + parseInt(otpValidityMinutes, 10) * 60 * 1000),
       },
     });
@@ -53,9 +58,10 @@ export async function POST(req: NextRequest) {
     let delivered = false;
     if (hasEmail) {
       const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
-      const nameVar = role === "facility" ? "facility_name" : "patient_name";
+      const nameVar = role === "facility" ? "facility_name" : role === "staff" ? "staff_name" : "patient_name";
+      const templateKey = role === "facility" ? "facility_otp_verification" : role === "staff" ? "staff_otp_verification" : "patient_otp_verification";
       const result = await sendTemplatedEmail({
-        templateKey: role === "facility" ? "facility_otp_verification" : "patient_otp_verification",
+        templateKey,
         to: identifier,
         vars: { [nameVar]: displayName, otp: code, otp_validity: otpValidityMinutes, portal_name: portalName },
         event: "otp_sent",

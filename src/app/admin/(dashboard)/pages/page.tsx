@@ -130,8 +130,7 @@ export default function AdminPagesPage() {
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
       <div className="mb-8">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Pages</h1>
-        <p className="text-muted-foreground mt-1.5">Manage static page content across English, Hindi, Urdu, Arabic and Farsi.</p>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Pages ({pages.length})</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">

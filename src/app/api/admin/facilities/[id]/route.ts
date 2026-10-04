@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/request-info";
 import { normalizeContact } from "@/lib/auth";
+import { sendTemplatedEmail } from "@/lib/notifications";
+import { getSetting } from "@/lib/settings";
+import { getSiteUrl } from "@/lib/site-url";
 
 // ABDM Health Facility Registry ID format: "IN" followed by 10 digits (e.g. IN0123456789).
 const HFR_PATTERN = /^IN\d{10}$/i;
@@ -58,11 +61,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
 
-  const existing = await db.facility.findUnique({ where: { id }, select: { facilityName: true } });
+  const existing = await db.facility.findUnique({ where: { id }, select: { facilityName: true, active: true, email: true } });
   if (!existing) return NextResponse.json({ error: "Facility not found" }, { status: 404 });
 
   if (body.hfrNumber && !HFR_PATTERN.test(body.hfrNumber)) {
     return NextResponse.json({ error: "HFR Number should be IN followed by 10 digits (e.g. IN0123456789)" }, { status: 400 });
+  }
+  if (body.hfrNumber) {
+    const hfrConflict = await db.facility.findFirst({
+      where: { hfrNumber: String(body.hfrNumber).toUpperCase(), id: { not: id } },
+    });
+    if (hfrConflict) {
+      return NextResponse.json({ error: "This HFR Number is already registered to another facility" }, { status: 409 });
+    }
   }
   if (body.establishmentDate && body.establishmentDate > new Date().toISOString().slice(0, 7)) {
     return NextResponse.json({ error: "Establishment month/year cannot be in the future" }, { status: 400 });
@@ -180,6 +191,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     `Facility "${existing.facilityName}" details updated by admin`,
     getClientIp(req)
   );
+
+  if (typeof body.active === "boolean" && body.active !== existing.active && existing.email) {
+    const portalName = await getSetting("general", "portal_name", "The Hekim's Connect");
+    if (body.active) {
+      await sendTemplatedEmail({
+        templateKey: "facility_reactivated",
+        to: existing.email,
+        vars: {
+          facility_name: existing.facilityName,
+          portal_name: portalName,
+          login_url: `${getSiteUrl(req)}/login/facility`,
+        },
+        event: "facility_reactivated",
+      });
+    } else {
+      const supportEmail = await getSetting("general", "support_email", "");
+      await sendTemplatedEmail({
+        templateKey: "facility_suspended",
+        to: existing.email,
+        vars: {
+          facility_name: existing.facilityName,
+          portal_name: portalName,
+          support_email: supportEmail,
+        },
+        event: "facility_suspended",
+      });
+    }
+  }
 
   const facility = await db.facility.findUnique({
     where: { id },

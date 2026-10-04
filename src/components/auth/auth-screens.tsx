@@ -289,7 +289,6 @@ function PasswordRequirements({ value }: { value: string }) {
 function FacilitySignup() {
   const router = useRouter();
   const setFacility = useAppStore((s) => s.setFacility);
-  const setView = useAppStore((s) => s.setView);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ facilityName: "", contact: "", password: "" });
@@ -332,9 +331,8 @@ function FacilitySignup() {
       const res = await api.post<{ token: string; user: any }>("/api/auth/facility/signup", form);
       setToken(res.token);
       setFacility(res.user);
-      setView(res.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
       toast.success("Welcome! Your account is ready.");
-      router.push("/");
+      router.push(res.user.profileCompleted ? "/facility/dashboard" : "/facility/profile-setup");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
       if (/email|phone/i.test(msg)) setErrors((er) => ({ ...er, contact: msg }));
@@ -419,7 +417,6 @@ function FacilitySignup() {
 function FacilityLogin() {
   const router = useRouter();
   const setFacility = useAppStore((s) => s.setFacility);
-  const setView = useAppStore((s) => s.setView);
   const [mode, setMode] = useState<"password" | "otp">("password");
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
@@ -518,9 +515,8 @@ function FacilityLogin() {
       const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "facility" });
       setToken(res.token);
       setFacility(res.user);
-      setView(res.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
       toast.success("Verified! Welcome.");
-      router.push("/");
+      router.push(res.user.profileCompleted ? "/facility/dashboard" : "/facility/profile-setup");
     } catch (err: any) {
       setOtpError(err.message || "Verification failed");
     } finally {
@@ -710,7 +706,6 @@ function FacilityLogin() {
 function PatientSignup() {
   const router = useRouter();
   const setPatient = useAppStore((s) => s.setPatient);
-  const setView = useAppStore((s) => s.setView);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ name: "", contact: "", password: "" });
@@ -753,9 +748,8 @@ function PatientSignup() {
       const res = await api.post<{ token: string; user: any }>("/api/auth/patient/signup", form);
       setToken(res.token);
       setPatient(res.user);
-      setView("patient-dashboard");
       toast.success("Welcome! Your account is ready.");
-      router.push("/");
+      router.push("/patient/dashboard");
     } catch (err: any) {
       const msg = err.message || "Sign up failed";
       if (/email|phone/i.test(msg)) setErrors((er) => ({ ...er, contact: msg }));
@@ -840,7 +834,6 @@ function PatientSignup() {
 function PatientLogin() {
   const router = useRouter();
   const setPatient = useAppStore((s) => s.setPatient);
-  const setView = useAppStore((s) => s.setView);
   const [mode, setMode] = useState<"password" | "otp">("password");
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
@@ -939,9 +932,8 @@ function PatientLogin() {
       const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "patient" });
       setToken(res.token);
       setPatient(res.user);
-      setView("patient-dashboard");
       toast.success("Verified! Welcome.");
-      router.push("/");
+      router.push("/patient/dashboard");
     } catch (err: any) {
       setOtpError(err.message || "Verification failed");
     } finally {
@@ -1130,7 +1122,7 @@ function PatientLogin() {
 
 function OtpPanel({ role, backLabel = "Different account", onBack }: { role: AuthRole; backLabel?: string; onBack: () => void }) {
   const router = useRouter();
-  const { otpPending, setOtpPending, setView, setFacility, setPatient } = useAppStore();
+  const { otpPending, setOtpPending, setFacility, setPatient } = useAppStore();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1185,16 +1177,15 @@ function OtpPanel({ role, backLabel = "Different account", onBack }: { role: Aut
         contact: otpPending.contact, code, role: otpPending.role,
       });
       setToken(res.token);
-      if (otpPending.role === "facility") {
-        setFacility(res.user);
-        setView(res.user.profileCompleted ? "facility-dashboard" : "facility-profile-setup");
-      } else {
-        setPatient(res.user);
-        setView("patient-dashboard");
-      }
       setOtpPending(null);
       toast.success("Verified! Welcome.");
-      router.push("/");
+      if (otpPending.role === "facility") {
+        setFacility(res.user);
+        router.push(res.user.profileCompleted ? "/facility/dashboard" : "/facility/profile-setup");
+      } else {
+        setPatient(res.user);
+        router.push("/patient/dashboard");
+      }
     } catch (err: any) {
       toast.error(err.message || "Verification failed");
     } finally {

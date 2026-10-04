@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
+import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,20 +12,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   LayoutDashboard, Activity, Pill, CalendarDays, Users, MessageSquare,
-  FilePlus2, LogOut, Search, Bell, Stethoscope, Leaf, ChevronRight,
+  FilePlus2, LogOut, Search, Bell, Stethoscope,
 } from "lucide-react";
-import { Overview } from "./views/overview";
-import { MizajView } from "./views/mizaj";
-import { PharmacyView } from "./views/pharmacy";
-import { AppointmentsView } from "./views/appointments";
-import { PatientsView } from "./views/patients";
-import { MessagesView } from "./views/messages";
-import { PrescriptionsView } from "./views/prescriptions";
-import { ProfileView } from "./views/profile";
 
-type View = "dashboard" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions" | "profile";
+type Tab = "dashboard" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions" | "profile";
 
-const NAV: { id: View; label: string; icon: any }[] = [
+const NAV: { id: Tab; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "mizaj", label: "Mizaj Assessment", icon: Activity },
   { id: "pharmacy", label: "Pharmacy", icon: Pill },
@@ -34,25 +27,33 @@ const NAV: { id: View; label: string; icon: any }[] = [
   { id: "prescriptions", label: "Prescriptions", icon: FilePlus2 },
 ];
 
-export function FacilityDashboard() {
+const FacilityStatsContext = createContext<any>(null);
+export function useFacilityStats() {
+  return useContext(FacilityStatsContext);
+}
+
+export function FacilityShell({ children }: { children: React.ReactNode }) {
   const facility = useAppStore((s) => s.facility);
   const logout = useAppStore((s) => s.logout);
-  const [view, setView] = useState<View>("dashboard");
+  const router = useRouter();
+  const pathname = usePathname();
+  const active = (pathname.split("/")[2] || "dashboard") as Tab;
   const [mobileNav, setMobileNav] = useState(false);
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    let active = true;
+    let alive = true;
     (async () => {
       try {
         const res = await fetch("/api/facility/stats", { headers: { "x-hekim-auth": localStorage.getItem("hekims-connect-token") || "" } });
-        if (active && res.ok) setStats(await res.json());
+        if (alive && res.ok) setStats(await res.json());
       } catch { /* ignore */ }
     })();
-    return () => { active = false; };
+    return () => { alive = false; };
   }, []);
 
-  const onLogout = () => { logout(); };
+  const go = (tab: string) => { router.push(`/facility/${tab}`); setMobileNav(false); };
+  const onLogout = () => { logout(); router.push("/"); };
 
   if (!facility) return null;
 
@@ -75,10 +76,10 @@ export function FacilityDashboard() {
             {NAV.map((n) => (
               <button
                 key={n.id}
-                onClick={() => { setView(n.id); setMobileNav(false); }}
+                onClick={() => go(n.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  view === n.id
+                  active === n.id
                     ? "bg-primary text-primary-foreground"
                     : "text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
@@ -101,10 +102,10 @@ export function FacilityDashboard() {
 
         <div className="p-3 border-t border-sidebar-border">
           <button
-            onClick={() => { setView("profile"); setMobileNav(false); }}
+            onClick={() => go("profile")}
             className={cn(
               "w-full flex items-center gap-2.5 p-2 rounded-lg transition-colors",
-              view === "profile" ? "bg-sidebar-accent" : "hover:bg-sidebar-accent"
+              active === "profile" ? "bg-sidebar-accent" : "hover:bg-sidebar-accent"
             )}
           >
             <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(facility.avatarColor))}>
@@ -141,7 +142,7 @@ export function FacilityDashboard() {
             </div>
             <div className="hidden md:block relative w-56">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search patients…" className="pl-9 h-9 bg-background/60" onClick={() => setView("patients")} readOnly />
+              <Input placeholder="Search patients…" className="pl-9 h-9 bg-background/60" onClick={() => go("patients")} readOnly />
             </div>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
@@ -154,14 +155,9 @@ export function FacilityDashboard() {
 
         {/* Content */}
         <main className="flex-1 p-4 lg:p-6">
-          {view === "dashboard" && <Overview stats={stats} onNavigate={setView} />}
-          {view === "mizaj" && <MizajView />}
-          {view === "pharmacy" && <PharmacyView />}
-          {view === "appointments" && <AppointmentsView />}
-          {view === "patients" && <PatientsView />}
-          {view === "messages" && <MessagesView />}
-          {view === "prescriptions" && <PrescriptionsView />}
-          {view === "profile" && <ProfileView />}
+          <FacilityStatsContext.Provider value={stats}>
+            {children}
+          </FacilityStatsContext.Provider>
         </main>
       </div>
     </div>

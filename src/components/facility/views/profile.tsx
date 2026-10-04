@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -13,8 +14,9 @@ import { Separator } from "@/components/ui/separator";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope,
+  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog,
 } from "lucide-react";
+import { TeamView } from "./team";
 
 const DAY_LABELS: Record<number, string> = {
   0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday",
@@ -27,6 +29,7 @@ const SECTIONS = [
   { key: "capacity", label: "Capacity & Schedule", icon: Gauge },
   { key: "services", label: "Services", icon: Stethoscope },
 ];
+const STAFF_SECTION = { key: "staff", label: "Staff", icon: UserCog };
 
 interface OperatingHourRow {
   dayOfWeek: number;
@@ -79,8 +82,9 @@ function ToggleRow({ title, checked, onCheckedChange }: { title: string; checked
   );
 }
 
-export function ProfileView() {
-  const [section, setSection] = useState("overview");
+export function ProfileView({ section }: { section: string }) {
+  const router = useRouter();
+  const setSection = (s: string) => router.push(`/facility/profile/${s}`);
   const [facility, setFacility] = useState<FacilityProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -213,30 +217,44 @@ export function ProfileView() {
     <div className="space-y-5">
       <div>
         <h2 className="font-serif text-xl font-bold">Facility Profile</h2>
-        <p className="text-sm text-muted-foreground">Keep your facility's information up to date.</p>
       </div>
 
       <div className="grid md:grid-cols-[260px_1fr] gap-6">
-        <Card className="p-2 border-border/50 bg-card/60 h-fit">
-          <div className="space-y-1">
-            {SECTIONS.map((s) => {
-              const Icon = s.icon;
-              return (
-                <button
-                  key={s.key}
-                  onClick={() => setSection(s.key)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-                    section === s.key ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{s.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </Card>
+        <div className="space-y-4 h-fit">
+          <Card className="p-2 border-border/50 bg-card/60">
+            <div className="space-y-1">
+              {SECTIONS.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() => setSection(s.key)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                      section === s.key ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{s.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="p-2 border-border/50 bg-card/60">
+            <button
+              onClick={() => setSection(STAFF_SECTION.key)}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                section === STAFF_SECTION.key ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+              )}
+            >
+              <STAFF_SECTION.icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{STAFF_SECTION.label}</span>
+            </button>
+          </Card>
+        </div>
 
         {section === "overview" && (
           <Card className="p-6 border-border/50 bg-card/60">
@@ -414,6 +432,12 @@ export function ProfileView() {
             </div>
 
             <SaveButton onClick={() => save({ specializations, services, emergencyServices, ambulanceAvailable })} />
+          </Card>
+        )}
+
+        {section === "staff" && (
+          <Card className="p-6 border-border/50 bg-card/60">
+            <TeamView />
           </Card>
         )}
       </div>

@@ -54,6 +54,14 @@ export async function POST(req: NextRequest) {
     if (hfrNumber && !HFR_PATTERN.test(hfrNumber)) {
       return NextResponse.json({ error: "HFR Number should be IN followed by 10 digits (e.g. IN0123456789)" }, { status: 400 });
     }
+    if (hfrNumber) {
+      const hfrConflict = await db.facility.findFirst({
+        where: { hfrNumber: hfrNumber.toUpperCase(), id: { not: auth.id } },
+      });
+      if (hfrConflict) {
+        return NextResponse.json({ error: "This HFR Number is already registered to another facility" }, { status: 409 });
+      }
+    }
 
     if (missing.length) {
       return NextResponse.json({ error: `Missing required fields: ${missing.join(", ")}` }, { status: 400 });
