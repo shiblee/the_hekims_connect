@@ -66,6 +66,16 @@ export function ageFromDob(dob: string | null): { value: number; unit: AgeUnit }
   return { value: days, unit: "days" };
 }
 
+/** Age in whole days from a "YYYY-MM-DD" DOB — used for day-granularity eligibility checks (e.g. neonatal-only questions). */
+export function ageInDays(dob: string | null): number | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  if (birth > today) return null;
+  return Math.floor((today.getTime() - birth.getTime()) / 86400000);
+}
+
 /** A date/timestamp as relative days ("Today", "Yesterday", "5 days ago", "3 months ago", "2 years ago"). */
 export function daysAgo(dateStr: string | null): string {
   if (!dateStr) return "—";

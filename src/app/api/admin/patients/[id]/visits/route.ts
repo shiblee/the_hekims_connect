@@ -23,6 +23,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           heightCm: true, weightKg: true, updatedAt: true,
         },
       },
+      l1Screening: {
+        select: {
+          id: true, chiefComplaints: true, overallFlag: true, aiSummary: true, updatedAt: true,
+          answers: { select: { flagTriggered: true } },
+        },
+      },
     },
     orderBy: { visitDate: "desc" },
   });

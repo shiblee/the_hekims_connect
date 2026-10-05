@@ -12,12 +12,21 @@ import { cn } from "@/lib/utils";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { VitalsPanel } from "@/components/facility/views/vitals-panel";
+import { ScreeningCard, latestScreeningOf } from "@/components/facility/views/screening-card";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ChevronLeft, Loader2, MapPin, Droplet, Activity, FileText, Camera,
   IdCard, Phone, Mail, Briefcase, HeartPulse, Pill, Ruler, Scale,
+  ShieldAlert, ShieldCheck, Sparkles,
 } from "lucide-react";
+
+const FLAG_STYLE: Record<string, string> = {
+  red: "bg-destructive/15 text-destructive border-destructive/30",
+  yellow: "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30",
+  green: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+};
+const FLAG_LABEL: Record<string, string> = { red: "High Risk", yellow: "Needs Review", green: "Low Risk" };
 
 interface Patient {
   id: string; patientCode: string | null; name: string; email: string | null; phone: string | null;
@@ -34,6 +43,10 @@ interface Patient {
 interface VisitRow {
   id: string; visitDate: string;
   vitalSigns: VisitVitals | null;
+  l1Screening: {
+    id: string; chiefComplaints: string; overallFlag: string | null; aiSummary: string | null; updatedAt: string;
+    answers?: { flagTriggered: string | null }[];
+  } | null;
 }
 
 export function PatientDetail({ patientId }: { patientId: string }) {
@@ -85,6 +98,8 @@ export function PatientDetail({ patientId }: { patientId: string }) {
   const latestWeightKg = findLatestWithField(visits, "weightKg");
   const latestBmi = calculateBmi(latestHeightCm, latestWeightKg);
   const latestBmiBand = bmiBand(latestBmi);
+  const latestScreeningVisit = latestScreeningOf(visits);
+  const latestScreening = latestScreeningVisit?.l1Screening;
 
   return (
     <div className="w-full">
@@ -160,6 +175,10 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         <VitalsPanel visits={visits} patientId={patientId} />
       </div>
 
+      <div className="mb-6">
+        <ScreeningCard visits={visits} patientId={patientId} />
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           {/* Quick facts */}
@@ -219,6 +238,30 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         </div>
 
         <div className="space-y-5">
+          {latestScreening && (
+            <Card className={cn(
+              "p-4 space-y-2.5 border",
+              latestScreening.overallFlag ? FLAG_STYLE[latestScreening.overallFlag] : "border-border/50 bg-card/60"
+            )}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                  {latestScreening.overallFlag ? <ShieldAlert className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                  Screening Status
+                </p>
+                {latestScreening.overallFlag && (
+                  <Badge variant="outline" className={cn("border text-[10px]", FLAG_STYLE[latestScreening.overallFlag])}>
+                    {FLAG_LABEL[latestScreening.overallFlag] || latestScreening.overallFlag}
+                  </Badge>
+                )}
+              </div>
+              {latestScreening.aiSummary && (
+                <p className="text-xs text-muted-foreground flex items-start gap-1.5 line-clamp-4">
+                  <Sparkles className="h-3 w-3 shrink-0 mt-0.5" /> {latestScreening.aiSummary}
+                </p>
+              )}
+            </Card>
+          )}
+
           <Card className="p-4 border-border/50 bg-card/60 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</p>
             {patient.phone && <p className="flex items-center gap-2 text-sm"><Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> {patient.phone}</p>}

@@ -21,14 +21,35 @@ export interface VitalsInsightVisit {
   weightKg?: number | null;
 }
 
+/** Shared Gemini call — server-side only, returns null (and logs) on any failure or missing key. */
+async function callGemini(prompt: string): Promise<string | null> {
+  const apiKey = await getGeminiApiKey();
+  if (!apiKey) return null;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    }
+  );
+
+  if (!res.ok) {
+    console.error("Gemini call error:", res.status, await res.text().catch(() => ""));
+    return null;
+  }
+
+  const json = await res.json();
+  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  return typeof text === "string" ? text.trim() : null;
+}
+
 /** Short, scoped clinical-language summary of a patient's recent vitals trend. Server-side only. */
 export async function generateVitalsInsight(
   patientContext: { name: string; gender: string | null; ageLabel: string },
   visits: VitalsInsightVisit[]
 ): Promise<string | null> {
-  const apiKey = await getGeminiApiKey();
-  if (!apiKey) return null;
-
   const rows = visits
     .map((v) => {
       const date = new Date(v.visitDate).toISOString().slice(0, 10);
@@ -54,21 +75,42 @@ ${rows}
 
 In 2-4 short sentences, summarize the overall trend and flag anything outside a normal adult range. Be factual and concise, plain text, no markdown, no diagnosis, no treatment recommendations — just observations a doctor should double-check.`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
+  return callGemini(prompt);
+}
 
-  if (!res.ok) {
-    console.error("Gemini insight error:", res.status, await res.text().catch(() => ""));
-    return null;
-  }
+export interface ScreeningAnswerSummary {
+  questionLabel: string;
+  value: string;
+  flagTriggered: string | null;
+}
 
-  const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  return typeof text === "string" ? text.trim() : null;
+/** Short clinical-language summary of an L1 Screening, for the doctor to triage quickly. Server-side only. */
+export async function generateScreeningSummary(
+  patientContext: { name: string; gender: string | null; ageLabel: string; mizaj?: string | null },
+  chiefComplaints: string[],
+  answers: ScreeningAnswerSummary[],
+  overallFlag: string | null
+): Promise<string | null> {
+  const answerLines = answers
+    .map((a) => `${a.questionLabel}: ${a.value}${a.flagTriggered ? ` [${a.flagTriggered.toUpperCase()} FLAG]` : ""}`)
+    .join("\n");
+
+  const prompt = `You are a senior Unani clinical assistant helping a Hakim (Unani physician) quickly triage a patient's Level-1 screening, taken by front-desk/support staff before the doctor sees the patient. This is decision support only — never state or imply a diagnosis.
+
+Patient: ${patientContext.name}, ${patientContext.gender || "gender not recorded"}, ${patientContext.ageLabel}${patientContext.mizaj ? `, previously assessed Mizaj: ${patientContext.mizaj}` : ""}.
+Chief complaint(s): ${chiefComplaints.join(", ") || "none recorded"}.
+Overall triage flag computed from the answers: ${overallFlag ? overallFlag.toUpperCase() : "none"}.
+
+Screening answers (flagged ones are the danger signs to prioritize):
+${answerLines || "No answers recorded."}
+
+Write a structured triage brief in plain text (no markdown) with exactly these labeled sections, each 1-3 sentences:
+Presenting Picture: summarize the complaint(s) and what the pattern of answers suggests.
+Danger Signs: call out every flagged answer explicitly and why it is clinically significant — if none are flagged, say so plainly.
+Unani Perspective: relate the presentation to relevant Unani principles where genuinely applicable — e.g. which temperament axis (Hararat/Burudat, Rutoobat/Yuboosat) or Akhlat (Dam, Balgham, Safra, Sauda) the pattern points toward, and how it aligns or conflicts with the patient's recorded Mizaj if known. Only draw this connection when the symptoms actually support it — do not force a classical label onto a presentation that doesn't fit one, and state uncertainty plainly when it exists.
+Priority for the Doctor: the single most important thing to verify or examine first.
+
+Stay factual and concise. Never state or imply a definitive diagnosis, and never recommend a specific treatment or formulation.`;
+
+  return callGemini(prompt);
 }

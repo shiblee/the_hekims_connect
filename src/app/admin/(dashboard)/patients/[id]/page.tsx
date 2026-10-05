@@ -19,6 +19,7 @@ import { cmToFeetInches } from "@/lib/units";
 import { findLatestWithField, type VisitVitals, type VisitWithVitals } from "@/lib/vitals-trend";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { VitalsPanel } from "@/components/facility/views/vitals-panel";
+import { ScreeningCard } from "@/components/facility/views/screening-card";
 import { cn } from "@/lib/utils";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
@@ -38,6 +39,10 @@ interface VisitRow {
   doctor: { id: string; name: string; staffCode: string } | null;
   payments: { id: string; paymentCode: string; amount: number; mode: string; status: string }[];
   vitalSigns: VisitVitals | null;
+  l1Screening: {
+    id: string; chiefComplaints: string; overallFlag: string | null; aiSummary: string | null; updatedAt: string;
+    answers?: { flagTriggered: string | null }[];
+  } | null;
 }
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
@@ -173,7 +178,7 @@ export default function PatientDetailPage() {
         )}
       </div>
 
-      <div className="mb-8 max-w-4xl">
+      <div className="mb-6 max-w-4xl">
         <VitalsPanel
           visits={visits as VisitWithVitals[]}
           patientId={patient.id}
@@ -181,6 +186,10 @@ export default function PatientDetailPage() {
           insightPath={`/api/admin/patients/${patient.id}/vitals-insight`}
           showNewVisitButton={false}
         />
+      </div>
+
+      <div className="mb-8 max-w-4xl">
+        <ScreeningCard visits={visits} patientId={patient.id} apiClient={adminApi} showStartButton={false} />
       </div>
 
       <Card className="p-6 border-border/50 bg-card/60 mb-8 max-w-4xl">
