@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { formatAge } from "@/lib/age";
 import { flagForAnswer, computeOverallFlag, type FlagQuestion } from "@/lib/screening-flags";
+import { questionApplies } from "@/lib/screening-eligibility";
 import { generateScreeningSummary } from "@/lib/gemini";
 
 async function resolveFacilityId(auth: { id: string; type: "facility" | "patient" | "staff" }): Promise<string | null> {
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     db.screeningQuestion.findMany({
       where: { id: { in: submittedAnswers.map((a) => a.questionId) } },
       select: {
-        id: true, label: true, type: true,
+        id: true, label: true, type: true, applicableGender: true, minAgeDays: true, maxAgeDays: true,
         numericOperator: true, numericThreshold: true, numericFlagSeverity: true,
         numericOperator2: true, numericThreshold2: true, numericFlagSeverity2: true,
         options: { select: { label: true, flagSeverity: true } },
@@ -87,10 +88,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   ]);
   const questionById = new Map(questions.map((q) => [q.id, q]));
 
+  // Re-validate gender/age eligibility server-side — the client already
+  // filters these, but a stale client or a direct API call must not be able
+  // to smuggle in an answer (and its flag) for a question that doesn't apply
+  // to this patient.
   const answerRows = submittedAnswers
     .map((a) => {
       const question = questionById.get(a.questionId);
       if (!question) return null;
+      if (!questionApplies(question, visit.patient)) return null;
       const flag = flagForAnswer(question as FlagQuestion, a.value);
       return {
         questionId: question.id,
