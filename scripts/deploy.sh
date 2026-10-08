@@ -5,6 +5,11 @@
 #   ssh -i /path/to/the-hekims-connect.pem ec2-user@15.134.186.132 "bash ~/app/scripts/deploy.sh"
 set -e
 
+# Non-interactive SSH sessions (e.g. `ssh host "bash scripts/deploy.sh"`) don't
+# source ~/.bashrc, so bun's install dir never makes it onto PATH there even
+# though it's on PATH for an interactive login. Add it explicitly.
+export PATH="$HOME/.bun/bin:$PATH"
+
 cd ~/app
 
 echo "→ Backing up database"
