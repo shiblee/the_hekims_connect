@@ -190,7 +190,7 @@ export default function StaffDetailPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-5 max-w-5xl">
-        <Card className="p-6 border-border/50 bg-card/60 space-y-6">
+        <Card className="p-6 border-border/50 bg-card/60 gap-6">
           <div>
             <h2 className="font-serif text-lg font-semibold mb-4">Personal Information</h2>
             <div className="space-y-6">
@@ -206,7 +206,7 @@ export default function StaffDetailPage() {
           <p className="text-xs text-muted-foreground">Registered {formatDate(staff.createdAt)}</p>
         </Card>
 
-        <Card className="p-6 border-border/50 bg-card/60 space-y-6">
+        <Card className="p-6 border-border/50 bg-card/60 gap-6">
           <h2 className="font-serif text-lg font-semibold">Professional Information</h2>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             {meta.staff_employee_type ? (
@@ -242,7 +242,7 @@ export default function StaffDetailPage() {
           </div>
         </Card>
 
-        <Card className="p-6 border-border/50 bg-card/60 space-y-6 lg:col-span-2">
+        <Card className="p-6 border-border/50 bg-card/60 gap-6 lg:col-span-2">
           <h2 className="font-serif text-lg font-semibold">Role & Responsibilities</h2>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             {meta.staff_role ? (

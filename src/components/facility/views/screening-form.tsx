@@ -284,7 +284,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
       <AnimatePresence mode="wait">
       {step === "complaints" && (
         <motion.div key="complaints" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
-        <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl space-y-5">
+        <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-5">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 — Chief Complaint(s)</p>
 
@@ -367,7 +367,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
 
       {step === "questions" && (
         <motion.div key="questions" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
-        <Card className="relative overflow-hidden p-5 sm:p-7 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl space-y-4">
+        <Card className="relative overflow-hidden p-5 sm:p-7 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-4">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
           <div className="space-y-1.5">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -547,7 +547,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
 
       {step === "results" && result && (
         <motion.div key="results" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-        <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl space-y-5">
+        <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-5">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Screening Result</p>

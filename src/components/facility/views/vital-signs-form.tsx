@@ -281,7 +281,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         );
       })()}
 
-      <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl space-y-6">
+      <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-6">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -414,7 +414,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         </div>
       </Card>
 
-      <Card className="p-4 mt-5 border-border/40 space-y-3">
+      <Card className="p-4 mt-5 border-border/40 gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
           <Wallet className="h-3.5 w-3.5" /> Record Payment
         </p>

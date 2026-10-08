@@ -212,7 +212,7 @@
     background-size: 22px 22px;
   }
   .glass {
-    background: color-mix(in oklch, var(--card) 72%, transparent);
+    background: color-mix(in oklch, var(--card) 96%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }

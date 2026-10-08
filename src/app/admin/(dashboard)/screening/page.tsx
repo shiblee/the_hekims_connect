@@ -353,7 +353,7 @@ export default function ScreeningAdminPage() {
             </Card>
 
             {selectedModule ? (
-              <Card className="p-5 border-border/50 bg-card/60 space-y-5">
+              <Card className="p-5 border-border/50 bg-card/60 gap-5">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <h2 className="font-serif text-lg font-semibold">{selectedModule.label}</h2>
                   <div className="flex items-center gap-3">

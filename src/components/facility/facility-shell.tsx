@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
   if (!facility) return null;
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/5">
+    <div className="min-h-screen flex relative overflow-x-hidden bg-gradient-to-br from-primary/10 via-background to-accent/5">
       <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/15 blur-[100px]" />
       <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-[100px]" />
 
@@ -72,8 +73,8 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
         "fixed lg:sticky top-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform lg:translate-x-0",
         mobileNav ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-4 border-b border-sidebar-border">
-          <BrandLogo size={34} />
+        <div className="h-16 px-4 border-b border-sidebar-border flex items-center">
+          <BrandLogo size={50} className="block" />
         </div>
 
         <ScrollArea className="flex-1 px-3 py-4">
@@ -133,7 +134,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
       <div className="relative z-10 flex-1 min-w-0 flex flex-col">
         {/* Topbar */}
         <header className="sticky top-0 z-20 glass border-b border-border">
-          <div className="flex items-center gap-3 px-4 lg:px-6 py-3">
+          <div className="h-16 flex items-center gap-3 px-4 lg:px-6">
             <button className="lg:hidden p-2" onClick={() => setMobileNav(true)}>
               <LayoutDashboard className="h-5 w-5" />
             </button>
@@ -149,6 +150,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search patients…" className="pl-9 h-9 bg-background/60" onClick={() => go("patients")} readOnly />
             </div>
+            <ThemeToggle />
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               {stats?.unreadMessages > 0 && (
