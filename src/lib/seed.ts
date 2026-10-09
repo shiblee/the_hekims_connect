@@ -184,6 +184,13 @@ export async function seedMetadata() {
     { key: "spo2_context", label: "SpO2 Context", category: "Patient", options: ["Known Oxygen Sensitivity", "High CO2 or COPD", "None"] },
     { key: "consciousness_level", label: "Level of Consciousness", category: "Patient", options: ["Alert (A)", "Verbal (V)", "Pain (P)", "Unresponsive (U)"] },
     { key: "mood", label: "Mood", category: "Patient", options: ["Very Good", "Good", "Neutral", "Bad", "Very Bad"] },
+    {
+      key: "care_classification", label: "Care Classification", category: "Clinical", options: [
+        "Routine / Standard Outpatient Care", "Complex Care / Further Clinical Evaluation",
+        "Therapeutic Procedure", "Surgical Assessment / Surgical Referral",
+        "Emergency Assessment / Urgent Referral", "Specialist Referral", "Preventive Care / Counselling Only",
+      ],
+    },
   ];
   for (let i = 0; i < metadataSections.length; i++) {
     const s = metadataSections[i];

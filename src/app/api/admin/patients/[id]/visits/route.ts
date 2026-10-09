@@ -29,6 +29,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           answers: { select: { flagTriggered: true } },
         },
       },
+      clinicalAssessment: { select: { id: true, workingDiagnosis: true, requiresUrgentReferral: true, updatedAt: true } },
+      treatmentPlan: { select: { id: true, careClassification: true, referralRequired: true, updatedAt: true } },
     },
     orderBy: { visitDate: "desc" },
   });

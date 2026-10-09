@@ -20,6 +20,7 @@ import { findLatestWithField, type VisitVitals, type VisitWithVitals } from "@/l
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { VitalsPanel } from "@/components/facility/views/vitals-panel";
 import { ScreeningCard } from "@/components/facility/views/screening-card";
+import { ConsultationCard } from "@/components/facility/views/consultation-card";
 import { cn } from "@/lib/utils";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 
@@ -43,6 +44,8 @@ interface VisitRow {
     id: string; chiefComplaints: string; overallFlag: string | null; aiSummary: string | null; updatedAt: string;
     answers?: { flagTriggered: string | null }[];
   } | null;
+  clinicalAssessment: { id: string; workingDiagnosis: string | null; requiresUrgentReferral: boolean; updatedAt: string } | null;
+  treatmentPlan: { id: string; careClassification: string; referralRequired: boolean; updatedAt: string } | null;
 }
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
@@ -190,6 +193,10 @@ export default function PatientDetailPage() {
 
       <div className="mb-8 max-w-4xl">
         <ScreeningCard visits={visits} patientId={patient.id} apiClient={adminApi} showStartButton={false} />
+      </div>
+
+      <div className="mb-8 max-w-4xl">
+        <ConsultationCard visits={visits} showStartButton={false} />
       </div>
 
       <Card className="p-6 border-border/50 bg-card/60 mb-8 max-w-4xl">

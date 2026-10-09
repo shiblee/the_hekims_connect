@@ -9,9 +9,11 @@ import { daysAgo } from "@/lib/age";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import {
   ClipboardList, ShieldAlert, ShieldCheck, Sparkles, Loader2, Plus, RotateCcw, ListChecks, Flag,
-  FileSearch, TriangleAlert, Leaf, Target,
+  FileSearch, TriangleAlert, Leaf, Target, History,
 } from "lucide-react";
 
 interface ScreeningVisit {
@@ -38,12 +40,6 @@ interface ScreeningInsightData {
   findings: { text: string; severity: "red" | "yellow" | "green" | "neutral" }[];
   unani: string;
   priority: string;
-}
-
-export function latestScreeningOf(visits: ScreeningVisit[]) {
-  return [...visits]
-    .filter((v) => v.l1Screening)
-    .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0];
 }
 
 // The AI prompt asks for labeled paragraphs ("Presenting Picture: ...",
@@ -98,6 +94,108 @@ function parseInsight(text: string): ParsedInsight {
   return { kind: "plain", text };
 }
 
+/**
+ * Renders one screening's AI insight — the headline + severity chips (JSON
+ * format), or one of the two older prose fallbacks. Shared between the main
+ * card (latest screening) and each entry in the history dialog (past ones),
+ * so a past screening reads identically to how it looked when it was current.
+ */
+function InsightBody({ aiSummary, flag }: { aiSummary: string; flag: string | null }) {
+  const parsed = parseInsight(aiSummary);
+  return (
+    <div className="rounded-xl bg-gradient-to-br from-primary/[0.06] via-primary/[0.02] to-transparent border border-primary/15 p-3 space-y-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+        <Sparkles className="h-3 w-3" /> AI Clinical Insight
+      </p>
+
+      {parsed.kind === "json" && (
+        <div className="space-y-2.5">
+          <p className="text-sm font-semibold text-foreground leading-snug">{parsed.data.headline}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {parsed.data.findings.map((f, i) => (
+              <span key={i} className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border", FINDING_STYLE[f.severity] || FINDING_STYLE.neutral)}>
+                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", FINDING_DOT[f.severity] || FINDING_DOT.neutral)} /> {f.text}
+              </span>
+            ))}
+          </div>
+          {parsed.data.unani && (
+            <p className="text-xs text-primary flex items-start gap-1.5">
+              <Leaf className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {parsed.data.unani}
+            </p>
+          )}
+          {parsed.data.priority && (
+            <div className="flex items-start gap-1.5 rounded-lg bg-accent/10 border border-accent/25 px-2.5 py-1.5">
+              <Target className="h-3.5 w-3.5 text-accent shrink-0 mt-0.5" />
+              <p className="text-xs font-medium text-accent">{parsed.data.priority}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {parsed.kind === "sections" && (
+        <div className="grid sm:grid-cols-2 gap-1.5">
+          {parsed.sections.map((s, i) => {
+            const isDanger = s.label === "Danger Signs";
+            const meta = s.label ? SECTION_META[s.label] : null;
+            const Icon = isDanger ? TriangleAlert : meta?.icon;
+            const boxClass = isDanger
+              ? (flag ? FLAG_STYLE[flag] : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20")
+              : meta?.className || "bg-muted/40 text-foreground/70 border-border/40";
+            return (
+              <div key={i} className={cn("rounded-lg p-2.5 border", boxClass)}>
+                <p className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 mb-1">
+                  {Icon && <Icon className="h-3 w-3 shrink-0" />} {s.label || "Note"}
+                </p>
+                <p className={cn("text-[13px] leading-snug", isDanger ? "font-medium" : "text-foreground/90")}>{s.body}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {parsed.kind === "plain" && (
+        <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">{parsed.text}</p>
+      )}
+
+      <p className="text-[10px] text-muted-foreground italic">Decision support only — not a diagnosis. Always verify clinically.</p>
+    </div>
+  );
+}
+
+/** One past screening's row inside the History dialog — collapsed summary, expands to the full insight. */
+function HistoryEntry({ visit, isCurrent }: { visit: ScreeningVisit; isCurrent: boolean }) {
+  const screening = visit.l1Screening!;
+  const chiefComplaints: string[] = (() => { try { return JSON.parse(screening.chiefComplaints); } catch { return []; } })();
+  const flag = screening.overallFlag;
+
+  return (
+    <AccordionItem value={visit.id} className="border border-border/40 rounded-lg px-3 mb-2 last:mb-0">
+      <AccordionTrigger className="hover:no-underline py-2.5">
+        <div className="flex items-center gap-2 flex-wrap text-left pr-2">
+          <span className="text-xs font-medium text-foreground">{new Date(visit.visitDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</span>
+          {isCurrent && <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Current</Badge>}
+          {flag && (
+            <Badge variant="outline" className={cn("border text-[10px]", FLAG_STYLE[flag])}>
+              {FLAG_LABEL[flag] || flag}
+            </Badge>
+          )}
+          <span className="text-[11px] text-muted-foreground truncate">{chiefComplaints.join(", ") || "No complaints recorded"}</span>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="pb-3 space-y-2.5">
+        {chiefComplaints.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {chiefComplaints.map((c) => (
+              <Badge key={c} variant="outline" className="text-[11px] bg-background/60 border-border/50 font-normal">{c}</Badge>
+            ))}
+          </div>
+        )}
+        {screening.aiSummary && <InsightBody aiSummary={screening.aiSummary} flag={flag} />}
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
+
 export function ScreeningCard({
   visits, patientId, apiClient = api, showStartButton = true,
 }: {
@@ -108,8 +206,12 @@ export function ScreeningCard({
 }) {
   const router = useRouter();
   const [starting, setStarting] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
-  const latest = latestScreeningOf(visits);
+  const pastVisits = [...visits]
+    .filter((v) => v.l1Screening)
+    .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+  const latest = pastVisits[0];
 
   const startScreening = async () => {
     setStarting(true);
@@ -193,73 +295,31 @@ export function ScreeningCard({
         </div>
       )}
 
-      {/* AI Insight — folded into the same card, right after the result summary.
-          Primary format: a one-line headline + short severity-colored finding
-          chips a doctor can scan in a couple of seconds without reading prose.
-          Two older formats are supported as fallbacks for summaries saved
-          before this format existed: labeled-paragraph prose (rendered as an
-          icon-coded grid) and plain single-paragraph prose. */}
-      {screening.aiSummary && (() => {
-        const parsed = parseInsight(screening.aiSummary);
-        return (
-          <div className="rounded-xl bg-gradient-to-br from-primary/[0.06] via-primary/[0.02] to-transparent border border-primary/15 p-3 space-y-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3" /> AI Clinical Insight
-            </p>
+      {/* AI Insight — folded into the same card, right after the result summary. */}
+      {screening.aiSummary && <InsightBody aiSummary={screening.aiSummary} flag={flag} />}
 
-            {parsed.kind === "json" && (
-              <div className="space-y-2.5">
-                <p className="text-sm font-semibold text-foreground leading-snug">{parsed.data.headline}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {parsed.data.findings.map((f, i) => (
-                    <span key={i} className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border", FINDING_STYLE[f.severity] || FINDING_STYLE.neutral)}>
-                      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", FINDING_DOT[f.severity] || FINDING_DOT.neutral)} /> {f.text}
-                    </span>
-                  ))}
-                </div>
-                {parsed.data.unani && (
-                  <p className="text-xs text-primary flex items-start gap-1.5">
-                    <Leaf className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {parsed.data.unani}
-                  </p>
-                )}
-                {parsed.data.priority && (
-                  <div className="flex items-start gap-1.5 rounded-lg bg-accent/10 border border-accent/25 px-2.5 py-1.5">
-                    <Target className="h-3.5 w-3.5 text-accent shrink-0 mt-0.5" />
-                    <p className="text-xs font-medium text-accent">{parsed.data.priority}</p>
-                  </div>
-                )}
-              </div>
-            )}
+      {pastVisits.length > 1 && (
+        <Button
+          size="sm" variant="ghost"
+          className="h-7 px-2 text-xs text-muted-foreground self-start -mt-1"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History className="h-3 w-3" /> View {pastVisits.length - 1} earlier screening{pastVisits.length - 1 > 1 ? "s" : ""}
+        </Button>
+      )}
 
-            {parsed.kind === "sections" && (
-              <div className="grid sm:grid-cols-2 gap-1.5">
-                {parsed.sections.map((s, i) => {
-                  const isDanger = s.label === "Danger Signs";
-                  const meta = s.label ? SECTION_META[s.label] : null;
-                  const Icon = isDanger ? TriangleAlert : meta?.icon;
-                  const boxClass = isDanger
-                    ? (flag ? FLAG_STYLE[flag] : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20")
-                    : meta?.className || "bg-muted/40 text-foreground/70 border-border/40";
-                  return (
-                    <div key={i} className={cn("rounded-lg p-2.5 border", boxClass)}>
-                      <p className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 mb-1">
-                        {Icon && <Icon className="h-3 w-3 shrink-0" />} {s.label || "Note"}
-                      </p>
-                      <p className={cn("text-[13px] leading-snug", isDanger ? "font-medium" : "text-foreground/90")}>{s.body}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {parsed.kind === "plain" && (
-              <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">{parsed.text}</p>
-            )}
-
-            <p className="text-[10px] text-muted-foreground italic">Decision support only — not a diagnosis. Always verify clinically.</p>
-          </div>
-        );
-      })()}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-1.5"><History className="h-4 w-4" /> Screening History</DialogTitle>
+          </DialogHeader>
+          <Accordion type="single" collapsible defaultValue={pastVisits[0]?.id}>
+            {pastVisits.map((v, i) => (
+              <HistoryEntry key={v.id} visit={v} isCurrent={i === 0} />
+            ))}
+          </Accordion>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

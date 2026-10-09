@@ -100,7 +100,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="mt-6 px-3">
-            <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => go("patients")}>
               <Stethoscope className="mr-2 h-4 w-4" /> Start Consultation
             </Button>
           </div>

@@ -167,6 +167,8 @@ model Staff {
   recordedPayments   Payment[]
   recordedVitalSigns VitalSigns[]
   recordedScreenings L1Screening[]
+  recordedClinicalAssessments ClinicalAssessment[]
+  recordedTreatmentPlans      TreatmentPlan[]
 }
 
 model FacilityOperatingHours {
@@ -324,9 +326,11 @@ model Visit {
   facility     Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   doctor       Staff?   @relation("VisitDoctor", fields: [doctorId], references: [id], onDelete: SetNull)
   registeredBy Staff?   @relation("VisitRegisteredBy", fields: [registeredById], references: [id], onDelete: SetNull)
-  payments     Payment[]
-  vitalSigns   VitalSigns?
-  l1Screening  L1Screening?
+  payments           Payment[]
+  vitalSigns         VitalSigns?
+  l1Screening        L1Screening?
+  clinicalAssessment ClinicalAssessment?
+  treatmentPlan      TreatmentPlan?
 }
 
 model Payment {
@@ -771,4 +775,50 @@ model L1ScreeningAnswer {
 
   screening L1Screening       @relation(fields: [screeningId], references: [id], onDelete: Cascade)
   question  ScreeningQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+}
+
+// Clinical Workflow Phase 1 — Doctor Review & Treatment Planning. Two 1:1
+// per-visit records, same convention as VitalSigns/L1Screening (upsert by
+// visitId, nullable recordedById Staff relation — null when the Facility
+// account itself acted). See the Clinical Workflow Phase 1 plan.
+
+model ClinicalAssessment {
+  id                     String   @id @default(cuid())
+  visitId                String   @unique
+  clinicalFindings       String?
+  workingDiagnosis       String?
+  treatmentRationale     String?
+  requiresInvestigation  Boolean  @default(false)
+  requiresUrgentReferral Boolean  @default(false)
+  notes                  String?
+  recordedById           String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+model TreatmentPlan {
+  id                    String    @id @default(cuid())
+  visitId               String    @unique
+  // Snapshot label from the care_classification MetadataSection — stored as
+  // text (not an id reference) for the same reason ChiefComplaint labels are
+  // snapshotted onto L1Screening: stays readable even if admin later edits
+  // the option list.
+  careClassification    String
+  diagnosis             String?
+  treatmentObjective    String?
+  plannedInvestigations String?
+  plannedModalities     String?
+  referralRequired      Boolean   @default(false)
+  referralNotes         String?
+  reviewDate            DateTime?
+  clinicalNotes         String?
+  recordedById          String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
 }

@@ -13,6 +13,7 @@ import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { VitalsPanel } from "@/components/facility/views/vitals-panel";
 import { ScreeningCard } from "@/components/facility/views/screening-card";
+import { ConsultationCard } from "@/components/facility/views/consultation-card";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,6 +40,8 @@ interface VisitRow {
     id: string; chiefComplaints: string; overallFlag: string | null; aiSummary: string | null; updatedAt: string;
     answers?: { flagTriggered: string | null }[];
   } | null;
+  clinicalAssessment: { id: string; workingDiagnosis: string | null; requiresUrgentReferral: boolean; updatedAt: string } | null;
+  treatmentPlan: { id: string; careClassification: string; referralRequired: boolean; updatedAt: string } | null;
 }
 
 export function PatientDetail({ patientId }: { patientId: string }) {
@@ -166,6 +169,10 @@ export function PatientDetail({ patientId }: { patientId: string }) {
 
       <div className="mb-6">
         <ScreeningCard visits={visits} patientId={patientId} />
+      </div>
+
+      <div className="mb-6">
+        <ConsultationCard visits={visits} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">

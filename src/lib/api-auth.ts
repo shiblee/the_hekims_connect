@@ -40,6 +40,20 @@ export function makeToken(type: "facility" | "patient" | "staff", id: string): s
   return Buffer.from(`${type}|${id}`, "utf-8").toString("base64");
 }
 
+/**
+ * Whether this caller may act as the treating doctor — the Facility-owner
+ * account itself (today's only active clinical-portal caller; see the
+ * Clinical Workflow Phase 1 plan), or a Staff member whose employeeType is
+ * "Hakim (Unani Physician)" (kept for forward-compatibility and correct
+ * attribution, even though no staff-facing clinical UI calls this yet).
+ */
+export async function isDoctor(auth: AuthUser): Promise<boolean> {
+  if (auth.type === "facility") return true;
+  if (auth.type !== "staff") return false;
+  const staff = await db.staff.findUnique({ where: { id: auth.id }, select: { employeeType: true } });
+  return staff?.employeeType === "Hakim (Unani Physician)";
+}
+
 export async function fetchFacility(id: string) {
   return db.facility.findUnique({
     where: { id },
