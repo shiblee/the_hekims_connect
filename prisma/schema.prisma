@@ -27,6 +27,7 @@ model Admin {
   loginEvents  AdminLoginEvent[]
   sessions     AdminSession[]
   activityLogs AdminActivityLog[]
+  reviewedChiefComplaintSuggestions ChiefComplaintSuggestion[]
 }
 
 model AdminLoginEvent {
@@ -169,6 +170,14 @@ model Staff {
   recordedScreenings L1Screening[]
   recordedClinicalAssessments ClinicalAssessment[]
   recordedTreatmentPlans      TreatmentPlan[]
+  recordedComplaintAssessments ComplaintAssessment[]
+  recordedVisitIntakes         VisitIntake[]
+  recordedRedFlagScreenings    RedFlagScreening[]
+  recordedAcuteSymptomAssessments AcuteSymptomAssessment[]
+  recordedAnatomicalRegionSelections AnatomicalRegionSelection[]
+  recordedResidentClinicalNotes ResidentClinicalNote[]
+  referralsMade                Referral[]
+  amaDeclinesRecorded          AmaDecline[]
 }
 
 model FacilityOperatingHours {
@@ -331,6 +340,17 @@ model Visit {
   l1Screening        L1Screening?
   clinicalAssessment ClinicalAssessment?
   treatmentPlan      TreatmentPlan?
+  complaintAssessments ComplaintAssessment[]
+  humoralAssessment    HumoralAssessment?
+  acuteSymptomAssessment AcuteSymptomAssessment?
+  anatomicalRegionSelection AnatomicalRegionSelection?
+  residentClinicalNote   ResidentClinicalNote?
+  clinicalRoutingInsight ClinicalRoutingInsight?
+  vitalsInsightRecord    VitalsInsightRecord?
+  intake               VisitIntake?
+  redFlagScreening     RedFlagScreening?
+  referral             Referral?
+  amaDecline           AmaDecline?
 }
 
 model Payment {
@@ -355,23 +375,22 @@ model Payment {
 model VitalSigns {
   id                 String   @id @default(cuid())
   visitId            String   @unique
-  pulse              Int?
   bpSystolic         Int?
   bpDiastolic        Int?
+  heartRate          Int?    // monitor/ECG-derived rate, recorded separately from manual Pulse
+  pulse              Int?
   spo2               Int?
   spo2Context        String?
-  oxygenLitres       Float?
   temperatureF       Float?
   temperatureC       Float?
-  respiratoryRate    Int?
   consciousnessLevel String?
   mood               String?
   heightCm           Float?
   weightKg           Float?
-  waistCm            Float?
-  hipCm              Float?
-  wristCm            Float?
-  neckCm             Float?
+  // Triage-stage notes, captured alongside vitals by the registering nurse/staff.
+  painNotes          String?
+  primaryFocusArea   String? // e.g. "Cervical Spine (C3-C7) & Epigastrium"
+  triageRemarks      String?
   recordedById       String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -675,6 +694,48 @@ model ChiefComplaint {
   updatedAt  DateTime @updatedAt
 
   modules ScreeningModuleComplaint[]
+  manifestations ComplaintManifestation[]
+  supplementLinks SupplementComplaintLink[]
+}
+
+// One row per execution of the scheduled/manual Unani Chief Complaint
+// discovery bot — the audit trail shown in Admin -> Settings regardless of
+// whether anything was actually found that run.
+model ChiefComplaintBotRun {
+  id               String    @id @default(cuid())
+  trigger          String    // "scheduled" | "manual"
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+  status           String    // "running" | "success" | "no_candidates" | "failed"
+  suggestionsCount Int       @default(0)
+  errorMessage     String?
+
+  suggestions ChiefComplaintSuggestion[]
+}
+
+// Audit-trail record of a chief complaint the bot generated. The bot
+// publishes the real ChiefComplaint itself (no human approval gate) and
+// immediately marks the row "auto_approved" with resultingComplaintId set —
+// this table exists purely so Admin -> Settings can show a complete,
+// transparent log of what was generated and when. "pending"/"rejected" are
+// kept for any suggestion created through a possible future manual-review
+// path; the bot's own runs never leave a row in those states.
+model ChiefComplaintSuggestion {
+  id           String    @id @default(cuid())
+  runId        String
+  label        String
+  labelLocal   String?
+  category     String
+  // The AI's one-line note on why this is Unani-relevant.
+  rationale    String?
+  status       String    @default("pending") // "pending" | "auto_approved" | "approved" | "rejected"
+  reviewedById String?
+  reviewedAt   DateTime?
+  resultingComplaintId String?
+  createdAt    DateTime  @default(now())
+
+  run        ChiefComplaintBotRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  reviewedBy Admin?               @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
 }
 
 model ScreeningModule {
@@ -777,6 +838,111 @@ model L1ScreeningAnswer {
   question  ScreeningQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
 }
 
+// Front-desk quick-intake snapshot, captured during registration (Section 4
+// of the registration wizard) — distinct from L1Screening (the nurse's fuller
+// triage questionnaire, done separately) and from ComplaintAssessment (the
+// doctor's deeper HPI). Same 1:1-per-visit convention as VitalSigns.
+model VisitIntake {
+  id              String   @id @default(cuid())
+  visitId         String   @unique
+  chiefComplaints String   @default("[]") // JSON array of ChiefComplaint labels, same snapshot convention as L1Screening.chiefComplaints
+  narrative       String?
+  onsetTimeline   String?  // "<24h" | "1-7d" | ">1m"
+  allergies       String   @default("[]") // JSON array of strings
+  medications     String   @default("[]") // JSON array of { label, kind }, kind: "supplement" | "medication"
+  mobility        String?  // "independent" | "wheelchair"
+  recordedById    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Acute Red Flag / Emergency Exclusion — the mandatory western-medicine
+// safety gate between Vitals and Unani constitutional triage. Admin-curated
+// checklist of emergency-exclusion criteria; a visit's screening clears to
+// continue Unani triage only when none are flagged, otherwise it closes out
+// as a Referral. Same 1:1-per-visit convention as VitalSigns.
+model RedFlagCriterion {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  description String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  answers RedFlagAnswer[]
+}
+
+model RedFlagScreening {
+  id           String   @id @default(cuid())
+  visitId      String   @unique
+  outcome      String   // "cleared" | "referred" | "continued_ama"
+  recordedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  visit      Visit           @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff?          @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  answers    RedFlagAnswer[]
+  referral   Referral?
+  amaDecline AmaDecline?
+}
+
+model RedFlagAnswer {
+  id             String  @id @default(cuid())
+  screeningId    String
+  criterionId    String?
+  // Snapshot of the criterion text at answer time, same reasoning as
+  // L1ScreeningAnswer.questionLabel — stays readable even if later edited.
+  criterionLabel String
+  present        Boolean @default(false)
+
+  screening RedFlagScreening  @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  criterion RedFlagCriterion? @relation(fields: [criterionId], references: [id], onDelete: SetNull)
+
+  @@index([screeningId])
+}
+
+// Closes out the visit when the red-flag screen comes back positive — the
+// patient is referred out instead of continuing Unani triage.
+model Referral {
+  id           String   @id @default(cuid())
+  visitId      String   @unique
+  screeningId  String   @unique
+  reason       String
+  referredTo   String
+  urgency      String   // "Emergency" | "Urgent" | "Routine"
+  notes        String?
+  referredById String?
+  createdAt    DateTime @default(now())
+
+  visit      Visit            @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  screening  RedFlagScreening @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  referredBy Staff?           @relation(fields: [referredById], references: [id], onDelete: SetNull)
+}
+
+// Records the real-world case where referral was clinically recommended (red
+// flags present) but the patient declined it and chose to continue Unani
+// treatment anyway — Against Medical Advice. Unlike Referral, this does NOT
+// close the visit; it's a documented exception, not a case closure.
+model AmaDecline {
+  id             String   @id @default(cuid())
+  visitId        String   @unique
+  screeningId    String   @unique
+  reason         String   // clinical reason referral was recommended (the flagged criteria)
+  patientReason  String?  // why the patient declined, if stated
+  recordedById   String?
+  createdAt      DateTime @default(now())
+
+  visit      Visit            @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  screening  RedFlagScreening @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  recordedBy Staff?           @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
 // Clinical Workflow Phase 1 — Doctor Review & Treatment Planning. Two 1:1
 // per-visit records, same convention as VitalSigns/L1Screening (upsert by
 // visitId, nullable recordedById Staff relation — null when the Facility
@@ -802,11 +968,6 @@ model ClinicalAssessment {
 model TreatmentPlan {
   id                    String    @id @default(cuid())
   visitId               String    @unique
-  // Snapshot label from the care_classification MetadataSection — stored as
-  // text (not an id reference) for the same reason ChiefComplaint labels are
-  // snapshotted onto L1Screening: stays readable even if admin later edits
-  // the option list.
-  careClassification    String
   diagnosis             String?
   treatmentObjective    String?
   plannedInvestigations String?
@@ -821,4 +982,665 @@ model TreatmentPlan {
 
   visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
   recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Junior Hakeem Intake Protocol Phase 1 — the doctor's own deeper
+// History-of-Present-Illness capture, one row per chief complaint per visit.
+// Distinct from L1Screening (a shallow, nurse/junior-staff triage pass this
+// still coexists with unchanged) — this is the doctor's richer re-assessment,
+// pre-seeded from (but independent of) the complaints L1 Screening captured.
+model ComplaintAssessment {
+  id                       String   @id @default(cuid())
+  visitId                  String
+  // Best-effort link back to config; nullable since a doctor may add a
+  // complaint here that wasn't selected at L1 Screening triage.
+  chiefComplaintId         String?
+  // Snapshot label, same convention as L1Screening.chiefComplaints — stays
+  // readable even if the ChiefComplaint config row is later edited/removed.
+  chiefComplaintLabel      String
+  onsetValue               Int?
+  onsetUnit                String?  // "hours" | "days" | "weeks" | "months" | "years"
+  onsetPattern             String?  // "Acute" | "Gradual" | "Chronic" | "Episodic/Recurrent"
+  severityScore            Int?     // 0-10
+  character                String?
+  // JSON array of ComplaintManifestation.key strings selected for this complaint.
+  associatedManifestations String   @default("[]")
+  // JSON arrays of strings — admin-curated ComplaintFactorTag labels plus any
+  // ad hoc text the doctor adds, snapshotted by label like everywhere else.
+  aggravatingFactors       String   @default("[]")
+  relievingFactors         String   @default("[]")
+  clinicalNotes            String?
+  // JSON object { [ScreeningQuestion.id]: string | string[] | number } — the
+  // doctor's own answers to this complaint's admin-configured relevant
+  // questions, asked directly in the Chief Complaint Matrix (separate from,
+  // but pre-seedable from, the nurse's L1ScreeningAnswer rows).
+  screeningAnswers         String   @default("{}")
+  sortOrder                Int      @default(0)
+  recordedById             String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([visitId])
+}
+
+// Computed Humoral Matrix result for the visit — recomputed and upserted on
+// every ComplaintAssessment save by the deterministic rule engine
+// (src/lib/humor-engine.ts). `breakdown` is the audit trail (which finding
+// contributed what) behind the normalized percentages, so "why is Safra 62%"
+// is always answerable from this one row.
+model HumoralAssessment {
+  id             String   @id @default(cuid())
+  visitId        String   @unique
+  safraPercent   Float
+  damPercent     Float
+  saudaPercent   Float
+  balghamPercent Float
+  dominant       String   // "Safra" | "Dam" | "Sauda" | "Balgham"
+  // Doctor-picked override from the Constitutional Tendency tiles — takes
+  // precedence over `dominant` for display. Never touched by the engine's
+  // recompute on a ComplaintAssessment save, so a manual pick survives edits.
+  dominantOverride String?
+  breakdown      String   @default("[]") // JSON: [{ source, safra, dam, sauda, balgham }]
+  // The AI-written plain-language explanation of the breakdown above, from
+  // the "Generate" button — persisted (not just ephemeral) so the doctor's
+  // record shows what was actually seen and acted on, not a regeneration
+  // that could read differently on request.
+  aiClue            String?
+  aiClueGeneratedAt DateTime?
+  createdAt      DateTime @default(now())
+  computedAt     DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+}
+
+// Admin-curated manifestation checklist, scoped per complaint (a manifestation
+// like "radiates to left arm" only makes sense under "Chest Pain").
+model ComplaintManifestation {
+  id               String   @id @default(cuid())
+  chiefComplaintId String
+  key              String
+  label            String
+  labelLocal       String?
+  sortOrder        Int      @default(0)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  chiefComplaint ChiefComplaint @relation(fields: [chiefComplaintId], references: [id], onDelete: Cascade)
+
+  @@unique([chiefComplaintId, key])
+}
+
+// Admin-curated starter chips for aggravating/relieving factors — flat, not
+// complaint-scoped, since they overlap heavily across complaints (e.g. "cold
+// exposure", "rest") and complaint-scoping would just force duplicate entries.
+model ComplaintFactorTag {
+  id        String   @id @default(cuid())
+  kind      String   // "aggravating" | "relieving"
+  label     String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, label])
+}
+
+// Admin-curated allergy checklist — powers the autosuggest on the registration
+// wizard's Critical Allergies / Red Flags field. A typed value that doesn't
+// match one of these is still accepted as a free-text ad hoc allergy on the
+// visit; this list only drives the suggestion dropdown.
+model AllergyTag {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplementLinks SupplementAllergyLink[]
+}
+
+// One row per execution of the Unani Allergy Assistant (scheduled or manual),
+// shown as run history in Admin -> Settings whether or not it found anything.
+model AllergyAssistantRun {
+  id               String    @id @default(cuid())
+  trigger          String    // "scheduled" | "manual"
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+  status           String    // "running" | "success" | "no_candidates" | "failed"
+  suggestionsCount Int       @default(0)
+  errorMessage     String?
+
+  suggestions AllergySuggestion[]
+}
+
+// Audit-trail record of every allergen the assistant generated. The assistant
+// publishes the AllergyTag itself (no approval gate, matching the complaint
+// assistant), so every row lands as "auto_approved" with resultingAllergyId
+// set — this table exists so Settings can show a transparent, complete log.
+model AllergySuggestion {
+  id                 String   @id @default(cuid())
+  runId              String
+  label              String
+  // Allergen family, e.g. "Food", "Herbal / Mufradat", "Environmental" — log context only.
+  allergenType       String?
+  rationale          String?
+  status             String   @default("auto_approved")
+  resultingAllergyId String?
+  createdAt          DateTime @default(now())
+
+  run AllergyAssistantRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+// Admin-curated suggestion list for the registration wizard's "Active Routine
+// Medications / Herbs" field — same role as AllergyTag, but split by kind
+// since Supplement/Herb and Medication are genuinely different vocabularies.
+// A typed value not on this list is still accepted as a free-text entry.
+model MedicationTag {
+  id        String   @id @default(cuid())
+  kind      String   // "supplement" | "medication"
+  label     String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile SupplementProfile?
+  ingredientOf      SupplementIngredient[] @relation("IngredientTag")
+  interactionsAsDrug SupplementSafetyItem[] @relation("InteractionDrug")
+
+  @@unique([kind, label])
+}
+
+// Unani reference profile for one Supplement / Herb (MedicationTag kind
+// "supplement"), filled in by src/lib/supplement-enrichment.ts — for items
+// the assistant generates, items an admin adds, and a backfill of older ones.
+// JSON-array fields are stored as strings (SQLite convention in this repo).
+// Dosage is deliberately not captured: doses are prescribing decisions.
+model SupplementProfile {
+  id             String    @id @default(cuid())
+  tagId          String    @unique
+  status         String    @default("pending") // "pending" | "enriched" | "failed"
+  unaniName      String?
+  englishName    String?
+  botanicalName  String?
+  herbType       String?   // "Single Herb (Mufrad)" | "Compound Formulation (Murakkab)" | ...
+  mizaj          String?   // temperament, e.g. "Hot 2° / Dry 2°"
+  partsUsed      String?   // single herbs
+  keyIngredients String    @default("[]") // formulations
+  actions        String    @default("[]") // Unani pharmacological actions
+  dosageForms    String    @default("[]")
+  brands         String    @default("[]") // [{ manufacturer, product }]
+  cautions       String    @default("[]")
+  summary        String?
+  // Traditional uses that didn't match any current ChiefComplaint — kept so
+  // nothing is lost; a later re-enrich can link them once the catalog grows.
+  unmatchedUses  String    @default("[]")
+  // --- Search-backed enrichment (v2) ---
+  urduName               String?
+  hindiName              String?
+  arabicName             String?
+  family                 String?   // botanical family, single herbs only
+  synonyms               String    @default("[]")
+  preparation            String?   // preparation / processing methods
+  routes                 String    @default("[]") // administration routes
+  traditionalDescription String?   // classical Unani description
+  modernEvidence         String?   // modern scientific evidence — kept apart from traditional claims
+  // Fields the search explicitly found NOT documented — shown as "Not
+  // documented", never read as "safe" / "none".
+  unknownFields          String    @default("[]")
+  // --- Allopathic medication fields (MedicationTag kind "medication") ---
+  genericName            String?   // INN / generic name
+  saltForm               String?   // e.g. "Hydrochloride"
+  therapeuticClass       String?
+  pharmacologicalClass   String?
+  mechanism              String?   // mechanism of action
+  atcCode                String?   // WHO ATC code(s)
+  rxStatus               String?   // e.g. "Prescription only (Schedule H)"
+  productStatus          String?   // "active" | "discontinued" | "unknown"
+  strengths              String    @default("[]") // available strengths / formulations, e.g. "500 mg tablet" — never a dose to take
+  enrichmentVersion      Int       @default(1) // 1 = model knowledge only (no sources), 2 = search-backed
+  completeness           Int       @default(0) // % of the fields applicable to this item's type that are filled
+  errorMessage   String?
+  enrichedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tag        MedicationTag             @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  complaints   SupplementComplaintLink[]
+  allergies    SupplementAllergyLink[]
+  symptoms     SupplementSymptomLink[]
+  ingredients  SupplementIngredient[]
+  safetyItems  SupplementSafetyItem[]
+  fieldReviews SupplementFieldReview[]
+  citations    SupplementCitation[]
+  revisions    SupplementProfileRevision[]
+}
+
+// "Traditionally used for" — links a supplement/herb to real ChiefComplaint rows.
+model SupplementComplaintLink {
+  id          String @id @default(cuid())
+  profileId   String
+  complaintId String
+
+  profile   SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  complaint ChiefComplaint    @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  // Supplements: "traditional_use". Medications: "approved_indication" |
+  // "evidence_supported" | "symptom_relief" | "off_label" | "not_recommended".
+  relationType String @default("traditional_use")
+  // Provenance + review state (shared by every supplement relationship row).
+  rationale          String?
+  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  confidence         Float?
+  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  @@unique([profileId, complaintId])
+}
+
+// relation "relief": traditionally used to ease that allergy/sensitivity.
+// relation "caution": the item contains / may cross-react with that allergen
+// (safety — e.g. Roghan Badam -> Almonds).
+model SupplementAllergyLink {
+  id        String @id @default(cuid())
+  profileId String
+  allergyId String
+  relation  String // "relief" | "caution"
+
+  profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  allergy AllergyTag        @relation(fields: [allergyId], references: [id], onDelete: Cascade)
+  // Provenance + review state (shared by every supplement relationship row).
+  rationale          String?
+  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  confidence         Float?
+  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  @@unique([profileId, allergyId, relation])
+}
+
+// Supplement/herb <-> Accompanying Acute Symptoms (Alamat-e-Izafiya).
+model SupplementSymptomLink {
+  id        String @id @default(cuid())
+  profileId String
+  symptomId String
+
+  profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  symptom AcuteSymptomTag   @relation(fields: [symptomId], references: [id], onDelete: Cascade)
+  // Provenance + review state (shared by every supplement relationship row).
+  rationale          String?
+  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  confidence         Float?
+  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  @@unique([profileId, symptomId])
+}
+
+// Compound formulation (Murakkab) -> ingredient. ingredientTagId points at
+// the ingredient's own Supplements & Herbs record when one exists, so
+// "which formulations contain Gaozaban?" is a real query.
+model SupplementIngredient {
+  id              String  @id @default(cuid())
+  profileId       String
+  name            String
+  ingredientTagId String?
+  role            String? // "principal" | "supporting" | "base" | "vehicle" | "unknown"
+  proportion      String? // only when documented
+
+  profile       SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  ingredientTag MedicationTag?    @relation("IngredientTag", fields: [ingredientTagId], references: [id], onDelete: SetNull)
+  // Provenance + review state (shared by every supplement relationship row).
+  rationale          String?
+  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  confidence         Float?
+  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  @@unique([profileId, name])
+}
+
+// Structured safety statement. Every row is safety-critical, so each goes to
+// the admin verification queue until verified/rejected. medicationTagId is
+// set for herb-drug interactions with an allopathic Medication record.
+model SupplementSafetyItem {
+  id              String  @id @default(cuid())
+  profileId       String
+  category        String  // "contraindication" | "precaution" | "pregnancy" | "lactation" | "pediatric" | "adverse_effect" | "toxicity" | "interaction" | "allergy_warning"
+  text            String
+  severity        String? // "high" | "moderate" | "low"
+  medicationTagId String?
+
+  profile    SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  medication MedicationTag?    @relation("InteractionDrug", fields: [medicationTagId], references: [id], onDelete: SetNull)
+  // Provenance + review state (shared by every supplement relationship row).
+  rationale          String?
+  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  confidence         Float?
+  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  @@index([profileId])
+}
+
+// Review state of one scalar/list field of a profile (mizaj, botanicalName,
+// actions...). A "verified" field is locked: re-enrichment never overwrites it.
+model SupplementFieldReview {
+  id                 String    @id @default(cuid())
+  profileId          String
+  field              String
+  verificationStatus String    @default("unverified") // "unverified" | "verified" | "rejected" | "conflict"
+  confidence         Float?
+  evidenceType       String?
+  provenance         String    @default("search")
+  note               String?   // e.g. the conflicting claims, for "conflict"
+  reviewedById       String?
+  reviewedAt         DateTime?
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, field])
+}
+
+// A web page the search-backed enrichment actually read (redirect resolved
+// to the real URL). Shared across profiles.
+model EvidenceSource {
+  id          String   @id @default(cuid())
+  url         String   @unique
+  title       String?
+  domain      String
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  citations SupplementCitation[]
+}
+
+// Source -> the specific claim it supports. subjectType "field" uses the
+// field name as subjectKey; relationship types use the link row's id.
+model SupplementCitation {
+  id          String   @id @default(cuid())
+  profileId   String
+  sourceId    String
+  subjectType String   // "field" | "complaint" | "allergy" | "symptom" | "ingredient" | "safety"
+  subjectKey  String
+  snippet     String?  // the sentence this source was matched to
+  createdAt   DateTime @default(now())
+
+  profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  source  EvidenceSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, sourceId, subjectType, subjectKey])
+  @@index([profileId, subjectType])
+}
+
+// Full snapshot of a profile (fields + every relationship + citations),
+// taken before each change — powers compare and restore.
+model SupplementProfileRevision {
+  id        String   @id @default(cuid())
+  profileId String
+  reason    String   // "enrichment" | "review" | "restore"
+  summary   String?
+  actorId   String?  // Admin id; null for automatic runs
+  snapshot  String
+  createdAt DateTime @default(now())
+
+  profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+}
+
+// A pausable/resumable enrichment run over a list of supplements.
+model SupplementEnrichmentJob {
+  id           String    @id @default(cuid())
+  kind         String    @default("supplement") // MedicationTag kind: "supplement" | "medication"
+  mode         String    // "pilot" | "batch" | "single" | "new"
+  status       String    // "running" | "paused" | "completed" | "cancelled"
+  tagIds       String    // JSON array, in processing order
+  processedIds String    @default("[]")
+  failedItems  String    @default("[]") // [{ tagId, label, error }]
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  finishedAt   DateTime?
+}
+
+// One row per execution of the Allopathic Medication Assistant (scheduled or
+// manual), shown as run history in Admin -> Settings.
+model MedicationAssistantRun {
+  id               String    @id @default(cuid())
+  trigger          String    // "scheduled" | "manual"
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+  status           String    // "running" | "success" | "no_candidates" | "failed"
+  suggestionsCount Int       @default(0)
+  errorMessage     String?
+
+  suggestions MedicationSuggestion[]
+}
+
+// Audit-trail record of every allopathic medication the assistant generated.
+// It publishes the MedicationTag (kind "medication") itself — no approval
+// gate, same as the other catalog assistants — so rows land "auto_approved"
+// with resultingTagId set; this table exists for a transparent, complete log.
+model MedicationSuggestion {
+  id             String   @id @default(cuid())
+  runId          String
+  label          String
+  // Therapeutic class, e.g. "Antihypertensive", "Antidiabetic" — log context only.
+  drugClass      String?
+  rationale      String?
+  status         String   @default("auto_approved")
+  resultingTagId String?
+  createdAt      DateTime @default(now())
+
+  run MedicationAssistantRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+// One row per execution of the Unani Supplement & Herb Assistant (scheduled
+// or manual), shown as run history in Admin -> Settings.
+model SupplementAssistantRun {
+  id               String    @id @default(cuid())
+  trigger          String    // "scheduled" | "manual"
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+  status           String    // "running" | "success" | "no_candidates" | "failed"
+  suggestionsCount Int       @default(0)
+  errorMessage     String?
+
+  suggestions SupplementSuggestion[]
+}
+
+// Audit-trail record of every supplement/herb the assistant generated. It
+// publishes the MedicationTag (kind "supplement") itself — no approval gate,
+// same as the other catalog assistants — so rows land "auto_approved" with
+// resultingTagId set; this table exists for a transparent, complete log.
+model SupplementSuggestion {
+  id             String   @id @default(cuid())
+  runId          String
+  label          String
+  // e.g. "Single Herb (Mufrad)", "Compound Formulation (Murakkab)" — log context only.
+  herbType       String?
+  rationale      String?
+  status         String   @default("auto_approved")
+  resultingTagId String?
+  createdAt      DateTime @default(now())
+
+  run SupplementAssistantRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+// The humor engine's config: "this finding contributes N points toward each
+// humor." Keyed generically (sourceType/sourceValue) so a later phase can add
+// vital-sign bands or temperament indicators to the same table without a
+// schema change.
+model HumorWeightRule {
+  id            String   @id @default(cuid())
+  sourceType    String   // "manifestation" | "factor" | "severity_band" | "onset_pattern"
+  sourceValue   String   // a ComplaintManifestation.key, a ComplaintFactorTag.label, "severe", etc.
+  safraPoints   Float    @default(0)
+  damPoints     Float    @default(0)
+  saudaPoints   Float    @default(0)
+  balghamPoints Float    @default(0)
+  active        Boolean  @default(true)
+  notes         String?  // admin's rationale; shown only in the admin UI
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([sourceType, sourceValue])
+}
+
+// Admin-authored clinical indication text for each point on the 1-10 severity
+// scale (e.g. level 1 -> "Mild Disturbance"), shown on the Chief Complaint
+// Matrix's severity slider. Fixed set of 10 rows, always present — admin only
+// edits the label text, never adds/removes a level.
+model SeverityScaleLabel {
+  id        String   @id @default(cuid())
+  level     Int      @unique
+  label     String
+  updatedAt DateTime @updatedAt
+}
+
+// Admin-curated flat checklist of general acute/constitutional symptoms
+// (not tied to a single complaint) — the Chief Complaint Matrix's
+// "Accompanying Acute Symptoms" section. `description` holds the Unani/local
+// term shown as the card's subtitle. Managed under Admin -> Meta.
+model AcuteSymptomTag {
+  id          String   @id @default(cuid())
+  label       String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplementLinks SupplementSymptomLink[]
+}
+
+// Admin-curated Anatomical Region & Organ System cards for Stage 3 (Mizaj &
+// Morphometry) — e.g. "Gastrointestinal / Hepato-Biliary" with Unani terms
+// "Ma'ida / Kabid / Safra". `icon` is a key into ANATOMICAL_REGION_ICONS
+// (src/lib/anatomical-region-icons.ts).
+model AnatomicalRegionTag {
+  id         String   @id @default(cuid())
+  label      String   @unique
+  localTerms String?
+  icon       String   @default("activity")
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Per-visit multi-select from AnatomicalRegionTag, snapshotted by label (same
+// convention as AcuteSymptomAssessment). Order is selection order — the
+// first entry is the primary region.
+model AnatomicalRegionSelection {
+  id           String   @id @default(cuid())
+  visitId      String   @unique
+  regions      String   @default("[]") // JSON array of AnatomicalRegionTag labels, primary first
+  recordedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Per-visit selection from the AcuteSymptomTag checklist. Same 1:1-per-visit
+// convention as VitalSigns/RedFlagScreening — snapshotted by label so the
+// record stays readable even if the admin later edits/deactivates a tag.
+model AcuteSymptomAssessment {
+  id           String   @id @default(cuid())
+  visitId      String   @unique
+  symptoms     String   @default("[]") // JSON array of AcuteSymptomTag labels
+  recordedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Doctor's running bullet notes for this visit's Stage 1 intake — separate
+// from ClinicalAssessment.notes, which belongs to the later Doctor Review
+// stage on a different page.
+model ResidentClinicalNote {
+  id           String   @id @default(cuid())
+  visitId      String   @unique
+  points       String   @default("[]") // JSON array of strings, one per bullet
+  recordedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Admin-authored display text for each of the 4 fixed humors, shown on the
+// Constitutional Tendency tiles. Fixed 4 rows (safra/dam/sauda/balgham),
+// auto-seeded on first read — same pattern as SeverityScaleLabel.
+model HumorDisplayConfig {
+  id          String   @id @default(cuid())
+  humor       String   @unique // "safra" | "dam" | "sauda" | "balgham"
+  axisLabel   String   // "Fire", "Air", "Water", "Earth"
+  unaniLabel  String   // "Safrawi", "Damawi", "Balghami", "Saudawi"
+  description String?  // e.g. "Hot & Dry"
+  updatedAt   DateTime @updatedAt
+}
+
+// Persisted AI-suggested triage routing from the Clinical Routing panel's
+// "Generate" button — same "persist what was actually seen" reasoning as
+// HumoralAssessment.aiClue, upserted fresh on every regenerate.
+model ClinicalRoutingInsight {
+  id            String   @id @default(cuid())
+  visitId       String   @unique
+  priorityLevel String
+  triageStream  String
+  justification String
+  generatedAt   DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+}
+
+// Persisted AI vitals-trend insight from the "Get AI Insight" button —
+// scoped to the visit it was generated during, even though the underlying
+// analysis itself looks back across the patient's recent visits.
+model VitalsInsightRecord {
+  id          String   @id @default(cuid())
+  visitId     String   @unique
+  insight     String
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
 }

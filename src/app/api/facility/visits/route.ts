@@ -9,9 +9,10 @@ const SELECT = {
   payments: { select: { id: true, paymentCode: true, amount: true, mode: true, status: true, createdAt: true } },
   vitalSigns: {
     select: {
-      pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true, oxygenLitres: true,
-      temperatureF: true, temperatureC: true, respiratoryRate: true, consciousnessLevel: true,
+      heartRate: true, pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true,
+      temperatureF: true, temperatureC: true,
       heightCm: true, weightKg: true, updatedAt: true,
+      painNotes: true, primaryFocusArea: true, triageRemarks: true,
     },
   },
   l1Screening: {
@@ -20,8 +21,16 @@ const SELECT = {
       answers: { select: { flagTriggered: true } },
     },
   },
+  intake: {
+    select: {
+      chiefComplaints: true, narrative: true, onsetTimeline: true,
+      allergies: true, medications: true, mobility: true,
+    },
+  },
   clinicalAssessment: { select: { id: true, workingDiagnosis: true, requiresUrgentReferral: true, updatedAt: true } },
-  treatmentPlan: { select: { id: true, careClassification: true, referralRequired: true, updatedAt: true } },
+  treatmentPlan: { select: { id: true, referralRequired: true, updatedAt: true } },
+  referral: { select: { id: true, reason: true, referredTo: true, urgency: true, notes: true, createdAt: true } },
+  amaDecline: { select: { id: true, reason: true, patientReason: true, createdAt: true } },
 };
 
 export async function GET(req: NextRequest) {
@@ -50,10 +59,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { patientId, doctorId, reasonForVisit } = await req.json();
+  const { patientId, doctorId, reasonForVisit, status } = await req.json();
   if (!patientId) {
     return NextResponse.json({ error: "patientId is required" }, { status: 400 });
   }
+  const validStatus = status === "waiting" ? "waiting" : "registered";
 
   const patient = await db.patient.findUnique({ where: { id: patientId }, select: { id: true } });
   if (!patient) {
@@ -77,6 +87,7 @@ export async function POST(req: NextRequest) {
       facilityId: auth.id,
       doctorId: validDoctorId,
       reasonForVisit: reasonForVisit || null,
+      status: validStatus,
     },
     select: SELECT,
   });

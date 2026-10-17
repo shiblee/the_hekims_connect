@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { deriveChiefComplaintKey } from "@/lib/chief-complaint-key";
 
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
@@ -19,15 +20,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Label is required" }, { status: 400 });
   }
 
-  const baseKey = String(label).trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  if (!baseKey) {
+  const key = await deriveChiefComplaintKey(String(label));
+  if (!key) {
     return NextResponse.json({ error: "Could not derive a key from this label" }, { status: 400 });
-  }
-  let key = baseKey;
-  let suffix = 2;
-  while (await db.chiefComplaint.findUnique({ where: { key } })) {
-    key = `${baseKey}_${suffix}`;
-    suffix++;
   }
 
   const maxOrder = await db.chiefComplaint.aggregate({ _max: { sortOrder: true } });

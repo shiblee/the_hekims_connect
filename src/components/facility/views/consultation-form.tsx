@@ -15,20 +15,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FloatingField } from "@/components/shared/floating-field";
+import { IntakeStepper, type IntakeStep } from "@/components/facility/views/intake-stepper";
 import {
   ChevronLeft, Loader2, Save, IdCard, Stethoscope, ClipboardList,
-  ShieldAlert, Activity, HeartPulse,
+  ShieldAlert, Activity, HeartPulse, User, Contact, CreditCard, BriefcaseMedical, Pencil,
 } from "lucide-react";
 
 interface Patient {
   id: string; patientCode: string | null; name: string; gender: string | null; dob: string | null;
   bloodGroup: string | null; phone: string | null; avatarColor: string;
+  maritalStatus: string | null; occupation: string | null; address: string | null; state: string | null; city: string | null;
+  emergencyContact: string | null; emergencyContactName: string | null; emergencyRelationship: string | null;
 }
-interface VisitInfo { id: string; visitCode: string; visitDate: string }
+interface VisitInfo {
+  id: string; visitCode: string; visitDate: string; reasonForVisit: string | null;
+  doctor: { id: string; name: string; designation: string | null } | null;
+  payments: { id: string; amount: number; mode: string; status: string }[];
+}
 
 interface VitalsSummary {
   pulse: number | null; bpSystolic: number | null; bpDiastolic: number | null;
-  spo2: number | null; temperatureF: number | null; respiratoryRate: number | null;
+  spo2: number | null; temperatureF: number | null;
 }
 interface ScreeningSummary { chiefComplaints: string; overallFlag: string | null; aiSummary: string | null }
 
@@ -37,7 +44,7 @@ interface ClinicalAssessment {
   requiresInvestigation: boolean; requiresUrgentReferral: boolean; notes: string | null;
 }
 interface TreatmentPlanT {
-  careClassification: string; diagnosis: string | null; treatmentObjective: string | null;
+  diagnosis: string | null; treatmentObjective: string | null;
   plannedInvestigations: string | null; plannedModalities: string | null;
   referralRequired: boolean; referralNotes: string | null; reviewDate: string | null; clinicalNotes: string | null;
 }
@@ -56,7 +63,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
   const [visit, setVisit] = useState<VisitInfo | null>(null);
   const [vitals, setVitals] = useState<VitalsSummary | null>(null);
   const [screening, setScreening] = useState<ScreeningSummary | null>(null);
-  const [careClassifications, setCareClassifications] = useState<string[]>([]);
+  const [step, setStep] = useState<IntakeStep>("vitals");
 
   const [assessment, setAssessment] = useState<ClinicalAssessment>({
     clinicalFindings: "", workingDiagnosis: "", treatmentRationale: "",
@@ -65,7 +72,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
   const [savingAssessment, setSavingAssessment] = useState(false);
 
   const [plan, setPlan] = useState<TreatmentPlanT>({
-    careClassification: "", diagnosis: "", treatmentObjective: "",
+    diagnosis: "", treatmentObjective: "",
     plannedInvestigations: "", plannedModalities: "",
     referralRequired: false, referralNotes: "", reviewDate: "", clinicalNotes: "",
   });
@@ -73,22 +80,20 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
 
   useEffect(() => {
     Promise.all([
-      api.get<{ visit: VisitInfo; patient: Patient; vitals: VitalsSummary | null }>(`/api/facility/visits/${visitId}/vitals`),
+      api.get<{ visit: VisitInfo & { patient: Patient }; vitals: VitalsSummary | null }>(`/api/facility/visits/${visitId}/vitals`),
       api.get<{ screening: ScreeningSummary | null }>(`/api/facility/visits/${visitId}/screening`),
       api.get<{ assessment: ClinicalAssessment | null }>(`/api/facility/visits/${visitId}/clinical-assessment`),
       api.get<{ plan: TreatmentPlanT | null }>(`/api/facility/visits/${visitId}/treatment-plan`),
-      api.get<{ sections: Record<string, { label: string; options: string[] }> }>("/api/facility/metadata"),
     ])
-      .then(([vitalsRes, screeningRes, assessmentRes, planRes, metaRes]) => {
-        setPatient(vitalsRes.patient);
+      .then(([vitalsRes, screeningRes, assessmentRes, planRes]) => {
+        setPatient(vitalsRes.visit.patient);
         setVisit(vitalsRes.visit);
         setVitals(vitalsRes.vitals);
         setScreening(screeningRes.screening);
         if (assessmentRes.assessment) setAssessment({ ...assessmentRes.assessment });
         if (planRes.plan) setPlan({ ...planRes.plan, reviewDate: planRes.plan.reviewDate ? planRes.plan.reviewDate.slice(0, 10) : "" });
-        setCareClassifications(metaRes.sections?.care_classification?.options || []);
       })
-      .catch(() => toast.error("Could not load this visit"))
+      .catch((e) => { console.error("Consultation load failed:", e); toast.error("Could not load this visit"); })
       .finally(() => setLoading(false));
   }, [visitId]);
 
@@ -106,10 +111,6 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
   };
 
   const savePlan = async () => {
-    if (!plan.careClassification) {
-      toast.error("Select a care classification");
-      return;
-    }
     setSavingPlan(true);
     try {
       const res = await api.post<{ plan: TreatmentPlanT }>(`/api/facility/visits/${visitId}/treatment-plan`, plan);
@@ -164,34 +165,106 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
         <p className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">{new Date(visit.visitDate).toLocaleDateString()}</p>
       </Card>
 
-      {/* Read-only recap of vitals + L1 screening for this visit */}
-      {(vitals || screening) && (
-        <Card className="p-4 mb-5 border-border/40 bg-card/60 gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-            <Activity className="h-3.5 w-3.5" /> This Visit So Far
-          </p>
-          {vitals && (
-            <p className="text-sm text-foreground/90 flex items-center gap-1.5 flex-wrap">
-              <HeartPulse className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              {vitals.pulse != null ? `Pulse ${vitals.pulse} bpm` : null}
-              {vitals.bpSystolic != null ? ` · BP ${vitals.bpSystolic}/${vitals.bpDiastolic ?? "—"}` : null}
-              {vitals.spo2 != null ? ` · SpO2 ${vitals.spo2}%` : null}
-              {vitals.temperatureF != null ? ` · Temp ${vitals.temperatureF}°F` : null}
-              {vitals.respiratoryRate != null ? ` · RR ${vitals.respiratoryRate}/min` : null}
-              {!vitals.pulse && !vitals.bpSystolic && !vitals.spo2 && !vitals.temperatureF && !vitals.respiratoryRate && "No vitals recorded"}
-            </p>
-          )}
-          {screening && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {screening.overallFlag && (
-                <Badge variant="outline" className={cn("border text-xs", FLAG_STYLE[screening.overallFlag])}>
+      {/* Junior Hakeem Intake Protocol — Mizaj/Handover steps are placeholders
+          until Phase 2/3 land (see the plan). The deeper per-complaint capture
+          now lives on the patient record page's Chief Complaint Matrix. */}
+      <IntakeStepper step={step} onStepChange={setStep} completedSteps={vitals || screening ? ["vitals"] : []} />
+
+      {step === "vitals" && (
+        <div className="flex gap-5 items-start flex-wrap lg:flex-nowrap mb-5">
+          {/* Chief complaints as reception captured them at registration. */}
+          <div className="w-full lg:w-64 shrink-0">
+            <Card className="p-4 border-border/40 bg-card/60 gap-3 lg:sticky lg:top-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <BriefcaseMedical className="h-3.5 w-3.5" /> Chief Complaints
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Captured by reception at registration</p>
+              </div>
+              {chiefComplaints.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {chiefComplaints.map((c) => (
+                    <span key={c} className="rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-sm">{c}</span>
+                  ))}
+                </div>
+              ) : <p className="text-sm text-muted-foreground">No chief complaint recorded at registration.</p>}
+              <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => router.push(`/facility/patients/register?visitId=${visitId}`)}>
+                <Pencil className="h-3.5 w-3.5" /> Edit Registration
+              </Button>
+            </Card>
+          </div>
+
+          <div className="flex-1 min-w-0 space-y-4">
+            <Card className="p-4 border-border/40 bg-card/60 gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5" /> Patient Profile
+              </p>
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <p><span className="text-muted-foreground block text-xs">Gender / Age</span>{patient.gender || "—"} · {formatAge(patient.dob)}</p>
+                <p><span className="text-muted-foreground block text-xs">Marital Status</span>{patient.maritalStatus || "—"}</p>
+                <p><span className="text-muted-foreground block text-xs">Blood Group</span>{patient.bloodGroup || "—"}</p>
+                <p><span className="text-muted-foreground block text-xs">Occupation</span>{patient.occupation || "—"}</p>
+                <p className="sm:col-span-2"><span className="text-muted-foreground block text-xs">Address</span>{[patient.address, patient.city, patient.state].filter(Boolean).join(", ") || "—"}</p>
+              </div>
+            </Card>
+
+            <Card className="p-4 border-border/40 bg-card/60 gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <Contact className="h-3.5 w-3.5" /> Emergency Contact
+              </p>
+              {(patient.emergencyContact || patient.emergencyContactName) ? (
+                <p className="text-sm">
+                  {patient.emergencyContactName || "—"}{patient.emergencyRelationship ? ` (${patient.emergencyRelationship})` : ""} — {patient.emergencyContact || "—"}
+                </p>
+              ) : <p className="text-sm text-muted-foreground">Not recorded at registration.</p>}
+            </Card>
+
+            <Card className="p-4 border-border/40 bg-card/60 gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5" /> Billing &amp; Attending Hekim
+              </p>
+              <p className="text-sm">
+                {visit.doctor ? `Dr. ${visit.doctor.name}${visit.doctor.designation ? ` — ${visit.doctor.designation}` : ""}` : "No doctor assigned yet"}
+              </p>
+              {visit.payments.length > 0 ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {visit.payments.map((p) => (
+                    <Badge key={p.id} variant="outline" className="text-xs font-normal">₹{p.amount} · {p.mode} · {p.status}</Badge>
+                  ))}
+                </div>
+              ) : <p className="text-sm text-muted-foreground">No payment recorded at registration.</p>}
+            </Card>
+
+            <Card className="p-4 border-border/40 bg-card/60 gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5" /> This Visit So Far
+              </p>
+              {vitals && (
+                <p className="text-sm text-foreground/90 flex items-center gap-1.5 flex-wrap">
+                  <HeartPulse className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  {vitals.pulse != null ? `Pulse ${vitals.pulse} bpm` : null}
+                  {vitals.bpSystolic != null ? ` · BP ${vitals.bpSystolic}/${vitals.bpDiastolic ?? "—"}` : null}
+                  {vitals.spo2 != null ? ` · SpO2 ${vitals.spo2}%` : null}
+                  {vitals.temperatureF != null ? ` · Temp ${vitals.temperatureF}°F` : null}
+                  {!vitals.pulse && !vitals.bpSystolic && !vitals.spo2 && !vitals.temperatureF && "No vitals recorded"}
+                </p>
+              )}
+              {screening?.overallFlag && (
+                <Badge variant="outline" className={cn("border text-xs w-fit", FLAG_STYLE[screening.overallFlag])}>
                   <ShieldAlert className="h-3 w-3" /> {FLAG_LABEL[screening.overallFlag] || screening.overallFlag}
                 </Badge>
               )}
-              {chiefComplaints.map((c) => <Badge key={c} variant="outline" className="text-[11px] font-normal">{c}</Badge>)}
-            </div>
-          )}
-          {!vitals && !screening && <p className="text-sm text-muted-foreground">No vitals or screening recorded yet for this visit.</p>}
+              {!vitals && !screening && <p className="text-sm text-muted-foreground">No vitals or screening recorded yet for this visit.</p>}
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {(step === "mizaj" || step === "handover") && (
+        <Card className="p-8 mb-5 border-border/40 bg-card/60 text-center">
+          <p className="text-sm text-muted-foreground">
+            {step === "mizaj" ? "Mizaj & Ajnas-e-Ashrah" : "Asbab-e-Sittah & Handover"} is coming in a later update.
+          </p>
         </Card>
       )}
 
@@ -253,35 +326,12 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
         </div>
       </Card>
 
-      {/* Care Classification & Treatment Plan */}
+      {/* Treatment Plan */}
       <Card className="relative overflow-hidden p-5 sm:p-6 border-border/40 bg-card/95 shadow-lg shadow-black/5 rounded-2xl gap-4">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-          <ClipboardList className="h-3.5 w-3.5 text-primary" /> Care Classification &amp; Treatment Plan
+          <ClipboardList className="h-3.5 w-3.5 text-primary" /> Treatment Plan
         </p>
-
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Care Classification</Label>
-          <div className="flex flex-wrap gap-2">
-            {careClassifications.map((c) => {
-              const selected = plan.careClassification === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setPlan((p) => ({ ...p, careClassification: c }))}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-sm border transition-colors",
-                    selected ? "bg-primary text-primary-foreground border-primary" : "bg-background/60 border-border/50 hover:border-primary/40"
-                  )}
-                >
-                  {c}
-                </button>
-              );
-            })}
-            {careClassifications.length === 0 && <p className="text-sm text-muted-foreground">No care classifications configured yet — add some in Admin → Meta.</p>}
-          </div>
-        </div>
 
         <FloatingField
           id="diagnosis" label="Diagnosis"

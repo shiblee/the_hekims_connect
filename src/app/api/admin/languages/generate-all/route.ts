@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       if (isMissingAnthropicCredentials(err)) {
         return NextResponse.json(
-          { error: "AI translation isn't configured yet — add an ANTHROPIC_API_KEY.", generated, total: pending.length },
+          { error: "Auto-translation isn't configured yet — add an ANTHROPIC_API_KEY.", generated, total: pending.length },
           { status: 503 }
         );
       }

@@ -70,7 +70,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:sticky top-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform lg:translate-x-0",
+        "fixed top-0 left-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform lg:translate-x-0",
         mobileNav ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="h-16 px-4 border-b border-sidebar-border flex items-center">
@@ -131,7 +131,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
       {mobileNav && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setMobileNav(false)} />}
 
       {/* Main */}
-      <div className="relative z-10 flex-1 min-w-0 flex flex-col">
+      <div className="relative z-10 flex-1 min-w-0 flex flex-col lg:ml-64">
         {/* Topbar */}
         <header className="sticky top-0 z-20 glass border-b border-border">
           <div className="h-16 flex items-center gap-3 px-4 lg:px-6">

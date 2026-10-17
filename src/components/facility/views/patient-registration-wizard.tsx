@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -13,9 +13,20 @@ import { Badge } from "@/components/ui/badge";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect, FloatingSplitField, FieldError } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
+import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
 import {
-  Search, Loader2, UserPlus, Stethoscope, PartyPopper, ChevronLeft, X, History, IdCard,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Search, Loader2, UserPlus, PartyPopper, ChevronLeft, X, History, IdCard, User, Contact, QrCode,
+  BriefcaseMedical, Plus, TriangleAlert, Leaf, Pill, PersonStanding, Accessibility, Activity,
+  Bookmark, ArrowRight, Save,
 } from "lucide-react";
+import QRCode from "qrcode";
+
+// 10-digit Indian mobile number, no leading 0/+91 — matches the backend's
+// own validation on save so a bad number is caught here instead of round-tripping.
+const PHONE_PATTERN = /^[6-9]\d{9}$/;
 
 interface MetaSections {
   [key: string]: { label: string; options: string[] };
@@ -32,8 +43,20 @@ interface Candidate {
 
 interface Doctor { id: string; name: string; staffCode: string; designation: string | null }
 
+interface ComplaintOption { id: string; label: string; active: boolean }
+interface AllergyOption { id: string; label: string }
+interface MedicationOption { id: string; kind: string; label: string }
+interface MedicationEntry { label: string; kind: "supplement" | "medication" }
+
+const ONSET_OPTIONS = [
+  { value: "<24h", label: "< 24 Hours" },
+  { value: "1-7d", label: "1 – 7 Days" },
+  { value: ">1m", label: "> 1 Month (Chronic)" },
+];
+
 interface Result {
   patientLabel: string;
+  patientCode: string;
   visitId: string;
   visitCode: string;
   doctorName?: string;
@@ -46,9 +69,28 @@ const emptyFormFields = {
   emergencyContact: "", emergencyContactName: "", address: "",
 };
 
-export function PatientRegistrationWizard() {
+// Normalized fingerprint of every field the reopened edit flow can touch —
+// compared against the snapshot taken right after load/save to drive the
+// unsaved-changes guard. Pure/stateless so it can run both at prefill time
+// (from the just-fetched values) and on every render (from live state).
+interface RegistrationSnapshotFields {
+  titlePrefix: string; name: string; relationship: string; gender: string; approxAge: string; ageUnit: string;
+  maritalStatus: string; phone: string; emergencyContact: string; emergencyContactName: string; address: string;
+  cityState: string; doctorId: string; chiefComplaintIds: string[]; narrative: string; onsetTimeline: string;
+  allergies: string[]; medications: MedicationEntry[]; mobility: string; amount: string; paymentMode: string;
+}
+const buildRegistrationSnapshot = (f: RegistrationSnapshotFields) => JSON.stringify(f);
+
+export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: string; patientId?: string } = {}) {
   const router = useRouter();
   const goToPatients = () => router.push("/facility/patients");
+  // Reopened either for one specific visit (doctor's "Edit Registration" link)
+  // or for a patient (clicking them on the Patients list) — the latter
+  // resolves to that patient's latest visit once loaded, below.
+  const directEntry = !!visitId || !!patientId;
+  const [resolvedVisitId, setResolvedVisitId] = useState<string | undefined>(visitId);
+  const visitEditMode = !!resolvedVisitId;
+  const [loadingVisit, setLoadingVisit] = useState(directEntry);
 
   const [meta, setMeta] = useState<MetaSections>({});
   const [defaults, setDefaults] = useState({ state: "", city: "" });
@@ -85,12 +127,37 @@ export function PatientRegistrationWizard() {
   // Doctor
   const [doctorId, setDoctorId] = useState("");
 
+  // Chief Complaint (front-desk intake)
+  const [complaintOptions, setComplaintOptions] = useState<ComplaintOption[]>([]);
+  const [chiefComplaintIds, setChiefComplaintIds] = useState<string[]>([]);
+  const [complaintSearch, setComplaintSearch] = useState("");
+  const [narrative, setNarrative] = useState("");
+  const [onsetTimeline, setOnsetTimeline] = useState("");
+  const [allergyOptions, setAllergyOptions] = useState<AllergyOption[]>([]);
+  const [medicationOptions, setMedicationOptions] = useState<MedicationOption[]>([]);
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [allergyInput, setAllergyInput] = useState("");
+  const [medications, setMedications] = useState<MedicationEntry[]>([]);
+  const [medicationInput, setMedicationInput] = useState("");
+  const [medicationKind, setMedicationKind] = useState<"supplement" | "medication">("supplement");
+  const [mobility, setMobility] = useState("");
+
   // Payment (optional)
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("");
+  const [existingPayment, setExistingPayment] = useState<{ amount: number; mode: string } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+
+  // Unsaved-edits guard for the reopened edit flow (directEntry) — a doctor
+  // reaching this page from the Clinical Record's stepper mid-visit must
+  // never lose typed-but-unsaved changes by navigating away. `savedSnapshotRef`
+  // holds the last loaded-or-saved field values; null until a prefill/save
+  // has actually run, so the guard stays off until there's something to lose.
+  const savedSnapshotRef = useRef<string | null>(null);
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
+  const pendingNavRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     api.get<{ sections: MetaSections; patientDefaults: { state: string; city: string } }>("/api/facility/metadata")
@@ -104,7 +171,239 @@ export function PatientRegistrationWizard() {
     api.get<{ staff: Doctor[] }>("/api/facility/staff?employeeType=Hakim%20(Unani%20Physician)&active=true")
       .then((res) => setDoctors(res.staff || []))
       .catch(() => {});
+    api.get<{ complaints: ComplaintOption[] }>("/api/facility/screening/config")
+      .then((res) => setComplaintOptions((res.complaints || []).filter((c) => c.active)))
+      .catch(() => {});
+    api.get<{ allergies: AllergyOption[] }>("/api/facility/allergies")
+      .then((res) => setAllergyOptions(res.allergies || []))
+      .catch(() => {});
+    api.get<{ medications: MedicationOption[] }>("/api/facility/medications")
+      .then((res) => setMedicationOptions(res.medications || []))
+      .catch(() => {});
   }, []);
+
+  // Shared prefill — pre-fills every field from a visit's existing
+  // registration data, used by both re-entry paths below.
+  const applyRegistrationPrefill = (res: {
+    patient: {
+      id: string; patientCode: string; name: string; titlePrefix: string | null; relationship: string | null;
+      gender: string | null; dob: string | null; dobApprox: boolean; maritalStatus: string | null; phone: string | null;
+      address: string | null; state: string | null; city: string | null;
+      emergencyContact: string | null; emergencyContactName: string | null;
+    };
+    visit: { id: string; visitCode: string; doctorId: string | null; lastPayment: { amount: number; mode: string } | null };
+    intake: {
+      chiefComplaintIds: string[]; narrative: string | null; onsetTimeline: string | null;
+      allergies: string; medications: string; mobility: string | null;
+    } | null;
+  }) => {
+    const p = res.patient;
+    setFormOpen(true);
+    setEditingId(p.id);
+    setEditingCode(p.patientCode);
+    const nextTitlePrefix = p.titlePrefix || "";
+    const nextRelationship = p.relationship || "Self";
+    const nextGender = p.gender || "";
+    const age = ageFromDob(p.dob);
+    const nextApproxAge = age ? String(age.value) : "";
+    const nextAgeUnit = age ? age.unit.charAt(0).toUpperCase() + age.unit.slice(1) : "Years";
+    const nextMaritalStatus = p.maritalStatus || "";
+    const nextPhone = p.phone || "";
+    const nextEmergencyContact = p.emergencyContact || "";
+    const nextEmergencyContactName = p.emergencyContactName || "";
+    const nextAddress = p.address || "";
+    const nextCityState = p.city && p.state ? `${p.city}, ${p.state}` : "";
+    const nextDoctorId = res.visit.doctorId || "";
+    const nextChiefComplaintIds = res.intake?.chiefComplaintIds || [];
+    const nextNarrative = res.intake?.narrative || "";
+    const nextOnsetTimeline = res.intake?.onsetTimeline || "";
+    const nextAllergies: string[] = (() => { try { return JSON.parse(res.intake?.allergies || "[]"); } catch { return []; } })();
+    const nextMedications: MedicationEntry[] = (() => { try { return JSON.parse(res.intake?.medications || "[]"); } catch { return []; } })();
+    const nextMobility = res.intake?.mobility || "";
+
+    setTitlePrefix(nextTitlePrefix);
+    setName(p.name);
+    setRelationship(nextRelationship);
+    setGender(nextGender);
+    setApproxAge(nextApproxAge);
+    setAgeUnit(nextAgeUnit);
+    setMaritalStatus(nextMaritalStatus);
+    setPhone(nextPhone);
+    setEmergencyContact(nextEmergencyContact);
+    setEmergencyContactName(nextEmergencyContactName);
+    setAddress(nextAddress);
+    setCityState(nextCityState);
+    setDoctorId(nextDoctorId);
+    setExistingPayment(res.visit.lastPayment);
+    if (res.intake) {
+      setChiefComplaintIds(nextChiefComplaintIds);
+      setNarrative(nextNarrative);
+      setOnsetTimeline(nextOnsetTimeline);
+      setAllergies(nextAllergies);
+      setMedications(nextMedications);
+      setMobility(nextMobility);
+    }
+
+    // Baseline for the unsaved-edits guard — reflects exactly what was just
+    // loaded, not stale pre-prefill state (setters above haven't flushed yet).
+    savedSnapshotRef.current = buildRegistrationSnapshot({
+      titlePrefix: nextTitlePrefix, name: p.name, relationship: nextRelationship, gender: nextGender,
+      approxAge: nextApproxAge, ageUnit: nextAgeUnit, maritalStatus: nextMaritalStatus, phone: nextPhone,
+      emergencyContact: nextEmergencyContact, emergencyContactName: nextEmergencyContactName, address: nextAddress,
+      cityState: nextCityState, doctorId: nextDoctorId,
+      chiefComplaintIds: res.intake ? nextChiefComplaintIds : [], narrative: res.intake ? nextNarrative : "",
+      onsetTimeline: res.intake ? nextOnsetTimeline : "", allergies: res.intake ? nextAllergies : [],
+      medications: res.intake ? nextMedications : [], mobility: res.intake ? nextMobility : "",
+      amount: "", paymentMode: "",
+    });
+  };
+
+  // Junior-doctor edit entry point ("Edit Registration" on Doctor Review) —
+  // one specific visit is already known.
+  useEffect(() => {
+    if (!visitId) return;
+    api.get(`/api/facility/visits/${visitId}/registration`)
+      .then((res: any) => applyRegistrationPrefill(res))
+      .catch((e: any) => toast.error(e.message || "Could not load this visit's registration"))
+      .finally(() => setLoadingVisit(false));
+  }, [visitId]);
+
+  // Patients-list entry point — only a patientId is known, so resolve it to
+  // their latest visit first. A patient with no Visit yet (appointment-only,
+  // never walked in) falls back to a plain editable profile instead, same
+  // as picking them from the dedupe-search candidates below.
+  useEffect(() => {
+    if (!patientId || visitId) return;
+    (async () => {
+      try {
+        const v = await api.get<{ visits: { id: string; visitDate: string }[] }>(`/api/facility/visits?patientId=${patientId}`);
+        const latest = [...(v.visits || [])].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0];
+        if (latest) {
+          setResolvedVisitId(latest.id);
+          const res = await api.get(`/api/facility/visits/${latest.id}/registration`);
+          applyRegistrationPrefill(res as any);
+        } else {
+          const res = await api.get<{ patient: Candidate }>(`/api/facility/patients/${patientId}`);
+          selectCandidate({ ...res.patient, lastVisitAt: null });
+        }
+      } catch (e: any) {
+        toast.error(e.message || "Could not load this patient");
+      } finally {
+        setLoadingVisit(false);
+      }
+    })();
+  }, [patientId, visitId]);
+
+  const toggleComplaint = (id: string) => {
+    setChiefComplaintIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  };
+
+  // Only meaningful in the reopened edit flow — a fresh registration has no
+  // "previous saved state" to lose, so the guard stays inert for it.
+  const isDirty = directEntry && !!editingId && savedSnapshotRef.current !== null && savedSnapshotRef.current !== buildRegistrationSnapshot({
+    titlePrefix, name, relationship, gender, approxAge, ageUnit, maritalStatus, phone,
+    emergencyContact, emergencyContactName, address, cityState, doctorId,
+    chiefComplaintIds, narrative, onsetTimeline, allergies, medications, mobility, amount, paymentMode,
+  });
+
+  const guardedNavigate = (action: () => void) => {
+    if (isDirty) {
+      pendingNavRef.current = action;
+      setUnsavedDialogOpen(true);
+    } else {
+      action();
+    }
+  };
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  const complaintSearchResults = (() => {
+    const q = complaintSearch.trim().toLowerCase();
+    if (!q) return [];
+    return complaintOptions.filter((c) => !chiefComplaintIds.includes(c.id) && c.label.toLowerCase().includes(q)).slice(0, 8);
+  })();
+
+  // The front-desk handover checklist — spans Sections 1 and 4. Emergency
+  // Contact (Section 2), Doctor, and Payment are explicitly optional
+  // elsewhere in the form, so they're excluded from this gate.
+  const mandatoryChecklist = [
+    !!name.trim(), !!phone.trim(), !!gender, !!approxAge, !!address.trim(),
+    chiefComplaintIds.length > 0, !!onsetTimeline, !!mobility,
+  ];
+  const verifiedCount = mandatoryChecklist.filter(Boolean).length;
+  const mandatoryDone = verifiedCount === mandatoryChecklist.length;
+
+  const printWristband = async (data: { patientLabel: string; patientCode: string; visitCode: string }) => {
+    const qrValue = `${data.patientCode}|${data.visitCode}`;
+    let qrDataUrl = "";
+    try {
+      qrDataUrl = await QRCode.toDataURL(qrValue, { width: 220, margin: 1 });
+    } catch {
+      toast.error("Could not generate the barcode");
+      return;
+    }
+    const win = window.open("", "_blank", "width=420,height=640");
+    if (!win) {
+      toast.error("Could not open the print window — check your browser's popup blocker");
+      return;
+    }
+    const escaped = data.patientLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    win.document.write(`<!doctype html><html><head><title>Wristband — ${data.patientCode}</title>
+      <style>
+        body { font-family: system-ui, sans-serif; text-align: center; padding: 24px; }
+        h1 { font-size: 16px; margin: 0 0 4px; }
+        p { font-size: 13px; margin: 2px 0; color: #333; }
+        img { margin-top: 16px; }
+        .code { font-family: monospace; font-size: 14px; letter-spacing: 1px; margin-top: 8px; }
+      </style></head>
+      <body>
+        <h1>${escaped}</h1>
+        <p>Patient Code: ${data.patientCode}</p>
+        <p>Visit: ${data.visitCode}</p>
+        <img src="${qrDataUrl}" width="220" height="220" alt="QR code" />
+        <p class="code">${qrValue}</p>
+        <script>window.onload = () => window.print();</script>
+      </body></html>`);
+    win.document.close();
+    win.focus();
+  };
+
+  const addAllergy = (value?: string) => {
+    const v = (value ?? allergyInput).trim();
+    if (!v) return;
+    setAllergies((a) => (a.some((x) => x.toLowerCase() === v.toLowerCase()) ? a : [...a, v]));
+    setAllergyInput("");
+  };
+  const removeAllergy = (i: number) => setAllergies((a) => a.filter((_, idx) => idx !== i));
+
+  const allergySearchResults = (() => {
+    const q = allergyInput.trim().toLowerCase();
+    if (!q) return [];
+    return allergyOptions.filter((a) => !allergies.some((x) => x.toLowerCase() === a.label.toLowerCase()) && a.label.toLowerCase().includes(q)).slice(0, 6);
+  })();
+
+  const addMedication = (value?: string) => {
+    const v = (value ?? medicationInput).trim();
+    if (!v) return;
+    setMedications((m) => (m.some((x) => x.kind === medicationKind && x.label.toLowerCase() === v.toLowerCase()) ? m : [...m, { label: v, kind: medicationKind }]));
+    setMedicationInput("");
+  };
+  const removeMedication = (i: number) => setMedications((m) => m.filter((_, idx) => idx !== i));
+
+  const medicationSearchResults = (() => {
+    const q = medicationInput.trim().toLowerCase();
+    if (!q) return [];
+    return medicationOptions.filter((o) =>
+      o.kind === medicationKind &&
+      !medications.some((x) => x.kind === medicationKind && x.label.toLowerCase() === o.label.toLowerCase()) &&
+      o.label.toLowerCase().includes(q)
+    ).slice(0, 6);
+  })();
 
   const clearForm = () => {
     setFormOpen(false);
@@ -117,6 +416,10 @@ export function PatientRegistrationWizard() {
     setAddress(emptyFormFields.address);
     setCityState(defaults.city && defaults.state ? `${defaults.city}, ${defaults.state}` : "");
     setFieldErrors({});
+    setChiefComplaintIds([]); setComplaintSearch(""); setNarrative(""); setOnsetTimeline("");
+    setAllergies([]); setAllergyInput("");
+    setMedications([]); setMedicationInput(""); setMedicationKind("supplement");
+    setMobility("");
   };
 
   const resetAll = () => {
@@ -132,6 +435,11 @@ export function PatientRegistrationWizard() {
       toast.error("Enter a mobile number or name to search");
       return;
     }
+    if (searchMobile && !PHONE_PATTERN.test(searchMobile)) {
+      setFieldErrors((prev) => ({ ...prev, searchMobile: "Enter a valid 10-digit mobile number" }));
+      return;
+    }
+    setFieldErrors((prev) => ({ ...prev, searchMobile: "" }));
     setSearching(true);
     try {
       const params = new URLSearchParams();
@@ -174,12 +482,18 @@ export function PatientRegistrationWizard() {
     setFieldErrors({});
   };
 
-  const submit = async () => {
+  const submitWith = async (mode: "hold" | "print" | "transfer") => {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = "Name is required";
     if (!phone.trim()) errs.phone = "Mobile number is required";
+    else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = "Enter a valid 10-digit mobile number";
+    if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = "Enter a valid 10-digit mobile number";
     setFieldErrors(errs);
     if (Object.keys(errs).length) return;
+    if (mode === "transfer" && !mandatoryDone) {
+      toast.error("Complete all 10 mandatory fields before transferring to Triage & Vitals");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -195,17 +509,20 @@ export function PatientRegistrationWizard() {
 
       let pid = editingId;
       let pLabel = "";
+      let pCode = "";
       if (pid) {
         const res = await api.patch<{ patient: { id: string; patientCode: string; name: string } }>(`/api/facility/patients/${pid}`, payload);
         pLabel = `${res.patient.name} (${res.patient.patientCode})`;
+        pCode = res.patient.patientCode;
       } else {
         const res = await api.post<{ patient: { id: string; patientCode: string; name: string } }>("/api/facility/patients", payload);
         pid = res.patient.id;
         pLabel = `${res.patient.name} (${res.patient.patientCode})`;
+        pCode = res.patient.patientCode;
       }
 
       const visitRes = await api.post<{ visit: { id: string; visitCode: string } }>("/api/facility/visits", {
-        patientId: pid, doctorId: doctorId || null,
+        patientId: pid, doctorId: doctorId || null, status: mode === "hold" ? "waiting" : "registered",
       });
 
       let paymentRecorded: { amount: string; mode: string } | null = null;
@@ -217,8 +534,31 @@ export function PatientRegistrationWizard() {
         paymentRecorded = { amount, mode: paymentMode };
       }
 
+      const hasIntakeData = chiefComplaintIds.length > 0 || !!narrative.trim() || !!onsetTimeline
+        || allergies.length > 0 || medications.length > 0 || !!mobility;
+      if (hasIntakeData) {
+        await api.post(`/api/facility/visits/${visitRes.visit.id}/intake`, {
+          chiefComplaintIds, narrative, onsetTimeline, allergies, medications, mobility,
+        });
+      }
+
+      if (mode === "print") {
+        await printWristband({ patientLabel: pLabel, patientCode: pCode, visitCode: visitRes.visit.visitCode });
+      }
+
+      if (mode === "transfer") {
+        // Registration and the next stage (vitals, screening, doctor review…)
+        // are frequently handled by different staff at different times, not
+        // one continuous sitting — so hand control back to the patient list
+        // rather than forcing whoever's at the desk into the Vitals page.
+        toast.success(`${pLabel} registered — ready for Triage & Vitals`);
+        router.push("/facility/patients");
+        return;
+      }
+
       setResult({
         patientLabel: pLabel,
+        patientCode: pCode,
         visitId: visitRes.visit.id,
         visitCode: visitRes.visit.visitCode,
         doctorName: doctors.find((d) => d.id === doctorId)?.name,
@@ -231,15 +571,103 @@ export function PatientRegistrationWizard() {
     }
   };
 
+  // Junior-doctor edit path — updates the existing patient/visit in place
+  // (no new Visit, unlike submitWith) and returns to the Clinical Record.
+  // This is a plain data save, independent of and never gating the visit's
+  // own stage-completion ("Proceed to Mizaj Morphometry" on the record page
+  // is still the only thing that advances the visit itself).
+  const saveAndReturn = async () => {
+    const errs: Record<string, string> = {};
+    if (!name.trim()) errs.name = "Name is required";
+    if (!phone.trim()) errs.phone = "Mobile number is required";
+    else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = "Enter a valid 10-digit mobile number";
+    if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = "Enter a valid 10-digit mobile number";
+    setFieldErrors(errs);
+    if (Object.keys(errs).length || !editingId || !resolvedVisitId) return;
+
+    setSubmitting(true);
+    try {
+      const finalDob = approxAge ? estimateDobFromAgeValue(parseFloat(approxAge), ageUnit.toLowerCase() as AgeUnit) : null;
+      const [city, state] = cityState.split(",").map((s) => s.trim());
+      await api.patch(`/api/facility/patients/${editingId}`, {
+        name, titlePrefix, registrationFor: relationship, relationship: relationship !== "Self" ? relationship : null,
+        gender, dob: finalDob, dobApprox: true,
+        maritalStatus, phone,
+        emergencyContact, emergencyContactName,
+        address, state: state || null, city: city || null,
+      });
+
+      await api.patch(`/api/facility/visits/${resolvedVisitId}`, { doctorId: doctorId || null });
+
+      const hasIntakeData = chiefComplaintIds.length > 0 || !!narrative.trim() || !!onsetTimeline
+        || allergies.length > 0 || medications.length > 0 || !!mobility;
+      if (hasIntakeData) {
+        await api.post(`/api/facility/visits/${resolvedVisitId}/intake`, {
+          chiefComplaintIds, narrative, onsetTimeline, allergies, medications, mobility,
+        });
+      }
+
+      if (amount && paymentMode) {
+        await api.post("/api/facility/payments", {
+          visitId: resolvedVisitId, amount, mode: paymentMode, status: "Paid", amountReceived: amount,
+        });
+      }
+
+      savedSnapshotRef.current = buildRegistrationSnapshot({
+        titlePrefix, name, relationship, gender, approxAge, ageUnit, maritalStatus, phone,
+        emergencyContact, emergencyContactName, address, cityState, doctorId,
+        chiefComplaintIds, narrative, onsetTimeline, allergies, medications, mobility, amount, paymentMode,
+      });
+      toast.success("Registration updated");
+      router.push(`/facility/patients/${editingId}/record`);
+    } catch (e: any) {
+      toast.error(e.message || "Could not save changes");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loadingVisit) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground text-sm py-12">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
-      <button onClick={goToPatients} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
+      <button onClick={() => guardedNavigate(goToPatients)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
         <ChevronLeft className="h-4 w-4" /> Back to Patients
       </button>
 
-      <div className="mb-4">
-        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">Register Patient</h1>
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">
+            {directEntry ? "Review & Edit Registration" : "Register Patient"}
+          </h1>
+          {isDirty && (
+            <Badge variant="outline" className="bg-amber-500/15 text-amber-600 border-amber-500/30 text-[10px] font-semibold uppercase tracking-wide">
+              Unsaved Changes
+            </Badge>
+          )}
+        </div>
+        {editingId && directEntry && (
+          <button
+            onClick={() => guardedNavigate(() => router.push(`/facility/patients/${editingId}/record`))}
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            View Full Clinical Record <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
+
+      <PatientStageTracker
+        steps={PATIENT_JOURNEY_STEPS.map((s) => (s.key === "registration" && isDirty ? { ...s, variant: "warning" as const, variantLabel: "Unsaved Changes" } : s))}
+        activeKey="registration"
+        completedKeys={[]}
+        onNavigate={(href) => guardedNavigate(() => router.push(href))}
+      />
 
       <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
@@ -270,18 +698,27 @@ export function PatientRegistrationWizard() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Identify */}
-            <section className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
+            {/* Identify — not applicable once reopened directly for a known visit/patient */}
+            {!directEntry && (
+            <section className="space-y-3 pb-6 border-b border-border/40">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
               <div className="grid sm:grid-cols-2 gap-3">
-                <FloatingField id="searchMobile" label="Mobile number" value={searchMobile} onChange={(e) => setSearchMobile(e.target.value)} />
-                <FloatingField id="searchName" label="Name" value={searchName} onChange={(e) => setSearchName(e.target.value)} />
+                <FloatingField id="searchName" label="Patient Name" value={searchName} onChange={(e) => setSearchName(e.target.value)} />
+                <div>
+                  <FloatingField
+                    id="searchMobile" label="Mobile number" value={searchMobile}
+                    onChange={(e) => setSearchMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    error={!!fieldErrors.searchMobile}
+                    type="tel" inputMode="numeric" maxLength={10}
+                  />
+                  <FieldError message={fieldErrors.searchMobile} />
+                </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={runSearch} disabled={searching} variant="outline">
+              <div className="flex flex-wrap gap-3 justify-end">
+                <Button onClick={runSearch} disabled={searching} variant="secondary">
                   {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                 </Button>
-                <Button onClick={openNewPatient} variant="outline">
+                <Button onClick={openNewPatient}>
                   <UserPlus className="h-4 w-4" /> Add New Patient
                 </Button>
               </div>
@@ -308,22 +745,22 @@ export function PatientRegistrationWizard() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{c.name}</p>
                               {c.patientCode && (
-                                <Badge className="mt-0.5 bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono text-[10px]">
+                                <Badge className="mt-0.5 bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono text-sm">
                                   {c.patientCode}
                                 </Badge>
                               )}
                             </div>
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-sm text-muted-foreground truncate">
                             {c.gender || "—"} · {formatAge(c.dob)} · {c.phone || "—"}
                           </p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
                             <History className="h-3 w-3 shrink-0" />
                             {c.lastVisitAt ? `Last visit: ${daysAgo(c.lastVisitAt)}` : "No prior visit here"}
                           </p>
                           <div className="flex items-center justify-between gap-2 mt-auto">
                             {typeof c.matchScore === "number" ? (
-                              <Badge variant="outline" className="text-xs shrink-0">Match {c.matchScore}%</Badge>
+                              <Badge variant="outline" className="text-sm shrink-0">Match {c.matchScore}%</Badge>
                             ) : <span />}
                             <Button size="sm" variant={editingId === c.id ? "default" : "outline"} onClick={(e) => { e.stopPropagation(); selectCandidate(c); }}>
                               {editingId === c.id ? "Selected" : "Select"}
@@ -336,140 +773,491 @@ export function PatientRegistrationWizard() {
                 </div>
               )}
             </section>
+            )}
 
             {formOpen && (
               <section className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Patient Details</h2>
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <User className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-semibold text-foreground leading-tight">1. Primary Patient Identification</h2>
+                      <p className="text-sm text-muted-foreground leading-tight mt-0.5">Verify legal identity against government or residency smart card</p>
+                    </div>
+                  </div>
                   {editingId ? (
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono flex items-center gap-1">
                         <IdCard className="h-3 w-3" /> {editingCode}
                       </Badge>
-                      <Badge variant="outline" className="text-xs flex items-center gap-1">
-                        <History className="h-3 w-3" /> {lastVisitAt ? `Last visit: ${daysAgo(lastVisitAt)}` : "No prior visit here"}
-                      </Badge>
-                      <button onClick={clearForm} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                        <X className="h-3 w-3" /> Change patient
-                      </button>
+                      {!directEntry && (
+                        <Badge variant="outline" className="text-sm flex items-center gap-1">
+                          <History className="h-3 w-3" /> {lastVisitAt ? `Last visit: ${daysAgo(lastVisitAt)}` : "No prior visit here"}
+                        </Badge>
+                      )}
+                      {!directEntry && (
+                        <button onClick={clearForm} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+                          <X className="h-3 w-3" /> Change patient
+                        </button>
+                      )}
                     </div>
                   ) : (
-                    <button onClick={clearForm} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <button onClick={clearForm} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
                       <X className="h-3 w-3" /> Cancel
                     </button>
                   )}
                 </div>
 
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-2">
-                    <FloatingSplitField
-                      label="Patient Name"
-                      inputId="name"
-                      selectValue={titlePrefix}
-                      onSelectChange={setTitlePrefix}
-                      selectOptions={meta.patient_title?.options || []}
-                      selectPlaceholder="Title"
-                      autoComplete="off"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      error={!!fieldErrors.name}
-                    />
-                    <FieldError message={fieldErrors.name} />
+                <div className="grid lg:grid-cols-10 gap-6 items-start">
+                  <div className="lg:col-span-7 space-y-4">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="lg:col-span-2">
+                        <FloatingField
+                          id="name"
+                          label="Patient Name"
+                          autoComplete="off"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          error={!!fieldErrors.name}
+                          required
+                        />
+                        <FieldError message={fieldErrors.name} />
+                      </div>
+
+                      {meta.relationship && (
+                        <FloatingCombobox
+                          id="relationship"
+                          label="Relationship to Patient"
+                          value={relationship}
+                          onValueChange={setRelationship}
+                          options={meta.relationship.options}
+                          placeholder="Search relationship…"
+                        />
+                      )}
+
+                      {meta.gender && (
+                        <FloatingSelect id="gender" label="Gender" value={gender} onValueChange={setGender} placeholder="Select" required>
+                          {meta.gender.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        </FloatingSelect>
+                      )}
+                      {meta.marital_status && (
+                        <FloatingSelect id="maritalStatus" label="Marital Status" value={maritalStatus} onValueChange={setMaritalStatus} placeholder="Select">
+                          {meta.marital_status.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        </FloatingSelect>
+                      )}
+                      <FloatingSplitField
+                        label="Age"
+                        inputId="approxAge"
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={approxAge}
+                        onChange={(e) => setApproxAge(e.target.value)}
+                        selectPosition="right"
+                        selectWidthClassName="w-28"
+                        selectValue={ageUnit}
+                        onSelectChange={setAgeUnit}
+                        selectOptions={["Years", "Months", "Days"]}
+                        required
+                      />
+
+                      <div>
+                        <FloatingField
+                          id="phone" label="Mobile number" value={phone}
+                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                          error={!!fieldErrors.phone}
+                          type="tel" inputMode="numeric" maxLength={10}
+                          required
+                        />
+                        <FieldError message={fieldErrors.phone} />
+                      </div>
+                      <div className="lg:col-span-2">
+                        <FloatingField id="address" label="Address" value={address} onChange={(e) => setAddress(e.target.value)} required />
+                      </div>
+                    </div>
+
+                    <section className="space-y-3 pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                          <Contact className="h-4.5 w-4.5" />
+                        </div>
+                        <div>
+                          <h2 className="text-base font-semibold text-foreground leading-tight">2. Emergency Contact &amp; Next of Kin</h2>
+                          <p className="text-sm text-muted-foreground leading-tight mt-0.5">Designated liaison for medical emergencies and legal consent</p>
+                        </div>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <FloatingField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
+                        <div>
+                          <FloatingField
+                            id="emergencyContact" label="Mobile number" value={emergencyContact}
+                            onChange={(e) => setEmergencyContact(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                            error={!!fieldErrors.emergencyContact}
+                            type="tel" inputMode="numeric" maxLength={10}
+                          />
+                          <FieldError message={fieldErrors.emergencyContact} />
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-3 pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <QrCode className="h-4.5 w-4.5" />
+                        </div>
+                        <div>
+                          <h2 className="text-base font-semibold text-foreground leading-tight">3. Billing, Payer Authorization &amp; Attending Hekim</h2>
+                          <p className="text-sm text-muted-foreground leading-tight mt-0.5">Holistic insurance eligibility and attending practitioner queue</p>
+                        </div>
+                      </div>
+                      <FloatingSelect id="doctorId" label="Preferred Doctor (optional)" value={doctorId} onValueChange={setDoctorId} placeholder="Any available doctor">
+                        {doctors.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}{d.designation ? ` — ${d.designation}` : ""}</SelectItem>)}
+                      </FloatingSelect>
+                    </section>
+
+                    <section className="space-y-3">
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payment (optional)</h2>
+                      {existingPayment && (
+                        <p className="text-sm text-muted-foreground">Already collected: ₹{existingPayment.amount} ({existingPayment.mode}). Fields below add another payment, if needed.</p>
+                      )}
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <FloatingField id="amount" type="number" label="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                        {meta.payment_mode && (
+                          <FloatingSelect id="paymentMode" label="Payment Mode" value={paymentMode} onValueChange={setPaymentMode} placeholder="Select">
+                            {meta.payment_mode.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </FloatingSelect>
+                        )}
+                      </div>
+                    </section>
                   </div>
 
-                  {meta.relationship && (
-                    <FloatingCombobox
-                      id="relationship"
-                      label="Relationship to Patient"
-                      value={relationship}
-                      onValueChange={setRelationship}
-                      options={meta.relationship.options}
-                      placeholder="Search relationship…"
-                    />
-                  )}
+                  <div className="lg:col-span-3">
+                    <section className="space-y-4 lg:sticky lg:top-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                          <BriefcaseMedical className="h-4.5 w-4.5" />
+                        </div>
+                        <div>
+                          <h2 className="text-base font-semibold text-foreground leading-tight">4. Chief Complaint</h2>
+                          <p className="text-sm text-muted-foreground leading-tight mt-0.5">Immediate front-desk intake screening</p>
+                        </div>
+                      </div>
 
-                  {meta.gender && (
-                    <FloatingSelect id="gender" label="Gender" value={gender} onValueChange={setGender} placeholder="Select">
-                      {meta.gender.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </FloatingSelect>
-                  )}
-                  {meta.marital_status && (
-                    <FloatingSelect id="maritalStatus" label="Marital Status" value={maritalStatus} onValueChange={setMaritalStatus} placeholder="Select">
-                      {meta.marital_status.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </FloatingSelect>
-                  )}
-                  <FloatingSplitField
-                    label="Age"
-                    inputId="approxAge"
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={approxAge}
-                    onChange={(e) => setApproxAge(e.target.value)}
-                    selectPosition="right"
-                    selectWidthClassName="w-28"
-                    selectValue={ageUnit}
-                    onSelectChange={setAgeUnit}
-                    selectOptions={["Years", "Months", "Days"]}
-                  />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Fast Symptom Selector (Multi-select) <span className="text-destructive">*</span></p>
+                        {chiefComplaintIds.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {chiefComplaintIds.map((id) => {
+                              const c = complaintOptions.find((o) => o.id === id);
+                              if (!c) return null;
+                              return (
+                                <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 border border-primary/40 text-primary px-3 py-1.5 text-sm">
+                                  {c.label}
+                                  <button type="button" onClick={() => toggleComplaint(id)} className="hover:text-primary/70">
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                          <input
+                            value={complaintSearch}
+                            onChange={(e) => setComplaintSearch(e.target.value)}
+                            placeholder="Search symptoms…"
+                            className="w-full rounded-md border border-border/60 bg-background pl-8 pr-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                        </div>
+                        {complaintSearch.trim() && (
+                          <div className="mt-1.5 rounded-lg border border-border/50 bg-card/90 max-h-48 overflow-y-auto divide-y divide-border/40">
+                            {complaintSearchResults.length === 0 ? (
+                              <p className="px-3 py-2 text-sm text-muted-foreground">No matches for &quot;{complaintSearch}&quot;.</p>
+                            ) : (
+                              complaintSearchResults.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => { toggleComplaint(c.id); setComplaintSearch(""); }}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5"
+                                >
+                                  <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {c.label}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
 
-                  <div>
-                    <FloatingField id="phone" label="Mobile number" value={phone} onChange={(e) => setPhone(e.target.value)} error={!!fieldErrors.phone} />
-                    <FieldError message={fieldErrors.phone} />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Patient Stated Narrative</p>
+                        <textarea
+                          value={narrative}
+                          onChange={(e) => setNarrative(e.target.value)}
+                          rows={3}
+                          placeholder="What the patient reports in their own words…"
+                          className="w-full rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Symptom Onset Timeline <span className="text-destructive">*</span></p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {ONSET_OPTIONS.map((o) => (
+                            <button
+                              key={o.value}
+                              type="button"
+                              onClick={() => setOnsetTimeline(onsetTimeline === o.value ? "" : o.value)}
+                              className={cn(
+                                "rounded-lg border px-1.5 py-2 text-sm leading-tight text-center transition-colors",
+                                onsetTimeline === o.value
+                                  ? "bg-amber-400/15 border-amber-400/50 text-amber-600 dark:text-amber-400 font-medium"
+                                  : "border-border/60 text-muted-foreground hover:border-border"
+                              )}
+                            >
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2.5">
+                        <p className="text-sm font-semibold text-destructive flex items-center gap-1.5">
+                          <TriangleAlert className="h-3.5 w-3.5" /> Critical Allergies / Red Flags
+                        </p>
+                        {allergies.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {allergies.map((a, i) => (
+                              <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-destructive/15 text-destructive border border-destructive/30 px-3 py-1 text-sm">
+                                {a}
+                                <button type="button" onClick={() => removeAllergy(i)} className="hover:text-destructive/70">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="relative">
+                          <input
+                            value={allergyInput}
+                            onChange={(e) => setAllergyInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAllergy(); } }}
+                            placeholder="Type an allergy…"
+                            className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
+                          />
+                          {allergyInput.trim() && allergySearchResults.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full rounded-lg border border-border/50 bg-card shadow-lg max-h-40 overflow-y-auto divide-y divide-border/40">
+                              {allergySearchResults.map((a) => (
+                                <button
+                                  key={a.id}
+                                  type="button"
+                                  onClick={() => addAllergy(a.label)}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5"
+                                >
+                                  <TriangleAlert className="h-3 w-3 text-destructive shrink-0" /> {a.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Button type="button" size="sm" variant="outline" onClick={() => addAllergy()} className="w-full">
+                          <Plus className="h-3 w-3" /> Add as Custom Allergy
+                        </Button>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Active Routine Medications / Herbs</p>
+                        {medications.length > 0 && (
+                          <div className="space-y-1.5 mb-2">
+                            {medications.map((m, i) => (
+                              <div key={i} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 px-3 py-2 text-sm">
+                                {m.kind === "supplement" ? <Leaf className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <Pill className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                <span className="flex-1">{m.label}</span>
+                                <button type="button" onClick={() => removeMedication(i)} className="text-muted-foreground hover:text-destructive">
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => { setMedicationKind("supplement"); setMedicationInput(""); }}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors",
+                              medicationKind === "supplement" ? "bg-emerald-400/15 border-emerald-400/40 text-emerald-600 dark:text-emerald-400" : "border-border/60 text-muted-foreground"
+                            )}
+                          >
+                            <Leaf className="h-3 w-3" /> Supplement / Herb
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setMedicationKind("medication"); setMedicationInput(""); }}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors",
+                              medicationKind === "medication" ? "bg-primary/15 border-primary/40 text-primary" : "border-border/60 text-muted-foreground"
+                            )}
+                          >
+                            <Pill className="h-3 w-3" /> Medication
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <input
+                            value={medicationInput}
+                            onChange={(e) => setMedicationInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMedication(); } }}
+                            placeholder={medicationKind === "supplement" ? "Type a supplement or herb…" : "Type a medication…"}
+                            className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                          {medicationInput.trim() && medicationSearchResults.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full rounded-lg border border-border/50 bg-card shadow-lg max-h-40 overflow-y-auto divide-y divide-border/40">
+                              {medicationSearchResults.map((o) => (
+                                <button
+                                  key={o.id}
+                                  type="button"
+                                  onClick={() => addMedication(o.label)}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5"
+                                >
+                                  {medicationKind === "supplement" ? <Leaf className="h-3 w-3 text-emerald-500 shrink-0" /> : <Pill className="h-3 w-3 text-muted-foreground shrink-0" />} {o.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Button type="button" size="sm" variant="outline" onClick={() => addMedication()} className="w-full mt-2">
+                          <Plus className="h-3 w-3" /> Add as Custom {medicationKind === "supplement" ? "Supplement/Herb" : "Medication"}
+                        </Button>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Mobility / Special Accompaniment <span className="text-destructive">*</span></p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setMobility(mobility === "independent" ? "" : "independent")}
+                            className={cn(
+                              "flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs leading-tight text-center transition-colors",
+                              mobility === "independent"
+                                ? "bg-emerald-400/15 border-emerald-400/50 text-emerald-600 dark:text-emerald-400 font-medium"
+                                : "border-border/60 text-muted-foreground hover:border-border"
+                            )}
+                          >
+                            <PersonStanding className="h-4 w-4" /> Walking Independently
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMobility(mobility === "wheelchair" ? "" : "wheelchair")}
+                            className={cn(
+                              "flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs leading-tight text-center transition-colors",
+                              mobility === "wheelchair"
+                                ? "bg-amber-400/15 border-amber-400/50 text-amber-600 dark:text-amber-400 font-medium"
+                                : "border-border/60 text-muted-foreground hover:border-border"
+                            )}
+                          >
+                            <Accessibility className="h-4 w-4" /> Wheelchair Request
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-border/50 bg-muted/30 p-3 flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <Activity className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Next Step</p>
+                          <p className="text-sm font-medium">Vitals &amp; Pulse Triage Booth</p>
+                        </div>
+                      </div>
+                    </section>
                   </div>
-                  <div className="lg:col-span-2">
-                    <FloatingField id="address" label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
-                  </div>
-                  {meta.city && (
-                    <FloatingCombobox
-                      id="cityState"
-                      label="City"
-                      value={cityState}
-                      onValueChange={setCityState}
-                      options={meta.city.options}
-                      placeholder="Search city…"
-                    />
-                  )}
                 </div>
 
-                <Card className="p-4 gap-2 border-border/50 bg-card/60">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Emergency Contact</p>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <FloatingField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
-                    <FloatingField id="emergencyContact" label="Mobile number" value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} />
-                  </div>
-                </Card>
-
-                <section className="space-y-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Doctor</h2>
-                  <FloatingSelect id="doctorId" label="Preferred Doctor (optional)" value={doctorId} onValueChange={setDoctorId} placeholder="Any available doctor">
-                    {doctors.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}{d.designation ? ` — ${d.designation}` : ""}</SelectItem>)}
-                  </FloatingSelect>
-                </section>
-
-                <section className="space-y-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment (optional)</h2>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <FloatingField id="amount" type="number" label="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                    {meta.payment_mode && (
-                      <FloatingSelect id="paymentMode" label="Payment Mode" value={paymentMode} onValueChange={setPaymentMode} placeholder="Select">
-                        {meta.payment_mode.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                      </FloatingSelect>
-                    )}
-                  </div>
-                </section>
-
-                <div className="flex items-center justify-end pt-2">
-                  <Button size="lg" onClick={submit} disabled={submitting}>
-                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Stethoscope className="h-4 w-4" />}
-                    {editingId ? "Save & Register Visit" : "Register Patient"}
-                  </Button>
+                <div className="-mx-6 sm:-mx-8 -mb-6 sm:-mb-8 mt-2 px-6 sm:px-8 py-4 border-t border-border/50 bg-muted/20 rounded-b-2xl flex flex-wrap items-center justify-end gap-3">
+                  {visitEditMode ? (
+                    <>
+                      {isDirty && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mr-auto">
+                          <TriangleAlert className="h-3.5 w-3.5" /> Unsaved changes — save before leaving this page
+                        </p>
+                      )}
+                      <Button
+                        size="lg"
+                        onClick={saveAndReturn}
+                        disabled={submitting}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50"
+                      >
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Save &amp; Return to Clinical Record <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 flex-wrap mr-auto">
+                        <Button type="button" variant="outline" onClick={() => submitWith("hold")} disabled={submitting}>
+                          <Bookmark className="h-4 w-4" /> Hold in Waiting Queue
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => submitWith("print")} disabled={submitting}>
+                          <QrCode className="h-4 w-4" /> Print Barcode &amp; Wristband
+                        </Button>
+                      </div>
+                      <Button
+                        size="lg"
+                        onClick={() => submitWith("transfer")}
+                        disabled={submitting || !mandatoryDone}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50"
+                      >
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Confirm &amp; Transfer to Triage &amp; Vitals Station <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </section>
             )}
           </div>
         )}
       </Card>
+
+      <Dialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            You&apos;ve made changes to this patient&apos;s registration that haven&apos;t been saved yet. What would you like to do?
+          </p>
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setUnsavedDialogOpen(false)}>Keep Editing</Button>
+            <Button
+              variant="outline"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => {
+                setUnsavedDialogOpen(false);
+                const nav = pendingNavRef.current;
+                pendingNavRef.current = null;
+                nav?.();
+              }}
+            >
+              Discard &amp; Leave
+            </Button>
+            <Button
+              onClick={async () => {
+                setUnsavedDialogOpen(false);
+                pendingNavRef.current = null;
+                await saveAndReturn();
+              }}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save &amp; Leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

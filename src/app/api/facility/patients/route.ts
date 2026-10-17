@@ -5,7 +5,7 @@ import { getAuthUser, fetchPatient } from "@/lib/api-auth";
 import { hashPassword, isEmailLike } from "@/lib/auth";
 import { nextPatientCode } from "@/lib/codes";
 
-const PHONE_PATTERN = /^\+?[0-9]{7,15}$/;
+const PHONE_PATTERN = /^[6-9]\d{9}$/; // 10-digit Indian mobile number, no leading 0/+91
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -49,15 +49,23 @@ export async function GET(req: NextRequest) {
   // registration) and the older Appointment model (self-service booking).
   const withCounts = await Promise.all(
     patients.map(async (p) => {
-      const [appointmentCount, visitCount, lastAppointment, lastVisit] = await Promise.all([
+      const [appointmentCount, visitCount, lastAppointment, lastVisit, lastReferral, lastAmaDecline] = await Promise.all([
         db.appointment.count({ where: { facilityId: auth.id, patientId: p.id } }),
         db.visit.count({ where: { facilityId: auth.id, patientId: p.id } }),
-        db.appointment.findFirst({ where: { facilityId: auth.id, patientId: p.id, status: "completed" }, orderBy: { date: "desc" }, select: { date: true } }),
+        db.appointment.findFirst({ where: { facilityId: auth.id, patientId: p.id, status: "completed" }, orderBy: { date: "desc" }, select: { date: true, time: true } }),
         db.visit.findFirst({ where: { facilityId: auth.id, patientId: p.id }, orderBy: { visitDate: "desc" }, select: { visitDate: true } }),
+        db.referral.findFirst({ where: { visit: { facilityId: auth.id, patientId: p.id } }, orderBy: { createdAt: "desc" }, select: { urgency: true, createdAt: true } }),
+        db.amaDecline.findFirst({ where: { visit: { facilityId: auth.id, patientId: p.id } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
       ]);
-      const lastVisitDate = lastVisit?.visitDate ? lastVisit.visitDate.toISOString().slice(0, 10) : null;
-      const latest = [lastAppointment?.date, lastVisitDate].filter(Boolean).sort().pop() || null;
-      return { ...p, appointmentCount: appointmentCount + visitCount, lastVisit: latest };
+      // Keep full timestamps (not date-only strings) so the UI can show a
+      // readable date + time, not just the day. Appointment only stores a
+      // date string + a separate "HH:MM" time string, so combine them.
+      const lastVisitAt = lastVisit?.visitDate ? lastVisit.visitDate.toISOString() : null;
+      const lastAppointmentAt = lastAppointment?.date
+        ? new Date(`${lastAppointment.date}T${lastAppointment.time || "00:00"}:00`).toISOString()
+        : null;
+      const latest = [lastAppointmentAt, lastVisitAt].filter(Boolean).sort().pop() || null;
+      return { ...p, appointmentCount: appointmentCount + visitCount, lastVisit: latest, lastReferral, lastAmaDecline };
     })
   );
 

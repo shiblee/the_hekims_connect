@@ -7,9 +7,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const { id } = await params;
-  const { label, sortOrder } = await req.json();
-  const data: { label?: string; sortOrder?: number } = {};
+  const { label, category, sortOrder } = await req.json();
+  const data: { label?: string; category?: string; sortOrder?: number } = {};
   if (typeof label === "string" && label.trim()) data.label = label;
+  if (typeof category === "string" && category.trim()) data.category = category;
   if (typeof sortOrder === "number") data.sortOrder = sortOrder;
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

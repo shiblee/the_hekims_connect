@@ -35,13 +35,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
       },
     });
 
-    await logAdminActivity(session.admin.id, "translation_ai_generated", `"${key}" (${lang}) generated with AI`, getClientIp(req));
+    await logAdminActivity(session.admin.id, "translation_ai_generated", `"${key}" (${lang}) auto-generated`, getClientIp(req));
     return NextResponse.json({ value });
   } catch (err) {
     if (isMissingAnthropicCredentials(err)) {
-      return NextResponse.json({ error: "AI translation isn't configured yet — add an ANTHROPIC_API_KEY." }, { status: 503 });
+      return NextResponse.json({ error: "Auto-translation isn't configured yet — add an ANTHROPIC_API_KEY." }, { status: 503 });
     }
     console.error("AI translate error:", err);
-    return NextResponse.json({ error: "AI translation failed — try again." }, { status: 500 });
+    return NextResponse.json({ error: "Auto-translation failed — try again." }, { status: 500 });
   }
 }

@@ -24,6 +24,7 @@ export function FloatingField({
   label,
   icon: Icon,
   error,
+  required,
   endAdornment,
   className,
   ...inputProps
@@ -32,6 +33,7 @@ export function FloatingField({
   label: string;
   icon?: ComponentType<{ className?: string }>;
   error?: boolean;
+  required?: boolean;
   endAdornment?: ReactNode;
   className?: string;
 } & InputHTMLAttributes<HTMLInputElement>) {
@@ -60,7 +62,7 @@ export function FloatingField({
           error ? "text-destructive" : "peer-focus:text-primary"
         )}
       >
-        {label}
+        {label}{required && <span className="text-destructive"> *</span>}
       </label>
       {endAdornment}
     </div>
@@ -76,6 +78,7 @@ export function FloatingSelect({
   label,
   icon: Icon,
   error,
+  required,
   value,
   onValueChange,
   placeholder,
@@ -85,6 +88,7 @@ export function FloatingSelect({
   label: string;
   icon?: ComponentType<{ className?: string }>;
   error?: boolean;
+  required?: boolean;
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
@@ -113,7 +117,7 @@ export function FloatingSelect({
           error ? "text-destructive" : "text-primary"
         )}
       >
-        {label}
+        {label}{required && <span className="text-destructive"> *</span>}
       </label>
     </div>
   );
@@ -135,6 +139,7 @@ export function FloatingSplitField({
   selectWidthClassName = "w-24",
   inputId,
   error,
+  required,
   className,
   ...inputProps
 }: {
@@ -147,6 +152,7 @@ export function FloatingSplitField({
   selectWidthClassName?: string;
   inputId: string;
   error?: boolean;
+  required?: boolean;
   className?: string;
 } & InputHTMLAttributes<HTMLInputElement>) {
   const select = (
@@ -195,7 +201,7 @@ export function FloatingSplitField({
           error ? "text-destructive" : "text-primary"
         )}
       >
-        {label}
+        {label}{required && <span className="text-destructive"> *</span>}
       </label>
     </div>
   );

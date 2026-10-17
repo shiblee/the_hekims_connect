@@ -34,7 +34,7 @@ interface MetaSections {
 
 const emptyForm = {
   facilityId: "", titlePrefix: "", name: "", relationship: "Self", gender: "",
-  approxAge: "", ageUnit: "Years", maritalStatus: "", phone: "", email: "",
+  approxAge: "", ageUnit: "Years", maritalStatus: "", phone: "",
   emergencyContact: "", emergencyContactName: "", address: "", cityState: "",
 };
 
@@ -105,7 +105,7 @@ export default function PatientListPage() {
         name: form.name, titlePrefix: form.titlePrefix,
         registrationFor: form.relationship, relationship: form.relationship !== "Self" ? form.relationship : null,
         gender: form.gender, dob: finalDob, dobApprox: true,
-        maritalStatus: form.maritalStatus, phone: form.phone, email: form.email,
+        maritalStatus: form.maritalStatus, phone: form.phone,
         emergencyContact: form.emergencyContact, emergencyContactName: form.emergencyContactName,
         address: form.address, state: state || null, city: city || null,
       });
@@ -271,13 +271,9 @@ export default function PatientListPage() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <FloatingSplitField
+                <FloatingField
+                  id="name"
                   label="Patient Name"
-                  inputId="name"
-                  selectValue={form.titlePrefix}
-                  onSelectChange={(v) => setForm((f) => ({ ...f, titlePrefix: v }))}
-                  selectOptions={meta.patient_title?.options || []}
-                  selectPlaceholder="Title"
                   autoComplete="off"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -331,21 +327,7 @@ export default function PatientListPage() {
               </div>
             </div>
 
-            <FloatingField id="email" label="Email (optional)" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <FloatingField id="address" label="Address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
-              {meta.city && (
-                <FloatingCombobox
-                  id="cityState"
-                  label="City"
-                  value={form.cityState}
-                  onValueChange={(v) => setForm((f) => ({ ...f, cityState: v }))}
-                  options={meta.city.options}
-                  placeholder="Search city…"
-                />
-              )}
-            </div>
+            <FloatingField id="address" label="Address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
 
             <Card className="p-4 gap-2 border-border/50 bg-card/60">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Emergency Contact</p>

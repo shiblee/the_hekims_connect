@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { FloatingField } from "@/components/shared/floating-field";
+import { InsightBody } from "@/components/shared/screening-insight-body";
 import {
   ChevronLeft, Loader2, Save, IdCard, Sparkles, ShieldAlert, Info,
   ArrowRight, ArrowLeft, RotateCcw, Search, Mic, X,
@@ -108,9 +109,18 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
         if (data.screening) {
           setResult(data.screening);
           // chiefComplaints is stored as labels (for display) — re-derive the ids
-          // from the config so the "Retake" flow can pre-select the same chips.
+          // from the config so editing can pre-select the same chips.
           const labels: string[] = JSON.parse(data.screening.chiefComplaints || "[]");
           setSelectedComplaintIds(cfg.complaints.filter((c) => labels.includes(c.label)).map((c) => c.id));
+          // Answers are stored JSON-stringified (so a multi-select stays an
+          // array) — parse each one back so editing starts from what was
+          // actually last recorded, not a blank form.
+          const prevAnswers: Record<string, string | string[] | number> = {};
+          for (const a of data.screening.answers) {
+            if (!a.questionId) continue;
+            try { prevAnswers[a.questionId] = JSON.parse(a.value); } catch { /* skip malformed */ }
+          }
+          setAnswerValues(prevAnswers);
           setStep("results");
         }
       })
@@ -207,7 +217,12 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
   }, [activeQuestions]);
 
   const toggleComplaint = (id: string) => {
+    const isSelecting = !selectedComplaintIds.includes(id);
     setSelectedComplaintIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+    // Clear the search box on selection — otherwise it keeps showing the
+    // typed query while the result list (filtered by that same query) only
+    // ever narrows, making every other complaint look like it vanished.
+    if (isSelecting) setComplaintSearch("");
   };
 
   const submit = async () => {
@@ -235,8 +250,11 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
     }
   };
 
-  const retake = () => {
-    setAnswerValues({});
+  const editScreening = () => {
+    // Previously-recorded complaints and answers are already loaded into
+    // state (see the load effect above) — this just reopens the wizard on
+    // top of them, so editing starts from what was actually last recorded
+    // rather than a blank form.
     setStep("complaints");
   };
 
@@ -565,19 +583,16 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
             })}
           </div>
 
-          <Card className="p-4 border-primary/20 bg-primary/5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> AI Summary
-            </p>
-            {result.aiSummary ? (
-              <>
-                <p className="text-sm leading-relaxed">{result.aiSummary}</p>
-                <p className="text-[10px] text-muted-foreground mt-2 italic">AI-generated from the screening answers — decision support only, not a diagnosis.</p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">AI insights aren&apos;t configured for this portal yet.</p>
-            )}
-          </Card>
+          {result.aiSummary ? (
+            <InsightBody aiSummary={result.aiSummary} flag={result.overallFlag} />
+          ) : (
+            <Card className="p-4 border-primary/20 bg-primary/5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> Hakeem Insight
+              </p>
+              <p className="text-sm text-muted-foreground">Hakeem Insight isn&apos;t configured for this portal yet.</p>
+            </Card>
+          )}
 
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Answers</p>
@@ -592,10 +607,10 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <Button variant="outline" onClick={retake}>
-              <RotateCcw className="h-4 w-4" /> Retake Screening
+            <Button variant="outline" onClick={editScreening}>
+              <RotateCcw className="h-4 w-4" /> Edit Screening
             </Button>
-            <Button onClick={() => router.push(`/facility/patients/${patient.id}`)}>
+            <Button onClick={() => router.push(`/facility/patients/${patient.id}/record`)}>
               Back to Patient
             </Button>
           </div>

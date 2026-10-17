@@ -5,19 +5,21 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { mizajBadge } from "@/lib/avatar";
-import { formatAge } from "@/lib/age";
+import { formatAge, formatDateTime, daysAgo } from "@/lib/age";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Users, Loader2, UserPlus, IdCard } from "lucide-react";
+import { Search, Users, Loader2, UserPlus, IdCard, ShieldAlert, ShieldQuestion } from "lucide-react";
 
 interface PatientRow {
-  id: string; patientCode: string | null; name: string; email: string; phone: string | null; dob: string | null; gender: string | null;
+  id: string; patientCode: string | null; name: string; email: string | null; phone: string | null; dob: string | null; gender: string | null;
   bloodGroup: string | null; mizaj: string | null; photo: string | null; avatarColor: string; chronicConditions: string | null;
   address: string | null; appointmentCount: number; lastVisit: string | null;
+  lastReferral: { urgency: string; createdAt: string } | null;
+  lastAmaDecline: { createdAt: string } | null;
 }
 
 export function PatientsView() {
@@ -79,6 +81,16 @@ export function PatientsView() {
                     {[p.gender, formatAge(p.dob) !== "—" ? formatAge(p.dob) : null, p.phone].filter(Boolean).join(" · ") || "—"}
                   </p>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    {p.lastReferral && (
+                      <Badge variant="outline" className="text-destructive border-destructive/30 bg-destructive/10 text-[10px] flex items-center gap-1">
+                        <ShieldAlert className="h-2.5 w-2.5" /> Referred
+                      </Badge>
+                    )}
+                    {p.lastAmaDecline && (
+                      <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 text-[10px] flex items-center gap-1">
+                        <ShieldQuestion className="h-2.5 w-2.5" /> Declined Referral
+                      </Badge>
+                    )}
                     {p.mizaj && <Badge variant="outline" className={cn("border", mizajBadge(p.mizaj))}>{p.mizaj}</Badge>}
                     {p.bloodGroup && <Badge variant="outline" className="text-red-300 border-red-500/30 bg-red-500/10 text-[10px]">{p.bloodGroup}</Badge>}
                   </div>
@@ -86,7 +98,11 @@ export function PatientsView() {
               </div>
               <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
                 <div><p className="text-muted-foreground">Visits</p><p className="font-semibold">{p.appointmentCount}</p></div>
-                <div><p className="text-muted-foreground">Last visit</p><p className="font-semibold">{p.lastVisit || "—"}</p></div>
+                <div>
+                  <p className="text-muted-foreground">Last visit</p>
+                  <p className="font-semibold">{formatDateTime(p.lastVisit)}</p>
+                  {p.lastVisit && <p className="text-[10px] text-muted-foreground">{daysAgo(p.lastVisit)}</p>}
+                </div>
               </div>
             </Card>
           ))}

@@ -93,3 +93,13 @@ export function daysAgo(dateStr: string | null): string {
   const years = Math.floor(months / 12);
   return `${years} year${years === 1 ? "" : "s"} ago`;
 }
+
+/** A date/timestamp as an easy-to-scan absolute date + time, e.g. "13 Oct 2026, 2:30 PM". */
+export function formatDateTime(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "—";
+  const datePart = date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${datePart}, ${timePart}`;
+}

@@ -1,6 +1,6 @@
-import { PatientDetail } from "@/components/facility/views/patient-detail";
+import { PatientRegistrationWizard } from "@/components/facility/views/patient-registration-wizard";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <PatientDetail patientId={id} />;
+  return <PatientRegistrationWizard patientId={id} />;
 }

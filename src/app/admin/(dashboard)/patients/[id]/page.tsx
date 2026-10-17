@@ -19,6 +19,7 @@ import { cmToFeetInches } from "@/lib/units";
 import { findLatestWithField, type VisitVitals, type VisitWithVitals } from "@/lib/vitals-trend";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { VitalsPanel } from "@/components/facility/views/vitals-panel";
+import { VitalsAiInsightCard } from "@/components/facility/views/vitals-ai-insight-card";
 import { ScreeningCard } from "@/components/facility/views/screening-card";
 import { ConsultationCard } from "@/components/facility/views/consultation-card";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,7 @@ interface VisitRow {
     answers?: { flagTriggered: string | null }[];
   } | null;
   clinicalAssessment: { id: string; workingDiagnosis: string | null; requiresUrgentReferral: boolean; updatedAt: string } | null;
-  treatmentPlan: { id: string; careClassification: string; referralRequired: boolean; updatedAt: string } | null;
+  treatmentPlan: { id: string; referralRequired: boolean; updatedAt: string } | null;
 }
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
@@ -181,13 +182,19 @@ export default function PatientDetailPage() {
         )}
       </div>
 
-      <div className="mb-6 max-w-4xl">
+      <div className="mb-6 max-w-4xl space-y-5">
         <VitalsPanel
           visits={visits as VisitWithVitals[]}
           patientId={patient.id}
           apiClient={adminApi}
-          insightPath={`/api/admin/patients/${patient.id}/vitals-insight`}
           showNewVisitButton={false}
+          patientDob={patient.dob}
+          patientGender={patient.gender}
+        />
+        <VitalsAiInsightCard
+          patientId={patient.id}
+          apiClient={adminApi}
+          insightPath={`/api/admin/patients/${patient.id}/vitals-insight`}
         />
       </div>
 

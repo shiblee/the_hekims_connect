@@ -24,8 +24,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       visitDate: true,
       vitalSigns: {
         select: {
-          pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true,
-          temperatureF: true, respiratoryRate: true, heightCm: true, weightKg: true,
+          heartRate: true, pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true,
+          temperatureF: true, heightCm: true, weightKg: true,
         },
       },
     },

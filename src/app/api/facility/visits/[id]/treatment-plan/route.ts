@@ -16,7 +16,7 @@ async function assertOwnedVisit(id: string, facilityId: string) {
 }
 
 const SELECT = {
-  id: true, careClassification: true, diagnosis: true, treatmentObjective: true,
+  id: true, diagnosis: true, treatmentObjective: true,
   plannedInvestigations: true, plannedModalities: true, referralRequired: true, referralNotes: true,
   reviewDate: true, clinicalNotes: true, createdAt: true, updatedAt: true,
 };
@@ -53,12 +53,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
   const body = await req.json();
-  if (!body.careClassification || !String(body.careClassification).trim()) {
-    return NextResponse.json({ error: "Care classification is required" }, { status: 400 });
-  }
 
   const data = {
-    careClassification: String(body.careClassification).trim(),
     diagnosis: body.diagnosis || null,
     treatmentObjective: body.treatmentObjective || null,
     plannedInvestigations: body.plannedInvestigations || null,

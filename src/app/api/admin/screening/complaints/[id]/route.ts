@@ -21,12 +21,3 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const complaint = await db.chiefComplaint.update({ where: { id }, data });
   return NextResponse.json({ complaint });
 }
-
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireAdmin(req);
-  if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
-  const { id } = await params;
-  await db.chiefComplaint.delete({ where: { id } });
-  return NextResponse.json({ success: true });
-}

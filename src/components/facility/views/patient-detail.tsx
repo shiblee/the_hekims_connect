@@ -1,24 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { formatAge } from "@/lib/age";
-import { calculateBmi, bmiBand } from "@/lib/bmi";
-import { cmToFeetInches } from "@/lib/units";
-import { findLatestWithField, type VisitVitals } from "@/lib/vitals-trend";
+import { formatAge, daysAgo } from "@/lib/age";
+import { type VisitVitals } from "@/lib/vitals-trend";
 import { cn } from "@/lib/utils";
-import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { VitalsPanel } from "@/components/facility/views/vitals-panel";
-import { ScreeningCard } from "@/components/facility/views/screening-card";
-import { ConsultationCard } from "@/components/facility/views/consultation-card";
+import { VitalsAiInsightCard } from "@/components/facility/views/vitals-ai-insight-card";
+import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
+import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
+import { ChiefComplaintMatrix, type ChiefComplaintMatrixHandle } from "@/components/facility/views/chief-complaint-matrix";
+import { AcuteSymptomsPanel, type AcuteSymptomsPanelHandle } from "@/components/facility/views/acute-symptoms-panel";
+import { ClinicalRoutingPanel } from "@/components/facility/views/clinical-routing-panel";
+import { HumoralCluesPanel, type HumoralCluesPanelHandle } from "@/components/facility/views/humoral-clues-panel";
+import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
+import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
+import { PatientSignatureCard } from "@/components/facility/views/patient-signature-card";
+import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, Loader2, MapPin, Droplet, Activity, FileText, Camera,
-  IdCard, Phone, Mail, Briefcase, HeartPulse, Pill, Ruler, Scale,
+  ChevronLeft, Loader2,
+  CheckCircle2, Printer, ArrowRight, ShieldAlert, ShieldQuestion,
 } from "lucide-react";
 
 interface Patient {
@@ -34,35 +41,48 @@ interface Patient {
 }
 
 interface VisitRow {
-  id: string; visitDate: string;
+  id: string; visitCode?: string; visitDate: string;
   vitalSigns: VisitVitals | null;
   l1Screening: {
     id: string; chiefComplaints: string; overallFlag: string | null; aiSummary: string | null; updatedAt: string;
     answers?: { flagTriggered: string | null }[];
   } | null;
   clinicalAssessment: { id: string; workingDiagnosis: string | null; requiresUrgentReferral: boolean; updatedAt: string } | null;
-  treatmentPlan: { id: string; careClassification: string; referralRequired: boolean; updatedAt: string } | null;
+  treatmentPlan: { id: string; referralRequired: boolean; updatedAt: string } | null;
+  referral?: { id: string; reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string } | null;
+  amaDecline?: { id: string; reason: string; patientReason: string | null; createdAt: string } | null;
+  doctor?: { id: string; name: string; staffCode: string } | null;
+  payments?: { id: string; paymentCode: string; amount: number; mode: string; status: string; createdAt: string }[];
+  intake?: {
+    chiefComplaints: string; narrative: string | null; onsetTimeline: string | null;
+    allergies: string; medications: string; mobility: string | null;
+  } | null;
 }
 
 export function PatientDetail({ patientId }: { patientId: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [detail, setDetail] = useState<{ mizaj: any[]; prescriptions: any[] }>({ mizaj: [], prescriptions: [] });
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  const [savingStage, setSavingStage] = useState(false);
+  const chiefComplaintRef = useRef<ChiefComplaintMatrixHandle>(null);
+  const acuteSymptomsRef = useRef<AcuteSymptomsPanelHandle>(null);
+  const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
+  const redFlagRef = useRef<RedFlagScreeningPanelHandle>(null);
+  const humoralCluesRef = useRef<HumoralCluesPanelHandle>(null);
+
+  // Right rail pinned to the viewport while the center column scrolls.
+  const { spacerRef: rightRailSpacerRef, contentRef: rightRailContentRef, style: rightRailStyle } = useStickyRail(!loading);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [p, mizaj, presc, v] = await Promise.all([
+      const [p, v] = await Promise.all([
         api.get<{ patient: Patient }>(`/api/facility/patients/${patientId}`),
-        api.get<{ assessments: any[] }>(`/api/mizaj?patientId=${patientId}`),
-        api.get<{ prescriptions: any[] }>(`/api/prescriptions?patientId=${patientId}`),
         api.get<{ visits: VisitRow[] }>(`/api/facility/visits?patientId=${patientId}`),
       ]);
       setPatient(p.patient);
-      setDetail({ mizaj: mizaj.assessments || [], prescriptions: presc.prescriptions || [] });
       setVisits(v.visits || []);
     } catch (e: any) {
       toast.error(e.message || "Could not load this patient");
@@ -73,10 +93,37 @@ export function PatientDetail({ patientId }: { patientId: string }) {
 
   useEffect(() => { load(); }, [patientId]);
 
+  // Used after a quick single-metric reading is saved from the Vitals KPI
+  // pop-up — refetches just the visits list in place, without the full-page
+  // loading spinner `load()` shows, so the pop-up stays open and visibly
+  // reflects the new reading instead of being unmounted mid-interaction.
+  const refreshVisits = async () => {
+    try {
+      const v = await api.get<{ visits: VisitRow[] }>(`/api/facility/visits?patientId=${patientId}`);
+      setVisits(v.visits || []);
+    } catch (e: any) {
+      toast.error(e.message || "Could not refresh vitals");
+    }
+  };
+
   const savePhoto = async (dataUrl: string | null) => {
     const res = await api.patch<{ patient: Patient }>(`/api/facility/patients/${patientId}`, { photo: dataUrl });
     setPatient(res.patient);
   };
+
+  // Stable array reference for ChiefComplaintMatrix's intakeComplaints prop —
+  // computing this inline in JSX would create a new array on every render
+  // (including the frequent re-renders from the scroll-driven right-rail
+  // positioning above), which re-triggers that component's load effect and
+  // wipes out whatever the doctor has typed but not yet saved.
+  const intakeComplaints = useMemo(() => {
+    const latest = [...visits].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0];
+    try {
+      return JSON.parse(latest?.intake?.chiefComplaints || "[]");
+    } catch {
+      return [];
+    }
+  }, [visits]);
 
   if (loading) {
     return (
@@ -89,70 +136,146 @@ export function PatientDetail({ patientId }: { patientId: string }) {
     return <p className="text-muted-foreground text-sm">Patient not found.</p>;
   }
 
-  const latestHeightCm = findLatestWithField(visits, "heightCm");
-  const latestWeightKg = findLatestWithField(visits, "weightKg");
-  const latestBmi = calculateBmi(latestHeightCm, latestWeightKg);
-  const latestBmiBand = bmiBand(latestBmi);
+  // Patient journey step state — each flag is derived from a real record,
+  // not decorative. "Latest" means the most recent visit, newest first.
+  const sortedVisits = [...visits].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+  const latestVisit = sortedVisits[0];
+  // L1 Screening used to be this page's gate too, but its only entry point
+  // on this page (the Screening card) was removed — Chief Complaint Matrix
+  // and Red Flag now cover that ground here, so recorded vitals is the real
+  // signal that Stage 1 is ready to hand off. Requiring l1Screening as well
+  // would make this permanently unreachable from this page.
+  const checkInComplete = !!latestVisit && !!latestVisit.vitalSigns;
+  const referredVisits = sortedVisits.filter((v) => v.referral);
+  const amaVisits = sortedVisits.filter((v) => v.amaDecline);
+
+  const printTriageSlip = () => {
+    if (!latestVisit) return;
+    const v = latestVisit.vitalSigns;
+    const complaints: string[] = (() => { try { return JSON.parse(latestVisit.l1Screening?.chiefComplaints || "[]"); } catch { return []; } })();
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>Triage Slip - ${patient.name}</title>
+      <style>
+        body { font-family: Georgia, serif; padding: 40px; max-width: 700px; margin: auto; color: #1a1a1a; }
+        h1 { color: #0f766e; margin-bottom: 0; }
+        .meta { color: #666; font-size: 14px; margin: 4px 0 24px; }
+        h2 { color: #b45309; font-size: 16px; border-bottom: 2px solid #b45309; padding-bottom: 6px; margin-top: 24px; }
+        .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dotted #ddd; font-size: 14px; }
+        .row b { color: #0f766e; }
+        .chip { display: inline-block; background: #f6f5f0; border-radius: 12px; padding: 3px 10px; margin: 2px; font-size: 13px; }
+        .notes { margin-top: 10px; font-style: italic; color: #555; font-size: 14px; }
+      </style></head><body>
+      <h1>The Hekim&apos;s Connect</h1>
+      <div class="meta">Triage Check-in Slip · ${patient.patientCode || ""}<br/>
+      ${new Date(latestVisit.visitDate).toLocaleDateString("en-IN", { dateStyle: "full" })}</div>
+
+      <h2>Patient</h2>
+      <div class="row"><span>Name</span><b>${patient.name}</b></div>
+      <div class="row"><span>Gender / Age</span><b>${patient.gender || "—"} / ${formatAge(patient.dob)}</b></div>
+      <div class="row"><span>Blood Group</span><b>${patient.bloodGroup || "—"}</b></div>
+      ${patient.allergies ? `<div class="row"><span>Allergies</span><b style="color:#b91c1c">${patient.allergies}</b></div>` : ""}
+
+      ${v ? `<h2>Core Vitals</h2>
+      <div class="row"><span>Blood Pressure</span><b>${v.bpSystolic ?? "—"}/${v.bpDiastolic ?? "—"} mmHg</b></div>
+      <div class="row"><span>Heart Rate (Nabz)</span><b>${v.pulse ?? "—"} bpm</b></div>
+      <div class="row"><span>SpO₂</span><b>${v.spo2 ?? "—"}%</b></div>
+      <div class="row"><span>Core Temp (Hararat)</span><b>${v.temperatureF ?? "—"}°F</b></div>
+      ${v.heightCm != null || v.weightKg != null ? `<div class="row"><span>Height / Weight</span><b>${v.heightCm ?? "—"}cm / ${v.weightKg ?? "—"}kg</b></div>` : ""}` : ""}
+
+      ${complaints.length ? `<h2>Chief Complaints</h2>${complaints.map((c) => `<span class="chip">${c}</span>`).join("")}` : ""}
+
+      ${v?.painNotes ? `<h2>Pain Notes</h2><p class="notes">${v.painNotes}</p>` : ""}
+      ${v?.primaryFocusArea ? `<div class="row"><span>Primary Focus Area</span><b>${v.primaryFocusArea}</b></div>` : ""}
+      ${v?.triageRemarks ? `<h2>Triage Remarks</h2><p class="notes">${v.triageRemarks}</p>` : ""}
+
+      <p style="margin-top:40px;font-size:12px;color:#999;">Generated by The Hekim&apos;s Connect platform for internal clinical handover.</p>
+      </body></html>`);
+    win.document.close();
+    win.print();
+  };
+
+  // Unified Stage 1 save — each child panel keeps its own fetch/save logic,
+  // exposed via a ref's save() so one bottom action bar can save them all
+  // together instead of each panel having its own inline save button.
+  // allSettled (not all) so one panel failing doesn't stop the others from
+  // saving, and the caller can tell exactly which ones actually went through
+  // instead of a blanket success/failure that could mask a partial save.
+  const saveStageDrafts = async (): Promise<boolean> => {
+    const results = await Promise.allSettled([
+      chiefComplaintRef.current?.save(),
+      acuteSymptomsRef.current?.save(),
+      residentNoteRef.current?.save(),
+    ]);
+    // The Chief Complaint Matrix save recomputes HumoralAssessment
+    // server-side — the clues panel has no other way to learn its tile
+    // percentages just went stale, since it only fetches once on mount.
+    humoralCluesRef.current?.refresh();
+    return results.every((r) => r.status === "fulfilled");
+  };
+
+  const saveDraft = async () => {
+    setSavingStage(true);
+    try {
+      const allSaved = await saveStageDrafts();
+      if (allSaved) toast.success("Draft saved");
+      // individual panels already toast their own errors when one fails
+    } finally {
+      setSavingStage(false);
+    }
+  };
+
+  const proceedToStage2 = async () => {
+    setSavingStage(true);
+    try {
+      const allSaved = await saveStageDrafts();
+      if (!allSaved) return; // individual panels already toasted what failed
+      const clear = await redFlagRef.current?.attemptResolve();
+      if (clear) {
+        router.push(`/facility/mizaj?patientId=${patientId}`);
+      }
+    } finally {
+      setSavingStage(false);
+    }
+  };
+
+  const referPatient = () => redFlagRef.current?.openReferDialog();
+
   return (
     <div className="w-full">
       <button onClick={() => router.push("/facility/patients")} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
         <ChevronLeft className="h-4 w-4" /> Back to Patients
       </button>
 
-      <Card className="p-4 sm:p-5 mb-6 border-border/50 bg-gradient-to-br from-card to-card/60 flex flex-row items-center gap-4 flex-wrap">
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">Clinical Record</h1>
         <button
-          type="button"
-          onClick={() => setPhotoDialogOpen(true)}
-          className="group relative h-16 w-16 rounded-full shrink-0"
-          aria-label="Change patient photo"
+          onClick={() => router.push(`/facility/patients/${patientId}`)}
+          className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
         >
-          <EntityAvatar name={patient.name} photo={patient.photo} avatarColor={patient.avatarColor} size="lg" className="h-16 w-16 text-lg" />
-          <span className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
-            <Camera className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-          </span>
-          <span className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full bg-primary flex items-center justify-center ring-2 ring-card">
-            <Camera className="h-2.5 w-2.5 text-primary-foreground" />
-          </span>
+          Edit Registration <ArrowRight className="h-3.5 w-3.5" />
         </button>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">{patient.name}</h1>
-            {patient.patientCode && (
-              <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono text-[10px] flex items-center gap-1">
-                <IdCard className="h-3 w-3" /> {patient.patientCode}
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-            <span>{patient.gender || "—"}</span>
-            <span className="text-border">·</span>
-            <span>{formatAge(patient.dob)}</span>
-            <span className="text-border">·</span>
-            <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{patient.email || "No email"}</span>
-            <span className="text-border">·</span>
-            <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{patient.phone || "No phone"}</span>
-          </p>
-          {(latestHeightCm != null || latestWeightKg != null) && (
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {latestHeightCm != null && (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 bg-muted/60 rounded-full px-2 py-0.5">
-                  <Ruler className="h-3 w-3 text-muted-foreground" /> Qad: {latestHeightCm} cm <span className="text-muted-foreground font-normal">({cmToFeetInches(latestHeightCm)})</span>
-                </span>
-              )}
-              {latestWeightKg != null && (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 bg-muted/60 rounded-full px-2 py-0.5">
-                  <Scale className="h-3 w-3 text-muted-foreground" /> Wazan: {latestWeightKg} kg
-                </span>
-              )}
-              {latestBmi != null && latestBmiBand && (
-                <Badge variant="outline" className={cn("border text-[11px] font-medium", latestBmiBand.bg, latestBmiBand.tint)}>
-                  BMI {latestBmi.toFixed(1)} · {latestBmiBand.label}
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-      </Card>
+      </div>
+
+      {/* This page IS the "Acute Vitals & Intake" step's workspace — vitals
+          being recorded only unlocks the Proceed button below (already
+          gated on checkInComplete separately), it doesn't mean the user has
+          left this stage. Jumping the tracker to "Mizaj" while still on
+          this page claimed a stage that hadn't actually started yet. */}
+      <PatientStageTracker
+        steps={PATIENT_JOURNEY_STEPS.map((s) => (s.key === "registration" ? { ...s, href: `/facility/patients/${patientId}` } : s))}
+        activeKey="vitals"
+        completedKeys={["registration"]}
+      />
+
+      <PatientSignatureCard
+        patient={patient}
+        visitCount={visits.length}
+        lastReferralAt={referredVisits[0]?.referral?.createdAt}
+        lastAmaAt={amaVisits[0]?.amaDecline?.createdAt}
+        onPhotoClick={() => setPhotoDialogOpen(true)}
+      />
 
       <PhotoUploadDialog
         open={photoDialogOpen}
@@ -163,113 +286,125 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         onRemove={() => savePhoto(null)}
       />
 
-      <div className="mb-6">
-        <VitalsPanel visits={visits} patientId={patientId} />
-      </div>
-
-      <div className="mb-6">
-        <ScreeningCard visits={visits} patientId={patientId} />
-      </div>
-
-      <div className="mb-6">
-        <ConsultationCard visits={visits} />
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
-          {/* Quick facts */}
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { l: "Blood", v: patient.bloodGroup || "—", i: Droplet },
-              { l: "Mizaj", v: patient.mizaj || "—", i: Activity },
-            ].map((f) => (
-              <Card key={f.l} className="p-2.5 border-border/50 bg-card/60">
-                <p className="text-[10px] text-muted-foreground flex items-center gap-1"><f.i className="h-3 w-3" />{f.l}</p>
-                <p className="text-sm font-medium">{f.v}</p>
-              </Card>
+      {referredVisits.length > 0 && (
+        <Card className="p-4 mb-6 border-destructive/30 bg-destructive/5 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
+              <ShieldAlert className="h-4 w-4" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">
+              Emergency Referral History {referredVisits.length > 1 && `(${referredVisits.length})`}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {referredVisits.map((v) => (
+              <div key={v.id} className="rounded-lg border border-destructive/20 bg-background/60 p-3 text-sm">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                  <span className="font-medium">{v.visitCode ? `Visit ${v.visitCode}` : "Visit"} · {daysAgo(v.referral!.createdAt)}</span>
+                  <Badge variant="outline" className="border-destructive/40 text-destructive text-xs shrink-0">{v.referral!.urgency}</Badge>
+                </div>
+                <p><span className="text-muted-foreground">Referred to:</span> <span className="font-medium">{v.referral!.referredTo}</span></p>
+                <p><span className="text-muted-foreground">Reason:</span> {v.referral!.reason}</p>
+                {v.referral!.notes && <p><span className="text-muted-foreground">Notes:</span> {v.referral!.notes}</p>}
+              </div>
             ))}
           </div>
+        </Card>
+      )}
 
-          {/* Mizaj history */}
-          <Card className="p-4 border-border/50 bg-card/60">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1"><Activity className="h-3.5 w-3.5" /> Mizaj Assessments</p>
-            {detail.mizaj.length ? (
-              <div className="space-y-2">
-                {detail.mizaj.map((m: any) => (
-                  <div key={m.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium text-primary">{m.result}</p>
-                      <span className="text-[10px] text-muted-foreground">{new Date(m.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    {m.pulse && <p className="text-xs text-muted-foreground">Pulse: {m.pulse}</p>}
-                    {m.notes && <p className="text-xs text-muted-foreground mt-1">{m.notes}</p>}
-                  </div>
-                ))}
+      {amaVisits.length > 0 && (
+        <Card className="p-4 mb-6 border-amber-500/30 bg-amber-500/5 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <ShieldQuestion className="h-4 w-4" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">
+              Declined Referral — Continued Against Medical Advice {amaVisits.length > 1 && `(${amaVisits.length})`}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {amaVisits.map((v) => (
+              <div key={v.id} className="rounded-lg border border-amber-500/20 bg-background/60 p-3 text-sm">
+                <p className="font-medium mb-1">{v.visitCode ? `Visit ${v.visitCode}` : "Visit"} · {daysAgo(v.amaDecline!.createdAt)}</p>
+                <p><span className="text-muted-foreground">Referral recommended for:</span> {v.amaDecline!.reason}</p>
+                {v.amaDecline!.patientReason && <p><span className="text-muted-foreground">Patient&apos;s reason:</span> {v.amaDecline!.patientReason}</p>}
               </div>
-            ) : <p className="text-sm text-muted-foreground">No assessments yet.</p>}
-          </Card>
+            ))}
+          </div>
+        </Card>
+      )}
 
-          {/* Prescriptions */}
-          <Card className="p-4 border-border/50 bg-card/60">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> Prescriptions</p>
-            {detail.prescriptions.length ? (
-              <div className="space-y-2">
-                {detail.prescriptions.map((pr: any) => (
-                  <div key={pr.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">{pr.therapyType}</p>
-                      <span className="text-[10px] text-muted-foreground">{new Date(pr.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <div className="space-y-1">
-                      {pr.items.map((it: any, i: number) => (
-                        <div key={i} className="text-xs text-muted-foreground">• {it.name} — {it.dose} {it.frequency} ({it.instructions})</div>
-                      ))}
-                    </div>
-                    {pr.notes && <p className="text-xs text-muted-foreground mt-1.5 italic">{pr.notes}</p>}
-                  </div>
-                ))}
-              </div>
-            ) : <p className="text-sm text-muted-foreground">No prescriptions yet.</p>}
-          </Card>
+      <div className="mb-6 grid lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 space-y-5">
+          <VitalsPanel visits={visits} patientId={patientId} onSaved={refreshVisits} patientDob={patient.dob} patientGender={patient.gender} currentVisitId={latestVisit?.id} />
+          {latestVisit && (
+            <ChiefComplaintMatrix
+              ref={chiefComplaintRef}
+              visitId={latestVisit.id}
+              intakeComplaints={intakeComplaints}
+            />
+          )}
+          {latestVisit && <RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} />}
+          {latestVisit && <AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} />}
+          <VitalsAiInsightCard patientId={patientId} visitId={latestVisit?.id} />
         </div>
-
-        <div className="space-y-5">
-          <Card className="p-4 border-border/50 bg-card/60 gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</p>
-            {patient.phone && <p className="flex items-center gap-2 text-sm"><Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> {patient.phone}</p>}
-            {patient.email && <p className="flex items-center gap-2 text-sm"><Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> {patient.email}</p>}
-            {patient.address && (
-              <p className="flex items-start gap-2 text-sm">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                {patient.address}{patient.city ? `, ${patient.city}` : ""}{patient.state ? `, ${patient.state}` : ""}
-              </p>
-            )}
-            {patient.occupation && <p className="flex items-center gap-2 text-sm"><Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> {patient.occupation}</p>}
-            {(patient.emergencyContact || patient.emergencyContactName) && (
-              <p className="flex items-center gap-2 text-sm">
-                <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                Emergency: {patient.emergencyContactName ? `${patient.emergencyContactName} — ` : ""}{patient.emergencyContact || "—"}
-              </p>
-            )}
-          </Card>
-
-          {patient.chronicConditions && (
-            <Card className="p-4 border-accent/30 bg-accent/5">
-              <p className="text-xs font-medium text-accent mb-1 flex items-center gap-1"><Activity className="h-3.5 w-3.5" /> Chronic Conditions</p>
-              <p className="text-sm">{patient.chronicConditions}</p>
-            </Card>
+        <div ref={rightRailSpacerRef} className="relative">
+        <div ref={rightRailContentRef} className="space-y-5" style={rightRailStyle || undefined}>
+          {latestVisit && <ClinicalRoutingPanel visitId={latestVisit.id} />}
+          {latestVisit && (
+            <HumoralCluesPanel
+              ref={humoralCluesRef}
+              visitId={latestVisit.id}
+              onBeforeGenerate={async () => { await chiefComplaintRef.current?.save(); }}
+            />
           )}
-
-          {(patient.allergies || patient.currentMedications || patient.medicalHistory) && (
-            <Card className="p-4 border-border/50 bg-card/60 gap-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><HeartPulse className="h-3.5 w-3.5" /> Medical Profile</p>
-              {patient.allergies && <p className="text-sm"><span className="text-muted-foreground">Allergies:</span> {patient.allergies}</p>}
-              {patient.currentMedications && <p className="text-sm flex items-start gap-1.5"><Pill className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /> {patient.currentMedications}</p>}
-              {patient.medicalHistory && <p className="text-sm"><span className="text-muted-foreground">History:</span> {patient.medicalHistory}</p>}
-            </Card>
-          )}
+          {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+          <TriageNotesCard visits={visits} />
+        </div>
         </div>
       </div>
+
+      <Card className={cn(
+        "p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap",
+        checkInComplete ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/50 bg-card/60"
+      )}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn(
+            "h-9 w-9 rounded-full flex items-center justify-center shrink-0",
+            checkInComplete ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"
+          )}>
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">
+              {checkInComplete ? "Triage Check-in Ready for Doctor Handover" : "Triage Check-in In Progress"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {checkInComplete
+                ? "Vitals and screening recorded for this visit · Next phase: Mizaj Constitution & Pulse (Nabz) Assessment"
+                : "Record vitals and complete L1 screening to proceed to the Mizaj exam."}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {latestVisit && (
+            <Button size="sm" variant="ghost" onClick={printTriageSlip} title="Print Triage Slip">
+              <Printer className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {latestVisit && (
+            <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={referPatient} disabled={savingStage}>
+              <ShieldAlert className="h-3.5 w-3.5" /> Refer Patient
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={saveDraft} disabled={savingStage}>
+            {savingStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft
+          </Button>
+          <Button size="sm" onClick={proceedToStage2} disabled={savingStage || !checkInComplete}>
+            {savingStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Proceed to Mizaj Morphometry (Stage 3) <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </Card>
 
     </div>
   );

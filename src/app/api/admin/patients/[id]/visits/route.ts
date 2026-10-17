@@ -18,9 +18,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       payments: { select: { id: true, paymentCode: true, amount: true, mode: true, status: true, createdAt: true } },
       vitalSigns: {
         select: {
-          pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true, oxygenLitres: true,
-          temperatureF: true, temperatureC: true, respiratoryRate: true, consciousnessLevel: true,
+          heartRate: true, pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true,
+          temperatureF: true, temperatureC: true,
           heightCm: true, weightKg: true, updatedAt: true,
+          painNotes: true, primaryFocusArea: true, triageRemarks: true,
         },
       },
       l1Screening: {
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       },
       clinicalAssessment: { select: { id: true, workingDiagnosis: true, requiresUrgentReferral: true, updatedAt: true } },
-      treatmentPlan: { select: { id: true, careClassification: true, referralRequired: true, updatedAt: true } },
+      treatmentPlan: { select: { id: true, referralRequired: true, updatedAt: true } },
     },
     orderBy: { visitDate: "desc" },
   });

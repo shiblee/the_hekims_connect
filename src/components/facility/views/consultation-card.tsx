@@ -6,12 +6,12 @@ import { daysAgo } from "@/lib/age";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Stethoscope, ShieldAlert, ClipboardList, ArrowRight } from "lucide-react";
+import { Stethoscope, ShieldAlert, ArrowRight } from "lucide-react";
 
 interface ConsultationVisit {
   id: string; visitDate: string;
   clinicalAssessment: { id: string; workingDiagnosis: string | null; requiresUrgentReferral: boolean; updatedAt: string } | null;
-  treatmentPlan: { id: string; careClassification: string; referralRequired: boolean; updatedAt: string } | null;
+  treatmentPlan: { id: string; referralRequired: boolean; updatedAt: string } | null;
 }
 
 export function ConsultationCard({ visits, showStartButton = true }: { visits: ConsultationVisit[]; showStartButton?: boolean }) {
@@ -75,14 +75,9 @@ export function ConsultationCard({ visits, showStartButton = true }: { visits: C
       {latest.clinicalAssessment?.workingDiagnosis && (
         <p className="text-sm text-foreground/90">{latest.clinicalAssessment.workingDiagnosis}</p>
       )}
-      {latest.treatmentPlan && (
+      {latest.treatmentPlan?.referralRequired && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Badge variant="outline" className="text-[11px] bg-background/60 border-border/50 font-normal flex items-center gap-1">
-            <ClipboardList className="h-3 w-3" /> {latest.treatmentPlan.careClassification}
-          </Badge>
-          {latest.treatmentPlan.referralRequired && (
-            <Badge variant="outline" className="text-[11px] font-normal">Referral noted</Badge>
-          )}
+          <Badge variant="outline" className="text-[11px] font-normal">Referral noted</Badge>
         </div>
       )}
     </Card>

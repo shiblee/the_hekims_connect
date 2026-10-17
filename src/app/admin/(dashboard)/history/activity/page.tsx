@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Loader2, LogIn, LogOut, User, Lock, Mail, KeyRound, ShieldCheck, XCircle,
-  Stethoscope, HeartPulse, Settings, FileText, Send,
+  Stethoscope, HeartPulse, Settings, FileText, Send, ListChecks,
 } from "lucide-react";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
@@ -34,6 +34,17 @@ const ACTION_META: Record<string, { label: string; icon: any }> = {
   email_template_updated: { label: "Email Template Updated", icon: FileText },
   email_template_status_changed: { label: "Email Template Status Changed", icon: FileText },
   test_email_sent: { label: "Test Email Sent", icon: Send },
+  chief_complaint_bot_run: { label: "Complaint Assistant Run", icon: ListChecks },
+  chief_complaint_suggestion_approved: { label: "Suggested Complaint Approved", icon: ListChecks },
+  chief_complaint_suggestion_rejected: { label: "Suggested Complaint Rejected", icon: ListChecks },
+  allergy_assistant_run: { label: "Allergy Assistant Run", icon: ListChecks },
+  supplement_assistant_run: { label: "Supplement & Herb Assistant Run", icon: ListChecks },
+  medication_assistant_run: { label: "Medication Assistant Run", icon: ListChecks },
+  supplement_profile_enriched: { label: "Reference Profile Refreshed", icon: ListChecks },
+  supplement_profiles_backfill: { label: "Supplement Profiles Build Started", icon: ListChecks },
+  supplement_enrichment_job: { label: "Reference Profile Research Run", icon: ListChecks },
+  supplement_claim_reviewed: { label: "Reference Profile Claim Reviewed", icon: ListChecks },
+  supplement_profile_restored: { label: "Reference Profile Restored", icon: ListChecks },
 };
 
 export default function ActivityHistoryPage() {

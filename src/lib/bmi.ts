@@ -1,7 +1,10 @@
 export function calculateBmi(heightCm: number | null, weightKg: number | null): number | null {
   if (!heightCm || !weightKg || heightCm <= 0 || weightKg <= 0) return null;
   const heightM = heightCm / 100;
-  return weightKg / (heightM * heightM);
+  // Rounded to 1 decimal at the source — every caller (tiles, charts,
+  // tooltips) displays this to 1 decimal anyway, and charting the raw
+  // float produces an unreadable number of digits on axes/tooltips.
+  return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
 }
 
 // WHO standard adult BMI bands.

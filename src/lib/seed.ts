@@ -3,6 +3,7 @@ import { hashPassword } from "@/lib/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/lib/notifications";
 import { LANDING_EN_STRINGS } from "@/lib/i18n/seed-data/landing-en";
 import { PAGES_EN } from "@/lib/i18n/seed-data/pages-en";
+import { VITALS_RANGE_FIELDS, DEFAULT_NORMAL_RANGES, DEFAULT_ENTRY_BOUNDS } from "@/lib/vitals-ranges";
 
 const AVATAR_COLORS = ["teal", "amber", "emerald", "rose", "violet", "cyan"];
 
@@ -118,79 +119,10 @@ export async function seedMetadata() {
     { key: "staff_designation", label: "Staff Designation", category: "Staff", options: ["Resident Hakim", "Senior Hakim", "Consultant Hakim", "Staff Nurse", "Senior Nurse", "Counsellor", "Data Entry Operator", "Receptionist", "Other"] },
     { key: "staff_role", label: "Staff Role", category: "Staff", options: ["Hakim", "Staff Nurse", "Counsellor", "Administrator", "Support Staff", "Other"] },
     { key: "staff_responsibility", label: "Staff Responsibility", category: "Staff", options: ["Patient Consultation", "Mizaj Assessment", "Ilaj-bil-Tadbeer", "Prescription Management", "Appointment Scheduling", "Patient Follow-up", "Front Desk", "Other"] },
-    { key: "patient_title", label: "Patient Title", category: "Patient", options: ["Mr.", "Mrs.", "Ms.", "Miss", "Master", "Baby", "Dr.", "Other"] },
-    { key: "registration_for", label: "Registration For", category: "Patient", options: ["Self", "Spouse", "Child", "Parent", "Other Family Member"] },
     { key: "relationship", label: "Relationship", category: "Patient", options: ["Self", "Spouse", "Son", "Daughter", "Father", "Mother", "Other"] },
-    { key: "emergency_relationship", label: "Emergency Contact Relationship", category: "Patient", options: ["Spouse", "Son", "Daughter", "Father", "Mother", "Sibling", "Friend", "Other"] },
     { key: "gender", label: "Gender", category: "Patient", options: ["Male", "Female", "Other", "Prefer not to say"] },
     { key: "marital_status", label: "Marital Status", category: "Patient", options: ["Single", "Married", "Widowed", "Divorced", "Separated", "Other"] },
-    { key: "blood_group", label: "Blood Group", category: "Patient", options: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"] },
-    { key: "payment_mode", label: "Payment Mode", category: "Payment", options: ["Cash", "UPI", "Card", "Bank Transfer", "Other"] },
-    { key: "payment_status", label: "Payment Status", category: "Payment", options: ["Paid", "Partially Paid", "Pending", "Waived"] },
-    {
-      // Merged city+state picker for patient registration — each option is
-      // "City, State" so selecting one resolves both fields at once. A starting
-      // set of major cities/towns across every state & union territory; admins
-      // can add more through this same Meta section, same as any other list.
-      key: "city", label: "City", category: "Patient", options: [
-        "Lucknow, Uttar Pradesh", "Kanpur, Uttar Pradesh", "Varanasi, Uttar Pradesh", "Agra, Uttar Pradesh",
-        "Meerut, Uttar Pradesh", "Prayagraj, Uttar Pradesh", "Noida, Uttar Pradesh", "Ghaziabad, Uttar Pradesh",
-        "Bareilly, Uttar Pradesh", "Aligarh, Uttar Pradesh", "Moradabad, Uttar Pradesh", "Gorakhpur, Uttar Pradesh",
-        "Saharanpur, Uttar Pradesh", "Jhansi, Uttar Pradesh", "Ayodhya, Uttar Pradesh",
-        "Mumbai, Maharashtra", "Pune, Maharashtra", "Nagpur, Maharashtra", "Nashik, Maharashtra",
-        "Aurangabad, Maharashtra", "Thane, Maharashtra", "Solapur, Maharashtra", "Kolhapur, Maharashtra",
-        "New Delhi, Delhi", "Delhi, Delhi",
-        "Bengaluru, Karnataka", "Mysuru, Karnataka", "Hubballi, Karnataka", "Mangaluru, Karnataka", "Belagavi, Karnataka",
-        "Chennai, Tamil Nadu", "Coimbatore, Tamil Nadu", "Madurai, Tamil Nadu", "Tiruchirappalli, Tamil Nadu",
-        "Salem, Tamil Nadu", "Tirunelveli, Tamil Nadu",
-        "Hyderabad, Telangana", "Warangal, Telangana", "Nizamabad, Telangana",
-        "Ahmedabad, Gujarat", "Surat, Gujarat", "Vadodara, Gujarat", "Rajkot, Gujarat",
-        "Bhavnagar, Gujarat", "Jamnagar, Gujarat", "Gandhinagar, Gujarat",
-        "Jaipur, Rajasthan", "Jodhpur, Rajasthan", "Udaipur, Rajasthan", "Kota, Rajasthan",
-        "Ajmer, Rajasthan", "Bikaner, Rajasthan",
-        "Kolkata, West Bengal", "Howrah, West Bengal", "Durgapur, West Bengal",
-        "Asansol, West Bengal", "Siliguri, West Bengal",
-        "Bhopal, Madhya Pradesh", "Indore, Madhya Pradesh", "Gwalior, Madhya Pradesh",
-        "Jabalpur, Madhya Pradesh", "Ujjain, Madhya Pradesh",
-        "Patna, Bihar", "Gaya, Bihar", "Bhagalpur, Bihar", "Muzaffarpur, Bihar", "Darbhanga, Bihar",
-        "Thiruvananthapuram, Kerala", "Kochi, Kerala", "Kozhikode, Kerala", "Thrissur, Kerala", "Kollam, Kerala",
-        "Guwahati, Assam", "Silchar, Assam", "Dibrugarh, Assam",
-        "Ranchi, Jharkhand", "Jamshedpur, Jharkhand", "Dhanbad, Jharkhand", "Bokaro, Jharkhand",
-        "Bhubaneswar, Odisha", "Cuttack, Odisha", "Rourkela, Odisha",
-        "Ludhiana, Punjab", "Amritsar, Punjab", "Jalandhar, Punjab", "Patiala, Punjab", "Mohali, Punjab",
-        "Gurugram, Haryana", "Faridabad, Haryana", "Panipat, Haryana", "Ambala, Haryana", "Hisar, Haryana",
-        "Raipur, Chhattisgarh", "Bhilai, Chhattisgarh", "Bilaspur, Chhattisgarh",
-        "Dehradun, Uttarakhand", "Haridwar, Uttarakhand", "Nainital, Uttarakhand", "Haldwani, Uttarakhand",
-        "Shimla, Himachal Pradesh", "Dharamshala, Himachal Pradesh", "Manali, Himachal Pradesh",
-        "Srinagar, Jammu and Kashmir", "Jammu, Jammu and Kashmir",
-        "Leh, Ladakh",
-        "Chandigarh, Chandigarh",
-        "Panaji, Goa", "Margao, Goa",
-        "Visakhapatnam, Andhra Pradesh", "Vijayawada, Andhra Pradesh", "Guntur, Andhra Pradesh",
-        "Nellore, Andhra Pradesh", "Tirupati, Andhra Pradesh",
-        "Itanagar, Arunachal Pradesh",
-        "Imphal, Manipur",
-        "Shillong, Meghalaya",
-        "Aizawl, Mizoram",
-        "Kohima, Nagaland", "Dimapur, Nagaland",
-        "Agartala, Tripura",
-        "Gangtok, Sikkim",
-        "Puducherry, Puducherry",
-        "Port Blair, Andaman and Nicobar Islands",
-        "Daman, Dadra and Nagar Haveli and Daman and Diu", "Silvassa, Dadra and Nagar Haveli and Daman and Diu",
-        "Kavaratti, Lakshadweep",
-      ],
-    },
-    { key: "spo2_context", label: "SpO2 Context", category: "Patient", options: ["Known Oxygen Sensitivity", "High CO2 or COPD", "None"] },
-    { key: "consciousness_level", label: "Level of Consciousness", category: "Patient", options: ["Alert (A)", "Verbal (V)", "Pain (P)", "Unresponsive (U)"] },
-    { key: "mood", label: "Mood", category: "Patient", options: ["Very Good", "Good", "Neutral", "Bad", "Very Bad"] },
-    {
-      key: "care_classification", label: "Care Classification", category: "Clinical", options: [
-        "Routine / Standard Outpatient Care", "Complex Care / Further Clinical Evaluation",
-        "Therapeutic Procedure", "Surgical Assessment / Surgical Referral",
-        "Emergency Assessment / Urgent Referral", "Specialist Referral", "Preventive Care / Counselling Only",
-      ],
-    },
+    { key: "payment_mode", label: "Payment Mode", category: "Patient", options: ["Cash", "UPI", "Card", "Bank Transfer", "Other"] },
   ];
   for (let i = 0; i < metadataSections.length; i++) {
     const s = metadataSections[i];
@@ -222,6 +154,32 @@ export async function seedMetadata() {
     update: {},
     create: { category: "patient_defaults", key: "default_city", value: "Lucknow" },
   });
+  await db.portalSetting.upsert({
+    where: { category_key: { category: "vitals", key: "edit_window_minutes" } },
+    update: {},
+    create: { category: "vitals", key: "edit_window_minutes", value: "60" },
+  });
+
+  // Admin-configurable min/max for each vitals field — the starting values
+  // are the same defaults vitals-ranges.ts used to hardcode. "update: {}"
+  // means re-seeding never clobbers a value the admin has already changed.
+  for (const field of VITALS_RANGE_FIELDS) {
+    const [normalMin, normalMax] = DEFAULT_NORMAL_RANGES[field];
+    const [entryMin, entryMax] = DEFAULT_ENTRY_BOUNDS[field];
+    const rows: [string, string][] = [
+      [`${field}_normal_min`, String(normalMin)],
+      [`${field}_normal_max`, String(normalMax)],
+      [`${field}_entry_min`, String(entryMin)],
+      [`${field}_entry_max`, String(entryMax)],
+    ];
+    for (const [key, value] of rows) {
+      await db.portalSetting.upsert({
+        where: { category_key: { category: "vitals_validation", key } },
+        update: {},
+        create: { category: "vitals_validation", key, value },
+      });
+    }
+  }
 }
 
 /**
@@ -733,6 +691,247 @@ export async function seedScreeningConfig() {
   }
 }
 
+/**
+ * Junior Hakeem Intake Protocol Phase 1 — a starter set of manifestations,
+ * factor tags, and humor weight rules for a couple of high-traffic
+ * complaints. Idempotent by key/label, same convention as seedScreeningConfig.
+ * Point values here are an illustrative clinical starting point for admin
+ * review, not a finished calibration — tune via Admin → Humoral Matrix.
+ */
+export async function seedHumorConfig() {
+  const manifestationSeeds: Record<string, { key: string; label: string }[]> = {
+    fever: [
+      { key: "chills", label: "Chills" },
+      { key: "night_sweats", label: "Night sweats" },
+      { key: "rigors", label: "Rigors" },
+    ],
+    headache: [
+      { key: "photophobia", label: "Photophobia" },
+      { key: "nausea", label: "Nausea" },
+      { key: "throbbing_quality", label: "Throbbing quality" },
+    ],
+  };
+
+  for (const [complaintKey, manifestations] of Object.entries(manifestationSeeds)) {
+    const complaint = await db.chiefComplaint.findUnique({ where: { key: complaintKey }, select: { id: true } });
+    if (!complaint) continue;
+    for (let i = 0; i < manifestations.length; i++) {
+      const m = manifestations[i];
+      await db.complaintManifestation.upsert({
+        where: { chiefComplaintId_key: { chiefComplaintId: complaint.id, key: m.key } },
+        update: {},
+        create: { chiefComplaintId: complaint.id, key: m.key, label: m.label, sortOrder: i },
+      });
+    }
+  }
+
+  const factorTagSeeds: { kind: "aggravating" | "relieving"; label: string }[] = [
+    { kind: "aggravating", label: "Cold exposure" },
+    { kind: "aggravating", label: "Food intake" },
+    { kind: "aggravating", label: "Exertion" },
+    { kind: "aggravating", label: "Stress" },
+    { kind: "aggravating", label: "Heat exposure" },
+    { kind: "aggravating", label: "Night time" },
+    { kind: "relieving", label: "Rest" },
+    { kind: "relieving", label: "Warmth" },
+    { kind: "relieving", label: "Hydration" },
+    { kind: "relieving", label: "Cold compress" },
+    { kind: "relieving", label: "Sleep" },
+    { kind: "relieving", label: "Massage" },
+  ];
+  for (let i = 0; i < factorTagSeeds.length; i++) {
+    const f = factorTagSeeds[i];
+    await db.complaintFactorTag.upsert({
+      where: { kind_label: { kind: f.kind, label: f.label } },
+      update: {},
+      create: { kind: f.kind, label: f.label, sortOrder: i },
+    });
+  }
+
+  const weightRuleSeeds: { sourceType: string; sourceValue: string; safra?: number; dam?: number; sauda?: number; balgham?: number }[] = [
+    { sourceType: "manifestation", sourceValue: "chills", balgham: 2, sauda: 1 },
+    { sourceType: "manifestation", sourceValue: "night_sweats", safra: 2 },
+    { sourceType: "manifestation", sourceValue: "rigors", sauda: 2, balgham: 1 },
+    { sourceType: "manifestation", sourceValue: "photophobia", safra: 2 },
+    { sourceType: "manifestation", sourceValue: "nausea", balgham: 1, safra: 1 },
+    { sourceType: "manifestation", sourceValue: "throbbing_quality", dam: 2 },
+    { sourceType: "factor", sourceValue: "Cold exposure", balgham: 2, sauda: 1 },
+    { sourceType: "factor", sourceValue: "Food intake", balgham: 1, dam: 1 },
+    { sourceType: "factor", sourceValue: "Exertion", safra: 1, dam: 1 },
+    { sourceType: "factor", sourceValue: "Stress", sauda: 2 },
+    { sourceType: "factor", sourceValue: "Heat exposure", safra: 2 },
+    { sourceType: "factor", sourceValue: "Night time", balgham: 1 },
+    { sourceType: "factor", sourceValue: "Rest", dam: 1 },
+    { sourceType: "factor", sourceValue: "Warmth", balgham: 1 },
+    { sourceType: "factor", sourceValue: "Hydration", safra: 1 },
+    { sourceType: "factor", sourceValue: "Cold compress", safra: 1 },
+    { sourceType: "factor", sourceValue: "Sleep", dam: 1 },
+    { sourceType: "factor", sourceValue: "Massage", dam: 1 },
+    { sourceType: "severity_band", sourceValue: "mild", dam: 1 },
+    { sourceType: "severity_band", sourceValue: "moderate", safra: 1, sauda: 1 },
+    { sourceType: "severity_band", sourceValue: "severe", safra: 2, sauda: 2 },
+    { sourceType: "onset_pattern", sourceValue: "Acute", safra: 1, dam: 1 },
+    { sourceType: "onset_pattern", sourceValue: "Chronic", sauda: 2 },
+    { sourceType: "onset_pattern", sourceValue: "Gradual", balgham: 1 },
+    { sourceType: "onset_pattern", sourceValue: "Episodic/Recurrent", sauda: 1, balgham: 1 },
+  ];
+  for (const r of weightRuleSeeds) {
+    await db.humorWeightRule.upsert({
+      where: { sourceType_sourceValue: { sourceType: r.sourceType, sourceValue: r.sourceValue } },
+      update: {},
+      create: {
+        sourceType: r.sourceType, sourceValue: r.sourceValue,
+        safraPoints: r.safra ?? 0, damPoints: r.dam ?? 0, saudaPoints: r.sauda ?? 0, balghamPoints: r.balgham ?? 0,
+        notes: "Seeded starting point — review before relying on clinically.",
+      },
+    });
+  }
+}
+
+// Starter allergy checklist for the registration wizard's autosuggest.
+// Deliberately scoped to Unani dietotherapy/pharmacopoeia substances (foods
+// and herbs actually used in Ilaj-bil-Ghiza and classical formulations) and
+// general natural/environmental allergens — not synthetic pharmaceutical
+// drug names, since this is a Unani practice, not an allopathic one.
+export async function seedAllergyTags() {
+  const allergySeeds = [
+    "Honey (Asal)",
+    "Ghee / Clarified Butter",
+    "Milk & Dairy (Laban)",
+    "Almonds (Badam)",
+    "Walnuts (Akhrot)",
+    "Sesame (Til)",
+    "Turmeric (Haldi)",
+    "Neem (Azadirachta indica)",
+    "Henna (Mehndi)",
+    "Fenugreek (Methi)",
+    "Garlic (Seer)",
+    "Ginger (Zanjabeel)",
+    "Cinnamon (Darchini)",
+    "Saffron (Zafran)",
+    "Castor Oil (Rogan-e-Arandi)",
+    "Aloe Vera (Gwarpatha)",
+    "Wheat / Gluten",
+    "Citrus Fruits",
+    "Shellfish",
+    "Eggs",
+    "Pollen",
+    "Dust Mites",
+    "Animal Dander",
+    "Insect Stings (Bee/Wasp)",
+    "Latex",
+  ];
+  for (let i = 0; i < allergySeeds.length; i++) {
+    await db.allergyTag.upsert({
+      where: { label: allergySeeds[i] },
+      update: {},
+      create: { label: allergySeeds[i], sortOrder: i },
+    });
+  }
+}
+
+// Starter suggestion lists for the registration wizard's "Active Routine
+// Medications / Herbs" field. Unlike allergies, this field legitimately spans
+// both Unani/herbal supplements and allopathic prescriptions a patient may
+// already be on (relevant for interaction/safety awareness), so both are seeded.
+export async function seedMedicationTags() {
+  const medicationSeeds: { kind: "supplement" | "medication"; label: string }[] = [
+    { kind: "supplement", label: "Ashwagandha" },
+    { kind: "supplement", label: "Shilajit" },
+    { kind: "supplement", label: "Triphala" },
+    { kind: "supplement", label: "Amla (Indian Gooseberry)" },
+    { kind: "supplement", label: "Multivitamin" },
+    { kind: "supplement", label: "Omega-3 Fish Oil" },
+    { kind: "supplement", label: "Magnesium Glycinate" },
+    { kind: "supplement", label: "Vitamin D3" },
+    { kind: "supplement", label: "Vitamin B12" },
+    { kind: "supplement", label: "Iron Supplement" },
+    { kind: "supplement", label: "Calcium Supplement" },
+    { kind: "supplement", label: "Probiotics" },
+    { kind: "medication", label: "Metformin" },
+    { kind: "medication", label: "Levothyroxine" },
+    { kind: "medication", label: "Amlodipine" },
+    { kind: "medication", label: "Atorvastatin" },
+    { kind: "medication", label: "Losartan" },
+    { kind: "medication", label: "Aspirin (low-dose)" },
+    { kind: "medication", label: "Insulin" },
+    { kind: "medication", label: "Omeprazole" },
+    { kind: "medication", label: "Salbutamol Inhaler" },
+    { kind: "medication", label: "Paracetamol (as needed)" },
+  ];
+  const nextOrder: Record<string, number> = { supplement: 0, medication: 0 };
+  for (const m of medicationSeeds) {
+    const sortOrder = nextOrder[m.kind]++;
+    await db.medicationTag.upsert({
+      where: { kind_label: { kind: m.kind, label: m.label } },
+      update: {},
+      create: { kind: m.kind, label: m.label, sortOrder },
+    });
+  }
+}
+
+// Starter Acute Red Flag / Emergency Exclusion checklist — standard western
+// clinical red flags that must be ruled out before continuing Unani
+// constitutional triage. A clinical starting point for admin/practitioner
+// review, not a finished or exhaustive emergency-medicine protocol.
+export async function seedRedFlagCriteria() {
+  const criteriaSeeds: { key: string; label: string; description: string }[] = [
+    { key: "chest_pain", label: "Severe acute chest pain / Angina", description: "Excludes acute coronary syndrome" },
+    { key: "dyspnea", label: "Acute dyspnea / Respiratory distress", description: "Excludes respiratory failure, PE, or severe asthma/COPD exacerbation" },
+    { key: "neuro_deficit", label: "Sudden focal neurological deficit", description: "Excludes stroke / TIA — FAST screen" },
+    { key: "abdominal_rigidity", label: "Severe abdominal rigidity / Peritonitis", description: "Excludes surgical abdomen" },
+    { key: "altered_consciousness", label: "Altered consciousness / GCS < 15", description: "Excludes stroke, metabolic crisis, or head injury" },
+    { key: "uncontrolled_bleeding", label: "Severe or uncontrolled bleeding", description: "Excludes active hemorrhage" },
+    { key: "sepsis_signs", label: "Signs of sepsis / Septic shock", description: "Fever with hypotension, tachycardia, or confusion" },
+    { key: "anaphylaxis", label: "Signs of anaphylaxis / Severe allergic reaction", description: "Airway swelling, widespread urticaria, or hypotension after exposure" },
+  ];
+  for (let i = 0; i < criteriaSeeds.length; i++) {
+    const c = criteriaSeeds[i];
+    await db.redFlagCriterion.upsert({
+      where: { key: c.key },
+      update: {},
+      create: { key: c.key, label: c.label, description: c.description, sortOrder: i },
+    });
+  }
+}
+
+// Starter "Accompanying Acute Symptoms" checklist for the Chief Complaint
+// Matrix — general constitutional/acute markers, not tied to one complaint.
+// A clinical starting point for admin review, not a finished list.
+export async function seedAcuteSymptomTags() {
+  const symptomSeeds: { label: string; description: string }[] = [
+    { label: "Burning epigastric sensation", description: "Post-prandial pyrosis" },
+    { label: "Bitter taste in mouth", description: "Dast-e-Talkh (Safra indicator)" },
+    { label: "Restlessness & insomnia", description: "Sahar / Night vigil" },
+    { label: "Dry throat with intense thirst", description: "Atash-e-Mufrit" },
+    { label: "Cold extremities / Shivering", description: "Buroodat marker" },
+    { label: "Excessive salivation / Nausea", description: "Luzujat marker" },
+  ];
+  for (let i = 0; i < symptomSeeds.length; i++) {
+    const s = symptomSeeds[i];
+    await db.acuteSymptomTag.upsert({
+      where: { label: s.label },
+      update: {},
+      create: { label: s.label, description: s.description, sortOrder: i },
+    });
+  }
+}
+
+// Starter Anatomical Region & Organ System cards for Stage 3. Seeded only
+// into an empty table, so an admin's renames/removals are never undone.
+export async function seedAnatomicalRegionTags() {
+  if (await db.anatomicalRegionTag.count()) return;
+  const regions: { label: string; localTerms: string; icon: string }[] = [
+    { label: "Gastrointestinal / Hepato-Biliary", localTerms: "Ma'ida / Kabid / Safra", icon: "apple" },
+    { label: "Cranial / Neurological", localTerms: "Dimagh / A'sab / Cephalea", icon: "brain" },
+    { label: "Musculoskeletal / Cervical", localTerms: "'Izam / Mafasil", icon: "bone" },
+    { label: "Respiratory / Sadr", localTerms: "Tanaffus / Ri'ah", icon: "wind" },
+    { label: "Dermatological / Jild", localTerms: "Bishrah / Hikka", icon: "hand" },
+    { label: "Renal / Urinary", localTerms: "Kulyah / Masanah", icon: "droplet" },
+  ];
+  await db.anatomicalRegionTag.createMany({ data: regions.map((r, i) => ({ ...r, sortOrder: i })) });
+}
+
 export async function seedEmailTemplates() {
   for (const t of DEFAULT_EMAIL_TEMPLATES) {
     await db.emailTemplate.upsert({ where: { key: t.key }, update: {}, create: t });
@@ -744,6 +943,12 @@ export async function seedDatabase() {
   await seedPages();
   await seedMetadata();
   await seedScreeningConfig();
+  await seedHumorConfig();
+  await seedAllergyTags();
+  await seedMedicationTags();
+  await seedRedFlagCriteria();
+  await seedAcuteSymptomTags();
+  await seedAnatomicalRegionTags();
   await seedEmailTemplates();
 
   // Check if already seeded
@@ -773,6 +978,14 @@ export async function seedDatabase() {
     { category: "subscription", key: "free_trial_months", value: "3" },
     { category: "subscription", key: "paid_plan_price_per_month", value: "999" },
     { category: "subscription", key: "currency", value: "INR" },
+    { category: "chief_complaint_assistant", key: "enabled", value: "false" },
+    { category: "chief_complaint_assistant", key: "interval_minutes", value: "1440" },
+    { category: "allergy_assistant", key: "enabled", value: "false" },
+    { category: "allergy_assistant", key: "interval_minutes", value: "1440" },
+    { category: "supplement_assistant", key: "enabled", value: "false" },
+    { category: "supplement_assistant", key: "interval_minutes", value: "1440" },
+    { category: "medication_assistant", key: "enabled", value: "false" },
+    { category: "medication_assistant", key: "interval_minutes", value: "1440" },
   ];
   for (const s of defaultSettings) {
     await db.portalSetting.upsert({

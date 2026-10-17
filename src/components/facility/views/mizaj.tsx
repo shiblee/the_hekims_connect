@@ -1,178 +1,270 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { type VisitVitals } from "@/lib/vitals-trend";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
+import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
+import { PatientSignatureCard, RecordedVitalsStrip, type SignaturePatient } from "@/components/facility/views/patient-signature-card";
+import { ChiefComplaintMatrix, type ChiefComplaintMatrixHandle } from "@/components/facility/views/chief-complaint-matrix";
+import { AnatomicalRegionSelector, type AnatomicalRegionSelectorHandle } from "@/components/facility/views/anatomical-region-selector";
+import { ClinicalRoutingPanel } from "@/components/facility/views/clinical-routing-panel";
+import { HumoralCluesPanel, type HumoralCluesPanelHandle } from "@/components/facility/views/humoral-clues-panel";
+import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
+import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
+import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { toast } from "sonner";
-import { Activity, Heart, Droplet, Flame, Moon, Save, Loader2, History } from "lucide-react";
+import { Save, Loader2, History, ChevronLeft, Pencil } from "lucide-react";
 
+// Colours for the Mizaj History balance bar.
 const AKHLAT = [
-  { key: "dam", name: "Dam", en: "Blood", quality: "Hot & Moist", color: "oklch(0.62 0.2 25)", icon: Heart, tint: "text-red-300", bg: "bg-red-500/15" },
-  { key: "saffra", name: "Safra", en: "Yellow Bile", quality: "Hot & Dry", color: "oklch(0.78 0.14 80)", icon: Flame, tint: "text-amber-300", bg: "bg-amber-500/15" },
-  { key: "balgham", name: "Balgham", en: "Phlegm", quality: "Cold & Moist", color: "oklch(0.7 0.13 220)", icon: Droplet, tint: "text-sky-300", bg: "bg-sky-500/15" },
-  { key: "suda", name: "Sauda", en: "Black Bile", quality: "Cold & Dry", color: "oklch(0.5 0.15 300)", icon: Moon, tint: "text-violet-300", bg: "bg-violet-500/15" },
-];
+  { key: "dam", color: "oklch(0.62 0.2 25)" },
+  { key: "saffra", color: "oklch(0.78 0.14 80)" },
+  { key: "balgham", color: "oklch(0.7 0.13 220)" },
+  { key: "sauda", color: "oklch(0.5 0.15 300)" },
+] as const;
 
-export function MizajView() {
-  const [patients, setPatients] = useState<any[]>([]);
-  const [patientId, setPatientId] = useState<string>("");
-  const [scores, setScores] = useState({ dam: 25, saffra: 25, balgham: 25, suda: 25 });
-  const [pulse, setPulse] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
+interface Patient extends SignaturePatient { id: string; mizaj: string | null }
+interface VisitRow {
+  id: string; visitDate: string;
+  vitalSigns: VisitVitals | null;
+  intake?: { chiefComplaints: string } | null;
+  referral?: { createdAt: string } | null;
+  amaDecline?: { createdAt: string } | null;
+}
+interface Assessment {
+  id: string; createdAt: string; result: string; pulse: string | null; notes: string | null;
+  dam: number; saffra: number; balgham: number; sauda: number;
+  patient?: { id: string; name: string } | null;
+}
 
-  const loadPatients = async () => {
-    const r = await api.get<{ patients: any[] }>("/api/facility/patients");
-    setPatients(r.patients || []);
+/**
+ * Stage 3 — Mizaj & Morphometry. Arriving from the Clinical Record's
+ * "Proceed to Mizaj Morphometry" (or picking a patient here) opens the
+ * patient's Stage 3 workspace; with no patient it shows a picker.
+ */
+export function MizajView({ initialPatientId }: { initialPatientId?: string } = {}) {
+  const router = useRouter();
+  // The patient lives in the URL (?patientId=), so picking one is a navigation
+  // and Back returns to the picker.
+  if (initialPatientId) return <MizajStage key={initialPatientId} patientId={initialPatientId} />;
+  return <PatientPicker onPick={(id) => router.push(`/facility/mizaj?patientId=${id}`)} />;
+}
+
+function PatientPicker({ onPick }: { onPick: (id: string) => void }) {
+  const [patients, setPatients] = useState<{ id: string; name: string; mizaj: string | null }[]>([]);
+  useEffect(() => {
+    api.get<{ patients: any[] }>("/api/facility/patients").then((r) => setPatients(r.patients || [])).catch(() => {});
+  }, []);
+  return (
+    <div className="max-w-2xl space-y-5">
+      <div>
+        <h2 className="font-serif text-xl font-bold">Mizaj & Morphometry</h2>
+        <p className="text-sm text-muted-foreground">Choose a patient to open their Stage 3 assessment.</p>
+      </div>
+      <Card className="p-5 border-border/50 bg-card/60">
+        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Select Patient</Label>
+        <Select value="" onValueChange={onPick}>
+          <SelectTrigger className="mt-1.5 bg-background/60"><SelectValue placeholder="Choose a patient…" /></SelectTrigger>
+          <SelectContent>
+            {patients.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name} {p.mizaj ? `· ${p.mizaj}` : ""}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Card>
+    </div>
+  );
+}
+
+function MizajStage({ patientId }: { patientId: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [visits, setVisits] = useState<VisitRow[]>([]);
+  const [history, setHistory] = useState<Assessment[]>([]);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const chiefComplaintRef = useRef<ChiefComplaintMatrixHandle>(null);
+  const regionRef = useRef<AnatomicalRegionSelectorHandle>(null);
+  const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
+  const humoralCluesRef = useRef<HumoralCluesPanelHandle>(null);
+  const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
+
+  const loadHistory = () =>
+    api.get<{ assessments: Assessment[] }>(`/api/mizaj?patientId=${patientId}`).then((r) => setHistory(r.assessments || [])).catch(() => {});
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const [p, v] = await Promise.all([
+          api.get<{ patient: Patient }>(`/api/facility/patients/${patientId}`),
+          api.get<{ visits: VisitRow[] }>(`/api/facility/visits?patientId=${patientId}`),
+        ]);
+        setPatient(p.patient);
+        setVisits(v.visits || []);
+      } catch (e: any) {
+        toast.error(e.message || "Could not load this patient");
+      } finally {
+        setLoading(false);
+      }
+    })();
+    loadHistory();
+  }, [patientId]);
+
+  const sortedVisits = useMemo(
+    () => [...visits].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()),
+    [visits],
+  );
+  const latestVisit = sortedVisits[0];
+  // Stable reference — a new array each render would re-trigger the matrix's
+  // load effect and wipe unsaved edits (same reason as on the Clinical Record).
+  const intakeComplaints = useMemo(() => {
+    try { return JSON.parse(latestVisit?.intake?.chiefComplaints || "[]"); } catch { return []; }
+  }, [latestVisit]);
+
+  const savePhoto = async (dataUrl: string | null) => {
+    const res = await api.patch<{ patient: Patient }>(`/api/facility/patients/${patientId}`, { photo: dataUrl });
+    setPatient(res.patient);
   };
-  const loadHistory = async () => {
-    const r = await api.get<{ assessments: any[] }>("/api/mizaj");
-    setHistory(r.assessments || []);
+
+  /** Saves the anatomical regions, the senior doctor's chief-complaint edits and the clinical note. */
+  const saveEdits = async () => {
+    const results = await Promise.allSettled([regionRef.current?.save(), chiefComplaintRef.current?.save(), residentNoteRef.current?.save()]);
+    // The matrix save recomputes the humoral assessment server-side.
+    humoralCluesRef.current?.refresh();
+    return results.every((r) => r.status === "fulfilled");
   };
 
-  useEffect(() => { loadPatients(); loadHistory(); }, []);
-
-  const total = scores.dam + scores.saffra + scores.balgham + scores.suda || 1;
-  const dominant = AKHLAT.reduce((max, a) => ((scores as any)[a.key] > (scores as any)[max.key] ? a : max), AKHLAT[0]);
-  const dominantName = dominant.name;
-
-  const save = async () => {
-    if (!patientId) { toast.error("Select a patient first"); return; }
-    setSaving(true);
+  const saveDraft = async () => {
+    setSavingDraft(true);
     try {
-      await api.post("/api/mizaj", { patientId, ...scores, pulse, notes });
-      toast.success("Mizaj assessment saved & patient mizaj updated");
-      setScores({ dam: 25, saffra: 25, balgham: 25, suda: 25 });
-      setPulse(""); setNotes("");
-      loadHistory();
-    } catch (e: any) {
-      toast.error(e.message || "Could not save assessment");
-    } finally { setSaving(false); }
+      if (await saveEdits()) toast.success("Draft saved");
+    } finally {
+      setSavingDraft(false);
+    }
   };
+
+  if (loading) {
+    return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+  }
+  if (!patient) return <p className="text-muted-foreground text-sm">Patient not found.</p>;
+
+  const recordUrl = `/facility/patients/${patientId}/record`;
+  const referred = sortedVisits.find((v) => v.referral);
+  const ama = sortedVisits.find((v) => v.amaDecline);
 
   return (
-    <div className="grid lg:grid-cols-[1fr_360px] gap-5">
-      <div className="space-y-5 min-w-0">
-        <div>
-          <h2 className="font-serif text-xl font-bold">Mizaj Assessment</h2>
-          <p className="text-sm text-muted-foreground">Score the four Akhlat to determine the patient&apos;s dominant temperament.</p>
-        </div>
-
-        {/* Patient selector */}
-        <Card className="p-5 border-border/50 bg-card/60">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Select Patient</Label>
-          <Select value={patientId} onValueChange={setPatientId}>
-            <SelectTrigger className="mt-1.5 bg-background/60"><SelectValue placeholder="Choose a patient…" /></SelectTrigger>
-            <SelectContent>
-              {patients.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name} {p.mizaj ? `· ${p.mizaj}` : ""}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Card>
-
-        {/* Sliders */}
-        <Card className="p-5 border-border/50 bg-card/60">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-base font-semibold">Akhlat Scoring</h3>
-            <Badge className={cn(dominant.tint, dominant.bg, "border-transparent")}>Dominant: {dominantName}</Badge>
-          </div>
-          <div className="space-y-5">
-            {AKHLAT.map((a) => {
-              const val = (scores as any)[a.key];
-              const pct = Math.round((val / total) * 100);
-              return (
-                <div key={a.key}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("h-7 w-7 rounded-md flex items-center justify-center", a.bg)}>
-                        <a.icon className={cn("h-4 w-4", a.tint)} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium leading-none">{a.name} <span className="text-muted-foreground font-normal">· {a.en}</span></p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{a.quality}</p>
-                      </div>
-                    </div>
-                    <span className="font-serif text-sm font-bold" style={{ color: a.color }}>{val} · {pct}%</span>
-                  </div>
-                  <Slider
-                    value={[val]}
-                    onValueChange={(v) => setScores({ ...scores, [a.key]: v[0] })}
-                    min={0} max={100} step={5}
-                    className="[&_[role=slider]]:border-0"
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Visual balance bar */}
-          <div>
-            <p className="text-xs text-muted-foreground mb-1.5">Humoural balance</p>
-            <div className="flex h-3 rounded-full overflow-hidden">
-              {AKHLAT.map((a) => (
-                <div key={a.key} style={{ width: `${((scores as any)[a.key] / total) * 100}%`, background: a.color }} className="transition-all" />
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Pulse & notes */}
-        <Card className="p-5 border-border/50 bg-card/60">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Pulse Characteristics (Nabz)</Label>
-              <Input value={pulse} onChange={(e) => setPulse(e.target.value)} placeholder="e.g. Rapid, hard and hot" className="bg-background/60" />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Clinical Notes</Label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Recommended Tadbeer, observations…" className="bg-background/60 min-h-[80px]" />
-            </div>
-          </div>
-          <Button onClick={save} disabled={saving} className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving…" : "Save Assessment"}
-          </Button>
-        </Card>
+    <div className="w-full">
+      <button onClick={() => router.push(recordUrl)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
+        <ChevronLeft className="h-4 w-4" /> Back to Clinical Record
+      </button>
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">Mizaj & Morphometry</h1>
       </div>
 
-      {/* History */}
-      <Card className="p-5 border-border/50 bg-card/60 h-fit lg:sticky lg:top-24">
-        <div className="flex items-center gap-2 mb-3">
-          <History className="h-4 w-4 text-primary" />
-          <h3 className="font-serif text-base font-semibold">Assessment History</h3>
+      <PatientStageTracker
+        steps={PATIENT_JOURNEY_STEPS.map((s) =>
+          s.key === "registration" ? { ...s, href: `/facility/patients/${patientId}` }
+            : s.key === "vitals" ? { ...s, href: recordUrl }
+            : s)}
+        activeKey="mizaj"
+        completedKeys={["registration", "vitals"]}
+      />
+
+      <PatientSignatureCard
+        patient={patient}
+        visitCount={visits.length}
+        lastReferralAt={referred?.referral?.createdAt}
+        lastAmaAt={ama?.amaDecline?.createdAt}
+        onPhotoClick={() => setPhotoDialogOpen(true)}
+      >
+        <RecordedVitalsStrip
+          vitals={latestVisit?.vitalSigns ?? null}
+          visits={sortedVisits}
+          action={
+            <button onClick={() => router.push(recordUrl)} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+              <Pencil className="h-3 w-3" /> Edit in Clinical Record
+            </button>
+          }
+        />
+      </PatientSignatureCard>
+
+      <PhotoUploadDialog
+        open={photoDialogOpen}
+        onOpenChange={setPhotoDialogOpen}
+        currentPhoto={patient.photo}
+        title="Change patient photo"
+        onSave={(dataUrl) => savePhoto(dataUrl)}
+        onRemove={() => savePhoto(null)}
+      />
+
+      <div className="mb-6 grid lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 space-y-5 min-w-0">
+          {latestVisit && <AnatomicalRegionSelector ref={regionRef} visitId={latestVisit.id} />}
+          {latestVisit ? (
+            <ChiefComplaintMatrix ref={chiefComplaintRef} visitId={latestVisit.id} intakeComplaints={intakeComplaints} />
+          ) : (
+            <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete Stage 2 first.</Card>
+          )}
+
         </div>
-        <ScrollArea className="h-[520px] pr-3">
-          <div className="space-y-3">
-            {history.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No assessments yet.</p>
-            ) : history.map((a) => (
-              <div key={a.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium">{a.patient?.name}</p>
-                  <span className="text-[10px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
-                </div>
-                <p className="text-xs font-semibold text-primary mb-1.5">{a.result}</p>
-                <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mb-2">
-                  {AKHLAT.map((k) => (
-                    <div key={k.key} style={{ width: `${(a as any)[k.key]}%`, background: k.color }} />
+
+        <div ref={spacerRef} className="relative">
+          <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
+            {latestVisit && <ClinicalRoutingPanel visitId={latestVisit.id} />}
+            {latestVisit && (
+              <HumoralCluesPanel
+                ref={humoralCluesRef}
+                visitId={latestVisit.id}
+                onBeforeGenerate={async () => { await chiefComplaintRef.current?.save(); }}
+              />
+            )}
+            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+            <TriageNotesCard visits={visits} />
+            {history.length > 0 && (
+            <Card className="p-5 border-border/50 bg-card/60">
+              <div className="flex items-center gap-2 mb-3">
+                <History className="h-4 w-4 text-primary" />
+                <h3 className="font-serif text-base font-semibold">Mizaj History</h3>
+              </div>
+                <div className="space-y-3">
+                  {history.map((a) => (
+                    <div key={a.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs font-semibold text-primary">{a.result.split(" — ")[0]}</p>
+                        <span className="text-[10px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mb-2">
+                        {AKHLAT.map((k) => (
+                          <div key={k.key} style={{ width: `${a[k.key]}%`, background: k.color }} />
+                        ))}
+                      </div>
+                      {a.pulse && <p className="text-[11px] text-muted-foreground">Pulse: {a.pulse}</p>}
+                    </div>
                   ))}
                 </div>
-                {a.pulse && <p className="text-[11px] text-muted-foreground">Pulse: {a.pulse}</p>}
-              </div>
-            ))}
+            </Card>
+            )}
           </div>
-        </ScrollArea>
+        </div>
+      </div>
+
+      <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-border/50 bg-card/60">
+        <p className="text-sm text-muted-foreground min-w-0">
+          Saves the anatomical regions, chief-complaint changes and the clinical note for this visit.
+        </p>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button size="sm" onClick={saveDraft} disabled={savingDraft}>
+            {savingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save Draft
+          </Button>
+        </div>
       </Card>
     </div>
   );

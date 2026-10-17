@@ -49,12 +49,3 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const question = await db.screeningQuestion.update({ where: { id }, data, include: { options: true } });
   return NextResponse.json({ question });
 }
-
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireAdmin(req);
-  if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
-  const { id } = await params;
-  await db.screeningQuestion.delete({ where: { id } });
-  return NextResponse.json({ success: true });
-}

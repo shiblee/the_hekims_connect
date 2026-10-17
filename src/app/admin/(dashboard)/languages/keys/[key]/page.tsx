@@ -35,7 +35,7 @@ const LANGUAGES = [
   { code: "fa", label: "فارسی" },
 ];
 
-const STATUS_LABEL: Record<string, string> = { draft: "Draft", ai_generated: "AI generated", published: "Published" };
+const STATUS_LABEL: Record<string, string> = { draft: "Draft", ai_generated: "Auto-Generated", published: "Published" };
 const STATUS_VARIANT: Record<string, string> = {
   draft: "bg-amber-500/15 text-amber-600 border-amber-500/30",
   ai_generated: "bg-sky-500/15 text-sky-600 border-sky-500/30",
@@ -73,7 +73,7 @@ export default function TranslationKeyEditorPage() {
       load();
       toast.success(`Draft generated for ${LANGUAGES.find((l) => l.code === code)?.label}`);
     } catch (err: any) {
-      toast.error(err.message || "AI generation failed");
+      toast.error(err.message || "Auto-generation failed");
     } finally {
       setGenerating(null);
     }
@@ -146,7 +146,7 @@ export default function TranslationKeyEditorPage() {
                 />
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" disabled={generating === l.code} onClick={() => generate(l.code)}>
-                    {generating === l.code ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Generate with AI
+                    {generating === l.code ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Auto-Generate
                   </Button>
                   <Button size="sm" variant="outline" disabled={saving === l.code} onClick={() => save(l.code, "draft")}>
                     <Save className="h-4 w-4" /> Save Draft

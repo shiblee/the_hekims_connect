@@ -16,6 +16,33 @@ async function assertInScope(patientId: string, facilityId: string) {
   });
 }
 
+// The analysis looks back across the patient's recent visits, but a save is
+// scoped to whichever visit the doctor was reviewing when they generated
+// it — same "persist what was actually seen" reasoning as the other AI
+// panels on the record page, so this reads back on page load instead of
+// going blank until re-generated.
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await getAuthUser(req);
+  if (!auth || auth.type !== "facility") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const patient = await assertInScope(id, auth.id);
+  if (!patient) {
+    return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+  }
+
+  const visitId = new URL(req.url).searchParams.get("visitId");
+  if (!visitId) return NextResponse.json({ insight: null });
+
+  const visit = await db.visit.findFirst({ where: { id: visitId, patientId: id, facilityId: auth.id }, select: { id: true } });
+  if (!visit) return NextResponse.json({ insight: null });
+
+  const record = await db.vitalsInsightRecord.findUnique({ where: { visitId }, select: { insight: true, generatedAt: true } });
+  return NextResponse.json({ insight: record?.insight || null, generatedAt: record?.generatedAt || null });
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser(req);
   if (!auth || auth.type !== "facility") {
@@ -28,6 +55,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const visitId: string | undefined = body?.visitId || undefined;
+
   const visits = await db.visit.findMany({
     where: { patientId: id, facilityId: auth.id, vitalSigns: { isNot: null } },
     orderBy: { visitDate: "desc" },
@@ -36,8 +66,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       visitDate: true,
       vitalSigns: {
         select: {
-          pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true,
-          temperatureF: true, respiratoryRate: true, heightCm: true, weightKg: true,
+          heartRate: true, pulse: true, bpSystolic: true, bpDiastolic: true, spo2: true,
+          temperatureF: true, heightCm: true, weightKg: true,
         },
       },
     },
@@ -54,6 +84,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (insight == null) {
     return NextResponse.json({ insight: null, reason: "not_configured" });
+  }
+
+  if (visitId) {
+    const visit = await db.visit.findFirst({ where: { id: visitId, patientId: id, facilityId: auth.id }, select: { id: true } });
+    if (visit) {
+      await db.vitalsInsightRecord.upsert({
+        where: { visitId },
+        update: { insight },
+        create: { visitId, insight },
+      });
+    }
   }
 
   return NextResponse.json({ insight });
