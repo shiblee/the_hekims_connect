@@ -45,6 +45,8 @@ const ACTION_META: Record<string, { label: string; icon: any }> = {
   supplement_enrichment_job: { label: "Reference Profile Research Run", icon: ListChecks },
   supplement_claim_reviewed: { label: "Reference Profile Claim Reviewed", icon: ListChecks },
   supplement_profile_restored: { label: "Reference Profile Restored", icon: ListChecks },
+  asbab_config_updated: { label: "Asbab-e-Sittah Configuration Updated", icon: ListChecks },
+  tashkhees_config_updated: { label: "Tashkhees & Ilaj Configuration Updated", icon: ListChecks },
 };
 
 export default function ActivityHistoryPage() {

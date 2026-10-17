@@ -19,11 +19,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Loader2, Plus, ChevronUp, ChevronDown, ListChecks, Pencil, X,
-  CircleDot, CheckSquare, Hash, Type, Info, TriangleAlert, Search, Pill, Leaf, Tablets, TrendingUp, TrendingDown, PersonStanding,
+  CircleDot, CheckSquare, Hash, Type, Info, TriangleAlert, Search, Pill, Leaf, Tablets, TrendingUp, TrendingDown, PersonStanding, Hourglass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SupplementProfileDialog } from "@/components/admin/supplement-profile-dialog";
-import { ANATOMICAL_REGION_ICONS, regionIcon } from "@/lib/anatomical-region-icons";
+import { AsbabAdmin } from "@/components/admin/asbab-admin";
+import { TashkheesAdmin } from "@/components/admin/tashkhees-admin";
+import { ANATOMICAL_REGION_ICONS, REGION_GENDERS, regionIcon } from "@/lib/anatomical-region-icons";
+import { BODY_ZONES } from "@/lib/body-zones";
 
 interface Section {
   id: string;
@@ -79,28 +82,30 @@ const FACTOR_META: Record<FactorKind, { title: string; muted: string; placeholde
   aggravating: { title: "Aggravating Factors (Muharrikat)", muted: "Aggravating Factor", placeholder: "e.g. Cold exposure" },
   relieving: { title: "Relieving Factors (Musakkinat)", muted: "Relieving Factor", placeholder: "e.g. Rest" },
 };
-interface RegionRow { id: string; label: string; localTerms: string | null; icon: string; sortOrder: number; active: boolean }
+interface OnsetRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
+interface RegionRow { id: string; label: string; localTerms: string | null; icon: string; gender: string; bodyZone: string | null; sortOrder: number; active: boolean }
 interface AllergyRow { id: string; label: string; sortOrder: number; active: boolean; patientCount: number; patientPercent: number }
 interface MedicationRow { id: string; kind: string; label: string; sortOrder: number; active: boolean; patientCount: number; patientPercent: number }
 interface RedFlagRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
 interface AcuteSymptomRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
 
-const SCREENING_TABS = ["complaints", "modules", "allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions"] as const;
+const SCREENING_TABS = ["complaints", "modules", "asbab", "tashkhees", "allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions", "onset"] as const;
 // Allergies, Supplements & Herbs, Medications and Red Flags are reachable from
 // the Patient category's sidebar instead of their own top-bar tabs, so they're
 // excluded here.
-const PATIENT_SIDEBAR_TABS = ["allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions"];
+const PATIENT_SIDEBAR_TABS = ["allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions", "onset"];
 const TOP_BAR_SCREENING_TABS = SCREENING_TABS.filter((t) => !PATIENT_SIDEBAR_TABS.includes(t));
 
 // Sections whose "X records registered in total" stats badge isn't meaningful
 // enough to show — payment_mode counts transactions not patients.
 const HIDE_STATS_KEYS = ["payment_mode"];
 const SCREENING_TAB_LABELS: Record<string, string> = {
-  complaints: "Chief Complaints", modules: "Modules & Questions", allergies: "Allergies",
+  complaints: "Chief Complaints", modules: "Modules & Questions", asbab: "Asbab-e-Sittah", tashkhees: "Tashkhees & Ilaj", allergies: "Allergies",
   supplements: "Supplements & Herbs", medications: "Medications",
   aggravating: "Aggravating Factors (Muharrikat)", relieving: "Relieving Factors (Musakkinat)",
   redflags: "Acute Red Flag / Emergency Exclusion", symptoms: "Accompanying Acute Symptoms (Alamat-e-Izafiya)",
   regions: "Anatomical Region & Organ System",
+  onset: "Onset Nature & Rhythm",
 };
 
 const TYPE_LABEL: Record<string, string> = { single_select: "Single Choice", multi_select: "Multiple Choice", numeric: "Number", text: "Text", instruction: "Instruction" };
@@ -402,7 +407,7 @@ export default function MetaSectionPage() {
 
   // ---------- Anatomical Region & Organ System tab (Stage 3 selector cards) ----------
   const [regions, setRegions] = useState<RegionRow[]>([]);
-  const [regionDialog, setRegionDialog] = useState<{ id: string | null; label: string; localTerms: string; icon: string; active: boolean } | null>(null);
+  const [regionDialog, setRegionDialog] = useState<{ id: string | null; label: string; localTerms: string; icon: string; gender: string; bodyZone: string; active: boolean } | null>(null);
   const [savingRegion, setSavingRegion] = useState(false);
 
   const loadRegions = () => {
@@ -416,7 +421,7 @@ export default function MetaSectionPage() {
     if (!regionDialog || !regionDialog.label.trim()) return;
     setSavingRegion(true);
     try {
-      const body = { label: regionDialog.label, localTerms: regionDialog.localTerms, icon: regionDialog.icon };
+      const body = { label: regionDialog.label, localTerms: regionDialog.localTerms, icon: regionDialog.icon, gender: regionDialog.gender, bodyZone: regionDialog.bodyZone === "none" ? null : regionDialog.bodyZone };
       if (regionDialog.id) await adminApi.patch(`/api/admin/anatomical-regions/${regionDialog.id}`, { ...body, active: regionDialog.active });
       else await adminApi.post("/api/admin/anatomical-regions", body);
       setRegionDialog(null);
@@ -447,6 +452,58 @@ export default function MetaSectionPage() {
       reordered[index + direction] = current;
       await Promise.all(reordered.map((r, i) => r.sortOrder === i ? null : adminApi.patch(`/api/admin/anatomical-regions/${r.id}`, { sortOrder: i })));
       loadRegions();
+    } catch (e: any) {
+      toast.error(e.message || "Could not reorder");
+    }
+  };
+
+  // ---------- Onset Nature & Rhythm tab (Stage 3 options) ----------
+  const [onsetPatterns, setOnsetPatterns] = useState<OnsetRow[]>([]);
+  const [onsetDialog, setOnsetDialog] = useState<{ id: string | null; label: string; description: string; active: boolean } | null>(null);
+  const [savingOnset, setSavingOnset] = useState(false);
+
+  const loadOnsetPatterns = () => {
+    adminApi.get<{ patterns: OnsetRow[] }>("/api/admin/onset-patterns")
+      .then((res) => setOnsetPatterns(res.patterns || []))
+      .catch(() => toast.error("Could not load onset options"));
+  };
+  useEffect(() => { loadOnsetPatterns(); }, []);
+
+  const saveOnset = async () => {
+    if (!onsetDialog || !onsetDialog.label.trim()) return;
+    setSavingOnset(true);
+    try {
+      const body = { label: onsetDialog.label, description: onsetDialog.description };
+      if (onsetDialog.id) await adminApi.patch(`/api/admin/onset-patterns/${onsetDialog.id}`, { ...body, active: onsetDialog.active });
+      else await adminApi.post("/api/admin/onset-patterns", body);
+      setOnsetDialog(null);
+      loadOnsetPatterns();
+    } catch (e: any) {
+      toast.error(e.message || "Could not save option");
+    } finally {
+      setSavingOnset(false);
+    }
+  };
+
+  const toggleOnsetActive = async (o: OnsetRow) => {
+    try {
+      await adminApi.patch(`/api/admin/onset-patterns/${o.id}`, { active: !o.active });
+      loadOnsetPatterns();
+    } catch (e: any) {
+      toast.error(e.message || "Could not update option");
+    }
+  };
+
+  const moveOnset = async (index: number, direction: -1 | 1) => {
+    const current = onsetPatterns[index];
+    const target = onsetPatterns[index + direction];
+    if (!current || !target) return;
+    try {
+      const reordered = [...onsetPatterns];
+      reordered[index] = target;
+      reordered[index + direction] = current;
+      await Promise.all(reordered.map((o, i) => o.sortOrder === i ? null : adminApi.patch(`/api/admin/onset-patterns/${o.id}`, { sortOrder: i })));
+      loadOnsetPatterns();
     } catch (e: any) {
       toast.error(e.message || "Could not reorder");
     }
@@ -1085,8 +1142,12 @@ export default function MetaSectionPage() {
           <Button size="sm" onClick={() => { setNewFactorLabel(""); setAddFactorKind(activeCategory); }}>
             <Plus className="h-4 w-4 mr-1.5" /> Add New
           </Button>
+        ) : activeCategory === "onset" ? (
+          <Button size="sm" onClick={() => setOnsetDialog({ id: null, label: "", description: "", active: true })}>
+            <Plus className="h-4 w-4 mr-1.5" /> Add New
+          </Button>
         ) : activeCategory === "regions" ? (
-          <Button size="sm" onClick={() => setRegionDialog({ id: null, label: "", localTerms: "", icon: "activity", active: true })}>
+          <Button size="sm" onClick={() => setRegionDialog({ id: null, label: "", localTerms: "", icon: "activity", gender: "all", bodyZone: "none", active: true })}>
             <Plus className="h-4 w-4 mr-1.5" /> Add New
           </Button>
         ) : activeCategory === "redflags" ? (
@@ -1271,6 +1332,9 @@ export default function MetaSectionPage() {
         </DialogContent>
       </Dialog>
 
+      {activeCategory === "asbab" && <AsbabAdmin />}
+      {activeCategory === "tashkhees" && <TashkheesAdmin />}
+
       {activeCategory === "modules" && (
         loadingScreening ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
@@ -1429,6 +1493,45 @@ export default function MetaSectionPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ---------- Add / Edit Onset option dialog ---------- */}
+      <Dialog open={onsetDialog !== null} onOpenChange={(open) => { if (!open) setOnsetDialog(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{onsetDialog?.id ? "Edit Onset Option" : "Add Onset Option"}</DialogTitle>
+          </DialogHeader>
+          {onsetDialog && (
+            <div className="space-y-4">
+              <FloatingField
+                id="onsetLabel"
+                label="Option (e.g. Nocturnal Exacerbation (Layli))"
+                value={onsetDialog.label}
+                onChange={(e) => setOnsetDialog((d) => d && { ...d, label: e.target.value })}
+              />
+              <FloatingField
+                id="onsetDescription"
+                label="Short description (e.g. Worse at night)"
+                value={onsetDialog.description}
+                onChange={(e) => setOnsetDialog((d) => d && { ...d, description: e.target.value })}
+              />
+              {onsetDialog.id && (
+                <div className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2.5">
+                  <span className={cn("text-sm font-medium", onsetDialog.active ? "text-emerald-500" : "text-muted-foreground")}>
+                    {onsetDialog.active ? "Active" : "Inactive"}
+                  </span>
+                  <Switch checked={onsetDialog.active} onCheckedChange={(v) => setOnsetDialog((d) => d && { ...d, active: v })} />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOnsetDialog(null)}>Cancel</Button>
+            <Button onClick={saveOnset} disabled={savingOnset || !onsetDialog?.label.trim()}>
+              {savingOnset ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {onsetDialog?.id ? "Save" : "Add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ---------- Add / Edit Anatomical Region dialog ---------- */}
       <Dialog open={regionDialog !== null} onOpenChange={(open) => { if (!open) setRegionDialog(null); }}>
         <DialogContent className="sm:max-w-md">
@@ -1455,6 +1558,15 @@ export default function MetaSectionPage() {
                     <span className="flex items-center gap-2"><Icon className="h-4 w-4" /> {label}</span>
                   </SelectItem>
                 ))}
+              </FloatingSelect>
+              <FloatingSelect id="regionZone" label="Body area (Stage 3 body map)" value={regionDialog.bodyZone} onValueChange={(v) => setRegionDialog((d) => d && { ...d, bodyZone: v })}>
+                <SelectItem value="none">Not shown on the body map</SelectItem>
+                {Object.entries(BODY_ZONES).map(([key, z]) => (
+                  <SelectItem key={key} value={key}>{z.label}{z.front && z.back ? "" : z.back ? " (back view)" : " (front view)"}</SelectItem>
+                ))}
+              </FloatingSelect>
+              <FloatingSelect id="regionGender" label="Applies to" value={regionDialog.gender} onValueChange={(v) => setRegionDialog((d) => d && { ...d, gender: v })}>
+                {REGION_GENDERS.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
               </FloatingSelect>
               {regionDialog.id && (
                 <div className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2.5">
@@ -1962,6 +2074,26 @@ export default function MetaSectionPage() {
                     </Badge>
                   </button>
                 )}
+                {sidebarCategory === "Patient" && (
+                  <button
+                    onClick={() => router.push("/admin/meta/onset")}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                      activeCategory === "onset" ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+                    )}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Hourglass className="h-3.5 w-3.5 shrink-0" />
+                      <span className="leading-snug">Onset Nature &amp; Rhythm</span>
+                    </span>
+                    <Badge
+                      variant={activeCategory === "onset" ? "outline" : "secondary"}
+                      className={cn("shrink-0", activeCategory === "onset" && "border-primary-foreground/40 text-primary-foreground")}
+                    >
+                      {onsetPatterns.length}
+                    </Badge>
+                  </button>
+                )}
               </div>
             )}
           </Card>
@@ -2003,10 +2135,43 @@ export default function MetaSectionPage() {
                 <h2 className="font-serif text-lg font-semibold">{FACTOR_META[activeCategory].title}</h2>
                 {renderFactorRows(activeCategory)}
               </>
+            ) : activeCategory === "onset" ? (
+              <>
+                <h2 className="font-serif text-lg font-semibold">Onset Nature &amp; Rhythm</h2>
+                <p className="text-sm text-muted-foreground mb-3">Active options appear in Stage 3 (Mizaj &amp; Morphometry) under Onset &amp; Chronology — doctors can pick more than one.</p>
+                <div className="space-y-1.5">
+                  {onsetPatterns.map((o, idx) => (
+                    <div key={o.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
+                      <div className="flex flex-col -my-1">
+                        <button disabled={idx === 0} onClick={() => moveOnset(idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button disabled={idx === onsetPatterns.length - 1} onClick={() => moveOnset(idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <Hourglass className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0 py-0.5">
+                        <p className="text-sm font-medium">{o.label}</p>
+                        {o.description && <p className="text-xs text-muted-foreground">{o.description}</p>}
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0"
+                        onClick={() => setOnsetDialog({ id: o.id, label: o.label, description: o.description || "", active: o.active })}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className={cn("text-xs font-medium w-14 text-right shrink-0", o.active ? "text-emerald-500" : "text-muted-foreground")}>
+                        {o.active ? "Active" : "Inactive"}
+                      </span>
+                      <Switch checked={o.active} onCheckedChange={() => toggleOnsetActive(o)} />
+                    </div>
+                  ))}
+                  {onsetPatterns.length === 0 && <p className="text-sm text-muted-foreground">No options yet.</p>}
+                </div>
+              </>
             ) : activeCategory === "regions" ? (
               <>
                 <h2 className="font-serif text-lg font-semibold">Anatomical Region &amp; Organ System</h2>
-                <p className="text-sm text-muted-foreground mb-3">Active regions appear as multi-select cards at the top of Stage 3 (Mizaj &amp; Morphometry).</p>
+                <p className="text-sm text-muted-foreground mb-3">Active regions appear as multi-select cards at the top of Stage 3 (Mizaj &amp; Morphometry). Female-only and male-only regions are shown only to patients of that recorded gender.</p>
                 <div className="space-y-1.5">
                   {regions.map((r, idx) => {
                     const Icon = regionIcon(r.icon);
@@ -2022,11 +2187,17 @@ export default function MetaSectionPage() {
                         </div>
                         <Icon className="h-4 w-4 text-primary shrink-0" />
                         <div className="flex-1 min-w-0 py-0.5">
-                          <p className="text-sm font-medium">{r.label}</p>
-                          {r.localTerms && <p className="text-xs text-muted-foreground font-mono">{r.localTerms}</p>}
+                          <p className="text-sm font-medium flex items-center gap-2 flex-wrap">
+                            {r.label}
+                            {r.gender !== "all" && (
+                              <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0">{r.gender === "female" ? "Female only" : "Male only"}</Badge>
+                            )}
+                          </p>
+                          {r.localTerms && <p className="text-xs text-muted-foreground">{r.localTerms}</p>}
+                          <p className="text-[11px] text-muted-foreground/80">Body map: {r.bodyZone && BODY_ZONES[r.bodyZone] ? BODY_ZONES[r.bodyZone].label : "not shown"}</p>
                         </div>
                         <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0"
-                          onClick={() => setRegionDialog({ id: r.id, label: r.label, localTerms: r.localTerms || "", icon: r.icon, active: r.active })}>
+                          onClick={() => setRegionDialog({ id: r.id, label: r.label, localTerms: r.localTerms || "", icon: r.icon, gender: r.gender, bodyZone: r.bodyZone || "none", active: r.active })}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <span className={cn("text-xs font-medium w-14 text-right shrink-0", r.active ? "text-emerald-500" : "text-muted-foreground")}>

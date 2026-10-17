@@ -71,6 +71,13 @@ export const api = {
   delete: <T = any>(url: string) => request<T>(url, { method: "DELETE" }),
   upload: <T = any>(url: string, formData: FormData) =>
     request<T>(url, { method: "POST", body: formData }),
+  /** Authenticated binary download (e.g. a report file) — shown via URL.createObjectURL. */
+  blob: async (url: string): Promise<Blob> => {
+    const token = getToken();
+    const res = await fetch(url, { headers: token ? { "x-hekim-auth": token } : {} });
+    if (!res.ok) throw new Error(`Could not load file (${res.status})`);
+    return res.blob();
+  },
 };
 
 /** On app boot, restore the session from the stored token. */

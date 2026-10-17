@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ANATOMICAL_REGION_ICONS } from "@/lib/anatomical-region-icons";
+import { BODY_ZONES } from "@/lib/body-zones";
+
+const GENDERS = new Set(["all", "male", "female"]);
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdmin(req);
@@ -19,6 +22,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (body.localTerms !== undefined) data.localTerms = body.localTerms ? String(body.localTerms).trim() : null;
   if (body.icon !== undefined) data.icon = ANATOMICAL_REGION_ICONS[body.icon] ? body.icon : "activity";
+  if (body.bodyZone !== undefined) data.bodyZone = body.bodyZone && BODY_ZONES[body.bodyZone] ? body.bodyZone : null;
+  if (body.gender !== undefined) data.gender = GENDERS.has(body.gender) ? body.gender : "all";
   if (body.active !== undefined) data.active = !!body.active;
   if (body.sortOrder !== undefined) data.sortOrder = parseInt(body.sortOrder, 10);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, Suspense, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PatientReportsPanel } from "@/components/facility/reports/patient-reports-panel";
 import {
   LayoutDashboard, Activity, Pill, CalendarDays, Users, MessageSquare,
   FilePlus2, LogOut, Search, Bell, Stethoscope,
@@ -30,7 +31,7 @@ const NAV: { id: Tab; label: string; icon: any }[] = [
 
 // Visit/assessment pages (/facility/visits/...) are part of the patient
 // workflow — they should highlight the Patients tab, not go unhighlighted.
-const PATH_TO_TAB: Record<string, Tab> = { visits: "patients" };
+const PATH_TO_TAB: Record<string, Tab> = { visits: "patients", asbab: "mizaj", tashkhees: "mizaj" };
 
 const FacilityStatsContext = createContext<any>(null);
 export function useFacilityStats() {
@@ -77,7 +78,10 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
           <BrandLogo size={50} className="block" />
         </div>
 
-        <ScrollArea className="flex-1 px-3 py-4">
+        {/* Radix renders the viewport's content as display:table, which lets long
+            content (e.g. a report title) widen the sidebar — force block so
+            truncation works and nothing is cut off at the edge. */}
+        <ScrollArea className="flex-1 px-3 py-4 [&_[data-slot=scroll-area-viewport]>div]:!block">
           <nav className="space-y-1">
             {NAV.map((n) => (
               <button
@@ -104,6 +108,11 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
               <Stethoscope className="mr-2 h-4 w-4" /> Start Consultation
             </Button>
           </div>
+
+          {/* Reports for the patient on screen (reads ?patientId — Suspense needed for useSearchParams). */}
+          <Suspense fallback={null}>
+            <PatientReportsPanel />
+          </Suspense>
         </ScrollArea>
 
         <div className="p-3 border-t border-sidebar-border">

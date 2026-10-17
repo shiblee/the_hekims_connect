@@ -132,6 +132,7 @@ model Facility {
   subscriptions   FacilitySubscription[]
   staff           Staff[]
   visits          Visit[]
+  patientReports  PatientReport[]
 
   @@map("Hakim")
 }
@@ -175,6 +176,9 @@ model Staff {
   recordedRedFlagScreenings    RedFlagScreening[]
   recordedAcuteSymptomAssessments AcuteSymptomAssessment[]
   recordedAnatomicalRegionSelections AnatomicalRegionSelection[]
+  recordedVisitChronologies          VisitChronology[]
+  recordedAsbabAssessments           AsbabAssessment[]
+  recordedTashkheesDossiers          TashkheesDossier[]
   recordedResidentClinicalNotes ResidentClinicalNote[]
   referralsMade                Referral[]
   amaDeclinesRecorded          AmaDecline[]
@@ -287,6 +291,7 @@ model Patient {
 
   appointments     Appointment[]
   records          Record[]
+  clinicalReports  PatientReport[]
   mizajAssessments MizajAssessment[]
   prescriptions    Prescription[]
   otpCodes         OtpCode[]
@@ -344,6 +349,9 @@ model Visit {
   humoralAssessment    HumoralAssessment?
   acuteSymptomAssessment AcuteSymptomAssessment?
   anatomicalRegionSelection AnatomicalRegionSelection?
+  chronology                VisitChronology?
+  asbabAssessments          AsbabAssessment[]
+  tashkheesDossier          TashkheesDossier?
   residentClinicalNote   ResidentClinicalNote?
   clinicalRoutingInsight ClinicalRoutingInsight?
   vitalsInsightRecord    VitalsInsightRecord?
@@ -422,6 +430,224 @@ model Message {
 
   @@index([senderId, senderType])
   @@index([receiverId, receiverType])
+}
+
+// Clinical reports (lab, imaging, ECG, previous prescriptions, discharge
+// summaries...) added by clinic staff for a patient — distinct from Record,
+// which is the patient's own portal uploads. Files live in PatientReportFile
+// so listing reports never loads file bytes.
+model PatientReport {
+  id             String    @id @default(cuid())
+  patientId      String
+  facilityId     String
+  category       String    // see REPORT_CATEGORIES in src/lib/reports.ts
+  title          String
+  reportDate     DateTime?
+  source         String?   // lab / hospital / imaging centre
+  resultFlag     String    @default("unknown") // "normal" | "abnormal" | "critical" | "unknown"
+  findings       String?   // key findings, typed by staff
+  // Hakeem Insight reading of the files: { summary, values: [{ name, value, unit, range, flag }] }
+  extraction     String?
+  status         String    @default("pending_review") // "pending_review" | "reviewed"
+  uploadedByType String    // "facility" | "staff"
+  uploadedById   String
+  uploadedByName String
+  reviewedByName String?
+  reviewedAt     DateTime?
+  reviewNote     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  patient  Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility Facility            @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  files    PatientReportFile[]
+
+  @@index([patientId, createdAt])
+}
+
+model PatientReportFile {
+  id        String   @id @default(cuid())
+  reportId  String
+  fileName  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  report PatientReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------- Asbab-e-Sittah
+// The six essential factors (Asbab-e-Sitta Zarooriya) — Stage 4. Pillars are
+// fixed by `key` (the classical framework); admins edit wording/order/active,
+// never delete. Questions and options are fully admin-managed in Meta.
+
+model AsbabPillar {
+  id          String   @id @default(cuid())
+  // Which question framework this section belongs to: "asbab" (Stage 4
+  // Asbab-e-Sittah) or "dalail" (Stage 5 clinical signs — Nabz, Baul, Baraz,
+  // Lisan, physical inspection). Same engine, same admin, separate answers.
+  framework   String   @default("asbab")
+  key         String   @unique // e.g. "hawa" … "ihtibas"; "nabz", "baul", "baraz", "lisan", "zahiri"
+  label       String   // e.g. "Hawa-e-Muheet"
+  english     String   // e.g. "Ambient Air & Environment"
+  description String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  questions AsbabQuestion[]
+}
+
+model AsbabQuestion {
+  id          String   @id @default(cuid())
+  pillarId    String
+  label       String
+  labelLocal  String?
+  helpText    String?
+  type        String   // "single_select" | "multi_select" | "numeric" | "text"
+  required    Boolean  @default(false)
+  weight      Float    @default(1) // constitutional weight — multiplies this question's humoral points
+  // Optional follow-up rule: only shown when question `showIfQuestionId` has `showIfOption` selected.
+  showIfQuestionId String?
+  showIfOption     String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  version     Int      @default(1) // bumped when wording/options change; responses keep their own snapshot
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pillar  AsbabPillar   @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  options AsbabOption[]
+}
+
+// Points each option contributes to the four Akhlat (humours).
+model AsbabOption {
+  id          String  @id @default(cuid())
+  questionId  String
+  label       String
+  description String?
+  safra       Float   @default(0)
+  dam         Float   @default(0)
+  balgham     Float   @default(0)
+  sauda       Float   @default(0)
+  sortOrder   Int     @default(0)
+  active      Boolean @default(true)
+
+  question AsbabQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// One per visit. `status` "draft" until the doctor completes it.
+model AsbabAssessment {
+  id           String    @id @default(cuid())
+  visitId      String
+  framework    String    @default("asbab")
+  status       String    @default("draft") // "draft" | "completed"
+  humoral      String?   // computed drift at last save: { total: {safra,dam,balgham,sauda}, pillars: {...} }
+  recordedById String?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  visit      Visit           @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff?          @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  responses  AsbabResponse[]
+
+  @@unique([visitId, framework])
+}
+
+// A single answer, with the question and selected options snapshotted as they
+// were when answered — later admin edits never reinterpret old records.
+model AsbabResponse {
+  id              String  @id @default(cuid())
+  assessmentId    String
+  questionId      String? // live link (may be null if the question is later removed)
+  pillarKey       String
+  questionLabel   String
+  questionType    String
+  questionVersion Int
+  weight          Float
+  value           String  // JSON: string[] of option labels for choices; number or string otherwise
+  selectedOptions String  @default("[]") // JSON: [{ label, safra, dam, balgham, sauda }]
+
+  assessment AsbabAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, questionId])
+}
+
+// ---------------------------------------------------------------- Tashkhees (Stage 5)
+
+// Admin-managed option lists for the Stage 5 dossier. `list` is one of:
+// "mizaj" (temperaments), "organ" (Udw), "usool" (principles of treatment),
+// "ghiza" (foods), "tadbeer" (regimens), "dosage_form", "timing", "prognosis".
+model TashkheesOption {
+  id          String   @id @default(cuid())
+  list        String
+  label       String
+  localName   String?
+  description String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([list, label])
+  @@index([list, sortOrder])
+}
+
+// The Hakim's diagnosis, treatment plan and handover for a visit. Option
+// values are snapshotted by label (same convention as the rest of the visit).
+model TashkheesDossier {
+  id                String    @id @default(cuid())
+  visitId           String    @unique
+  status            String    @default("draft") // "draft" | "finalized"
+  mizajAsli         String?
+  suMizajType       String?   // "Sada" | "Maddi"
+  suMizajQuality    String?
+  suMizajGrade      Int?      // Darja 1-4
+  organs            String    @default("[]")
+  diagnosisNote     String?
+  usool             String    @default("[]")
+  usoolNote         String?
+  ghizaRecommended  String    @default("[]")
+  ghizaAvoid        String    @default("[]")
+  ghizaNote         String?
+  tadbeer           String    @default("[]") // [{ label, frequency, duration, notes }]
+  prognosis         String?
+  followUpDate      DateTime?
+  followUpNote      String?
+  urgentDirectives  String?
+  priority          String    @default("routine") // "routine" | "priority" | "urgent"
+  handoverNote      String?
+  finalizedAt       DateTime?
+  finalizedByName   String?
+  recordedById      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  visit         Visit                   @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy    Staff?                  @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  prescriptions DossierPrescription[]
+}
+
+// Ilaj-bil-Dawa lines — a table (not JSON) so pharmacy/dispensing can build
+// on it later. `tagId` links the Supplements & Herbs record when chosen from it;
+// the dose is always the Hakim's own entry.
+model DossierPrescription {
+  id           String  @id @default(cuid())
+  dossierId    String
+  tagId        String?
+  name         String
+  form         String?
+  dose         String?
+  timing       String?
+  duration     String?
+  adjuvant     String? // Badraqa / vehicle
+  instructions String?
+  sortOrder    Int     @default(0)
+
+  dossier TashkheesDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
 }
 
 model Record {
@@ -1554,6 +1780,13 @@ model AnatomicalRegionTag {
   label      String   @unique
   localTerms String?
   icon       String   @default("activity")
+  // Which patients the region applies to: "all" | "male" | "female". Stage 3
+  // hides male-only regions for female patients and vice versa; patients with
+  // any other or no recorded gender see every region.
+  gender     String   @default("all")
+  // Where the region is drawn on the Stage 3 body map — a key into BODY_ZONES
+  // (src/lib/body-zones.ts); null = not shown on the map.
+  bodyZone   String?
   sortOrder  Int      @default(0)
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -1570,6 +1803,39 @@ model AnatomicalRegionSelection {
   recordedById String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Admin-curated "Onset Nature & Rhythm" options for Stage 3 — e.g. "Sudden
+// Paroxysmal", "Nocturnal Exacerbation (Layli)".
+model OnsetPatternTag {
+  id          String   @id @default(cuid())
+  label       String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Stage 3 onset nature + chronology for a visit. Duration auto-fills from the
+// longest chief-complaint duration ("auto", with sourceComplaint naming it)
+// until the doctor overrides it ("manual"). onsetPatterns are snapshotted labels.
+model VisitChronology {
+  id              String    @id @default(cuid())
+  visitId         String    @unique
+  onsetPatterns   String    @default("[]")
+  durationValue   Float?
+  durationUnit    String?   // "hours" | "days" | "weeks" | "months" | "years"
+  onsetDate       DateTime?
+  durationSource  String    @default("auto") // "auto" | "manual"
+  sourceComplaint String?
+  note            String?
+  recordedById    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
   recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)

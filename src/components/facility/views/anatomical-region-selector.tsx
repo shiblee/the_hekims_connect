@@ -4,12 +4,14 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { regionIcon } from "@/lib/anatomical-region-icons";
+import { regionIcon, regionAppliesTo } from "@/lib/anatomical-region-icons";
+import { BODY_ZONES, type BodyView } from "@/lib/body-zones";
+import { BodyMap } from "@/components/facility/views/body-map";
 import { Card } from "@/components/ui/card";
 import { PersonStanding, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-interface Region { id: string; label: string; localTerms: string | null; icon: string }
+interface Region { id: string; label: string; localTerms: string | null; icon: string; gender: string; bodyZone: string | null }
 
 export interface AnatomicalRegionSelectorHandle {
   save: () => Promise<void>;
@@ -21,11 +23,12 @@ export interface AnatomicalRegionSelectorHandle {
  * region picked is the primary one (marked with a "Primary" badge).
  * Saved through the page's Save Draft via the ref, like the other panels.
  */
-export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandle, { visitId: string }>(
-  function AnatomicalRegionSelector({ visitId }, ref) {
+export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandle, { visitId: string; patientGender?: string | null }>(
+  function AnatomicalRegionSelector({ visitId, patientGender }, ref) {
     const [regions, setRegions] = useState<Region[]>([]);
     const [selected, setSelected] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [view, setView] = useState<BodyView>("front");
 
     useEffect(() => {
       let cancelled = false;
@@ -54,13 +57,24 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
       },
     }), [visitId, selected]);
 
-    const toggle = (label: string) =>
+    const toggle = (label: string) => {
+      const adding = !selected.includes(label);
       setSelected((cur) => (cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label]));
+      // Selecting a region that's only drawn on the other side (e.g. Spine on
+      // the back) flips the body map so the highlight is actually visible.
+      const zone = regions.find((r) => r.label === label)?.bodyZone;
+      const z = zone ? BODY_ZONES[zone] : null;
+      if (adding && z && !z[view]) setView(view === "front" ? "back" : "front");
+    };
 
     // A region selected on this visit but since deactivated/renamed in admin
     // still shows, so the record never silently loses it.
     const orphaned = selected.filter((l) => !regions.some((r) => r.label === l));
-    const cards: Region[] = [...regions, ...orphaned.map((l) => ({ id: `orphan:${l}`, label: l, localTerms: null, icon: "activity" }))];
+    // Regions that don't apply to this patient's recorded gender are hidden —
+    // unless already selected on this visit, so a saved choice never vanishes.
+    const visible = regions.filter((r) => regionAppliesTo(r.gender, patientGender) || selected.includes(r.label));
+    const hiddenCount = regions.length - visible.length;
+    const cards: Region[] = [...visible, ...orphaned.map((l) => ({ id: `orphan:${l}`, label: l, localTerms: null, icon: "activity", gender: "all", bodyZone: null }))];
 
     if (loading) {
       return (
@@ -74,23 +88,42 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
 
     return (
       <Card className="p-5 border-border/50 bg-card/60">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
               <PersonStanding className="h-4.5 w-4.5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="font-serif text-lg font-semibold">Anatomical Region &amp; Organ System</h2>
-              <p className="text-sm text-muted-foreground">Select every region involved — the first one selected is the primary region.</p>
+              <p className="text-sm text-muted-foreground">
+                Select all involved regions — the first selected is the primary.
+                {hiddenCount > 0 && ` Showing regions for a ${patientGender!.toLowerCase()} patient.`}
+              </p>
             </div>
           </div>
-          <Badge variant="outline" className="shrink-0">{selected.length} selected</Badge>
+          <Badge variant="outline" className="shrink-0 mt-1">{selected.length} selected</Badge>
         </div>
 
         {cards.length === 0 ? (
           <p className="text-sm text-muted-foreground">No regions configured yet — add them in Admin → Meta → Patient.</p>
         ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid lg:grid-cols-[190px_1fr] gap-5 items-start">
+          <div className="rounded-xl border border-border/50 bg-background/40 p-3">
+            <BodyMap
+              view={view}
+              onViewChange={setView}
+              onToggle={toggle}
+              items={cards.map((r) => ({
+                label: r.label, localTerms: r.localTerms, icon: r.icon, zone: r.bodyZone,
+                selected: selected.includes(r.label), primary: selected[0] === r.label,
+              }))}
+            />
+          </div>
+          <div className="space-y-2 min-w-0">
+          {/* Five rows visible (about the body map's height), the rest scrolls
+              inside the card: every card is the same height (80px), so
+              5 rows + 4 gaps of 8px = 432px (+ padding so borders aren't clipped). */}
+          <div className="grid sm:grid-cols-2 gap-2 max-h-[436px] overflow-y-auto p-0.5 pr-1.5 -m-0.5">
             {cards.map((r) => {
               const idx = selected.indexOf(r.label);
               const checked = idx >= 0;
@@ -101,31 +134,31 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
                   type="button"
                   onClick={() => toggle(r.label)}
                   aria-pressed={checked}
+                  title={r.localTerms ? `${r.label} — ${r.localTerms}` : r.label}
                   className={cn(
-                    "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
+                    "h-20 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2 text-left transition-colors",
                     checked ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30"
                   )}
                 >
                   <span className="flex items-center gap-3 min-w-0">
                     <Icon className={cn("h-4.5 w-4.5 shrink-0", checked ? "text-emerald-500" : "text-muted-foreground")} />
                     <span className="min-w-0">
-                      <span className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold">{r.label}</span>
-                        {idx === 0 && (
-                          <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">Primary</Badge>
-                        )}
-                      </span>
-                      {r.localTerms && <span className="block text-xs text-muted-foreground mt-0.5">{r.localTerms}</span>}
+                      <span className="text-sm font-semibold line-clamp-2">{r.label}</span>
+                      {r.localTerms && <span className="block text-xs text-muted-foreground mt-0.5 truncate">{r.localTerms}</span>}
                     </span>
                   </span>
-                  {checked ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
-                  )}
+                  <span className="flex flex-col items-center gap-0.5 shrink-0">
+                    {checked ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-muted-foreground/40" />}
+                    {idx === 0 && <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Primary</span>}
+                  </span>
                 </button>
               );
             })}
+          </div>
+          {cards.length > 10 && (
+            <p className="text-xs text-muted-foreground">Scroll the list to see all {cards.length} regions.</p>
+          )}
+          </div>
           </div>
         )}
       </Card>

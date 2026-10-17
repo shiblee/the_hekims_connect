@@ -110,5 +110,5 @@ export const PATIENT_JOURNEY_STEPS: StageTrackerStep[] = [
   { key: "vitals", label: "Acute Vitals & Intake" },
   { key: "mizaj", label: "Mizaj & Morphometry" },
   { key: "asbab", label: "Asbab-e-Sittah Review", subtitle: "6 Pillars" },
-  { key: "handover", label: "Provisional Handover", subtitle: "Doctor Review" },
+  { key: "handover", label: "Tashkhees & Handover Dossier", subtitle: "Diagnosis & Handover" },
 ];

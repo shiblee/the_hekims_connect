@@ -73,8 +73,16 @@ export interface ChiefComplaintMatrixHandle {
   save: () => Promise<void>;
 }
 
-export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, { visitId: string; intakeComplaints: string[] }>(
-  function ChiefComplaintMatrix({ visitId, intakeComplaints }, ref) {
+/** One complaint's duration as currently entered (saved or not). */
+export interface ComplaintDuration { label: string; value: number | null; unit: string }
+
+export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
+  visitId: string;
+  intakeComplaints: string[];
+  /** Fires with every complaint's live duration whenever the doctor edits one — lets Stage 3's chronology auto-fill. */
+  onDurationsChange?: (durations: ComplaintDuration[]) => void;
+}>(
+  function ChiefComplaintMatrix({ visitId, intakeComplaints, onDurationsChange }, ref) {
   const [loading, setLoading] = useState(true);
   const [complaintOptions, setComplaintOptions] = useState<ChiefComplaintCfg[]>([]);
   const [modules, setModules] = useState<ScreeningModuleCfg[]>([]);
@@ -236,6 +244,15 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, { vis
   };
 
   useImperativeHandle(ref, () => ({ save }), [drafts, loading]);
+
+  useEffect(() => {
+    if (loading || !onDurationsChange) return;
+    onDurationsChange(complaintLabels.map((label) => {
+      const d = drafts[label];
+      const n = d ? parseFloat(d.onsetValue) : NaN;
+      return { label, value: Number.isFinite(n) && n > 0 ? n : null, unit: d?.onsetUnit || "days" };
+    }));
+  }, [drafts, complaintLabels, loading, onDurationsChange]);
 
   if (loading) {
     return (

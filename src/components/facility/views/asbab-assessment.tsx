@@ -1,0 +1,314 @@
+"use client";
+
+import { createElement, useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import {
+  AKHLAT, computeDrift, isAnswered, pillarIcon, questionVisible, toPercent, dominantOf,
+  type AsbabAnswer, type AsbabPillarCfg, type AsbabQuestionCfg,
+} from "@/lib/asbab";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Loader2, Square, SquareCheck, Activity, Wind } from "lucide-react";
+
+interface Archived { pillarKey: string; question: string; value: AsbabAnswer }
+
+/** Loads the Stage 4 configuration and this visit's answers; holds the working answers. */
+export function useAsbabAssessment(visitId: string | undefined, framework: "asbab" | "dalail" = "asbab") {
+  const [pillars, setPillars] = useState<AsbabPillarCfg[] | null>(null);
+  const [answers, setAnswers] = useState<Record<string, AsbabAnswer>>({});
+  const [archived, setArchived] = useState<Archived[]>([]);
+  const [status, setStatus] = useState<"draft" | "completed" | "new">("new");
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState<"draft" | "complete" | null>(null);
+
+  useEffect(() => {
+    if (!visitId) return;
+    let cancelled = false;
+    Promise.all([
+      api.get<{ pillars: AsbabPillarCfg[] }>(`/api/facility/asbab/config?framework=${framework}`),
+      api.get<{ assessment: { status: "draft" | "completed"; answers: Record<string, AsbabAnswer>; archived: Archived[] } | null }>(`/api/facility/visits/${visitId}/asbab?framework=${framework}`),
+    ])
+      .then(([c, a]) => {
+        if (cancelled) return;
+        setPillars(c.pillars);
+        if (a.assessment) { setAnswers(a.assessment.answers); setArchived(a.assessment.archived); setStatus(a.assessment.status); }
+      })
+      .catch((e) => toast.error(e.message || "Could not load the Asbab-e-Sittah assessment"));
+    return () => { cancelled = true; };
+  }, [visitId, framework]);
+
+  const setAnswer = useCallback((qid: string, v: AsbabAnswer) => {
+    setAnswers((cur) => ({ ...cur, [qid]: v }));
+    setDirty(true);
+  }, []);
+
+  const drift = useMemo(() => (pillars ? computeDrift(pillars, answers) : null), [pillars, answers]);
+
+  const progress = useMemo(() => {
+    const per: Record<string, { answered: number; total: number; missingRequired: number }> = {};
+    for (const p of pillars || []) {
+      const shown = p.questions.filter((q) => questionVisible(q, answers));
+      per[p.key] = {
+        answered: shown.filter((q) => isAnswered(answers[q.id])).length,
+        total: shown.length,
+        missingRequired: shown.filter((q) => q.required && !isAnswered(answers[q.id])).length,
+      };
+    }
+    const all = Object.values(per);
+    return {
+      per,
+      answered: all.reduce((n, x) => n + x.answered, 0),
+      total: all.reduce((n, x) => n + x.total, 0),
+      missingRequired: all.reduce((n, x) => n + x.missingRequired, 0),
+    };
+  }, [pillars, answers]);
+
+  const save = async (complete: boolean) => {
+    if (!visitId) return false;
+    setSaving(complete ? "complete" : "draft");
+    try {
+      const res = await api.post<{ status: "draft" | "completed" }>(`/api/facility/visits/${visitId}/asbab?framework=${framework}`, { answers, complete });
+      setStatus(res.status === "completed" || status === "completed" ? "completed" : "draft");
+      setDirty(false);
+      return true;
+    } catch (e: any) {
+      toast.error(e.message || "Could not save the assessment");
+      return false;
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return { pillars, answers, setAnswer, archived, status, dirty, saving, drift, progress, save };
+}
+
+type AsbabState = ReturnType<typeof useAsbabAssessment>;
+
+const LETTERS = "ABCDEFGHIJ";
+
+/** A pillar's icon (looked up by key, outside render so it's a stable component). */
+function PillarIcon({ pillarKey, className }: { pillarKey: string; className?: string }) {
+  return createElement(pillarIcon(pillarKey), { className });
+}
+
+export function QuestionCard({ q, index, count, pillarLabel, value, onChange }: {
+  q: AsbabQuestionCfg; index: number; count: number; pillarLabel: string; value: AsbabAnswer | undefined; onChange: (v: AsbabAnswer) => void;
+}) {
+  const choice = q.type === "single_select" || q.type === "multi_select";
+  const selected = Array.isArray(value) ? value : [];
+  const toggle = (label: string) => {
+    if (q.type === "single_select") onChange(selected.includes(label) ? [] : [label]);
+    else onChange(selected.includes(label) ? selected.filter((l) => l !== label) : [...selected, label]);
+  };
+  const answered = isAnswered(value);
+
+  return (
+    <Card className={cn("p-5 border-border/50 bg-card/60 gap-3", q.required && !answered && "border-l-2 border-l-amber-500/60")}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          {pillarLabel} · Question {index + 1} of {count}
+        </p>
+        <div className="flex items-center gap-1.5">
+          {q.required && <Badge variant="outline" className="text-[10px] font-normal">Required</Badge>}
+          {q.weight > 0 && <span className="text-[11px] text-muted-foreground">Weight {q.weight}×</span>}
+        </div>
+      </div>
+      <div>
+        <p className="text-base font-semibold leading-snug">{q.label}{q.required && <span className="text-destructive"> *</span>}</p>
+        {q.labelLocal && <p className="text-xs text-muted-foreground mt-0.5">{q.labelLocal}</p>}
+        {q.helpText && <p className="text-xs text-muted-foreground mt-0.5">{q.helpText}</p>}
+      </div>
+
+      {choice ? (
+        <div className="grid gap-2">
+          {q.options.map((o, i) => {
+            const on = selected.includes(o.label);
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => toggle(o.label)}
+                aria-pressed={on}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors",
+                  on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30",
+                )}
+              >
+                <span className={cn(
+                  "h-7 w-7 shrink-0 rounded-md flex items-center justify-center text-xs font-semibold",
+                  on ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground",
+                )}>{LETTERS[i]}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-medium">{o.label}</span>
+                  {o.description && <span className="block text-xs text-muted-foreground mt-0.5">{o.description}</span>}
+                </span>
+                {q.type === "single_select"
+                  ? (on ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /> : <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />)
+                  : (on ? <SquareCheck className="h-5 w-5 text-emerald-500 shrink-0" /> : <Square className="h-5 w-5 text-muted-foreground/40 shrink-0" />)}
+              </button>
+            );
+          })}
+        </div>
+      ) : q.type === "numeric" ? (
+        <Input type="number" min={0} step="any" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="h-11 w-48 bg-background/60" placeholder="Enter a number" />
+      ) : (
+        <Textarea value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="min-h-[80px] bg-background/60" placeholder="Type the answer" />
+      )}
+    </Card>
+  );
+}
+
+/** Centre of Stage 4: pillar tabs and the active pillar's questions. */
+export function AsbabAssessmentPanel({ state }: { state: AsbabState }) {
+  const { pillars, answers, setAnswer, archived, progress, status } = state;
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const active = pillars?.find((p) => p.key === activeKey) ?? pillars?.[0];
+
+  if (!pillars) {
+    return <Card className="p-5 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading Asbab-e-Sittah…</div></Card>;
+  }
+  if (!pillars.length || !active) {
+    return <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No Asbab-e-Sittah pillars are enabled — configure them in Admin → Meta → Asbab-e-Sittah.</Card>;
+  }
+
+  const idx = pillars.indexOf(active);
+  const shown = active.questions.filter((q) => questionVisible(q, answers));
+  const archivedHere = archived.filter((a) => a.pillarKey === active.key);
+  const go = (d: -1 | 1) => { const p = pillars[idx + d]; if (p) { setActiveKey(p.key); window.scrollTo({ top: 0, behavior: "smooth" }); } };
+
+  return (
+    <div className="space-y-5">
+      <Card className="p-5 border-border/50 bg-card/60">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><Wind className="h-4.5 w-4.5" /></div>
+            <div className="min-w-0">
+              <h2 className="font-serif text-lg font-semibold">Asbab-e-Sittah Zarooriya</h2>
+              <p className="text-sm text-muted-foreground">The six essential factors of life — answer each pillar; humoral weighting updates live.</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge variant="outline" className="mt-1">{progress.answered} of {progress.total} answered</Badge>
+            {status === "completed" && <Badge variant="outline" className="text-[10px] text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Completed</Badge>}
+          </div>
+        </div>
+
+        {/* Pillar tabs */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-2">
+          {pillars.map((p, i) => {
+            const pr = progress.per[p.key];
+            const done = pr && pr.total > 0 && pr.answered === pr.total;
+            const on = p.key === active.key;
+            return (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => setActiveKey(p.key)}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-left transition-colors",
+                  on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/30",
+                )}
+              >
+                <span className="flex items-center justify-between gap-1">
+                  <PillarIcon pillarKey={p.key} className={cn("h-4 w-4", on ? "text-primary" : "text-muted-foreground")} />
+                  {done
+                    ? <span className="h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                    : pr?.missingRequired ? <span className="h-2 w-2 rounded-full bg-amber-500" aria-label="Required questions remaining" /> : null}
+                </span>
+                <span className={cn("block text-xs font-semibold mt-1.5 leading-tight", on && "text-primary")}>{i + 1}. {p.label}</span>
+                <span className="block text-[11px] text-muted-foreground leading-tight mt-0.5">{p.english}</span>
+                <span className="block text-[10px] text-muted-foreground mt-1 tabular-nums">{pr?.answered ?? 0}/{pr?.total ?? 0} answered</span>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Active pillar */}
+      <div className="flex items-start gap-3 px-1">
+        <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><PillarIcon pillarKey={active.key} className="h-4.5 w-4.5" /></div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Pillar {idx + 1} of {pillars.length}</p>
+          <h3 className="font-serif text-lg font-semibold leading-tight">{active.label} <span className="text-sm font-sans font-normal text-muted-foreground">· {active.english}</span></h3>
+          {active.description && <p className="text-sm text-muted-foreground mt-0.5">{active.description}</p>}
+        </div>
+      </div>
+
+      {shown.length === 0
+        ? <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No questions are enabled for this pillar.</Card>
+        : shown.map((q, i) => (
+          <QuestionCard key={q.id} q={q} index={i} count={shown.length} pillarLabel={active.label} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />
+        ))}
+
+      {archivedHere.length > 0 && (
+        <Card className="p-4 border-border/50 bg-card/40 gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorded earlier (question since disabled)</p>
+          {archivedHere.map((a, i) => (
+            <p key={i} className="text-sm"><span className="text-muted-foreground">{a.question}:</span> {Array.isArray(a.value) ? a.value.join(", ") : a.value}</p>
+          ))}
+        </Card>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="outline" size="sm" onClick={() => go(-1)} disabled={idx === 0}><ArrowLeft className="h-3.5 w-3.5" /> {idx > 0 ? pillars[idx - 1].label : "Previous"}</Button>
+        <Button variant="outline" size="sm" onClick={() => go(1)} disabled={idx === pillars.length - 1}>{idx < pillars.length - 1 ? pillars[idx + 1].label : "Next"} <ArrowRight className="h-3.5 w-3.5" /></Button>
+      </div>
+    </div>
+  );
+}
+
+/** Right column: live humoral drift from the Asbab-e-Sittah answers. */
+export function AsbabDriftCard({ state }: { state: AsbabState }) {
+  const { drift, pillars } = state;
+  if (!drift || !pillars) return null;
+  const dominant = drift.dominant ? AKHLAT.find((h) => h.key === drift.dominant) : null;
+  const hasPoints = AKHLAT.some((h) => drift.total[h.key] > 0);
+
+  return (
+    <Card className="p-4 border-border/50 bg-card/60 gap-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <Activity className="h-3.5 w-3.5 text-primary" /> Humoral Drift
+        </p>
+        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Live</Badge>
+      </div>
+      {!hasPoints ? (
+        <p className="text-sm text-muted-foreground">Answer the Asbab-e-Sittah questions to see which Akhlat the patient&apos;s lifestyle is pushing towards.</p>
+      ) : (
+        <>
+          {dominant && (
+            <p className="text-sm">Leaning towards <span className={cn("font-semibold", dominant.text)}>{dominant.label}</span> <span className="text-muted-foreground">({dominant.english} · {dominant.quality})</span></p>
+          )}
+          <div className="space-y-2">
+            {AKHLAT.map((h) => (
+              <div key={h.key} className="grid grid-cols-[70px_1fr_36px] items-center gap-2 text-xs">
+                <span className={cn(drift.dominant === h.key ? cn("font-semibold", h.text) : "text-muted-foreground")}>{h.label}</span>
+                <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full transition-all", h.bar)} style={{ width: `${drift.percent[h.key]}%` }} /></span>
+                <span className="text-right tabular-nums">{drift.percent[h.key]}%</span>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-border/40 pt-2 space-y-1">
+            {pillars.map((p) => {
+              const d = dominantOf(drift.perPillar[p.key]);
+              const h = d ? AKHLAT.find((x) => x.key === d)! : null;
+              const pct = d ? toPercent(drift.perPillar[p.key])[d] : 0;
+              return (
+                <div key={p.key} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground truncate">{p.label}</span>
+                  {h ? <span className={cn("font-medium shrink-0", h.text)}>{h.label} {pct}%</span> : <span className="text-muted-foreground/60 shrink-0">—</span>}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">Weighted from each answer&apos;s humoral points (set in Admin). A guide for the Hakim, not a diagnosis.</p>
+        </>
+      )}
+    </Card>
+  );
+}

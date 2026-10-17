@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const regions = await db.anatomicalRegionTag.findMany({
     where: { active: true },
     orderBy: { sortOrder: "asc" },
-    select: { id: true, label: true, localTerms: true, icon: true },
+    select: { id: true, label: true, localTerms: true, icon: true, gender: true, bodyZone: true },
   });
   return NextResponse.json({ regions });
 }

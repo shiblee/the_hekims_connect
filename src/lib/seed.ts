@@ -932,6 +932,74 @@ export async function seedAnatomicalRegionTags() {
   await db.anatomicalRegionTag.createMany({ data: regions.map((r, i) => ({ ...r, sortOrder: i })) });
 }
 
+// Full organ-system list (v2), added once on top of whatever exists — a
+// version marker in PortalSetting means regions an admin later renames or
+// deactivates are never re-added. Labels already present are skipped.
+const ANATOMICAL_REGIONS_V2: { label: string; localTerms: string; icon: string; gender: "all" | "male" | "female" }[] = [
+  { label: "General / Systemic", localTerms: "Badan / Humma / Zof-e-Aam", icon: "stethoscope", gender: "all" },
+  { label: "Cardiovascular / Qalb", localTerms: "Qalb / Shara'een / Awrida", icon: "heart", gender: "all" },
+  { label: "Spinal / Back", localTerms: "Fiqrat / Zahr / Qatan", icon: "bone", gender: "all" },
+  { label: "Limbs & Peripheral Vessels", localTerms: "Atraf / Awrida-e-Atraf", icon: "footprints", gender: "all" },
+  { label: "Ophthalmic / Ayn", localTerms: "Ayn / Jafn / Basarat", icon: "eye", gender: "all" },
+  { label: "Ear, Nose & Throat", localTerms: "Uzn / Anf / Halq", icon: "ear", gender: "all" },
+  { label: "Oral & Dental / Fam", localTerms: "Fam / Asnan / Lisan / Lissa", icon: "smile", gender: "all" },
+  { label: "Endocrine & Metabolic", localTerms: "Ghudad / Istehala", icon: "flask", gender: "all" },
+  { label: "Blood & Lymphatic", localTerms: "Dam / Tihal / Ghudad-e-Lamfawiya", icon: "droplets", gender: "all" },
+  { label: "Psychological / Nafsani", localTerms: "Nafs / Quwa-e-Nafsaniya", icon: "mind", gender: "all" },
+  { label: "Anorectal / Maq'ad", localTerms: "Maq'ad / Bawaseer / Shuqaq", icon: "dot", gender: "all" },
+  { label: "Gynaecological / Rahim", localTerms: "Rahim / Mabiz / Haiz", icon: "venus", gender: "female" },
+  { label: "Obstetric / Pregnancy", localTerms: "Haml / Wiladat / Nifas", icon: "baby", gender: "female" },
+  { label: "Breast / Sadi", localTerms: "Sadi / Pistan / Laban", icon: "ribbon", gender: "female" },
+  { label: "Male Reproductive / Andrological", localTerms: "Unsayain / Qazib / Ghudda-e-Mazi", icon: "mars", gender: "male" },
+];
+
+export async function seedAnatomicalRegionTagsV2() {
+  const marker = await db.portalSetting.findUnique({ where: { category_key: { category: "seed_versions", key: "anatomical_regions" } } });
+  if (marker && Number(marker.value) >= 2) return;
+  const existing = new Set((await db.anatomicalRegionTag.findMany({ select: { label: true } })).map((r) => r.label.toLowerCase()));
+  let order = ((await db.anatomicalRegionTag.aggregate({ _max: { sortOrder: true } }))._max.sortOrder ?? -1) + 1;
+  for (const r of ANATOMICAL_REGIONS_V2) {
+    if (existing.has(r.label.toLowerCase())) continue;
+    await db.anatomicalRegionTag.create({ data: { ...r, sortOrder: order++ } });
+  }
+  await db.portalSetting.upsert({
+    where: { category_key: { category: "seed_versions", key: "anatomical_regions" } },
+    update: { value: "2" },
+    create: { category: "seed_versions", key: "anatomical_regions", value: "2" },
+  });
+}
+
+// Starter "Onset Nature & Rhythm" options for Stage 3. Seeded only into an
+// empty table, so an admin's edits are never undone.
+export async function seedOnsetPatternTags() {
+  if (await db.onsetPatternTag.count()) return;
+  const patterns: { label: string; description: string }[] = [
+    { label: "Sudden Paroxysmal", description: "Abrupt onset, comes in attacks" },
+    { label: "Insidious Gradual", description: "Slow, creeping onset" },
+    { label: "Post-Prandial Exacerbation", description: "Worse after meals" },
+    { label: "Nocturnal Exacerbation (Layli)", description: "Worse at night" },
+  ];
+  await db.onsetPatternTag.createMany({ data: patterns.map((p, i) => ({ ...p, sortOrder: i })) });
+}
+
+// v3: place the default regions on the Stage 3 body map. Only fills regions
+// that have no body area yet, once (version marker), so admin choices stand.
+export async function seedAnatomicalRegionZonesV3() {
+  const marker = await db.portalSetting.findUnique({ where: { category_key: { category: "seed_versions", key: "anatomical_regions" } } });
+  if (marker && Number(marker.value) >= 3) return;
+  const { DEFAULT_REGION_ZONES } = await import("@/lib/body-zones");
+  const regions = await db.anatomicalRegionTag.findMany({ where: { bodyZone: null }, select: { id: true, label: true } });
+  for (const r of regions) {
+    const zone = DEFAULT_REGION_ZONES[r.label];
+    if (zone) await db.anatomicalRegionTag.update({ where: { id: r.id }, data: { bodyZone: zone } });
+  }
+  await db.portalSetting.upsert({
+    where: { category_key: { category: "seed_versions", key: "anatomical_regions" } },
+    update: { value: "3" },
+    create: { category: "seed_versions", key: "anatomical_regions", value: "3" },
+  });
+}
+
 export async function seedEmailTemplates() {
   for (const t of DEFAULT_EMAIL_TEMPLATES) {
     await db.emailTemplate.upsert({ where: { key: t.key }, update: {}, create: t });
@@ -949,6 +1017,11 @@ export async function seedDatabase() {
   await seedRedFlagCriteria();
   await seedAcuteSymptomTags();
   await seedAnatomicalRegionTags();
+  await seedAnatomicalRegionTagsV2();
+  await seedAnatomicalRegionZonesV3();
+  await (await import("@/lib/asbab-seed")).seedAsbabConfig();
+  await (await import("@/lib/tashkhees-seed")).seedTashkheesConfig();
+  await seedOnsetPatternTags();
   await seedEmailTemplates();
 
   // Check if already seeded

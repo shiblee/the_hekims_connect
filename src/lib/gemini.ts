@@ -608,6 +608,97 @@ ${list(input.medicationCatalog)}`;
   return callGeminiGrounded(prompt);
 }
 
+/** Gemini call with attached files (images / PDF, base64). Returns null on any failure or missing key. */
+async function callGeminiWithFiles(prompt: string, files: { mimeType: string; base64: string }[]): Promise<string | null> {
+  const apiKey = await getGeminiApiKey();
+  if (!apiKey) return null;
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [...files.map((f) => ({ inline_data: { mime_type: f.mimeType, data: f.base64 } })), { text: prompt }] }],
+      }),
+    }
+  );
+  if (!res.ok) {
+    console.error("Gemini file call error:", res.status, await res.text().catch(() => ""));
+    // Out of credits / rate-limited is worth telling the user plainly — they can act on it.
+    if (res.status === 402 || res.status === 429) throw new GeminiQuotaError();
+    return null;
+  }
+  const json = await res.json();
+  const text = (json?.candidates?.[0]?.content?.parts || []).map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
+  return text.trim() || null;
+}
+
+export class GeminiQuotaError extends Error {
+  constructor() {
+    super("Hakeem Insight's Gemini credits or quota are used up — top up the Gemini account (Google AI Studio), or fill the details in by hand.");
+  }
+}
+
+export interface ReportReadingAi {
+  category: string | null;
+  title: string | null;
+  reportDate: string | null;
+  source: string | null;
+  resultFlag: "normal" | "abnormal" | "critical" | "unknown";
+  summary: string | null;
+  values: { name: string; value: string; unit?: string; range?: string; flag?: "high" | "low" | "abnormal" | "normal" | null }[];
+}
+
+/**
+ * Reads an uploaded clinical report (photos / PDF pages of ONE report) and
+ * returns the fields to pre-fill the report form plus the test values exactly
+ * as printed. Only transcribes what is on the document — never interprets
+ * beyond a short factual summary, never diagnoses. Server-side only.
+ */
+export async function readClinicalReport(files: { mimeType: string; base64: string }[], categories: string[]): Promise<ReportReadingAi | null> {
+  const prompt = `You are transcribing a patient's clinical report for a clinic's records. The attached file(s) are pages/photos of ONE report.
+
+Return ONLY a single JSON object, no markdown fences:
+{
+  "category": one of ${JSON.stringify(categories)} — the best fit for this document, or null,
+  "title": short report name as printed, e.g. "Complete Blood Count", "Chest X-ray PA view", "Lipid Profile", or null,
+  "reportDate": the report/collection date as YYYY-MM-DD, or null if not printed,
+  "source": lab / hospital / imaging centre name as printed, or null,
+  "resultFlag": "normal" if every value is within its printed reference range and no abnormal finding is reported, "abnormal" if any value is flagged or out of range or an abnormal finding is reported, "critical" only if the document itself marks a value or finding as critical/panic, else "unknown",
+  "summary": 1-2 plain sentences stating what the report shows (e.g. which values are high/low), without diagnosing or advising, or null,
+  "values": every measured parameter printed on the report: [{ "name", "value", "unit", "range" (reference range as printed), "flag": "high" | "low" | "abnormal" | "normal" | null }] — [] for reports without numeric values (e.g. imaging); for imaging/ECG put the printed impression in "summary"
+}
+
+Rules: transcribe exactly what is printed — never guess, invent or correct values, units, ranges, names or dates; use null when something is not on the document or unreadable. Set "flag" from the document's own H/L markers or by comparing to the printed range; null when there is no range. Never add a diagnosis, treatment or dosage.`;
+  const raw = await callGeminiWithFiles(prompt, files);
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(stripCodeFence(raw));
+    const str = (v: any) => (typeof v === "string" && v.trim() ? v.trim() : null);
+    const flags = new Set(["high", "low", "abnormal", "normal"]);
+    return {
+      category: categories.includes(p.category) ? p.category : null,
+      title: str(p.title),
+      reportDate: typeof p.reportDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.reportDate) ? p.reportDate : null,
+      source: str(p.source),
+      resultFlag: ["normal", "abnormal", "critical"].includes(p.resultFlag) ? p.resultFlag : "unknown",
+      summary: str(p.summary),
+      values: Array.isArray(p.values)
+        ? p.values
+            .filter((v: any) => v && str(v.name) && (typeof v.value === "string" || typeof v.value === "number"))
+            .slice(0, 120)
+            .map((v: any) => ({
+              name: String(v.name).trim(), value: String(v.value).trim(),
+              unit: str(v.unit) ?? undefined, range: str(v.range) ?? undefined,
+              flag: flags.has(v.flag) ? v.flag : null,
+            }))
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface MedicationSuggestionAi {
   label: string;
   drugClass: string;

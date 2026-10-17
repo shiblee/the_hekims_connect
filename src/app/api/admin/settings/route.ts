@@ -3,11 +3,14 @@ import { db } from "@/lib/db";
 import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/request-info";
 
+// Internal bookkeeping (e.g. seed version markers) — not admin-editable settings.
+const VISIBLE = { category: { notIn: ["seed_versions"] } };
+
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const settings = await db.portalSetting.findMany({ orderBy: [{ category: "asc" }, { key: "asc" }] });
+  const settings = await db.portalSetting.findMany({ where: VISIBLE, orderBy: [{ category: "asc" }, { key: "asc" }] });
   return NextResponse.json({ settings });
 }
 
@@ -43,6 +46,6 @@ export async function PUT(req: NextRequest) {
     getClientIp(req)
   );
 
-  const settings = await db.portalSetting.findMany({ orderBy: [{ category: "asc" }, { key: "asc" }] });
+  const settings = await db.portalSetting.findMany({ where: VISIBLE, orderBy: [{ category: "asc" }, { key: "asc" }] });
   return NextResponse.json({ settings });
 }
