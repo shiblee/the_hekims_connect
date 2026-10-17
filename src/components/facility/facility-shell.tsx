@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PatientReportsPanel } from "@/components/facility/reports/patient-reports-panel";
+import { FlashNotice } from "@/components/shared/flash-notice";
 import {
   LayoutDashboard, Activity, Pill, CalendarDays, Users, MessageSquare,
   FilePlus2, LogOut, Search, Bell, Stethoscope,
@@ -172,6 +173,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
         {/* Content */}
         <main className="flex-1 p-4 lg:p-6">
           <FacilityStatsContext.Provider value={stats}>
+            <FlashNotice />
             {children}
           </FacilityStatsContext.Provider>
         </main>

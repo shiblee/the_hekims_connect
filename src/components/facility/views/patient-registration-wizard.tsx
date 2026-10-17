@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
@@ -14,19 +13,40 @@ import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect, FloatingSplitField, FieldError } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
+import { InlineNotice, type Notice } from "@/components/shared/inline-notice";
+import { setFlash } from "@/lib/flash";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Search, Loader2, UserPlus, PartyPopper, ChevronLeft, X, History, IdCard, User, Contact, QrCode,
   BriefcaseMedical, Plus, TriangleAlert, Leaf, Pill, PersonStanding, Accessibility, Activity,
-  Bookmark, ArrowRight, Save,
+  Bookmark, ArrowRight, Save, CheckCircle2, RotateCw, ChevronRight,
 } from "lucide-react";
 import QRCode from "qrcode";
 
 // 10-digit Indian mobile number, no leading 0/+91 — matches the backend's
 // own validation on save so a bad number is caught here instead of round-tripping.
 const PHONE_PATTERN = /^[6-9]\d{9}$/;
+
+// A message shown in place on the form, optionally with a retry action.
+// `kind` marks notices that resolve themselves as the form is corrected.
+type ActionNotice = Notice & { retry?: () => void; retryLabel?: string; kind?: "fields" | "missing" };
+
+const FIELD_LABELS: Record<string, string> = { name: "Patient name", phone: "Mobile number", emergencyContact: "Emergency contact number" };
+
+/** Scrolls a field (or a section) into view and puts the cursor in it. */
+function jumpTo(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  const target = el.matches("input, button, textarea, [tabindex]") ? el : el.querySelector<HTMLElement>("input, button, textarea");
+  target?.focus({ preventScroll: true });
+  // Brief highlight so the eye lands on the right spot after the scroll.
+  const ring = ["ring-2", "ring-amber-500/60", "ring-offset-4", "ring-offset-card", "rounded-lg", "transition-shadow"];
+  el.classList.add(...ring);
+  setTimeout(() => el.classList.remove(...ring), 1800);
+}
 
 interface MetaSections {
   [key: string]: { label: string; options: string[] };
@@ -123,6 +143,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   const [address, setAddress] = useState(emptyFormFields.address);
   const [cityState, setCityState] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const clearFieldError = (key: string) => setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev));
+  // On-screen messages (no pop-ups): each sits next to what it's about.
+  const [loadNotice, setLoadNotice] = useState<ActionNotice | null>(null);
+  const [searchNotice, setSearchNotice] = useState<(ActionNotice & { empty?: boolean }) | null>(null);
+  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [printNotice, setPrintNotice] = useState<Notice | null>(null);
 
   // Doctor
   const [doctorId, setDoctorId] = useState("");
@@ -264,7 +290,11 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     if (!visitId) return;
     api.get(`/api/facility/visits/${visitId}/registration`)
       .then((res: any) => applyRegistrationPrefill(res))
-      .catch((e: any) => toast.error(e.message || "Could not load this visit's registration"))
+      .catch((e: any) => setLoadNotice({
+        tone: "error", title: "This visit's registration couldn't be loaded",
+        detail: `${e.message || "Network error"}. The form below may be incomplete — don't save until it loads.`,
+        retry: () => window.location.reload(), retryLabel: "Reload",
+      }))
       .finally(() => setLoadingVisit(false));
   }, [visitId]);
 
@@ -287,7 +317,11 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
           selectCandidate({ ...res.patient, lastVisitAt: null });
         }
       } catch (e: any) {
-        toast.error(e.message || "Could not load this patient");
+        setLoadNotice({
+          tone: "error", title: "This patient's details couldn't be loaded",
+          detail: `${e.message || "Network error"}. The form below may be incomplete — don't save until it loads.`,
+          retry: () => window.location.reload(), retryLabel: "Reload",
+        });
       } finally {
         setLoadingVisit(false);
       }
@@ -331,26 +365,55 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   // The front-desk handover checklist — spans Sections 1 and 4. Emergency
   // Contact (Section 2), Doctor, and Payment are explicitly optional
   // elsewhere in the form, so they're excluded from this gate.
-  const mandatoryChecklist = [
-    !!name.trim(), !!phone.trim(), !!gender, !!approxAge, !!address.trim(),
-    chiefComplaintIds.length > 0, !!onsetTimeline, !!mobility,
+  const readiness = [
+    { label: "Patient name", ok: !!name.trim(), target: "name" },
+    { label: "Mobile number", ok: !!phone.trim(), target: "phone" },
+    { label: "Gender", ok: !!gender, target: "gender" },
+    { label: "Age", ok: !!approxAge, target: "approxAge" },
+    { label: "Address", ok: !!address.trim(), target: "address" },
+    { label: "Chief complaint", ok: chiefComplaintIds.length > 0, target: "reg-complaints" },
+    { label: "Onset timeline", ok: !!onsetTimeline, target: "reg-onset" },
+    { label: "Mobility", ok: !!mobility, target: "reg-mobility" },
   ];
+  const mandatoryChecklist = readiness.map((r) => r.ok);
+
+  // Self-resolving notices update live and vanish once the form is fixed.
+  const openFieldErrors = Object.entries(fieldErrors).filter(([k, v]) => v && k in FIELD_LABELS);
+  const footerNotice: ActionNotice | null = !actionNotice ? null
+    : actionNotice.kind === "fields"
+      ? openFieldErrors.length
+        ? {
+          ...actionNotice,
+          title: openFieldErrors.length === 1 ? "1 field needs fixing before saving" : `${openFieldErrors.length} fields need fixing before saving`,
+          detail: (
+            <span className="flex flex-wrap gap-x-3 gap-y-1">
+              {openFieldErrors.map(([k, msg]) => (
+                <button key={k} type="button" onClick={() => jumpTo(k)} className="underline underline-offset-2 hover:text-foreground">
+                  {FIELD_LABELS[k]}: {msg}
+                </button>
+              ))}
+            </span>
+          ),
+        }
+        : null
+      : actionNotice.kind === "missing" && mandatoryChecklist.every(Boolean) ? null : actionNotice;
   const verifiedCount = mandatoryChecklist.filter(Boolean).length;
   const mandatoryDone = verifiedCount === mandatoryChecklist.length;
 
-  const printWristband = async (data: { patientLabel: string; patientCode: string; visitCode: string }) => {
+  const printWristband = async (data: { patientLabel: string; patientCode: string; visitCode: string }): Promise<Notice | null> => {
     const qrValue = `${data.patientCode}|${data.visitCode}`;
     let qrDataUrl = "";
     try {
       qrDataUrl = await QRCode.toDataURL(qrValue, { width: 220, margin: 1 });
     } catch {
-      toast.error("Could not generate the barcode");
-      return;
+      return { tone: "error", title: "The wristband barcode couldn't be generated", detail: "The patient is registered — try printing again." };
     }
     const win = window.open("", "_blank", "width=420,height=640");
     if (!win) {
-      toast.error("Could not open the print window — check your browser's popup blocker");
-      return;
+      return {
+        tone: "warning", title: "The print window was blocked",
+        detail: "Your browser stopped the wristband window from opening. Allow pop-ups for this site (icon at the right of the address bar), then print again.",
+      };
     }
     const escaped = data.patientLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;");
     win.document.write(`<!doctype html><html><head><title>Wristband — ${data.patientCode}</title>
@@ -371,6 +434,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       </body></html>`);
     win.document.close();
     win.focus();
+    return null;
   };
 
   const addAllergy = (value?: string) => {
@@ -416,6 +480,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setAddress(emptyFormFields.address);
     setCityState(defaults.city && defaults.state ? `${defaults.city}, ${defaults.state}` : "");
     setFieldErrors({});
+    setActionNotice(null);
     setChiefComplaintIds([]); setComplaintSearch(""); setNarrative(""); setOnsetTimeline("");
     setAllergies([]); setAllergyInput("");
     setMedications([]); setMedicationInput(""); setMedicationKind("supplement");
@@ -428,13 +493,21 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setDoctorId("");
     setAmount(""); setPaymentMode("");
     setResult(null);
+    setPrintNotice(null);
+    setSearchNotice(null);
   };
 
   const runSearch = async () => {
-    if (!searchMobile && !searchName) {
-      toast.error("Enter a mobile number or name to search");
+    if (!searchMobile && !searchName.trim()) {
+      setSearchNotice({
+        tone: "warning", empty: true,
+        title: "Enter a mobile number or name to search",
+        detail: "Either one is enough — the mobile number gives the most accurate match. If the patient is new here, use Add New Patient instead.",
+      });
+      document.getElementById("searchMobile")?.focus();
       return;
     }
+    setSearchNotice(null);
     if (searchMobile && !PHONE_PATTERN.test(searchMobile)) {
       setFieldErrors((prev) => ({ ...prev, searchMobile: "Enter a valid 10-digit mobile number" }));
       return;
@@ -448,7 +521,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       const res = await api.get<{ candidates: Candidate[] }>(`/api/facility/patients/search?${params.toString()}`);
       setCandidates(res.candidates || []);
     } catch (e: any) {
-      toast.error(e.message || "Search failed");
+      setCandidates(null);
+      setSearchNotice({
+        tone: "error", title: "The search didn't go through",
+        detail: `${e.message || "Network error"}. Nothing was changed — try again.`,
+        retry: () => runSearch(), retryLabel: "Search again",
+      });
     } finally {
       setSearching(false);
     }
@@ -482,6 +560,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setFieldErrors({});
   };
 
+  // Field-level messages sit under each field; this summary by the save
+  // buttons says what's wrong and jumps straight to it.
+  const showFieldErrors = (errs: Record<string, string>) => {
+    setActionNotice({ tone: "error", title: "", kind: "fields" });
+    jumpTo(Object.keys(errs)[0]);
+  };
+
   const submitWith = async (mode: "hold" | "print" | "transfer") => {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = "Name is required";
@@ -489,12 +574,19 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = "Enter a valid 10-digit mobile number";
     if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = "Enter a valid 10-digit mobile number";
     setFieldErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { showFieldErrors(errs); return; }
     if (mode === "transfer" && !mandatoryDone) {
-      toast.error("Complete all 10 mandatory fields before transferring to Triage & Vitals");
+      const missing = readiness.filter((r) => !r.ok);
+      setActionNotice({
+        tone: "warning", kind: "missing",
+        title: `${missing.length} required ${missing.length === 1 ? "field is" : "fields are"} still empty`,
+        detail: "Fill in the fields listed below before transferring to Triage & Vitals.",
+      });
+      jumpTo(missing[0].target);
       return;
     }
 
+    setActionNotice(null);
     setSubmitting(true);
     try {
       const finalDob = approxAge ? estimateDobFromAgeValue(parseFloat(approxAge), ageUnit.toLowerCase() as AgeUnit) : null;
@@ -517,6 +609,8 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       } else {
         const res = await api.post<{ patient: { id: string; patientCode: string; name: string } }>("/api/facility/patients", payload);
         pid = res.patient.id;
+        // If a later step fails, a retry must update this patient rather than create a duplicate.
+        setEditingId(res.patient.id); setEditingCode(res.patient.patientCode);
         pLabel = `${res.patient.name} (${res.patient.patientCode})`;
         pCode = res.patient.patientCode;
       }
@@ -542,16 +636,16 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         });
       }
 
-      if (mode === "print") {
-        await printWristband({ patientLabel: pLabel, patientCode: pCode, visitCode: visitRes.visit.visitCode });
-      }
+      const printProblem = mode === "print"
+        ? await printWristband({ patientLabel: pLabel, patientCode: pCode, visitCode: visitRes.visit.visitCode })
+        : null;
 
       if (mode === "transfer") {
         // Registration and the next stage (vitals, screening, doctor review…)
         // are frequently handled by different staff at different times, not
         // one continuous sitting — so hand control back to the patient list
         // rather than forcing whoever's at the desk into the Vitals page.
-        toast.success(`${pLabel} registered — ready for Triage & Vitals`);
+        setFlash({ tone: "success", title: `${pLabel} registered`, detail: "Ready for Triage & Vitals — they now appear in the patient list below." });
         router.push("/facility/patients");
         return;
       }
@@ -564,8 +658,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         doctorName: doctors.find((d) => d.id === doctorId)?.name,
         paymentRecorded,
       });
+      setPrintNotice(printProblem);
     } catch (e: any) {
-      toast.error(e.message || "Could not complete registration");
+      setActionNotice({
+        tone: "error", title: "Registration wasn't completed",
+        detail: `${e.message || "Network error"}. Everything you entered is still here — check it and try again.`,
+        retry: () => submitWith(mode), retryLabel: "Try again",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -583,8 +682,10 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = "Enter a valid 10-digit mobile number";
     if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = "Enter a valid 10-digit mobile number";
     setFieldErrors(errs);
-    if (Object.keys(errs).length || !editingId || !resolvedVisitId) return;
+    if (Object.keys(errs).length) { showFieldErrors(errs); return; }
+    if (!editingId || !resolvedVisitId) return;
 
+    setActionNotice(null);
     setSubmitting(true);
     try {
       const finalDob = approxAge ? estimateDobFromAgeValue(parseFloat(approxAge), ageUnit.toLowerCase() as AgeUnit) : null;
@@ -618,10 +719,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         emergencyContact, emergencyContactName, address, cityState, doctorId,
         chiefComplaintIds, narrative, onsetTimeline, allergies, medications, mobility, amount, paymentMode,
       });
-      toast.success("Registration updated");
+      setFlash({ tone: "success", title: "Registration updated", detail: `Changes to ${name.trim()}'s registration were saved.` });
       router.push(`/facility/patients/${editingId}/record`);
     } catch (e: any) {
-      toast.error(e.message || "Could not save changes");
+      setActionNotice({
+        tone: "error", title: "Your changes weren't saved",
+        detail: `${e.message || "Network error"}. Everything you entered is still here — try saving again.`,
+        retry: () => saveAndReturn(), retryLabel: "Save again",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -669,6 +774,18 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         onNavigate={(href) => guardedNavigate(() => router.push(href))}
       />
 
+      {loadNotice && (
+        <InlineNotice
+          {...loadNotice}
+          className="mb-4"
+          action={loadNotice.retry && (
+            <Button size="sm" variant="outline" onClick={loadNotice.retry}>
+              <RotateCw className="h-3.5 w-3.5" /> {loadNotice.retryLabel ?? "Try again"}
+            </Button>
+          )}
+        />
+      )}
+
       <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
@@ -688,6 +805,19 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                 <p className="text-muted-foreground italic">No payment recorded yet.</p>
               )}
             </Card>
+            {printNotice && (
+              <InlineNotice
+                {...printNotice}
+                className="max-w-xl mx-auto text-left"
+                action={
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    setPrintNotice(await printWristband({ patientLabel: result.patientLabel, patientCode: result.patientCode, visitCode: result.visitCode }));
+                  }}>
+                    <QrCode className="h-3.5 w-3.5" /> Print again
+                  </Button>
+                }
+              />
+            )}
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <Button variant="outline" onClick={resetAll}>Register Another Patient</Button>
               <Button variant="outline" onClick={goToPatients}>View Patient</Button>
@@ -703,12 +833,22 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
             <section className="space-y-3 pb-6 border-b border-border/40">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
               <div className="grid sm:grid-cols-2 gap-3">
-                <FloatingField id="searchName" label="Patient Name" value={searchName} onChange={(e) => setSearchName(e.target.value)} />
+                <FloatingField
+                  id="searchName" label="Patient Name" value={searchName}
+                  onChange={(e) => { setSearchName(e.target.value); if (searchNotice?.empty) setSearchNotice(null); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") runSearch(); }}
+                  error={!!searchNotice?.empty}
+                />
                 <div>
                   <FloatingField
                     id="searchMobile" label="Mobile number" value={searchMobile}
-                    onChange={(e) => setSearchMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    error={!!fieldErrors.searchMobile}
+                    onChange={(e) => {
+                      setSearchMobile(e.target.value.replace(/\D/g, "").slice(0, 10));
+                      clearFieldError("searchMobile");
+                      if (searchNotice?.empty) setSearchNotice(null);
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") runSearch(); }}
+                    error={!!fieldErrors.searchMobile || !!searchNotice?.empty}
                     type="tel" inputMode="numeric" maxLength={10}
                   />
                   <FieldError message={fieldErrors.searchMobile} />
@@ -723,10 +863,31 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                 </Button>
               </div>
 
+              {searchNotice && (
+                <InlineNotice
+                  {...searchNotice}
+                  onDismiss={() => setSearchNotice(null)}
+                  action={searchNotice.retry && (
+                    <Button size="sm" variant="outline" onClick={searchNotice.retry}>
+                      <RotateCw className="h-3.5 w-3.5" /> {searchNotice.retryLabel ?? "Try again"}
+                    </Button>
+                  )}
+                />
+              )}
+
               {candidates !== null && (
                 <div>
                   {candidates.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No existing patients matched. Click "Add New Patient" to register one.</p>
+                    <InlineNotice
+                      tone="info"
+                      title="No existing patient matches this search"
+                      detail="Check the spelling or the number. If this is their first visit here, register them as a new patient — what you searched for is carried into the form."
+                      action={
+                        <Button size="sm" onClick={openNewPatient}>
+                          <UserPlus className="h-3.5 w-3.5" /> Add New Patient
+                        </Button>
+                      }
+                    />
                   ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {candidates.map((c) => (
@@ -819,7 +980,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           label="Patient Name"
                           autoComplete="off"
                           value={name}
-                          onChange={(e) => setName(e.target.value)}
+                          onChange={(e) => { setName(e.target.value); clearFieldError("name"); }}
                           error={!!fieldErrors.name}
                           required
                         />
@@ -866,7 +1027,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       <div>
                         <FloatingField
                           id="phone" label="Mobile number" value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                          onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); clearFieldError("phone"); }}
                           error={!!fieldErrors.phone}
                           type="tel" inputMode="numeric" maxLength={10}
                           required
@@ -893,7 +1054,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         <div>
                           <FloatingField
                             id="emergencyContact" label="Mobile number" value={emergencyContact}
-                            onChange={(e) => setEmergencyContact(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                            onChange={(e) => { setEmergencyContact(e.target.value.replace(/\D/g, "").slice(0, 10)); clearFieldError("emergencyContact"); }}
                             error={!!fieldErrors.emergencyContact}
                             type="tel" inputMode="numeric" maxLength={10}
                           />
@@ -945,7 +1106,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         </div>
                       </div>
 
-                      <div>
+                      <div id="reg-complaints" className="scroll-mt-24">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Fast Symptom Selector (Multi-select) <span className="text-destructive">*</span></p>
                         {chiefComplaintIds.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-2">
@@ -1003,7 +1164,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         />
                       </div>
 
-                      <div>
+                      <div id="reg-onset" className="scroll-mt-24">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Symptom Onset Timeline <span className="text-destructive">*</span></p>
                         <div className="grid grid-cols-3 gap-2">
                           {ONSET_OPTIONS.map((o) => (
@@ -1133,7 +1294,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         </Button>
                       </div>
 
-                      <div>
+                      <div id="reg-mobility" className="scroll-mt-24">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Mobility / Special Accompaniment <span className="text-destructive">*</span></p>
                         <div className="grid grid-cols-2 gap-2">
                           <button
@@ -1177,6 +1338,19 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                 </div>
 
                 <div className="-mx-6 sm:-mx-8 -mb-6 sm:-mb-8 mt-2 px-6 sm:px-8 py-4 border-t border-border/50 bg-muted/20 rounded-b-2xl flex flex-wrap items-center justify-end gap-3">
+                  {footerNotice && (
+                    <InlineNotice
+                      {...footerNotice}
+                      className="w-full"
+                      onDismiss={() => setActionNotice(null)}
+                      action={footerNotice.retry && (
+                        <Button size="sm" variant="outline" onClick={footerNotice.retry}>
+                          <RotateCw className="h-3.5 w-3.5" /> {footerNotice.retryLabel ?? "Try again"}
+                        </Button>
+                      )}
+                    />
+                  )}
+                  {!visitEditMode && <ReadinessStrip items={readiness} />}
                   {visitEditMode ? (
                     <>
                       {isDirty && (
@@ -1207,8 +1381,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       <Button
                         size="lg"
                         onClick={() => submitWith("transfer")}
-                        disabled={submitting || !mandatoryDone}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50"
+                        disabled={submitting}
+                        aria-disabled={!mandatoryDone}
+                        className={cn("bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50", !mandatoryDone && "opacity-60")}
                       >
                         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                         Confirm &amp; Transfer to Triage &amp; Vitals Station <ArrowRight className="h-4 w-4" />
@@ -1258,6 +1433,55 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Live handover checklist above the transfer button: how many required fields
+ * are done and, by name, which are still missing — each one jumps to its field.
+ */
+function ReadinessStrip({ items }: { items: { label: string; ok: boolean; target: string }[] }) {
+  const done = items.filter((i) => i.ok).length;
+  const missing = items.filter((i) => !i.ok);
+  const pct = Math.round((done / items.length) * 100);
+
+  if (!missing.length) {
+    return (
+      <div role="status" className="w-full flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm">
+        <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        <span className="font-medium text-emerald-700 dark:text-emerald-400">All {items.length} required fields are complete</span>
+        <span className="text-muted-foreground">— ready to transfer to Triage &amp; Vitals.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div role="status" aria-live="polite" className="w-full rounded-xl border border-border/60 bg-card/60 px-4 py-3 space-y-2.5">
+      <div className="flex items-center gap-3 flex-wrap">
+        <p className="text-sm font-semibold">
+          {done} of {items.length} required fields complete
+        </p>
+        <div className="h-1.5 flex-1 min-w-24 max-w-56 rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="text-xs text-muted-foreground basis-full sm:basis-auto sm:ml-auto">
+          Hold and Print need only the name and mobile number.
+        </p>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-sm text-muted-foreground mr-1">Still needed to transfer:</span>
+        {missing.map((m) => (
+          <button
+            key={m.target}
+            type="button"
+            onClick={() => jumpTo(m.target)}
+            className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-amber-500/5 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 transition-colors"
+          >
+            {m.label} <ChevronRight className="h-3 w-3" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
