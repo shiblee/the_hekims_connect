@@ -1238,7 +1238,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       </div>
                       <FloatingMultiSelect
                         id="medicationSearch"
-                        label="Current medicines & herbs"
+                        label={medicationTab === "supplement" ? "Unani Medicine" : "Allopathic Medicine"}
                         placeholder={medicationTab === "supplement" ? "Type a Unani medicine, herb or supplement…" : "Type an allopathic medicine…"}
                         selected={medications.map((m) => ({ id: `${m.kind}:${m.label}`, label: m.label, kind: m.kind }))}
                         onRemove={(mid) => setMedications((cur) => cur.filter((m) => `${m.kind}:${m.label}` !== mid))}
