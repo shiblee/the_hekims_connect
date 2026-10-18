@@ -392,7 +392,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
             </Button>
           )}
           {latestVisit && (
-            <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={referPatient} disabled={savingStage}>
+            <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/60 dark:border-destructive/40 dark:hover:bg-destructive/20 dark:hover:text-destructive" onClick={referPatient} disabled={savingStage}>
               <ShieldAlert className="h-3.5 w-3.5" /> Refer Patient
             </Button>
           )}
