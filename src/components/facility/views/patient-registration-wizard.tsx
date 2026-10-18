@@ -165,7 +165,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   const [allergyInput, setAllergyInput] = useState("");
   const [medications, setMedications] = useState<MedicationEntry[]>([]);
   const [medicationInput, setMedicationInput] = useState("");
-  const [medicationKind, setMedicationKind] = useState<"supplement" | "medication">("supplement");
   const [mobility, setMobility] = useState("");
 
   // Payment (optional)
@@ -450,22 +449,21 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     return allergyOptions.filter((a) => !allergies.some((x) => x.toLowerCase() === a.label.toLowerCase()) && a.label.toLowerCase().includes(q)).slice(0, 6);
   })();
 
-  const addMedication = (value?: string) => {
-    const v = (value ?? medicationInput).trim();
+  const addMedication = (label: string, kind: MedicationEntry["kind"]) => {
+    const v = label.trim();
     if (!v) return;
-    setMedications((m) => (m.some((x) => x.kind === medicationKind && x.label.toLowerCase() === v.toLowerCase()) ? m : [...m, { label: v, kind: medicationKind }]));
+    setMedications((m) => (m.some((x) => x.kind === kind && x.label.toLowerCase() === v.toLowerCase()) ? m : [...m, { label: v, kind }]));
     setMedicationInput("");
   };
-  const removeMedication = (i: number) => setMedications((m) => m.filter((_, idx) => idx !== i));
 
+  // One search across both catalogs — each suggestion shows whether it's a herb or a medication.
   const medicationSearchResults = (() => {
     const q = medicationInput.trim().toLowerCase();
     if (!q) return [];
     return medicationOptions.filter((o) =>
-      o.kind === medicationKind &&
-      !medications.some((x) => x.kind === medicationKind && x.label.toLowerCase() === o.label.toLowerCase()) &&
+      !medications.some((x) => x.kind === o.kind && x.label.toLowerCase() === o.label.toLowerCase()) &&
       o.label.toLowerCase().includes(q)
-    ).slice(0, 6);
+    ).slice(0, 8);
   })();
 
   const clearForm = () => {
@@ -482,7 +480,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setActionNotice(null);
     setChiefComplaintIds([]); setComplaintSearch(""); setNarrative(""); setOnsetTimeline("");
     setAllergies([]); setAllergyInput("");
-    setMedications([]); setMedicationInput(""); setMedicationKind("supplement");
+    setMedications([]); setMedicationInput("");
     setMobility("");
   };
 
@@ -1160,70 +1158,27 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         createLabel={(q) => `Add "${q}" as a custom allergy`}
                       />
 
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground mb-2">Active Routine Medications / Herbs</p>
-                        {medications.length > 0 && (
-                          <div className="space-y-1.5 mb-2">
-                            {medications.map((m, i) => (
-                              <div key={i} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 px-3 py-2 text-sm">
-                                {m.kind === "supplement" ? <Leaf className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <Pill className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                                <span className="flex-1">{m.label}</span>
-                                <button type="button" onClick={() => removeMedication(i)} className="text-muted-foreground hover:text-destructive">
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => { setMedicationKind("supplement"); setMedicationInput(""); }}
-                            className={cn(
-                              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors",
-                              medicationKind === "supplement" ? "bg-emerald-400/15 border-emerald-400/40 text-emerald-600 dark:text-emerald-400" : "border-border/60 text-muted-foreground"
-                            )}
-                          >
-                            <Leaf className="h-3 w-3" /> Supplement / Herb
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setMedicationKind("medication"); setMedicationInput(""); }}
-                            className={cn(
-                              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors",
-                              medicationKind === "medication" ? "bg-primary/15 border-primary/40 text-primary" : "border-border/60 text-muted-foreground"
-                            )}
-                          >
-                            <Pill className="h-3 w-3" /> Medication
-                          </button>
-                        </div>
-                        <div className="relative">
-                          <input
-                            value={medicationInput}
-                            onChange={(e) => setMedicationInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMedication(); } }}
-                            placeholder={medicationKind === "supplement" ? "Type a supplement or herb…" : "Type a medication…"}
-                            className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          />
-                          {medicationInput.trim() && medicationSearchResults.length > 0 && (
-                            <div className="absolute z-10 mt-1 w-full rounded-lg border border-border/50 bg-card shadow-lg max-h-40 overflow-y-auto divide-y divide-border/40">
-                              {medicationSearchResults.map((o) => (
-                                <button
-                                  key={o.id}
-                                  type="button"
-                                  onClick={() => addMedication(o.label)}
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5"
-                                >
-                                  {medicationKind === "supplement" ? <Leaf className="h-3 w-3 text-emerald-500 shrink-0" /> : <Pill className="h-3 w-3 text-muted-foreground shrink-0" />} {o.label}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <Button type="button" size="sm" variant="outline" onClick={() => addMedication()} className="w-full mt-2">
-                          <Plus className="h-3 w-3" /> Add as Custom {medicationKind === "supplement" ? "Supplement/Herb" : "Medication"}
-                        </Button>
-                      </div>
+                      <FloatingMultiSelect
+                        id="medicationSearch"
+                        label="Active Routine Medications / Herbs"
+                        placeholder="Type a herb, supplement or medication…"
+                        selected={medications.map((m) => ({ id: `${m.kind}:${m.label}`, label: m.label, kind: m.kind }))}
+                        onRemove={(mid) => setMedications((cur) => cur.filter((m) => `${m.kind}:${m.label}` !== mid))}
+                        query={medicationInput}
+                        onQueryChange={setMedicationInput}
+                        results={medicationSearchResults}
+                        onPick={(oid) => { const o = medicationOptions.find((x) => x.id === oid); if (o) addMedication(o.label, o.kind === "medication" ? "medication" : "supplement"); }}
+                        renderIcon={(m) => m.kind === "medication"
+                          ? <Pill className="h-3 w-3 shrink-0 text-primary" />
+                          : <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />}
+                        chipClassName={(m) => m.kind === "medication"
+                          ? "bg-primary/10 border-primary/30 text-primary"
+                          : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"}
+                        createOptions={(q) => [
+                          { key: "supplement", label: "Add as supplement / herb", icon: <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />, onCreate: () => addMedication(q, "supplement") },
+                          { key: "medication", label: "Add as medication", icon: <Pill className="h-3 w-3 shrink-0 text-primary" />, onCreate: () => addMedication(q, "medication") },
+                        ]}
+                      />
 
                       <div id="reg-mobility" className="scroll-mt-24">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Mobility / Special Accompaniment <span className="text-destructive">*</span></p>
