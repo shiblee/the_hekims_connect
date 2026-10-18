@@ -73,7 +73,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   const finalize = async () => {
     if (!t.dossier.mizajAsli || !t.dossier.suMizajQuality) {
       const missing = [!t.dossier.mizajAsli && "Mizaj-e-Asli", !t.dossier.suMizajQuality && "Su-e-Mizaj"].filter(Boolean).join(" and ");
-      t.msg.warning(`Record the ${missing} before finalising`, "Open the Tashkhees tab above — the diagnosis is needed for the handover.");
+      t.msg.warning(`Record the ${missing} before finalising`, "Fill in the Tashkhees section above — the diagnosis is needed for the handover.");
       return;
     }
     const [ok, note] = await Promise.all([t.save(true), saveNote()]);

@@ -16,7 +16,7 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { FloatingField, FloatingSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Activity, AlertTriangle, ArrowLeft, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
+  Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
   Search, ShieldAlert, Sparkles, Stethoscope, Trash2, Utensils, X,
 } from "lucide-react";
 
@@ -214,7 +214,7 @@ function DalailTab({ state }: { state: TashkheesState }) {
   const keyTotal = pillars.reduce((n, p) => n + keyQs(p).length, 0);
   const allTotal = pillars.reduce((n, p) => n + shownQs(p).length, 0);
   const hasSigns = drift && AKHLAT.some((h) => drift.total[h.key] > 0);
-  const jump = (k: string) => { const el = refs.current[k]; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 24, behavior: "smooth" }); };
+  const jump = (k: string) => { const el = refs.current[k]; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 64, behavior: "smooth" }); };
 
   return (
     <Panel icon={Stethoscope} title="Dala'il — Clinical Signs"
@@ -637,9 +637,13 @@ const TABS = [
   { key: "handover", label: "Prognosis", sub: "& Handover", icon: CalendarDays },
 ] as const;
 
-/** Centre of Stage 5: the Hakim's dossier in five steps. */
+/**
+ * Centre of Stage 5: the Hakim's dossier — all five steps on one screen
+ * (Dala'il, Tashkhees, Usool-e-Ilaj, Ilaj, Prognosis & Handover). The step
+ * strip is a jump bar that highlights the step in view; once it scrolls away a
+ * slim floating copy stays at the top.
+ */
 export function TashkheesDossierPanel({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("dalail");
   const d = state.dossier;
   const done: Record<string, boolean> = {
     dalail: state.dalail.progress.total > 0 && state.dalail.progress.missingRequired === 0 && state.dalail.progress.answered > 0,
@@ -649,16 +653,66 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
     handover: !!d.prognosis || !!d.handoverNote,
   };
   const doneCount = Object.values(done).filter(Boolean).length;
-  const tabIdx = TABS.findIndex((t) => t.key === tab);
-  const go = (dir: -1 | 1) => { const t = TABS[tabIdx + dir]; if (t) { setTab(t.key); window.scrollTo({ top: 0, behavior: "smooth" }); } };
+  const refs = useRef<Record<string, HTMLElement | null>>({});
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState<string>("dalail");
+  const [floatBox, setFloatBox] = useState<{ left: number; width: number } | null>(null);
+  const ready = !!state.options;
+
+  useEffect(() => {
+    if (!ready) return;
+    const update = () => {
+      let current = TABS[0].key as string;
+      for (const t of TABS) {
+        const el = refs.current[t.key];
+        if (el && el.getBoundingClientRect().top <= 160) current = t.key;
+      }
+      setInView(current);
+      const h = headerRef.current;
+      if (!h) return;
+      const r = h.getBoundingClientRect();
+      const panel = h.parentElement?.getBoundingClientRect();
+      setFloatBox(r.bottom < 12 && !!panel && panel.bottom > 200 ? { left: r.left, width: r.width } : null);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, [ready]);
+
   if (!state.options) {
     if (state.loadError) return <LoadFailed what="the dossier" detail={state.loadError} onRetry={state.reload} />;
     return <Card className="p-5 border-border/50 bg-card/60"><Loading /></Card>;
   }
 
+  const jump = (key: string) => {
+    const el = refs.current[key];
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 64, behavior: "smooth" });
+  };
+  const firstOpen = TABS.find((t) => !done[t.key]);
+
   return (
     <div className="space-y-5">
-      <Card className="p-5 border-border/50 bg-card/60 gap-0">
+      {floatBox && (
+        <div className="fixed top-3 z-20 flex items-center gap-1 rounded-xl border border-border/60 bg-card/95 px-2 py-1.5 shadow-lg backdrop-blur"
+          style={{ left: floatBox.left, width: floatBox.width }} role="navigation" aria-label="Jump to step">
+          {TABS.map((t, i) => {
+            const on = inView === t.key;
+            return (
+              <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${t.label} — ${t.sub}`}
+                className={cn("flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors",
+                  on ? "bg-primary text-primary-foreground" : done[t.key] ? "text-emerald-700 dark:text-emerald-400 hover:bg-muted" : "text-muted-foreground hover:bg-muted")}>
+                <t.icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate hidden sm:inline">{t.label}</span>
+                {done[t.key] && <Check className="h-3 w-3 shrink-0" />}
+              </button>
+            );
+          })}
+          <span className="hidden md:inline shrink-0 border-l border-border/60 pl-2 text-xs tabular-nums text-muted-foreground">{doneCount}/{TABS.length}</span>
+        </div>
+      )}
+
+      <Card ref={headerRef} className="p-5 border-border/50 bg-card/60 gap-0">
         <SectionHeading
           icon={FileSignature}
           title="Tashkhees & Handover Dossier"
@@ -676,9 +730,9 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {TABS.map((t, i) => {
-            const on = tab === t.key;
+            const on = inView === t.key;
             return (
-              <button key={t.key} type="button" onClick={() => setTab(t.key)}
+              <button key={t.key} type="button" onClick={() => jump(t.key)}
                 className={cn("rounded-xl border px-3 py-2.5 text-left transition-colors", on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/30")}>
                 <span className="flex items-center justify-between">
                   <t.icon className={cn("h-4 w-4", on ? "text-primary" : "text-muted-foreground")} />
@@ -692,16 +746,21 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
         </div>
       </Card>
 
-      {tab === "dalail" && <DalailTab state={state} />}
-      {tab === "tashkhees" && <TashkheesTab state={state} visitId={visitId} />}
-      {tab === "usool" && <UsoolTab state={state} />}
-      {tab === "ilaj" && <IlajTab state={state} patientId={patientId} visitId={visitId} />}
-      {tab === "handover" && <HandoverTab state={state} />}
+      <section ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} /></section>
+      <section ref={(el) => { refs.current.tashkhees = el; }}><TashkheesTab state={state} visitId={visitId} /></section>
+      <section ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} /></section>
+      <section ref={(el) => { refs.current.ilaj = el; }}><IlajTab state={state} patientId={patientId} visitId={visitId} /></section>
+      <section ref={(el) => { refs.current.handover = el; }}><HandoverTab state={state} /></section>
 
-      {/* Step through the dossier */}
-      <div className="flex items-center justify-between gap-2">
-        {tabIdx > 0 ? <Button variant="outline" size="sm" onClick={() => go(-1)}><ArrowLeft className="h-3.5 w-3.5" /> {TABS[tabIdx - 1].label}</Button> : <span />}
-        {tabIdx < TABS.length - 1 && <Button variant="outline" size="sm" onClick={() => go(1)}>{TABS[tabIdx + 1].label} <ArrowRight className="h-3.5 w-3.5" /></Button>}
+      {/* Where to next */}
+      <div className={cn("flex items-center justify-between gap-3 flex-wrap rounded-xl border px-4 py-3",
+        firstOpen ? "border-dashed border-border/60 bg-card/40" : "border-emerald-500/40 bg-emerald-500/5")}>
+        <p className="text-[13px] text-muted-foreground">
+          {firstOpen
+            ? <>{TABS.length - doneCount} {TABS.length - doneCount === 1 ? "step is" : "steps are"} still open — next: <span className="font-medium text-foreground">{firstOpen.label}</span>.</>
+            : <span className="font-medium text-emerald-700 dark:text-emerald-400">All five steps recorded — Save Draft or Finalise &amp; hand over below.</span>}
+        </p>
+        {firstOpen && <Button size="sm" variant="outline" onClick={() => jump(firstOpen.key)}>Go to {firstOpen.label} <ArrowRight className="h-3.5 w-3.5" /></Button>}
       </div>
     </div>
   );
