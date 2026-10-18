@@ -9,6 +9,7 @@ import { AsbabAdmin } from "@/components/admin/asbab-admin";
 import { useUrlParam } from "@/hooks/use-url-param";
 import { TashkheesEngineAdmin } from "@/components/admin/tashkhees-engine-admin";
 import { UsoolAdmin } from "@/components/admin/usool-admin";
+import { GhizaAdmin } from "@/components/admin/ghiza-admin";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,9 +23,9 @@ interface Row { id: string; list: string; label: string; localName: string | nul
 /** Admin → Meta → Tashkhees & Ilaj: the Dala'il examination questions and the Stage 5 option lists. */
 export function TashkheesAdmin() {
   // Each sub-tab has its own URL: ?tab=dalail | engine | lists
-  const [part, setPartRaw] = useUrlParam("tab", "dalail", ["dalail", "engine", "usool", "lists"] as const);
+  const [part, setPartRaw] = useUrlParam("tab", "dalail", ["dalail", "engine", "usool", "ghiza", "lists"] as const);
   // Switching sub-tab drops the previous tab's own params (section / list).
-  const setPart = (v: "dalail" | "engine" | "usool" | "lists") => {
+  const setPart = (v: "dalail" | "engine" | "usool" | "ghiza" | "lists") => {
     const url = new URL(window.location.href);
     url.searchParams.delete("section"); url.searchParams.delete("list");
     window.history.replaceState(window.history.state, "", url);
@@ -33,20 +34,20 @@ export function TashkheesAdmin() {
   return (
     <div className="space-y-5">
       <div className="inline-flex rounded-lg border border-border/60 bg-card/60 p-1">
-        {([["dalail", "Dala'il Examination"], ["engine", "Tashkhees Engine"], ["usool", "Usool-e-Ilaj (Principles)"], ["lists", "Option Lists"]] as const).map(([k, l]) => (
+        {([["dalail", "Dala'il Examination"], ["engine", "Tashkhees Engine"], ["usool", "Usool-e-Ilaj (Principles)"], ["ghiza", "Ghiza (Foods)"], ["lists", "Option Lists"]] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setPart(k)}
             className={cn("rounded-md px-4 py-1.5 text-sm transition-colors", part === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
         ))}
       </div>
-      {part === "dalail" ? <AsbabAdmin framework="dalail" /> : part === "engine" ? <TashkheesEngineAdmin /> : part === "usool" ? <UsoolAdmin /> : <OptionLists />}
+      {part === "dalail" ? <AsbabAdmin framework="dalail" /> : part === "engine" ? <TashkheesEngineAdmin /> : part === "usool" ? <UsoolAdmin /> : part === "ghiza" ? <GhizaAdmin /> : <OptionLists />}
     </div>
   );
 }
 
 function OptionLists() {
   const [rows, setRows] = useState<Row[] | null>(null);
-  // Usool-e-Ilaj has its own tab, so it is not one of the plain option lists here.
-  const LISTS = TASHKHEES_LISTS.filter((l) => l.key !== "usool");
+  // Usool-e-Ilaj and Ghiza have their own tabs, so they aren't plain option lists here.
+  const LISTS = TASHKHEES_LISTS.filter((l) => l.key !== "usool" && l.key !== "ghiza");
   const [list, setList] = useUrlParam<TashkheesListKey>("list", "mizaj", LISTS.map((l) => l.key));
   const [dialog, setDialog] = useState<{ id: string | null; label: string; localName: string; description: string; active: boolean } | null>(null);
   const [saving, setSaving] = useState(false);

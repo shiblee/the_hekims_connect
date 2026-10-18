@@ -756,6 +756,110 @@ function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string
   );
 }
 
+// ---------------------------------------------------------------- Ilaj-bil-Ghiza engine card
+
+/** A food photo (with its credit as a tooltip), or a neutral tile when there's none. */
+function FoodThumb({ src, alt, credit, className }: { src?: string | null; alt: string; credit?: string | null; className?: string }) {
+  return src
+    ? <img src={src} alt={alt} title={credit || undefined} loading="lazy" className={cn("shrink-0 rounded-lg object-cover bg-muted", className)} />
+    : <span className={cn("shrink-0 rounded-lg bg-muted flex items-center justify-center text-muted-foreground", className)}><Utensils className="h-4 w-4" /></span>;
+}
+
+interface GhizaPick { label: string; imageUrl: string | null; imageCredit: string | null; category: string | null; foodMizaj: string | null; reasons: string[]; hard?: boolean }
+interface GhizaPlanData { basis: { suMizaj: string | null; fromEngine: boolean; conditions: string[]; allergies: string[] }; recommended: GhizaPick[]; avoid: GhizaPick[]; insufficient: string[] }
+
+/**
+ * Diet advice for this patient: foods that balance the present dyscrasia and
+ * suit the recorded conditions and today's symptoms (Recommended), and foods
+ * to avoid (Parhez) — allergy items always first. Each card shows why; the
+ * Hakim adds what fits.
+ */
+function GhizaEngineCard({ state, visitId }: { state: TashkheesState; visitId: string }) {
+  const { dossier: d, set } = state;
+  const [data, setData] = useState<{ plan: GhizaPlanData; method: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [running, setRunning] = useState(false);
+  const fetchPlan = useCallback(() =>
+    api.get<{ plan: GhizaPlanData; method: string }>(`/api/facility/visits/${visitId}/ghiza-engine`)
+      .then((r) => { setData(r); setFailed(false); })
+      .catch(() => setFailed(true)), [visitId]);
+  useEffect(() => { fetchPlan(); }, [fetchPlan]);
+  const rerun = async () => { setRunning(true); try { await state.save(false); await fetchPlan(); } finally { setRunning(false); } };
+  const record = (labels: string[]) => { if (labels.length) api.post(`/api/facility/visits/${visitId}/ghiza-engine`, { accepted: labels }).catch(() => {}); };
+  const put = (labels: string[], where: "rec" | "avoid") => {
+    const rec = d.ghizaRecommended.filter((x) => !labels.includes(x) || where === "rec");
+    const avoid = d.ghizaAvoid.filter((x) => !labels.includes(x) || where === "avoid");
+    const target = where === "rec" ? rec : avoid;
+    const fresh = labels.filter((l) => !target.includes(l));
+    if (!fresh.length) return;
+    target.push(...fresh);
+    set({ ghizaRecommended: rec, ghizaAvoid: avoid });
+    record(fresh);
+  };
+  const p = data?.plan;
+  const recLeft = (p?.recommended || []).filter((x) => !d.ghizaRecommended.includes(x.label)).map((x) => x.label);
+  const avoidLeft = (p?.avoid || []).filter((x) => !d.ghizaAvoid.includes(x.label)).map((x) => x.label);
+
+  const Tile = ({ x, kind }: { x: GhizaPick; kind: "rec" | "avoid" }) => {
+    const on = kind === "rec" ? d.ghizaRecommended.includes(x.label) : d.ghizaAvoid.includes(x.label);
+    return (
+      <div className={cn("flex gap-2.5 rounded-lg border p-2",
+        on ? (kind === "rec" ? "border-emerald-500/50 bg-emerald-500/10" : "border-destructive/50 bg-destructive/10")
+          : x.hard ? "border-destructive/50 bg-destructive/5" : "border-border/50 bg-background/60")}>
+        <FoodThumb src={x.imageUrl} alt={x.label} credit={x.imageCredit} className="h-16 w-16" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-snug">{x.label}</p>
+          {x.foodMizaj && <p className="text-[11px] text-muted-foreground">{x.foodMizaj}{x.category ? ` · ${x.category}` : ""}</p>}
+          <p className={cn("mt-0.5 text-xs leading-snug", x.hard ? "font-medium text-destructive" : kind === "rec" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive/90")}>{x.reasons.slice(0, 2).join(" · ")}</p>
+        </div>
+        <div className="shrink-0 self-center">
+          {on
+            ? <Check className={cn("h-4 w-4", kind === "rec" ? "text-emerald-600" : "text-destructive")} />
+            : <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => put([x.label], kind)}>{kind === "rec" ? "Add" : "Parhez"}</Button>}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Diet for this patient</p>
+        <span className="flex items-center gap-2">
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-running…" : "Re-run"}</button>
+          {(recLeft.length > 0 || avoidLeft.length > 0) && <Button size="sm" className="h-7" onClick={() => { put(recLeft, "rec"); put(avoidLeft, "avoid"); }}>Accept all</Button>}
+        </span>
+      </div>
+      {failed ? (
+        <p className="text-sm text-muted-foreground">The diet advice couldn&apos;t be loaded — choose foods below as usual. <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">Try again</button></p>
+      ) : !p ? <Loading /> : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Based on {p.basis.suMizaj ? <span className="font-medium text-foreground">{p.basis.suMizaj}</span> : "no Su-e-Mizaj yet"}
+            {p.basis.fromEngine && <span className="text-amber-700 dark:text-amber-400"> (suggested)</span>}
+            {p.basis.conditions.length > 0 && <> · history: <span className="font-medium text-foreground">{p.basis.conditions.join(", ")}</span></>}
+            {p.basis.allergies.length > 0 && <> · allergies: <span className="font-medium text-destructive">{p.basis.allergies.join(", ")}</span></>}
+          </p>
+          <div className="grid lg:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 flex items-center justify-between">Recommended · {p.recommended.length}
+                {recLeft.length > 0 && <button type="button" onClick={() => put(recLeft, "rec")} className="normal-case tracking-normal font-medium hover:underline">Add all</button>}</p>
+              {p.recommended.length ? p.recommended.map((x) => <Tile key={x.label} x={x} kind="rec" />) : <p className="text-xs text-muted-foreground">No clear recommendations yet.</p>}
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-destructive flex items-center justify-between">Parhez (avoid) · {p.avoid.length}
+                {avoidLeft.length > 0 && <button type="button" onClick={() => put(avoidLeft, "avoid")} className="normal-case tracking-normal font-medium hover:underline">Add all</button>}</p>
+              {p.avoid.length ? p.avoid.map((x) => <Tile key={x.label} x={x} kind="avoid" />) : <p className="text-xs text-muted-foreground">Nothing specific to avoid.</p>}
+            </div>
+          </div>
+          {p.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
+          <p className="text-[11px] text-muted-foreground">A guide{data?.method === "ranked" ? " · ordered by Hakeem Insight" : ""} — the Hakim decides. Food photos: Wikimedia Commons (hover a photo for its credit).</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const { dossier: d, set, options, herbs } = state;
   const [warnings, setWarnings] = useState<Record<string, Warn[]>>({});
@@ -792,6 +896,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       {/* Ilaj-bil-Ghiza */}
       <Panel icon={Utensils} title="Ilaj-bil-Ghiza — Diet" hint="Foods to recommend and Parhez (restrictions), with meal guidance."
         aside={<Badge variant="outline" className="mt-1 shrink-0">{d.ghizaRecommended.length} advised · {d.ghizaAvoid.length} Parhez</Badge>}>
+        <GhizaEngineCard state={state} visitId={visitId} />
         {(d.ghizaRecommended.length > 0 || d.ghizaAvoid.length > 0) && (
           <div className="grid sm:grid-cols-2 gap-3">
             {([["rec", "Recommended", d.ghizaRecommended], ["avoid", "Parhez (avoid)", d.ghizaAvoid]] as const).map(([k, title, list]) => (
@@ -822,7 +927,10 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
             const avoid = d.ghizaAvoid.includes(f.label);
             return (
               <div key={f.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <div className="min-w-0"><p className="text-sm font-medium">{f.label}</p>{f.description && <p className="text-[13px] text-muted-foreground">{f.description}</p>}</div>
+                <div className="flex items-center gap-3 min-w-0">
+                  <FoodThumb src={f.imageUrl} alt={f.label} credit={f.imageCredit} className="h-11 w-11" />
+                  <div className="min-w-0"><p className="text-sm font-medium">{f.label}{f.foodMizaj && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{f.foodMizaj}</span>}</p>{f.description && <p className="text-[13px] text-muted-foreground">{f.description}</p>}</div>
+                </div>
                 <div className="flex gap-1 shrink-0">
                   <button type="button" onClick={() => setFood(f.label, "rec")} className={cn("rounded-md border px-2.5 py-1 text-xs", rec ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "border-border/60 text-muted-foreground hover:text-foreground")}>Recommend</button>
                   <button type="button" onClick={() => setFood(f.label, "avoid")} className={cn("rounded-md border px-2.5 py-1 text-xs", avoid ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-border/60 text-muted-foreground hover:text-foreground")}>Parhez</button>

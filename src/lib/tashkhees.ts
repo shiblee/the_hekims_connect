@@ -24,6 +24,10 @@ export const PRIORITIES = [
   { value: "urgent", label: "Urgent" },
 ];
 
-export interface TashkheesOptionRow { id: string; list: string; label: string; localName: string | null; description: string | null }
+export interface TashkheesOptionRow {
+  id: string; list: string; label: string; localName: string | null; description: string | null;
+  // Ghiza (foods) only
+  imageUrl?: string | null; imageCredit?: string | null; category?: string | null; foodMizaj?: string | null;
+}
 export interface TadbeerLine { label: string; frequency: string; duration: string; notes: string }
 export interface PrescriptionLine { tagId: string | null; name: string; form: string; dose: string; timing: string; duration: string; adjuvant: string; instructions: string }

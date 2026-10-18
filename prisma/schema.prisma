@@ -362,6 +362,7 @@ model Visit {
   dalailSelection           DalailSelection?
   tashkheesSuggestion       TashkheesSuggestion?
   usoolSuggestion           UsoolSuggestion?
+  ghizaSuggestion           GhizaSuggestion?
 }
 
 model Payment {
@@ -632,6 +633,13 @@ model TashkheesOption {
   // Usool-e-Ilaj principles written by the system arrive as "draft" and are
   // hidden from doctors until a physician approves them. Other lists: approved.
   reviewStatus String   @default("approved")
+  // Ghiza (foods): photo, its credit/licence and source page, food group, and
+  // the food's own temperament (e.g. "Barid-Ratab 1") used by the diet engine.
+  imageUrl     String?
+  imageCredit  String?
+  imageSource  String?
+  category     String?
+  foodMizaj    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1887,6 +1895,23 @@ model UsoolSuggestion {
   configVersion String?
   contextHash   String?
   accepted      String   @default("[]") // labels accepted, with time
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+}
+
+// The diet (Ilaj-bil-Ghiza) engine's recommendations for a visit — foods to
+// recommend and to avoid (Parhez) with reasons — and what the doctor took.
+model GhizaSuggestion {
+  id            String   @id @default(cuid())
+  visitId       String   @unique
+  suggestion    String   @default("{}")
+  method        String   @default("rules")
+  configVersion String?
+  contextHash   String?
+  accepted      String   @default("[]")
   latencyMs     Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

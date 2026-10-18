@@ -589,6 +589,7 @@ export async function seedDatabase() {
   await seedDalailBank();
   await seedTashkheesEngine();
   await seedUsoolBank();
+  await seedGhizaBank();
   await seedEmailTemplates();
 
   // Check if already seeded
@@ -962,5 +963,37 @@ export async function seedUsoolBank() {
   for (const n of NEW_USOOL) {
     if (await db.tashkheesOption.findFirst({ where: { list: "usool", label: n.label } })) continue;
     await db.tashkheesOption.create({ data: { list: "usool", label: n.label, localName: n.localName ?? null, description: n.description, appliesTo: JSON.stringify(n.rule), priority: n.priority, reviewStatus: "draft", sortOrder: order++ } });
+  }
+}
+
+/** Ghiza foods: details + photos for existing foods (where not set) and new foods as drafts — add-only. */
+export async function seedGhizaBank() {
+  const { EXISTING_FOODS, NEW_FOODS } = await import("@/lib/ghiza-seed");
+  const images = (await import("@/lib/ghiza-images.json")).default as Record<string, { url: string; credit: string; source: string }>;
+  for (const f of EXISTING_FOODS) {
+    const o = await db.tashkheesOption.findFirst({ where: { list: "ghiza", label: f.label } });
+    if (!o) continue;
+    const img = images[f.label];
+    await db.tashkheesOption.update({
+      where: { id: o.id },
+      data: {
+        ...(o.appliesTo === "{}" ? { appliesTo: JSON.stringify(f.rule) } : {}),
+        ...(!o.category ? { category: f.category } : {}),
+        ...(!o.foodMizaj ? { foodMizaj: f.mizaj } : {}),
+        ...(!o.imageUrl && img ? { imageUrl: img.url, imageCredit: img.credit, imageSource: img.source } : {}),
+      },
+    });
+  }
+  const max = await db.tashkheesOption.aggregate({ where: { list: "ghiza" }, _max: { sortOrder: true } });
+  let order = (max._max.sortOrder ?? -1) + 1;
+  for (const f of NEW_FOODS) {
+    if (await db.tashkheesOption.findFirst({ where: { list: "ghiza", label: f.label } })) continue;
+    const img = images[f.label];
+    await db.tashkheesOption.create({
+      data: {
+        list: "ghiza", label: f.label, description: f.description, category: f.category, foodMizaj: f.mizaj, appliesTo: JSON.stringify(f.rule),
+        reviewStatus: "draft", sortOrder: order++, imageUrl: img?.url ?? null, imageCredit: img?.credit ?? null, imageSource: img?.source ?? null,
+      },
+    });
   }
 }

@@ -850,3 +850,32 @@ Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON,
     return sel.filter((x: unknown): x is string => typeof x === "string" && allowed.has(x)).slice(0, limit);
   } catch { return null; }
 }
+
+/**
+ * Orders candidate recommended foods for the diet engine. Chooses only among
+ * the ids given (approved food labels), sees no identifiers; the caller falls
+ * back to the rule order on failure.
+ */
+export async function rankGhizaFoods(
+  ctx: { complaints: string[]; symptoms: string[]; suMizaj: string | null; conditions: string[] },
+  candidates: { id: string; label: string }[],
+  limit: number,
+): Promise<string[] | null> {
+  if (geminiQuotaRecentlyHit()) return null;
+  const prompt = `You support a qualified Unani (Tibb) physician advising diet (Ilaj-bil-Ghiza). From the candidate foods below, choose the most useful for THIS patient, most useful first, following Ilaj bil Zid and the conditions listed. You do not prescribe; the physician decides.
+
+Present temperament (Su-e-Mizaj): ${ctx.suMizaj || "not recorded"} · health conditions: ${ctx.conditions.join(", ") || "none recorded"} · complaints: ${ctx.complaints.join("; ") || "none"} · other symptoms: ${ctx.symptoms.join("; ") || "none"}.
+
+Candidates (id — food):
+${candidates.map((c) => `- ${c.id} — ${c.label}`).join("\n")}
+
+Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences: {"selected":["id", ...]}`;
+  const raw = await callGemini(prompt);
+  if (!raw) return null;
+  try {
+    const sel = JSON.parse(stripCodeFence(raw))?.selected;
+    if (!Array.isArray(sel)) return null;
+    const allowed = new Set(candidates.map((c) => c.id));
+    return sel.filter((x: unknown): x is string => typeof x === "string" && allowed.has(x)).slice(0, limit);
+  } catch { return null; }
+}

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const [options, herbs] = await Promise.all([
     // Doctors only see approved options (Usool-e-Ilaj drafts await physician review).
-    db.tashkheesOption.findMany({ where: { active: true, reviewStatus: "approved" }, orderBy: [{ list: "asc" }, { sortOrder: "asc" }], select: { id: true, list: true, label: true, localName: true, description: true } }),
+    db.tashkheesOption.findMany({ where: { active: true, reviewStatus: "approved" }, orderBy: [{ list: "asc" }, { sortOrder: "asc" }], select: { id: true, list: true, label: true, localName: true, description: true, imageUrl: true, imageCredit: true, category: true, foodMizaj: true } }),
     db.medicationTag.findMany({
       where: { kind: "supplement", active: true }, orderBy: { label: "asc" },
       select: { id: true, label: true, profile: { select: { herbType: true, dosageForms: true } } },

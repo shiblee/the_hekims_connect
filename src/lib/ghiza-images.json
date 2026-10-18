@@ -1,0 +1,722 @@
+{
+ "Barley water (Ma-ush-Shaeer)": {
+  "url": "/foods/barley-water.jpg",
+  "credit": "Photo: Tamorlan · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Agua_de_Cebada-alicante.jpg"
+ },
+ "Cucumber (Khiyar)": {
+  "url": "/foods/cucumber.jpg",
+  "credit": "Photo: Stephen Ausmus, USDA ARS · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:ARS_cucumber.jpg"
+ },
+ "Bottle gourd (Kaddu / Lauki)": {
+  "url": "/foods/bottle-gourd.jpg",
+  "credit": "Photo: 撮影者はカールおじさんです。 · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Courge_encore_verte.jpg"
+ },
+ "Pomegranate (Anar)": {
+  "url": "/foods/pomegranate.jpg",
+  "credit": "Photo: Augustus Binu : flickr · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Pomegranate_Juice_(2019).jpg"
+ },
+ "Watermelon (Tarbuz)": {
+  "url": "/foods/watermelon.jpg",
+  "credit": "Photo: Fred Hsu (Wikipedia:User:Fred Hsu on en.wikipedia) · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Taiwan_2009_Tainan_City_Organic_Farm_Watermelon_FRD_7962.jpg"
+ },
+ "Yoghurt (Dahi)": {
+  "url": "/foods/yoghurt.jpg",
+  "credit": "Photo: No machine-readable author provided. Rainer Zenz assumed (based on copyright cla · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Joghurt.jpg"
+ },
+ "Milk (Laban)": {
+  "url": "/foods/milk.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:1280px-Glass_of_Milk_(33657535532).jpg"
+ },
+ "Green gram (Moong dal)": {
+  "url": "/foods/green-gram.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Mung_beans_(Vigna_radiata).jpg"
+ },
+ "Mutton broth (Yakhni)": {
+  "url": "/foods/mutton-broth.jpg",
+  "credit": "Photo: АннаМариа (original image); derived version by Off-shell · CC BY 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:%D0%9F%D1%80%D0%B8%D0%BB%D0%B5%D0%BF%D1%81%D0%BA%D0%B0_%D1%98%D0%B0%D0%BD%D0%B8%D1%98%D0%B0_-_%D0%BB%D1%83%D1%82%D0%B0_%D1%98%D0%B0%D0%B2%D0%BD%D0%B8%D1%98%D0%B0_(cropped).jpg"
+ },
+ "Honey (Asal)": {
+  "url": "/foods/honey.jpg",
+  "credit": "Photo: Scott Bauer, USDA ARS · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Runny_hunny.jpg"
+ },
+ "Dates (Khurma)": {
+  "url": "/foods/dates.jpg",
+  "credit": "Photo: Nepenthes · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Dates005.jpg"
+ },
+ "Ginger (Zanjabeel)": {
+  "url": "/foods/ginger.jpg",
+  "credit": "Photo: Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Koeh-146-no_text.jpg"
+ },
+ "Garlic (Seer)": {
+  "url": "/foods/garlic.jpg",
+  "credit": "Photo: Unknown author · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Allium_sativum_Woodwill_1793.jpg"
+ },
+ "Red chilli & black pepper": {
+  "url": "/foods/red-chilli-black-pepper.jpg",
+  "credit": "Photo: Takeaway · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Madame_Jeanette_and_other_chillies.jpg"
+ },
+ "Fried & fatty food": {
+  "url": "/foods/fried-fatty-food.jpg",
+  "credit": "Photo: Marajozkee · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Onion_Pakora_01.jpg"
+ },
+ "Black tea & coffee": {
+  "url": "/foods/black-tea-coffee.jpg",
+  "credit": "Photo: Bex Walton · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Latte_and_dark_coffee.jpg"
+ },
+ "Sour citrus & vinegar": {
+  "url": "/foods/sour-citrus-vinegar.jpg",
+  "credit": "Photo: André Karwath aka Aka · CC BY-SA 2.5 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Lemon.jpg"
+ },
+ "Brinjal (Badinjan)": {
+  "url": "/foods/brinjal.jpg",
+  "credit": "Photo: Joydeep · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Solanum_melongena_24_08_2012_(1).JPG"
+ },
+ "Beef (Laham-e-Baqar)": {
+  "url": "/foods/beef.jpg",
+  "credit": "Photo: Michael C. Berch, aka MCB at en.wikipedia · CC BY-SA 2.5 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Standing-rib-roast.jpg"
+ },
+ "Rice (Aruz)": {
+  "url": "/foods/rice.jpg",
+  "credit": "Photo: Ceeseven · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Bowl_of_Cooked_Brown_Rice.jpg"
+ },
+ "Cold & iced drinks": {
+  "url": "/foods/cold-iced-drinks.jpg",
+  "credit": "Photo: Melissa Doroquez · CC BY-SA 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Iced_Tea_from_flickr.jpg"
+ },
+ "Wheat (Gandum)": {
+  "url": "/foods/wheat.jpg",
+  "credit": "Photo: Kritzolina · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Chapati_making_at_the_Chokhi_Dhani_Resort_Panchkula_08.jpg"
+ },
+ "Barley (Jau / Shaeer)": {
+  "url": "/foods/barley.jpg",
+  "credit": "Photo: Rasbak · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Hordeum_vulgare_Gort.jpg"
+ },
+ "Oats (Jai)": {
+  "url": "/foods/oats.jpg",
+  "credit": "Photo: UserTwoSix · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Oatmeal_porridge_1-minute_with_additional_ingredients.jpg"
+ },
+ "Pearl millet (Bajra)": {
+  "url": "/foods/pearl-millet.jpg",
+  "credit": "Photo: Unknown author · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Grain_millet,_early_grain_fill,_Tifton,_7-3-02.jpg"
+ },
+ "Sorghum (Jowar)": {
+  "url": "/foods/sorghum.jpg",
+  "credit": "Photo: Roger Culos · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Sorghum_bicolor_noir_MHNT.BOT.2016.12.2.jpg"
+ },
+ "Maize (Makka)": {
+  "url": "/foods/maize.jpg",
+  "credit": "Photo: NeoBatfreak · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Air_fried_corn-on-the-cob_(United_States).jpg"
+ },
+ "Semolina (Suji)": {
+  "url": "/foods/semolina.jpg",
+  "credit": "Photo: Sanjay ach · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Sa_semolina_far.jpg"
+ },
+ "Refined flour (Maida)": {
+  "url": "/foods/refined-flour.jpg",
+  "credit": "Photo: Tiia Monto · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Soy_powder.jpg"
+ },
+ "Broken wheat porridge (Daliya)": {
+  "url": "/foods/broken-wheat-porridge.jpg",
+  "credit": "Photo: Myself · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Bulgur.jpg"
+ },
+ "Talbina (barley porridge)": {
+  "url": "/foods/talbina.jpg",
+  "credit": "Photo: The original uploader was Ian doang at Indonesian Wikipedia. · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Talbinah.jpg"
+ },
+ "Red lentil (Masoor)": {
+  "url": "/foods/red-lentil.jpg",
+  "credit": "Photo: User:Justinc · CC BY-SA 2.5 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3_types_of_lentil.png"
+ },
+ "Chickpea (Chana / Nakhud)": {
+  "url": "/foods/chickpea.jpg",
+  "credit": "Photo: Andy Li · CC0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Chana_Masala_-_Mohammed_-_Spice_Of_Life_2024-05-27.jpg"
+ },
+ "Black gram (Urad / Mash)": {
+  "url": "/foods/black-gram.jpg",
+  "credit": "Photo: Sanjay Acharya · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Black_gram.jpg"
+ },
+ "Kidney beans (Rajma)": {
+  "url": "/foods/kidney-beans.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Red_Rajma_BNC.jpg"
+ },
+ "Pigeon pea (Arhar / Toor)": {
+  "url": "/foods/pigeon-pea.jpg",
+  "credit": "Photo: Dahivada (Diskussion) 10:37, 1. Jun. 2016 (CEST) · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Straucherbsen_(Toor_Dal)_in_einem_indischen_Supermarkt.jpeg"
+ },
+ "Khichdi (rice & moong)": {
+  "url": "/foods/khichdi.jpg",
+  "credit": "Photo: Rpande · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Dall_Khichdi.jpg"
+ },
+ "Pumpkin (Kaddu / Qara)": {
+  "url": "/foods/pumpkin.jpg",
+  "credit": "Photo: Infrogmation of New Orleans · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:FrenchMarketPumpkinsB.jpg"
+ },
+ "Ridge gourd (Tori)": {
+  "url": "/foods/ridge-gourd.jpg",
+  "credit": "Photo: Nayan j Nath · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Luffa_acutangula_Chinese_okra.jpg"
+ },
+ "Round gourd (Tinda)": {
+  "url": "/foods/round-gourd.jpg",
+  "credit": "Photo: Tomaszrp · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Tinda.jpg"
+ },
+ "Bitter gourd (Karela)": {
+  "url": "/foods/bitter-gourd.jpg",
+  "credit": "Photo: Challiyan at Malayalam Wikipedia · CC BY 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Bittergourd.jpg"
+ },
+ "Spinach (Palak / Isfanakh)": {
+  "url": "/foods/spinach.jpg",
+  "credit": "Photo: Olgatladi2020 · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:A_pot_of_cut_spinach_leaves_with_carrots_and_onions.jpg"
+ },
+ "Fenugreek leaves (Methi)": {
+  "url": "/foods/fenugreek-leaves.jpg",
+  "credit": "Photo: Subhashish Panigrahi · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Washed_fenugreek_leaves_for_cooking_methi-chadachadi.jpg"
+ },
+ "Carrot (Gajar / Jazar)": {
+  "url": "/foods/carrot.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Vegetable-Carrot-Bundle-wStalks.jpg"
+ },
+ "Radish (Mooli / Fujl)": {
+  "url": "/foods/radish.jpg",
+  "credit": "Photo: Self, en:User:Jengod · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Radish_3371103037_4ab07db0bf_o.jpg"
+ },
+ "Turnip (Shalgham)": {
+  "url": "/foods/turnip.jpg",
+  "credit": "Photo: thebittenword.com · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Turnip_2622027.jpg"
+ },
+ "Beetroot (Chuqandar)": {
+  "url": "/foods/beetroot.jpg",
+  "credit": "Photo: BriannaWalther · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Detroitdarkredbeets.png"
+ },
+ "Potato (Aloo)": {
+  "url": "/foods/potato.jpg",
+  "credit": "Photo: Scott Bauer, USDA ARS · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Patates.jpg"
+ },
+ "Sweet potato (Shakarqandi)": {
+  "url": "/foods/sweet-potato.jpg",
+  "credit": "Photo: Llez · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Ipomoea_batatas_006.JPG"
+ },
+ "Onion (Piyaz / Basal)": {
+  "url": "/foods/onion.jpg",
+  "credit": "Photo: Colin · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Mixed_onions.jpg"
+ },
+ "Tomato (Tamatar)": {
+  "url": "/foods/tomato.jpg",
+  "credit": "Photo: Softeis · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Tomato_je.jpg"
+ },
+ "Cabbage (Karam kalla)": {
+  "url": "/foods/cabbage.jpg",
+  "credit": "Photo: fir0002 flagstaffotos [at] gmail.com Canon 20D + Sigma 150mm f/2.8 · GFDL 1.2 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Cabbage_and_cross_section_on_white.jpg"
+ },
+ "Cauliflower (Phool gobhi)": {
+  "url": "/foods/cauliflower.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Chou-fleur_02.jpg"
+ },
+ "Okra (Bhindi)": {
+  "url": "/foods/okra.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Hong_Kong_Okra_Aug_25_2012.JPG"
+ },
+ "Green peas (Matar)": {
+  "url": "/foods/green-peas.jpg",
+  "credit": "Photo: Rasbak · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Doperwt_rijserwt_peulen_Pisum_sativum.jpg"
+ },
+ "Lettuce (Kahu)": {
+  "url": "/foods/lettuce.jpg",
+  "credit": "Photo: Wu Maoyau Men Tea · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:HK_food_%E8%94%AC%E8%8F%9C_vegetable_Lettuce_%E7%94%9F%E8%8F%9C_Lactuca_Sativa_green_leaves_with_fresh_clear_water_January_2019_SSG_01.jpg"
+ },
+ "Coriander leaves (Kishneez-e-Sabz)": {
+  "url": "/foods/coriander-leaves.jpg",
+  "credit": "Photo: Schlaghecken Josef · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Koriander_(Coriandrum_sativum)_Bl%C3%A4tter--_Josef_Schlaghecken.jpg"
+ },
+ "Mint (Pudina)": {
+  "url": "/foods/mint.jpg",
+  "credit": "Photo: Mangosapiens · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Fresh_Mint_leaves.jpg"
+ },
+ "Purslane (Khurfa)": {
+  "url": "/foods/purslane.jpg",
+  "credit": "Photo: (c) Tyler Ekholm, some rights reserved (CC BY) · CC BY 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Common_Purslane,_United_States_imported_from_iNaturalist_photo_541953905.jpg"
+ },
+ "Bathua (Chenopodium)": {
+  "url": "/foods/bathua.jpg",
+  "credit": "Photo: Rasbak · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Melganzenvoet_bloeiwijze_Chenopodium_album.jpg"
+ },
+ "Mushroom (Kumbhi)": {
+  "url": "/foods/mushroom.jpg",
+  "credit": "Photo: George Chernilevsky · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Edible_fungi_in_basket_2009_G1_(cropped).jpg"
+ },
+ "Drumstick (Sahjan)": {
+  "url": "/foods/drumstick.jpg",
+  "credit": "Photo: Erector · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Moringa_oleifera_drumstick_pods.JPG"
+ },
+ "Apple (Saib / Tuffah)": {
+  "url": "/foods/apple.jpg",
+  "credit": "Photo: fir0002 flagstaffotos [at] gmail.com Canon 20D + Sigma 150mm f/2.8 · GFDL 1.2 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Pink_lady_and_cross_section.jpg"
+ },
+ "Banana (Kela / Mauz)": {
+  "url": "/foods/banana.jpg",
+  "credit": "Photo: TimothyPilgrim · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Bananavarieties.jpg"
+ },
+ "Mango (Aam / Anbah)": {
+  "url": "/foods/mango.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Mangos_-_single_and_halved.jpg"
+ },
+ "Grapes (Angoor / Inab)": {
+  "url": "/foods/grapes.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Grapes%2C_Rostov-on-Don%2C_Russia.jpg"
+ },
+ "Guava (Amrood)": {
+  "url": "/foods/guava.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Guava_pink_fruit.jpg"
+ },
+ "Papaya (Papita)": {
+  "url": "/foods/papaya.jpg",
+  "credit": "Photo: Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Carica_papaya_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-029.jpg"
+ },
+ "Sweet orange (Narangi / Malta)": {
+  "url": "/foods/sweet-orange.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Oranges_-_whole-halved-segment.jpg"
+ },
+ "Figs (Anjeer / Teen)": {
+  "url": "/foods/figs.jpg",
+  "credit": "Photo: Fumikas Sagisavas · CC0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Dried_figs_(2).jpg"
+ },
+ "Pear (Nashpati / Kummathra)": {
+  "url": "/foods/pear.jpg",
+  "credit": "Photo: Keith Weller · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Pears.jpg"
+ },
+ "Peach (Aaru / Khokh)": {
+  "url": "/foods/peach.jpg",
+  "credit": "Photo: File:Illustration Prunus persica0.jpg: PLEASE COMPLETE AUTHOR INFORMATION deriva · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Illustration_Prunus_persica_clean_no_descr.jpg"
+ },
+ "Plum (Aloo bukhara)": {
+  "url": "/foods/plum.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Plums_African_Rose_-_whole%2C_halved_and_slice.jpg"
+ },
+ "Apricot (Khubani / Mishmish)": {
+  "url": "/foods/apricot.jpg",
+  "credit": "Photo: Fir0002 · GFDL 1.2 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Apricot_and_cross_section.jpg"
+ },
+ "Jamun (Java plum)": {
+  "url": "/foods/jamun.jpg",
+  "credit": "Photo: Adityamadhav83 · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:(Syzygium_cumini)_Jamun_fruits_at_Vivekanada_Park_in_Kakinada.jpg"
+ },
+ "Indian gooseberry (Amla / Amlaj)": {
+  "url": "/foods/indian-gooseberry.jpg",
+  "credit": "Photo: L. Shyamal · CC BY 2.5 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Phyllanthus_officinalis.jpg"
+ },
+ "Pineapple (Ananas)": {
+  "url": "/foods/pineapple.jpg",
+  "credit": "Photo: Suniltg at Malayalam Wikipedia · CC BY 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:%E0%B4%95%E0%B5%88%E0%B4%A4%E0%B4%9A%E0%B5%8D%E0%B4%9A%E0%B4%95%E0%B5%8D%E0%B4%95.jpg"
+ },
+ "Sapodilla (Chikoo)": {
+  "url": "/foods/sapodilla.jpg",
+  "credit": "Photo: Sugeesh at Malayalam Wikipedia · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:%E0%B4%B8%E0%B4%AA%E0%B5%8D%E0%B4%AA%E0%B5%8B%E0%B4%9F%E0%B5%8D%E0%B4%9F.jpg"
+ },
+ "Mulberry (Shahtoot / Toot)": {
+  "url": "/foods/mulberry.jpg",
+  "credit": "Photo: Schurdl · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Morus_alba_fruits_8970.jpg"
+ },
+ "Quince (Bahi / Safarjal)": {
+  "url": "/foods/quince.jpg",
+  "credit": "Photo: Rhododendrites · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Quince_(10889s).jpg"
+ },
+ "Coconut (Narjeel)": {
+  "url": "/foods/coconut.jpg",
+  "credit": "Photo: Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Cocos_nucifera_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-187.jpg"
+ },
+ "Jackfruit (Kathal)": {
+  "url": "/foods/jackfruit.jpg",
+  "credit": "Photo: This work was made by Tushar Hossain and released under the license(s) stated be · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:The_jackfruit_is_holding_on_to_the_tree.jpg"
+ },
+ "Strawberry": {
+  "url": "/foods/strawberry.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Garden_strawberry_(Fragaria_%C3%97_ananassa)_single2.jpg"
+ },
+ "Almonds (Badam / Lauz)": {
+  "url": "/foods/almonds.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Almonds_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_blanched.jpg"
+ },
+ "Walnut (Akhrot / Jauz)": {
+  "url": "/foods/walnut.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Walnuts_-_whole_and_open_with_halved_kernel.jpg"
+ },
+ "Pistachio (Pista / Fustuq)": {
+  "url": "/foods/pistachio.jpg",
+  "credit": "Photo: THOR · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Pistachio_vera.jpg"
+ },
+ "Cashew (Kaju)": {
+  "url": "/foods/cashew.jpg",
+  "credit": "Photo: Abhishek Jacob · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Cashew_apples.jpg"
+ },
+ "Raisins (Kishmish / Munaqqa)": {
+  "url": "/foods/raisins.jpg",
+  "credit": "Photo: Paweł Kuźniar (Jojo_1, Jojo) · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Raisins_01.jpg"
+ },
+ "Pine nuts (Chilgoza)": {
+  "url": "/foods/pine-nuts.jpg",
+  "credit": "Photo: Quellenangabe und Beleg an burgkirsch(at)web.de erbeten. · CC BY-SA 2.0 de · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Pinoli.jpg"
+ },
+ "Peanuts (Moongphali)": {
+  "url": "/foods/peanuts.jpg",
+  "credit": "Photo: Sanjay Acharya · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Roasted_Peanuts_with_shell.jpg"
+ },
+ "Flaxseed (Alsi / Katan)": {
+  "url": "/foods/flaxseed.jpg",
+  "credit": "Photo: Rasbak · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Linum_usitatissimum_seeds,_vlaszaden.jpg"
+ },
+ "Sesame (Til / Simsim)": {
+  "url": "/foods/sesame.jpg",
+  "credit": "Photo: Sanjay ach · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Sa_white_sesame_seeds.jpg"
+ },
+ "Pumpkin seeds (Tukhm-e-Kaddu)": {
+  "url": "/foods/pumpkin-seeds.jpg",
+  "credit": "Photo: Dmitry Makeev · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Pepita_de_calabaza.jpg"
+ },
+ "Buttermilk (Chhachh / Lassi)": {
+  "url": "/foods/buttermilk.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Buttermilk-(right)-and-Milk-(left).jpg"
+ },
+ "Butter (Maska / Zubd)": {
+  "url": "/foods/butter.jpg",
+  "credit": "Photo: Matěj Baťha · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:%C5%A0v%C3%A9dsk%C3%BD_kol%C3%A1%C4%8D_naruby_904_(cropped).JPG"
+ },
+ "Cottage cheese (Paneer / Jubn)": {
+  "url": "/foods/cottage-cheese.jpg",
+  "credit": "Photo: Sonja Pauen - Stanhopea · CC BY 2.0 de · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Panir_Paneer_Indian_cheese_fresh.jpg"
+ },
+ "Cream (Malai)": {
+  "url": "/foods/cream.jpg",
+  "credit": "Photo: jeffreyw · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:01_Mmm..._Apple_Crisp_with_Whipped_Cream.jpg"
+ },
+ "Goat milk (Shir-e-Buz)": {
+  "url": "/foods/goat-milk.jpg",
+  "credit": "Photo: MOs810 · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Liqueur_from_goat_milk,_Fuerteventura.JPG"
+ },
+ "Chicken (Murgh / Dajaj)": {
+  "url": "/foods/chicken.jpg",
+  "credit": "Photo: Katrin Gilger · CC BY-SA 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Asian_Chicken_Curry_(4652719000).jpg"
+ },
+ "Chicken soup (Shorba)": {
+  "url": "/foods/chicken-soup.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Chicken_Noodle_Soup.jpg"
+ },
+ "Goat meat (Bakra / Laham-e-Ma'iz)": {
+  "url": "/foods/goat-meat.jpg",
+  "credit": "Photo: Gaurav Dhwaj Khadka · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Mutton_Curry_(44786).jpg"
+ },
+ "Fish (Mahi / Samak)": {
+  "url": "/foods/fish.jpg",
+  "credit": "Photo: User:Mattes · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Fish_stuffed_with_Thai_herbs.jpg"
+ },
+ "Eggs (Baiza / Anda)": {
+  "url": "/foods/eggs.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Huevo_frito.jpg"
+ },
+ "Liver (Kaleji)": {
+  "url": "/foods/liver.jpg",
+  "credit": "Photo: FotoosVanRobin from Netherlands · CC BY-SA 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Pig%27s_liver_with_sauteed_onion.jpg"
+ },
+ "Prawns & shellfish (Jheenga)": {
+  "url": "/foods/prawns-shellfish.jpg",
+  "credit": "Photo: Etrusko25 · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Palaemon_serratus_Croazia.jpg"
+ },
+ "Partridge & quail (Teetar / Bater)": {
+  "url": "/foods/partridge-quail.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-CRESTED_WOOD-PARTRIDGE_(7181284331).jpg"
+ },
+ "Turmeric (Haldi / Zard chob)": {
+  "url": "/foods/turmeric.jpg",
+  "credit": "Photo: Simon A. Eugster · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Curcuma_longa_roots.jpg"
+ },
+ "Cumin (Zeera / Kammun)": {
+  "url": "/foods/cumin.jpg",
+  "credit": "Photo: Misterneedlemouse · CC0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Whole_Cumin_Seeds.jpg"
+ },
+ "Fennel (Saunf / Badiyan)": {
+  "url": "/foods/fennel.jpg",
+  "credit": "Photo: Jeeheon Cho from Surat Thani, Thailand · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Saunf_or_Fennel_seeds_used_as_an_after-mint_in_India.jpg"
+ },
+ "Cinnamon (Darchini)": {
+  "url": "/foods/cinnamon.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Cinnamomum_verum_spices.jpg"
+ },
+ "Green cardamom (Elaichi / Heel)": {
+  "url": "/foods/green-cardamom.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-02017_0119_Kardamom%2C_Winter_in_den_Beskiden.jpg"
+ },
+ "Clove (Laung / Qaranfal)": {
+  "url": "/foods/clove.jpg",
+  "credit": "Photo: Friedrich Haag · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Gewuerze_004_2024_08_10.jpg"
+ },
+ "Saffron (Zafran)": {
+  "url": "/foods/saffron.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Saffron_-_premium_spice.jpg"
+ },
+ "Carom seeds (Ajwain / Nankhwah)": {
+  "url": "/foods/carom-seeds.jpg",
+  "credit": "Photo: Yercaud-elango · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Trachyspermum_ammi-1-xavier_cottage-yercaud-salem-India.jpg"
+ },
+ "Coriander seeds (Kishneez)": {
+  "url": "/foods/coriander-seeds.jpg",
+  "credit": "Photo: Sanjay Acharya · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Coriander_Seeds.jpg"
+ },
+ "Fenugreek seeds (Methi dana / Hulba)": {
+  "url": "/foods/fenugreek-seeds.jpg",
+  "credit": "Photo: Humbads at en.wikipedia · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Fenugreek-methi-seeds.jpg"
+ },
+ "Black seed (Kalonji / Shuneez)": {
+  "url": "/foods/black-seed.jpg",
+  "credit": "Photo: Roger Culos · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Nigella_sativa_MHNT.BOT.2015.34.22.jpg"
+ },
+ "Table salt (excess)": {
+  "url": "/foods/table-salt.jpg",
+  "credit": "Photo: James St. John · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Rock_salt_(halitite)_(Billianwala_Salt_Member,_Salt_Range_Formation,_Ediacaran_to_Lower_Cambrian;_Khewra_Salt_Mine,_Salt_Range,_Pakistan)_14.jpg"
+ },
+ "Rock salt (Sendha namak)": {
+  "url": "/foods/rock-salt.jpg",
+  "credit": "Photo: Lech Darski · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Halit_(NaCl)_-_Kopalnia_soli_Wieliczka,_Polska.jpg"
+ },
+ "Mustard seeds (Rai / Khardal)": {
+  "url": "/foods/mustard-seeds.jpg",
+  "credit": "Photo: Novalis at en.wikipedia · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Mustard.png"
+ },
+ "Olive oil (Raughan-e-Zaitoon)": {
+  "url": "/foods/olive-oil.jpg",
+  "credit": "Photo: Poyraz 72 · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Oliven_V1.jpg"
+ },
+ "Mustard oil (Raughan-e-Sarson)": {
+  "url": "/foods/mustard-oil.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:1920px--Mustard_oil_extraction.webm.jpg"
+ },
+ "Coconut oil (Raughan-e-Narjeel)": {
+  "url": "/foods/coconut-oil.jpg",
+  "credit": "Photo: Phu Thinh Co · CC BY-SA 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Coconut_and_oil.jpg"
+ },
+ "White sugar (Shakar)": {
+  "url": "/foods/white-sugar.jpg",
+  "credit": "Photo: Romain Behar · Public domain · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Sucre_blanc_cassonade_complet_rapadura.jpg"
+ },
+ "Jaggery (Gur / Qand-e-Siyah)": {
+  "url": "/foods/jaggery.jpg",
+  "credit": "Photo: Sanjay ach · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Sa-indian-gud.jpg"
+ },
+ "Rock sugar (Mishri / Nabat)": {
+  "url": "/foods/rock-sugar.jpg",
+  "credit": "Photo: Evan-Amos · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Rock-Candy-Sticks.jpg"
+ },
+ "Gulqand (rose petal jam)": {
+  "url": "/foods/gulqand.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Gulkand..JPG"
+ },
+ "Coconut water (Ma-ul-Narjeel)": {
+  "url": "/foods/coconut-water.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:1920px-Young_Coconut_Drink.jpg"
+ },
+ "Green tea": {
+  "url": "/foods/green-tea.jpg",
+  "credit": "Photo: Alessandro Martini · CC0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Green_tea_3_appearances.jpg"
+ },
+ "Rose water sherbet (Sharbat-e-Gulab)": {
+  "url": "/foods/rose-water-sherbet.jpg",
+  "credit": "Photo: Hossein Khosravi · CC BY 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Golab_being_make_in_Meymand_-_Fars_21.jpg"
+ },
+ "Sandalwood sherbet (Sharbat-e-Sandal)": {
+  "url": "/foods/sandalwood-sherbet.jpg",
+  "credit": "Photo: Zee Patel · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Variyali_Sharbat.JPG"
+ },
+ "Fennel water (Arq-e-Badiyan)": {
+  "url": "/foods/fennel-water.jpg",
+  "credit": "Photo: Jeeheon Cho from Surat Thani, Thailand · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Saunf_or_Fennel_seeds_used_as_an_after-mint_in_India.jpg"
+ },
+ "Sugarcane juice (Ras)": {
+  "url": "/foods/sugarcane-juice.jpg",
+  "credit": "Photo: Food Trails · CC BY-SA 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Sugarcanejuice.jpg"
+ },
+ "Fizzy soft drinks": {
+  "url": "/foods/fizzy-soft-drinks.jpg",
+  "credit": "Photo: Simon Cousins from High Wycombe, England · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Tumbler_of_cola_with_ice.jpg"
+ },
+ "Warm water (Ma-e-Har)": {
+  "url": "/foods/warm-water.jpg",
+  "credit": "Photo: Dr Jean Fortunet · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Fasting_4-Fasting-a-glass-of-water-on-an-empty-plate.jpg"
+ },
+ "Pickles (Achar)": {
+  "url": "/foods/pickles.jpg",
+  "credit": "Photo: Suyash.dwivedi · CC BY-SA 4.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Chilli_pickle_in_a_plate_2.jpg"
+ },
+ "Fast food & junk food": {
+  "url": "/foods/fast-food-junk-food.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Hamburger_(12164386105).jpg"
+ },
+ "Bakery items (biscuits, cakes)": {
+  "url": "/foods/bakery-items.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:3840px-Bourbon_and_Custard_Cream.jpeg"
+ },
+ "Vegetable soup (Shorba-e-Tarkari)": {
+  "url": "/foods/vegetable-soup.jpg",
+  "credit": "Photo: Jennifer · CC BY 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Vegetable_udon_noodle_soup.jpg"
+ },
+ "Stale & reheated food": {
+  "url": "/foods/stale-reheated-food.jpg",
+  "credit": "Photo: Andrew Nash from Vienna, Austria · CC BY-SA 2.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Leftovers_from_Thanksgiving.jpg"
+ },
+ "Muskmelon (Kharbuza / Bitteekh)": {
+  "url": "/foods/muskmelon.jpg",
+  "credit": "Photo: Rasbak at Dutch Wikipedia · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Meloen_vrucht_met_bloem.jpg"
+ },
+ "Melon seeds (Maghz-e-Tukhm-e-Kharbuza)": {
+  "url": "/foods/melon-seeds.jpg",
+  "credit": "Photo: Unknown author · see source · Wikimedia Commons",
+  "source": ""
+ },
+ "Ghee (Raughan-e-Zard)": {
+  "url": "/foods/ghee.jpg",
+  "credit": "Photo: Rainer Z ... · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Butterschmalz-2.jpg"
+ },
+ "Asafoetida (Hing / Hiltheet)": {
+  "url": "/foods/asafoetida.jpg",
+  "credit": "Photo: Unknown author · CC BY-SA 3.0 · Wikimedia Commons",
+  "source": "https://commons.wikimedia.org/wiki/File:Asafoetida.jpg"
+ }
+}
