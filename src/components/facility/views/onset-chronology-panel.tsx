@@ -9,7 +9,6 @@ import type { ComplaintDuration } from "@/components/facility/views/chief-compla
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Badge } from "@/components/ui/badge";
-import { FloatingField } from "@/components/shared/floating-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, Circle, Hourglass, Loader2, RotateCcw } from "lucide-react";
 
@@ -225,16 +224,6 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
               )}
             </div>
 
-            <div className="mt-4">
-              <FloatingField
-                id="chronology-note"
-                label="Chronology note"
-                value={note}
-                maxLength={500}
-                onChange={(e) => setNote(e.target.value)}
-                title="e.g. episodic recurrence over the past 6 months"
-              />
-            </div>
           </div>
         </div>
         <NoticeSlot state={msg} className="mt-4" />
