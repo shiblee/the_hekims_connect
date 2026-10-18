@@ -9,8 +9,9 @@ import type { ComplaintDuration } from "@/components/facility/views/chief-compla
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { FloatingMultiSelect } from "@/components/shared/floating-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, Circle, Footprints, Hourglass, Infinity as InfinityIcon, Loader2, Moon, Repeat, RotateCcw, Snowflake, Sunrise, TrendingUp, Utensils, Waves, Zap } from "lucide-react";
+import { Footprints, Hourglass, Infinity as InfinityIcon, Loader2, Moon, Repeat, RotateCcw, Snowflake, Sunrise, TrendingUp, Utensils, Waves, Zap } from "lucide-react";
 
 interface Pattern { id: string; label: string; description: string | null }
 interface Saved {
@@ -25,17 +26,6 @@ export interface OnsetChronologyPanelHandle {
 const unitLabel = (u: string) => DURATION_UNITS.find((x) => x.value === u)?.label.split(" (")[0].toLowerCase() ?? u;
 const fmt = (v: number, u: string) => `${v} ${v === 1 ? unitLabel(u).replace(/s$/, "") : unitLabel(u)}`;
 
-const QUICK_DURATIONS = [
-  { label: "Today", value: 12, unit: "hours" },
-  { label: "2–3 days", value: 3, unit: "days" },
-  { label: "1 week", value: 1, unit: "weeks" },
-  { label: "2 weeks", value: 2, unit: "weeks" },
-  { label: "1 month", value: 1, unit: "months" },
-  { label: "3 months", value: 3, unit: "months" },
-  { label: "6 months", value: 6, unit: "months" },
-  { label: "1 year +", value: 1, unit: "years" },
-];
-
 const longDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
 // An icon per onset pattern, matched on the admin-configured label.
@@ -43,10 +33,10 @@ function patternIcon(label: string) {
   const l = label.toLowerCase();
   if (/sudden|paroxys|abrupt|acute/.test(l)) return Zap;
   if (/insidious|gradual|slow|creep/.test(l)) return TrendingUp;
-  if (/prandial|meal|food|eat/.test(l)) return Utensils;
+  if (/season|winter|summer|cold|weather/.test(l)) return Snowflake;
+  if (/prandial|meal|food|\beat/.test(l)) return Utensils;
   if (/nocturn|night|layl/.test(l)) return Moon;
   if (/morning|dawn|waking/.test(l)) return Sunrise;
-  if (/season|winter|cold|weather/.test(l)) return Snowflake;
   if (/exert|activity|walk|effort/.test(l)) return Footprints;
   if (/episod|intermit|recur|periodic|cycl/.test(l)) return Repeat;
   if (/constant|continu|persist/.test(l)) return InfinityIcon;
@@ -63,6 +53,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
   function OnsetChronologyPanel({ visitId, complaintDurations }, ref) {
     const [patterns, setPatterns] = useState<Pattern[]>([]);
     const [selected, setSelected] = useState<string[]>([]);
+    const [patternQuery, setPatternQuery] = useState("");
     const [value, setValue] = useState("");
     const [unit, setUnit] = useState("days");
     const [date, setDate] = useState("");
@@ -138,9 +129,17 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
       setDate(Number.isFinite(n) && n > 0 ? onsetDateFor(n, nextUnit) : "");
     };
 
-    // Selected options no longer offered by admin still show, so nothing is lost.
-    const orphaned = selected.filter((l) => !patterns.some((p) => p.label === l));
-    const cards: Pattern[] = [...patterns, ...orphaned.map((l) => ({ id: `orphan:${l}`, label: l, description: null }))];
+    // Search the admin list by name or description; with nothing typed, offer the first few.
+    const pq = patternQuery.trim().toLowerCase();
+    const patternSuggestions = patterns
+      .filter((p) => !selected.includes(p.label) && (!pq || p.label.toLowerCase().includes(pq) || (p.description || "").toLowerCase().includes(pq)))
+      .slice(0, pq ? 12 : 6)
+      .map((p) => ({ id: p.label, label: p.label, description: p.description }));
+    const addOtherPattern = (text: string) => {
+      const match = patterns.find((p) => p.label.toLowerCase() === text.toLowerCase());
+      const label = match ? match.label : text;
+      setSelected((cur) => (cur.some((x) => x.toLowerCase() === label.toLowerCase()) ? cur : [...cur, label]));
+    };
     const withDurations = (complaintDurations || []).filter((d) => d.value != null);
     const course = courseFor(shown.value, shown.unit);
 
@@ -165,38 +164,28 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
               <p className="text-sm font-medium">How did it start, and when is it worse?</p>
               {selected.length > 0 && <Badge variant="outline" className="text-[11px] font-normal shrink-0">{selected.length} selected</Badge>}
             </div>
-            {cards.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No options configured yet — add them in Admin → Meta → Patient.</p>
-            ) : (
-              <div className="grid @lg:grid-cols-2 gap-2">
-                {cards.map((p) => {
-                  const checked = selected.includes(p.label);
-                  const Icon = patternIcon(p.label);
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => toggle(p.label)}
-                      aria-pressed={checked}
-                      title={p.description ? `${p.label} — ${p.description}` : p.label}
-                      className={cn(
-                        "h-14 flex items-center gap-3 rounded-xl border px-3 text-left transition-colors",
-                        checked ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30"
-                      )}
-                    >
-                      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", checked ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>
-                        <Icon className="h-4.5 w-4.5" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold leading-snug truncate">{p.label}</span>
-                        {p.description && <span className="block text-xs text-muted-foreground truncate">{p.description}</span>}
-                      </span>
-                      {checked ? <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" /> : <Circle className="h-4.5 w-4.5 text-muted-foreground/40 shrink-0" />}
-                    </button>
-                  );
+            <div className="pt-1.5">
+              <FloatingMultiSelect
+                id="onsetPatternSearch"
+                label="Search onset & rhythm"
+                placeholder="Type — e.g. sudden, gradual, night, after meals…"
+                openOnFocus
+                emptyHint={patterns.length > 6 ? `Common patterns · type to search all ${patterns.length}` : "Onset & rhythm patterns"}
+                selected={selected.map((label) => {
+                  const pt = patterns.find((x) => x.label === label);
+                  return { id: label, label, description: pt ? pt.description : "Added by doctor" };
                 })}
-              </div>
-            )}
+                onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))}
+                query={patternQuery}
+                onQueryChange={setPatternQuery}
+                results={patternSuggestions}
+                describe={(pt) => pt.description}
+                renderIcon={(pt) => { const Icon = patternIcon(pt.label); return <Icon className="h-3.5 w-3.5 shrink-0" />; }}
+                onPick={(label) => toggle(label)}
+                onCreate={addOtherPattern}
+                createLabel={(q) => `Add "${q}" as another pattern`}
+              />
+            </div>
           </div>
 
           <div className="min-w-0">
@@ -237,27 +226,6 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
               </div>
             </div>
 
-            {/* One-tap common durations */}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {QUICK_DURATIONS.map((q) => {
-                const on = shown.value === String(q.value) && shown.unit === q.unit;
-                return (
-                  <button
-                    key={q.label}
-                    type="button"
-                    onClick={() => editDuration(String(q.value), q.unit)}
-                    aria-pressed={on}
-                    className={cn(
-                      "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-                      on ? "border-primary bg-primary text-primary-foreground" : "border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
-                    )}
-                  >
-                    {q.label}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* What the duration means: course type + approximate start */}
             {course && (
               <div className={cn("mt-3 rounded-xl border px-3.5 py-3", course.style.border, course.style.bg)}>
@@ -288,7 +256,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                   </button>
                 </p>
               ) : !longest && !shown.value ? (
-                <p>Fills in automatically from the chief complaints&apos; durations, or pick one above.</p>
+                <p>Fills in automatically from the chief complaints&apos; durations, or enter one above.</p>
               ) : null}
               {withDurations.length > 1 && (
                 <p className="flex flex-wrap gap-1.5">
