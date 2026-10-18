@@ -18,21 +18,8 @@ import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/compo
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { savedAt } from "@/lib/flash";
-import { ArrowRight, Loader2, History, Printer, ShieldAlert } from "lucide-react";
-
-// Colours for the Mizaj History balance bar.
-const AKHLAT = [
-  { key: "dam", color: "oklch(0.62 0.2 25)" },
-  { key: "saffra", color: "oklch(0.78 0.14 80)" },
-  { key: "balgham", color: "oklch(0.7 0.13 220)" },
-  { key: "sauda", color: "oklch(0.5 0.15 300)" },
-] as const;
-
-interface Assessment {
-  id: string; createdAt: string; result: string; pulse: string | null; notes: string | null;
-  dam: number; saffra: number; balgham: number; sauda: number;
-  patient?: { id: string; name: string } | null;
-}
+import { ArrowRight, Loader2, Printer, ShieldAlert } from "lucide-react";
+import { MizajHistoryCard } from "@/components/facility/views/mizaj-history-card";
 
 /**
  * Stage 3 — Mizaj & Morphometry. Arriving from the Clinical Record's
@@ -77,7 +64,6 @@ function MizajStage({ patientId }: { patientId: string }) {
   const router = useRouter();
   const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload, refreshVisits } = useStagePatient(patientId);
   const msg = useNotice();
-  const [history, setHistory] = useState<Assessment[]>([]);
   const [saving, setSaving] = useState<"draft" | "proceed" | null>(null);
   const chiefComplaintRef = useRef<ChiefComplaintMatrixHandle>(null);
   const regionRef = useRef<AnatomicalRegionSelectorHandle>(null);
@@ -90,10 +76,6 @@ function MizajStage({ patientId }: { patientId: string }) {
   const referralRef = useRef<RedFlagScreeningPanelHandle>(null);
   const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
 
-  const loadHistory = () =>
-    api.get<{ assessments: Assessment[] }>(`/api/mizaj?patientId=${patientId}`).then((r) => setHistory(r.assessments || [])).catch(() => {});
-
-  useEffect(() => { loadHistory(); }, [patientId]);
   // Stable reference — a new array each render would re-trigger the matrix's
   // load effect and wipe unsaved edits (same reason as on the Clinical Record).
   const intakeComplaints = useMemo(() => {
@@ -190,30 +172,7 @@ function MizajStage({ patientId }: { patientId: string }) {
             )}
             {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
             <TriageNotesCard visits={visits} />
-            {history.length > 0 && (
-            <Card className="p-5 border-border/50 bg-card/60">
-              <div className="flex items-center gap-2 mb-3">
-                <History className="h-4 w-4 text-primary" />
-                <h3 className="font-serif text-base font-semibold">Mizaj History</h3>
-              </div>
-                <div className="space-y-3">
-                  {history.map((a) => (
-                    <div key={a.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-[13px] font-semibold text-primary">{a.result.split(" — ")[0]}</p>
-                        <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mb-2">
-                        {AKHLAT.map((k) => (
-                          <div key={k.key} style={{ width: `${a[k.key]}%`, background: k.color }} />
-                        ))}
-                      </div>
-                      {a.pulse && <p className="text-xs text-muted-foreground">Pulse: {a.pulse}</p>}
-                    </div>
-                  ))}
-                </div>
-            </Card>
-            )}
+            <MizajHistoryCard patientId={patientId} />
           </div>
         </div>
       </div>

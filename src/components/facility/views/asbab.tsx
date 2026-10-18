@@ -8,7 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AsbabAssessmentPanel, AsbabDriftCard, useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { StageHeader, useStagePatient } from "@/components/facility/views/stage-frame";
-import { ClinicalSummaryColumn } from "@/components/facility/views/clinical-summary";
+import { HakeemInsightPanel, type HakeemInsightPanelHandle } from "@/components/facility/views/hakeem-insight-panel";
+import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
+import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
+import { MizajHistoryCard } from "@/components/facility/views/mizaj-history-card";
+import { Stage3FindingsCards } from "@/components/facility/views/stage3-findings";
+import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
 import { savedAt } from "@/lib/flash";
@@ -38,8 +43,20 @@ function AsbabStage({ patientId }: { patientId: string }) {
   const referralRef = useRef<RedFlagScreeningPanelHandle>(null);
   const asbab = useAsbabAssessment(latestVisit?.id);
   const router = useRouter();
+  // Right column — same cards as Stage 3, then Stage 3's own findings.
+  const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
+  const insightRef = useRef<HakeemInsightPanelHandle>(null);
+  const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
 
-  const saveDraft = async () => { if (await asbab.save(false)) asbab.msg.success("Draft saved", savedAt()); };
+  /** Saves the answers and the Resident Clinical Note together; false if either failed (each shows its own message). */
+  const saveAll = async (complete: boolean) => {
+    const [ok, note] = await Promise.all([
+      asbab.save(complete),
+      residentNoteRef.current?.save().then(() => true, () => false) ?? Promise.resolve(true),
+    ]);
+    return ok && note;
+  };
+  const saveDraft = async () => { if (await saveAll(false)) asbab.msg.success("Draft saved", savedAt()); };
   // Completes the review (required questions enforced here and on the
   // server), then hands over to Stage 5 — same pattern as Stages 2 and 3.
   const proceed = async () => {
@@ -51,7 +68,7 @@ function AsbabStage({ patientId }: { patientId: string }) {
       );
       return;
     }
-    if (await asbab.save(true)) router.push(`/facility/tashkhees?patientId=${patientId}`);
+    if (await saveAll(true)) router.push(`/facility/tashkhees?patientId=${patientId}`);
   };
 
   // Print icon → the assessment report in a new tab (read-only: shows what's
@@ -76,9 +93,10 @@ function AsbabStage({ patientId }: { patientId: string }) {
       <StageHeader stage="asbab" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} onEditReferral={() => referralRef.current?.openEditReferral()} />
       {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
-      {/* Centre (2/3): the Asbab-e-Sittah assessment. Right (1/3): everything
-          recorded so far, grouped by who assessed it — same column split as
-          Stages 2 and 3. */}
+      {/* Centre (2/3): the Asbab-e-Sittah assessment. Right (1/3): the same
+          cards as Stage 3 (Hakeem Insight, Resident Clinical Note, triage
+          notes, Mizaj history), then what was recorded at Stage 3 (body
+          regions, onset & chronology), then this stage's live humoral drift. */}
       <div className="mb-6 grid lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
@@ -86,11 +104,15 @@ function AsbabStage({ patientId }: { patientId: string }) {
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete the earlier stages first.</Card>}
         </div>
 
-        <div className="min-w-0 space-y-4">
-          {latestVisit && <AsbabDriftCard state={asbab} />}
-          {latestVisit
-            ? <ClinicalSummaryColumn visitId={latestVisit.id} />
-            : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete the earlier stages first.</Card>}
+        <div ref={spacerRef} className="relative min-w-0">
+          <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
+            {latestVisit && <HakeemInsightPanel ref={insightRef} visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} />}
+            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+            <TriageNotesCard visits={visits} />
+            <MizajHistoryCard patientId={patientId} />
+            {latestVisit && <Stage3FindingsCards visitId={latestVisit.id} patientId={patientId} />}
+            {latestVisit && <AsbabDriftCard state={asbab} />}
+          </div>
         </div>
       </div>
 

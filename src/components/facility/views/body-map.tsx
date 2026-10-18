@@ -169,10 +169,12 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
  * highlighted the same way as the interactive map — fixed colours so it reads
  * the same on paper in light or dark theme. Used by the assessment report.
  */
-export function BodyFigure({ view, items, width = 120 }: {
+export function BodyFigure({ view, items, width = 120, screen }: {
   view: BodyView;
   items: { label: string; zone: string | null; icon: string; primary: boolean }[];
   width?: number;
+  /** On-screen use: silhouette follows the theme instead of the fixed print grey. */
+  screen?: boolean;
 }) {
   const uid = useId().replace(/:/g, "");
   const onView = items.filter((i) => i.zone && BODY_ZONES[i.zone]?.[view]);
@@ -192,7 +194,7 @@ export function BodyFigure({ view, items, width = 120 }: {
               <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
             </radialGradient>
           </defs>
-          <Silhouette view={view} seam="#ffffff" className="fill-current text-[#e5e7eb]" />
+          <Silhouette view={view} seam={screen ? "var(--card)" : "#ffffff"} className={cn("fill-current", screen ? "text-muted-foreground/25" : "text-[#e5e7eb]")} />
           {onView.map((i) => {
             const z = BODY_ZONES[i.zone!][view]!;
             return (
@@ -233,7 +235,7 @@ export function BodyFigure({ view, items, width = 120 }: {
           }),
         )}
       </div>
-      <figcaption className="mt-1 text-[8.5pt] uppercase tracking-wide text-[#6b7280]">{view === "front" ? "Front · Muqaddam" : "Back · Mu'akhkhar"}</figcaption>
+      <figcaption className={cn("mt-1 uppercase tracking-wide", screen ? "text-[11px] text-muted-foreground" : "text-[8.5pt] text-[#6b7280]")}>{view === "front" ? "Front · Muqaddam" : "Back · Mu'akhkhar"}</figcaption>
     </figure>
   );
 }

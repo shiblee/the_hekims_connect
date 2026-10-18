@@ -11,7 +11,8 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { FloatingMultiSelect } from "@/components/shared/floating-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Footprints, Hourglass, Infinity as InfinityIcon, Loader2, Moon, Repeat, RotateCcw, Snowflake, Sunrise, TrendingUp, Utensils, Waves, Zap } from "lucide-react";
+import { Hourglass, Loader2, RotateCcw } from "lucide-react";
+import { patternIcon } from "@/lib/onset-icons";
 
 interface Pattern { id: string; label: string; description: string | null }
 interface Saved {
@@ -28,20 +29,6 @@ const fmt = (v: number, u: string) => `${v} ${v === 1 ? unitLabel(u).replace(/s$
 
 const longDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-// An icon per onset pattern, matched on the admin-configured label.
-function patternIcon(label: string) {
-  const l = label.toLowerCase();
-  if (/sudden|paroxys|abrupt|acute/.test(l)) return Zap;
-  if (/insidious|gradual|slow|creep/.test(l)) return TrendingUp;
-  if (/season|winter|summer|cold|weather/.test(l)) return Snowflake;
-  if (/prandial|meal|food|\beat/.test(l)) return Utensils;
-  if (/nocturn|night|layl/.test(l)) return Moon;
-  if (/morning|dawn|waking/.test(l)) return Sunrise;
-  if (/exert|activity|walk|effort/.test(l)) return Footprints;
-  if (/episod|intermit|recur|periodic|cycl/.test(l)) return Repeat;
-  if (/constant|continu|persist/.test(l)) return InfinityIcon;
-  return Waves;
-}
 
 /**
  * Stage 3 — Onset Nature & Rhythm (admin-configured, multi-select) and
