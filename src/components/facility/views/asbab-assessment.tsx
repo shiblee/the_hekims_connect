@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useCallback, useEffect, useMemo, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -104,16 +104,25 @@ type AsbabState = ReturnType<typeof useAsbabAssessment>;
 const LETTERS = "ABCDEFGHIJ";
 
 /** A pillar's icon (looked up by key, outside render so it's a stable component). */
+/** A question's frame: its own card, or a divided row inside a pillar card. */
+function Wrap({ bare, className, children }: { bare?: boolean; className?: string; children: ReactNode }) {
+  return bare
+    ? <div className={cn("space-y-3 border-t border-border/40 py-4 first:border-t-0 first:pt-2 last:pb-1", className)}>{children}</div>
+    : <Card className={className}>{children}</Card>;
+}
+
 function PillarIcon({ pillarKey, className }: { pillarKey: string; className?: string }) {
   return createElement(pillarIcon(pillarKey), { className });
 }
 
-export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, onChange, hints }: {
+export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, onChange, hints, bare }: {
   q: AsbabQuestionCfg; index: number; count: number; pillarLabel: string; value: AsbabAnswer | undefined; onChange: (v: AsbabAnswer) => void;
   /** Show the pillar this question belongs to (Quick review lists all pillars together). */
   pillarKey?: string;
   /** option label → recorded finding that suggests it. */
   hints?: Record<string, string>;
+  /** Render as a row inside a pillar card instead of its own card. */
+  bare?: boolean;
 }) {
   const choice = q.type === "single_select" || q.type === "multi_select";
   const selected = Array.isArray(value) ? value : [];
@@ -124,7 +133,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
   const answered = isAnswered(value);
 
   return (
-    <Card className={cn("p-4 border-border/50 bg-card/60 gap-3", answered ? "border-l-2 border-l-emerald-500/60" : q.required && "border-l-2 border-l-amber-500/60")}>
+    <Wrap bare={bare} className={cn(bare ? "" : "p-4 border-border/50 bg-card/60 gap-3", !bare && (answered ? "border-l-2 border-l-emerald-500/60" : q.required && "border-l-2 border-l-amber-500/60"))}>
       <div className="flex items-start gap-3">
         <span className={cn(
           "h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold",
@@ -189,7 +198,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
       ) : (
         <FloatingTextarea id={`asbab-${q.id}`} label="Answer" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} rows={2} />
       )}
-    </Card>
+    </Wrap>
   );
 }
 
@@ -213,7 +222,7 @@ function useRecordedFindings(visitId: string | undefined) {
   return findings;
 }
 
-const MODE_KEY = "hekims-asbab-mode";
+const MODE_KEY = "hekims-asbab-view";
 
 // Short names for the one-line pillar strip (full names show on hover). Pillars
 // added later in Admin fall back to their own label and English name.
@@ -223,92 +232,144 @@ const SHORT: Record<string, [string, string]> = {
 };
 
 /**
- * Centre of Stage 4. Two ways to fill it:
- * - Quick review (default): only each pillar's key questions — the ones
- *   marked Required in Admin — on one screen. Enough to complete the stage.
- * - Full review: every question, one pillar at a time, for a finer reading.
- * Options backed by something already recorded for the visit are marked
- * "Suggested" (never selected automatically).
+ * Centre of Stage 4: every question on one screen, grouped into one card per
+ * pillar — no tab switching. The one-line pillar strip is a jump bar (it
+ * highlights the pillar in view and scrolls to the one clicked). "Key only"
+ * narrows it to each pillar's key question (marked Required in Admin) — enough
+ * to complete the stage. Options backed by something already recorded for the
+ * visit are marked "Suggested" (never selected automatically).
  */
 export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; visitId?: string }) {
   const { pillars, answers, setAnswer, archived, progress, status } = state;
-  const [activeKey, setActiveKey] = useState<string | null>(null);
-  const [mode, setModeState] = useState<"quick" | "full">(() => {
-    try { return localStorage.getItem(MODE_KEY) === "full" ? "full" : "quick"; } catch { return "quick"; }
+  const [view, setViewState] = useState<"all" | "key">(() => {
+    try { return localStorage.getItem(MODE_KEY) === "key" ? "key" : "all"; } catch { return "all"; }
   });
-  const setMode = (m: "quick" | "full") => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* per-viewer convenience only */ } };
+  const setView = (v: "all" | "key") => { setViewState(v); try { localStorage.setItem(MODE_KEY, v); } catch { /* per-viewer convenience only */ } };
   const findings = useRecordedFindings(visitId);
-  const active = pillars?.find((p) => p.key === activeKey) ?? pillars?.[0];
+  const [inView, setInView] = useState<string | null>(null);
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  // Floating mini jump bar: shown once the header card (with the full strip)
+  // has scrolled out of view, lined up with the centre column.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [floatBox, setFloatBox] = useState<{ left: number; width: number } | null>(null);
+  useEffect(() => {
+    const update = () => {
+      const el = headerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const panel = el.parentElement?.getBoundingClientRect();
+      const showing = r.bottom < 12 && !!panel && panel.bottom > 200;
+      setFloatBox(showing ? { left: r.left, width: r.width } : null);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, [pillars]);
+
+  // Scroll-spy: the pillar whose heading has most recently passed the top of the screen.
+  useEffect(() => {
+    if (!pillars?.length) return;
+    const spy = () => {
+      let current: string | null = null;
+      for (const p of pillars) {
+        const el = sectionRefs.current[p.key];
+        if (el && el.getBoundingClientRect().top <= 160) current = p.key;
+      }
+      setInView(current ?? pillars[0].key);
+    };
+    spy();
+    window.addEventListener("scroll", spy, { passive: true });
+    return () => window.removeEventListener("scroll", spy);
+  }, [pillars, view]);
 
   if (!pillars) {
     if (state.loadError) return <LoadFailed what="the Asbab-e-Sittah assessment" detail={state.loadError} onRetry={state.reload} />;
     return <Card className="p-5 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading Asbab-e-Sittah…</div></Card>;
   }
-  if (!pillars.length || !active) {
+  if (!pillars.length) {
     return <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No Asbab-e-Sittah pillars are enabled — configure them in Admin → Meta → Asbab-e-Sittah.</Card>;
   }
 
   // Key questions: those marked Required; a pillar with none uses its first question.
-  const keyQs = (p: AsbabPillarCfg) => {
-    const shown = p.questions.filter((q) => questionVisible(q, answers));
-    const req = shown.filter((q) => q.required);
-    return req.length ? req : shown.slice(0, 1);
+  const shownQs = (p: AsbabPillarCfg) => p.questions.filter((q) => questionVisible(q, answers));
+  const keyQs = (p: AsbabPillarCfg) => { const sh = shownQs(p); const req = sh.filter((q) => q.required); return req.length ? req : sh.slice(0, 1); };
+  const qsFor = (p: AsbabPillarCfg) => (view === "key" ? keyQs(p) : shownQs(p));
+  const all = pillars.flatMap((p) => qsFor(p).map((q) => ({ p, q })));
+  const answeredN = all.filter(({ q }) => isAnswered(answers[q.id])).length;
+  const keyTotal = pillars.reduce((n, p) => n + keyQs(p).length, 0);
+  const allTotal = pillars.reduce((n, p) => n + shownQs(p).length, 0);
+  const hintCount = all.filter(({ q }) => !isAnswered(answers[q.id]) && Object.keys(hintsFor(q, findings)).length > 0).length;
+  const numberOf = new Map(all.map(({ q }, i) => [q.id, i + 1]));
+  const jump = (key: string) => {
+    const el = sectionRefs.current[key];
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 64, behavior: "smooth" });
   };
-  const quickList = pillars.flatMap((p) => keyQs(p).map((q) => ({ p, q })));
-  const quickAnswered = quickList.filter(({ q }) => isAnswered(answers[q.id])).length;
-  const shownCount = mode === "quick" ? { answered: quickAnswered, total: quickList.length } : { answered: progress.answered, total: progress.total };
-  const extraAnswered = progress.answered - quickAnswered;
-
-  const idx = pillars.indexOf(active);
-  const shown = active.questions.filter((q) => questionVisible(q, answers));
-  const archivedHere = archived.filter((a) => a.pillarKey === active.key);
-  const go = (d: -1 | 1) => { const p = pillars[idx + d]; if (p) { setActiveKey(p.key); window.scrollTo({ top: 0, behavior: "smooth" }); } };
-  const hintCount = (mode === "quick" ? quickList.map(({ q }) => q) : shown)
-    .filter((q) => !isAnswered(answers[q.id]) && Object.keys(hintsFor(q, findings)).length > 0).length;
+  const firstOpen = all.find(({ q }) => !isAnswered(answers[q.id]));
 
   return (
-    <div className="space-y-5">
-      <Card className="p-5 border-border/50 bg-card/60 gap-0">
+    <div className="space-y-4">
+      {floatBox && (
+        <div className="fixed top-3 z-20 flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/95 px-2 py-1.5 shadow-lg backdrop-blur"
+          style={{ left: floatBox.left, width: floatBox.width }} role="navigation" aria-label="Jump to pillar">
+          {pillars.map((p) => {
+            const qs = qsFor(p);
+            const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+            const done = qs.length > 0 && a === qs.length;
+            const on = inView === p.key;
+            return (
+              <button key={p.key} type="button" onClick={() => jump(p.key)} title={`${p.label} — ${p.english} · ${a}/${qs.length}`}
+                className={cn("flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors",
+                  on ? "bg-primary text-primary-foreground" : done ? "text-emerald-700 dark:text-emerald-400 hover:bg-muted" : "text-muted-foreground hover:bg-muted")}>
+                <PillarIcon pillarKey={p.key} className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate hidden sm:inline">{SHORT[p.key]?.[0] ?? p.label}</span>
+                <span className="tabular-nums opacity-80">{done ? "✓" : `${a}/${qs.length}`}</span>
+              </button>
+            );
+          })}
+          <span className="hidden md:inline shrink-0 border-l border-border/60 pl-2 text-xs tabular-nums text-muted-foreground">{answeredN}/{all.length}</span>
+        </div>
+      )}
+      <Card ref={headerRef} className="p-5 border-border/50 bg-card/60 gap-0">
         <SectionHeading
           icon={Wind}
           title="Asbab-e-Sittah Zarooriya"
           right={
             <span className="flex items-center gap-1.5 shrink-0 flex-wrap">
               {status === "completed" && <Badge variant="outline" className="text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Completed</Badge>}
-              <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label="Review mode">
-                {([["quick", `Quick · ${quickList.length}`], ["full", `Full · ${progress.total}`]] as const).map(([m, label]) => (
-                  <button key={m} type="button" onClick={() => setMode(m)} aria-pressed={mode === m}
-                    title={m === "quick" ? "Only the key question of each pillar — enough to complete this stage" : "Every question, one pillar at a time"}
-                    className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+              <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label="Which questions to show">
+                {([["all", `All · ${allTotal}`], ["key", `Key only · ${keyTotal}`]] as const).map(([m, label]) => (
+                  <button key={m} type="button" onClick={() => setView(m)} aria-pressed={view === m}
+                    title={m === "key" ? "Only each pillar's key question — enough to complete this stage" : "Every question, all pillars on one screen"}
+                    className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", view === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
                     {label}
                   </button>
                 ))}
               </span>
-              <Badge variant="outline" className="tabular-nums">{shownCount.answered} of {shownCount.total} answered</Badge>
+              <Badge variant="outline" className="tabular-nums">{answeredN} of {all.length} answered</Badge>
             </span>
           }
         />
         <div className="mt-3 mb-3 h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
-          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${shownCount.total ? (shownCount.answered / shownCount.total) * 100 : 0}%` }} />
+          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${all.length ? (answeredN / all.length) * 100 : 0}%` }} />
         </div>
 
-        {/* Pillars — one line. A ring shows each pillar's progress; click opens it in Full review. */}
+        {/* Pillars — one line; a ring shows each pillar's progress. Click jumps to it. */}
         <div className="@container"><div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-0.5">
           {pillars.map((p, i) => {
-            const pr = progress.per[p.key];
-            const keys = keyQs(p);
-            const a = mode === "quick" ? keys.filter((q) => isAnswered(answers[q.id])).length : pr?.answered ?? 0;
-            const t = mode === "quick" ? keys.length : pr?.total ?? 0;
+            const qs = qsFor(p);
+            const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+            const t = qs.length;
             const done = t > 0 && a === t;
-            const on = mode === "full" && p.key === active.key;
-            const missing = keys.some((q) => q.required && !isAnswered(answers[q.id]));
+            const on = inView === p.key;
+            const missing = keyQs(p).some((q) => q.required && !isAnswered(answers[q.id]));
             const pct = t ? a / t : 0;
             return (
               <button
                 key={p.key}
                 type="button"
-                onClick={() => { setActiveKey(p.key); if (mode === "quick") setMode("full"); }}
-                title={`${i + 1}. ${p.label} — ${p.english} · ${a}/${t} answered${mode === "quick" ? " (click for all its questions)" : ""}`}
+                onClick={() => jump(p.key)}
+                title={`${i + 1}. ${p.label} — ${p.english} · ${a}/${t} answered`}
                 className={cn(
                   "flex min-w-[6.5rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1 @3xl:gap-1.5 rounded-xl border px-1 @3xl:px-1.5 py-1.5 text-left transition-colors",
                   on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/40",
@@ -342,52 +403,62 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
         </p>
       )}
 
-      {mode === "quick" ? (
-        <>
-          {quickList.map(({ p, q }, i) => (
-            <QuestionCard key={q.id} q={q} index={i} count={quickList.length} pillarLabel={p.label} pillarKey={p.key}
-              value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} hints={hintsFor(q, findings)} />
-          ))}
-          <Card className="p-4 border-dashed border-border/60 bg-card/40 flex-row items-center justify-between gap-3 flex-wrap">
-            <p className="text-[13px] text-muted-foreground">
-              Key questions are enough to complete this stage.
-              {` ${progress.total - quickList.length} more questions are optional for a finer humoral reading`}
-              {extraAnswered > 0 ? ` (${extraAnswered} already answered).` : "."}
-            </p>
-            <Button size="sm" variant="outline" onClick={() => { setActiveKey(pillars[0].key); setMode("full"); }}>Open full review <ArrowRight className="h-3.5 w-3.5" /></Button>
-          </Card>
-        </>
-      ) : (
-        <>
-          <div className="flex items-start gap-3 px-1">
-            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><PillarIcon pillarKey={active.key} className="h-4.5 w-4.5" /></div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Pillar {idx + 1} of {pillars.length}</p>
-              <h3 className="font-serif text-lg font-semibold leading-tight">{active.label} <span className="text-sm font-sans font-normal text-muted-foreground">· {active.english}</span></h3>
-            </div>
-          </div>
-
-          {shown.length === 0
-            ? <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No questions are enabled for this pillar.</Card>
-            : shown.map((q, i) => (
-              <QuestionCard key={q.id} q={q} index={i} count={shown.length} pillarLabel={active.label} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} hints={hintsFor(q, findings)} />
-            ))}
-
-          {archivedHere.length > 0 && (
-            <Card className="p-4 border-border/50 bg-card/40 gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorded earlier (question since disabled)</p>
-              {archivedHere.map((a, i) => (
-                <p key={i} className="text-sm"><span className="text-muted-foreground">{a.question}:</span> {Array.isArray(a.value) ? a.value.join(", ") : a.value}</p>
-              ))}
+      {/* All pillars, one card each */}
+      {pillars.map((p, i) => {
+        const qs = qsFor(p);
+        if (!qs.length) return null;
+        const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+        const done = a === qs.length;
+        const archivedHere = view === "all" ? archived.filter((x) => x.pillarKey === p.key) : [];
+        return (
+          <section key={p.key} data-pillar={p.key} ref={(el) => { sectionRefs.current[p.key] = el; }} className="scroll-mt-24">
+            <Card className={cn("p-5 border-border/50 bg-card/60 gap-0 border-l-4 transition-colors", done ? "border-l-emerald-500/70" : "border-l-primary/40")}>
+              <div className="flex items-center justify-between gap-3 pb-1">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", done ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-primary/10 text-primary")}>
+                    <PillarIcon pillarKey={p.key} className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pillar {i + 1} of {pillars.length}</p>
+                    <h3 className="font-serif text-lg font-semibold leading-tight">{p.label} <span className="text-sm font-sans font-normal text-muted-foreground">· {p.english}</span></h3>
+                  </div>
+                </div>
+                <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums",
+                  done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>
+                  {done ? "✓ Done" : `${a}/${qs.length}`}
+                </span>
+              </div>
+              <div>
+                {qs.map((q) => (
+                  <QuestionCard key={q.id} bare q={q} index={(numberOf.get(q.id) ?? 1) - 1} count={all.length} pillarLabel={p.label}
+                    value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} hints={hintsFor(q, findings)} />
+                ))}
+              </div>
+              {archivedHere.length > 0 && (
+                <div className="mt-2 rounded-lg border border-border/50 bg-background/40 p-3 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorded earlier (question since switched off)</p>
+                  {archivedHere.map((x, n) => (
+                    <p key={n} className="text-sm"><span className="text-muted-foreground">{x.question}:</span> {Array.isArray(x.value) ? x.value.join(", ") : x.value}</p>
+                  ))}
+                </div>
+              )}
             </Card>
-          )}
+          </section>
+        );
+      })}
 
-          <div className="flex items-center justify-between gap-2">
-            {idx > 0 ? <Button variant="outline" size="sm" onClick={() => go(-1)}><ArrowLeft className="h-3.5 w-3.5" /> {pillars[idx - 1].label}</Button> : <span />}
-            {idx < pillars.length - 1 && <Button variant="outline" size="sm" onClick={() => go(1)}>{pillars[idx + 1].label} <ArrowRight className="h-3.5 w-3.5" /></Button>}
-          </div>
-        </>
-      )}
+      {/* Where to next */}
+      <div className={cn("flex items-center justify-between gap-3 flex-wrap rounded-xl border px-4 py-3",
+        firstOpen ? "border-dashed border-border/60 bg-card/40" : "border-emerald-500/40 bg-emerald-500/5")}>
+        <p className="text-[13px] text-muted-foreground">
+          {firstOpen
+            ? <>{all.length - answeredN} {all.length - answeredN === 1 ? "question is" : "questions are"} still open{view === "key" ? "" : " — only the key questions are required"}.</>
+            : <span className="font-medium text-emerald-700 dark:text-emerald-400">All {all.length} questions answered — Save Draft or proceed to Stage 5 below.</span>}
+        </p>
+        {firstOpen && (
+          <Button size="sm" variant="outline" onClick={() => jump(firstOpen.p.key)}>Go to next open question <ArrowRight className="h-3.5 w-3.5" /></Button>
+        )}
+      </div>
     </div>
   );
 }
