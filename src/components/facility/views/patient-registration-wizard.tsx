@@ -443,7 +443,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setAllergies((a) => (a.some((x) => x.toLowerCase() === v.toLowerCase()) ? a : [...a, v]));
     setAllergyInput("");
   };
-  const removeAllergy = (i: number) => setAllergies((a) => a.filter((_, idx) => idx !== i));
 
   const allergySearchResults = (() => {
     const q = allergyInput.trim().toLowerCase();
@@ -1144,49 +1143,22 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2.5">
-                        <p className="text-sm font-semibold text-destructive flex items-center gap-1.5">
-                          <TriangleAlert className="h-3.5 w-3.5" /> Critical Allergies / Red Flags
-                        </p>
-                        {allergies.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {allergies.map((a, i) => (
-                              <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-destructive/15 text-destructive border border-destructive/30 px-3 py-1 text-sm">
-                                {a}
-                                <button type="button" onClick={() => removeAllergy(i)} className="hover:text-destructive/70">
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="relative">
-                          <input
-                            value={allergyInput}
-                            onChange={(e) => setAllergyInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAllergy(); } }}
-                            placeholder="Type an allergy…"
-                            className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30"
-                          />
-                          {allergyInput.trim() && allergySearchResults.length > 0 && (
-                            <div className="absolute z-10 mt-1 w-full rounded-lg border border-border/50 bg-card shadow-lg max-h-40 overflow-y-auto divide-y divide-border/40">
-                              {allergySearchResults.map((a) => (
-                                <button
-                                  key={a.id}
-                                  type="button"
-                                  onClick={() => addAllergy(a.label)}
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5"
-                                >
-                                  <TriangleAlert className="h-3 w-3 text-destructive shrink-0" /> {a.label}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <Button type="button" size="sm" variant="outline" onClick={() => addAllergy()} className="w-full">
-                          <Plus className="h-3 w-3" /> Add as Custom Allergy
-                        </Button>
-                      </div>
+                      <FloatingMultiSelect
+                        id="allergySearch"
+                        label="Critical Allergies / Red Flags"
+                        tone="destructive"
+                        labelIcon={TriangleAlert}
+                        itemIcon={TriangleAlert}
+                        placeholder="Type an allergy…"
+                        selected={allergies.map((a) => ({ id: a, label: a }))}
+                        onRemove={(label) => setAllergies((cur) => cur.filter((x) => x !== label))}
+                        query={allergyInput}
+                        onQueryChange={setAllergyInput}
+                        results={allergySearchResults}
+                        onPick={(aid) => addAllergy(allergyOptions.find((o) => o.id === aid)?.label)}
+                        onCreate={(text) => addAllergy(text)}
+                        createLabel={(q) => `Add "${q}" as a custom allergy`}
+                      />
 
                       <div>
                         <p className="text-sm font-medium text-muted-foreground mb-2">Active Routine Medications / Herbs</p>

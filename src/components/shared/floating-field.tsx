@@ -215,14 +215,21 @@ const floatLabel = (floated: boolean, error?: boolean, focused?: boolean) => cn(
   error ? "text-destructive" : floated && focused ? "text-primary" : "text-muted-foreground",
 );
 
+const TONES = {
+  primary: { chip: "bg-primary/15 border-primary/40 text-primary", chipBtn: "hover:bg-primary/15", focus: "border-primary", rest: "border-input", label: "text-primary", restLabel: "text-muted-foreground" },
+  destructive: { chip: "bg-destructive/10 border-destructive/30 text-destructive", chipBtn: "hover:bg-destructive/15", focus: "border-destructive", rest: "border-destructive/30", label: "text-destructive", restLabel: "text-destructive/80" },
+};
+
 /**
  * Multi-select with the same floating label as FloatingField: chosen items
  * sit as chips inside the box, and typing filters the options shown in a
- * list right under it. Enter adds the top match; Backspace on an empty box
- * removes the last chip.
+ * list right under it. Enter adds the top match (or, with `onCreate`, what
+ * was typed when nothing matches); Backspace on an empty box removes the
+ * last chip.
  */
 export function FloatingMultiSelect<T extends { id: string; label: string }>({
   id, label, required, error, selected, onRemove, query, onQueryChange, results, onPick,
+  onCreate, createLabel = (q) => `Add "${q}"`, tone = "primary", labelIcon: LabelIcon, itemIcon: ItemIcon, placeholder = "Type a symptom to search…",
 }: {
   id: string;
   label: string;
@@ -234,11 +241,26 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
   onQueryChange: (q: string) => void;
   results: T[];
   onPick: (id: string) => void;
+  /** Lets the user add free text that isn't in the list. */
+  onCreate?: (text: string) => void;
+  createLabel?: (q: string) => string;
+  tone?: keyof typeof TONES;
+  labelIcon?: ComponentType<{ className?: string }>;
+  itemIcon?: ComponentType<{ className?: string }>;
+  placeholder?: string;
 }) {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = TONES[tone];
   const floated = focused || !!query || selected.length > 0;
+  const q = query.trim();
+  // Offer the typed text as a new entry unless it's already listed or chosen.
+  const canCreate = !!onCreate && !!q
+    && !results.some((r) => r.label.toLowerCase() === q.toLowerCase())
+    && !selected.some((s) => s.label.toLowerCase() === q.toLowerCase());
   const pick = (itemId: string) => { onPick(itemId); onQueryChange(""); inputRef.current?.focus(); };
+  const create = () => { onCreate?.(q); onQueryChange(""); inputRef.current?.focus(); };
+  const ItemGlyph = ItemIcon ?? Plus;
 
   return (
     <div className="relative">
@@ -246,13 +268,13 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
         onClick={() => inputRef.current?.focus()}
         className={cn(
           "min-h-14 w-full rounded-lg border bg-transparent px-3 py-2.5 flex flex-wrap items-center gap-1.5 cursor-text transition-colors",
-          error ? "border-destructive" : focused ? "border-primary" : "border-input",
+          error ? "border-destructive" : focused ? t.focus : t.rest,
         )}
       >
         {selected.map((s) => (
-          <span key={s.id} className="inline-flex items-center gap-1 rounded-full bg-primary/15 border border-primary/40 text-primary pl-2.5 pr-1.5 py-0.5 text-sm">
+          <span key={s.id} className={cn("inline-flex items-center gap-1 rounded-full border pl-2.5 pr-1.5 py-0.5 text-sm", t.chip)}>
             {s.label}
-            <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(s.id); }} aria-label={`Remove ${s.label}`} className="rounded-full p-0.5 hover:bg-primary/15">
+            <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(s.id); }} aria-label={`Remove ${s.label}`} className={cn("rounded-full p-0.5", t.chipBtn)}>
               <X className="h-3 w-3" />
             </button>
           </span>
@@ -265,22 +287,34 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && results[0]) { e.preventDefault(); pick(results[0].id); }
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (results[0]) pick(results[0].id);
+              else if (canCreate) create();
+            }
             if (e.key === "Backspace" && !query && selected.length) onRemove(selected[selected.length - 1].id);
             if (e.key === "Escape") onQueryChange("");
           }}
-          placeholder={floated && !selected.length ? "Type a symptom to search…" : ""}
+          placeholder={floated && !selected.length ? placeholder : ""}
           autoComplete="off"
           className="flex-1 min-w-24 bg-transparent text-base font-medium text-foreground outline-none placeholder:text-muted-foreground/60 placeholder:font-normal"
         />
       </div>
-      <label htmlFor={id} className={cn(floatLabel(floated, error, focused), !floated && "top-1/2 -translate-y-1/2")}>
+      <label
+        htmlFor={id}
+        className={cn(
+          floatLabel(floated, error, focused), !floated && "top-1/2 -translate-y-1/2",
+          tone !== "primary" && !error && (floated && focused ? t.label : t.restLabel),
+          LabelIcon && "inline-flex items-center gap-1.5",
+        )}
+      >
+        {LabelIcon && <LabelIcon className="h-3.5 w-3.5" />}
         {label}{required && <span className="text-destructive"> *</span>}
       </label>
 
-      {query.trim() && (
+      {q && (results.length > 0 || canCreate || !onCreate) && (
         <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-border/60 bg-card shadow-lg max-h-56 overflow-y-auto py-1">
-          {results.length === 0 ? (
+          {results.length === 0 && !canCreate ? (
             <p className="px-3 py-2 text-sm text-muted-foreground">No matches for &quot;{query}&quot;.</p>
           ) : results.map((r, i) => (
             <button
@@ -290,10 +324,21 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
               onClick={() => pick(r.id)}
               className={cn("w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && "bg-muted/40")}
             >
-              <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {r.label}
+              <ItemGlyph className={cn("h-3 w-3 shrink-0", tone === "primary" ? "text-muted-foreground" : t.label)} /> {r.label}
               {i === 0 && <span className="ml-auto text-[10px] text-muted-foreground">Enter</span>}
             </button>
           ))}
+          {canCreate && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={create}
+              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5 border-t border-border/40", !results.length && "bg-muted/40")}
+            >
+              <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {createLabel(q)}
+              {!results.length && <span className="ml-auto text-[10px] text-muted-foreground">Enter</span>}
+            </button>
+          )}
         </div>
       )}
     </div>
