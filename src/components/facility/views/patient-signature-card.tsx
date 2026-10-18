@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Camera, IdCard, Phone, Mail, AlertTriangle, ShieldAlert, ShieldQuestion, Activity, Copy, Check, MapPin, Contact,
-  CalendarClock, Stethoscope, ChevronDown, Pill, Leaf, NotebookText, Droplet, MessageCircle, Accessibility,
+  CalendarClock, Stethoscope, ChevronDown, Pill, Leaf, NotebookText, Droplet, Accessibility,
 } from "lucide-react";
 
 export interface SignaturePatient {
@@ -68,7 +68,7 @@ function Fact({ icon: Icon, label, children, className }: { icon: typeof Phone; 
 
 /**
  * The patient's "signature" header shared by the clinical stages: identity
- * with quick contact actions, the facts staff look up most (contact,
+ * with the facts staff look up most (contact,
  * emergency contact, address, blood group, today's visit), safety alerts
  * (allergies, referrals, wheelchair), today's reason for visit, and a
  * "More details" drawer for medical background. `children` renders inside
@@ -155,24 +155,6 @@ export function PatientSignatureCard({
           </div>
         </div>
 
-        {patient.phone && (
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href={`tel:${patient.phone}`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-sm font-medium hover:border-primary/40 hover:text-primary transition-colors"
-            >
-              <Phone className="h-3.5 w-3.5" /> Call
-            </a>
-            <a
-              href={`https://wa.me/91${patient.phone.replace(/\D/g, "").slice(-10)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-sm font-medium hover:border-emerald-500/50 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            >
-              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-            </a>
-          </div>
-        )}
       </div>
 
       {/* Safety alerts — always first in line of sight */}
