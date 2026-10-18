@@ -17,6 +17,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const job = await setJobStatus(id, status);
   if (!job) return NextResponse.json({ error: "This run has already finished" }, { status: 409 });
-  await logAdminActivity(session.admin.id, "supplement_enrichment_job", `${action[0].toUpperCase()}${action.slice(1)}d the ${job.kind === "medication" ? "allopathic medications" : "supplements & herbs"} ${job.mode} enrichment run`, getClientIp(req));
+  await logAdminActivity(session.admin.id, "supplement_enrichment_job", `${action[0].toUpperCase()}${action.slice(1)}d the ${job.kind === "medication" ? "allopathic medicines" : "Unani medicines"} ${job.mode} enrichment run`, getClientIp(req));
   return NextResponse.json({ ok: true });
 }

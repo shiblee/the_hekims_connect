@@ -307,7 +307,7 @@ export function SupplementProfileDialog({ tagId, onOpenChange, onEnriched }: {
                 </Section>
                 {(p.ingredients.length > 0 || p.category?.startsWith("Compound") || isMed) && (
                   <Section icon={FlaskConical} title={isMed ? "Active ingredients & composition" : "Ingredients"}
-                    hint={isMed ? "Strength per unit where documented. Linked ingredients point at their own Medication record." : "Linked ingredients point at their own Supplements & Herbs record."}>
+                    hint={isMed ? "Strength per unit where documented. Linked ingredients point at their own Allopathic Medicine record." : "Linked ingredients point at their own Unani Medicine record."}>
                     {p.ingredients.length ? p.ingredients.map((r) => (
                       <ClaimRow key={r.id} subjectType="ingredient" row={r} sources={p.sources} onReview={review}>
                         <span className="font-medium">{r.label}</span>
@@ -575,7 +575,7 @@ const FILTERS: { key: string; label: string; test: (r: ReportRecord) => boolean 
 const PANEL_TEXT = {
   supplement: {
     title: "Search-backed Unani Profiles",
-    intro: "Each supplement & herb is researched with live search: names, Mizaj, actions, traditional and modern evidence, linked complaints, symptoms, allergies, ingredients, safety and drug interactions",
+    intro: "Each Unani medicine is researched with live search: names, Mizaj, actions, traditional and modern evidence, linked complaints, symptoms, allergies, ingredients, safety and drug interactions",
     reviewers: "the Unani team",
   },
   medication: {

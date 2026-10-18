@@ -92,7 +92,7 @@ const TOP_BAR_SCREENING_TABS = SCREENING_TABS.filter((t) => !PATIENT_SIDEBAR_TAB
 const HIDE_STATS_KEYS = ["payment_mode"];
 const SCREENING_TAB_LABELS: Record<string, string> = {
   complaints: "Chief Complaints", asbab: "Asbab-e-Sittah", tashkhees: "Tashkhees & Ilaj", allergies: "Allergies",
-  supplements: "Supplements & Herbs", medications: "Medications",
+  supplements: "Unani Medicine", medications: "Allopathic Medicine",
   aggravating: "Aggravating Factors (Muharrikat)", relieving: "Relieving Factors (Musakkinat)",
   redflags: "Emergency Warning Signs", symptoms: "Accompanying Acute Symptoms (Alamat-e-Izafiya)",
   regions: "Anatomical Region & Organ System",
@@ -658,7 +658,7 @@ export default function MetaSectionPage() {
           </div>
         ))}
         {list.length === 0 && (
-          <p className="text-sm text-muted-foreground">{kind === "supplement" ? "No supplements or herbs yet." : "No medications yet."}</p>
+          <p className="text-sm text-muted-foreground">{kind === "supplement" ? "No Unani medicines yet." : "No allopathic medicines yet."}</p>
         )}
       </div>
     );
@@ -1488,12 +1488,12 @@ export default function MetaSectionPage() {
       <Dialog open={addMedicationDialogOpen} onOpenChange={setAddMedicationDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{addMedicationKind === "supplement" ? "Add Supplement / Herb" : "Add Medication"}</DialogTitle>
+            <DialogTitle>{addMedicationKind === "supplement" ? "Add Unani Medicine" : "Add Allopathic Medicine"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <FloatingField
               id="newMedicationLabel"
-              label={addMedicationKind === "supplement" ? "Label (e.g. Magnesium Glycinate)" : "Label (e.g. Levothyroxine)"}
+              label={addMedicationKind === "supplement" ? "Label (e.g. Khamira Gaozaban)" : "Label (e.g. Levothyroxine)"}
               value={newMedicationLabel[addMedicationKind]}
               onChange={(e) => setNewMedicationLabel((v) => ({ ...v, [addMedicationKind]: e.target.value }))}
               onKeyDown={(e) => { if (e.key === "Enter") addMedicationTag(addMedicationKind); }}
@@ -1661,7 +1661,7 @@ export default function MetaSectionPage() {
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       <Leaf className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">Supplements &amp; Herbs</span>
+                      <span className="truncate">Unani Medicine</span>
                     </span>
                     <Badge
                       variant={activeCategory === "supplements" ? "outline" : "secondary"}
@@ -1681,7 +1681,7 @@ export default function MetaSectionPage() {
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       <Tablets className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">Medications</span>
+                      <span className="truncate">Allopathic Medicine</span>
                     </span>
                     <Badge
                       variant={activeCategory === "medications" ? "outline" : "secondary"}
@@ -1991,12 +1991,12 @@ export default function MetaSectionPage() {
               </>
             ) : activeCategory === "supplements" ? (
               <>
-                <h2 className="font-serif text-lg font-semibold">Supplements &amp; Herbs</h2>
+                <h2 className="font-serif text-lg font-semibold">Unani Medicine</h2>
                 {renderMedicationRows("supplement")}
               </>
             ) : activeCategory === "medications" ? (
               <>
-                <h2 className="font-serif text-lg font-semibold">Medications</h2>
+                <h2 className="font-serif text-lg font-semibold">Allopathic Medicine</h2>
                 {renderMedicationRows("medication")}
               </>
             ) : !selected ? (

@@ -174,7 +174,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   const [allergyInput, setAllergyInput] = useState("");
   const [medications, setMedications] = useState<MedicationEntry[]>([]);
   const [medicationInput, setMedicationInput] = useState("");
-  // Unani = Meta → Supplements & Herbs; Allopathic = Meta → Medications.
+  // Unani = Meta → Unani Medicine; Allopathic = Meta → Allopathic Medicine.
   const [medicationTab, setMedicationTab] = useState<"supplement" | "medication">("supplement");
   const [mobility, setMobility] = useState("");
 

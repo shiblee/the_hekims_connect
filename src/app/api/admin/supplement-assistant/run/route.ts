@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   await logAdminActivity(
     session.admin.id,
     "supplement_assistant_run",
-    `Ran the Unani Supplement & Herb Assistant manually — ${run.status}${run.suggestionsCount ? `, ${run.suggestionsCount} new item(s)` : ""}`,
+    `Ran the Unani Medicine Assistant manually — ${run.status}${run.suggestionsCount ? `, ${run.suggestionsCount} new item(s)` : ""}`,
     getClientIp(req)
   );
 

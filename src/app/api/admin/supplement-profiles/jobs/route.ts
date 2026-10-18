@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   const { mode, kind: rawKind } = await req.json().catch(() => ({}));
   const kind = rawKind === "medication" ? "medication" : "supplement";
-  const noun = kind === "medication" ? "allopathic medications" : "supplements & herbs";
+  const noun = kind === "medication" ? "allopathic medicines" : "Unani medicines";
   const open = await db.supplementEnrichmentJob.count({ where: { kind, mode: { in: ["pilot", "batch"] }, status: { in: ["running", "paused"] } } });
   if (open) return NextResponse.json({ error: "A pilot or batch run is already in progress — pause or cancel it first." }, { status: 409 });
 

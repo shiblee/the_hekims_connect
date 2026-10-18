@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   await logAdminActivity(
     session.admin.id,
     "medication_assistant_run",
-    `Ran the Allopathic Medication Assistant manually — ${run.status}${run.suggestionsCount ? `, ${run.suggestionsCount} new medicine(s)` : ""}`,
+    `Ran the Allopathic Medicine Assistant manually — ${run.status}${run.suggestionsCount ? `, ${run.suggestionsCount} new medicine(s)` : ""}`,
     getClientIp(req)
   );
 

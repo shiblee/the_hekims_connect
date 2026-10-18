@@ -738,7 +738,7 @@ function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string
         <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> Add medicine</Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-2" align="start">
-        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search Supplements & Herbs…" className="h-9 mb-2" />
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search Unani medicines…" className="h-9 mb-2" />
         <div className="max-h-64 overflow-y-auto space-y-0.5">
           {results.map((h) => (
             <button key={h.id} type="button" onClick={() => { onPick({ id: h.id, label: h.label, forms: h.forms }); setOpen(false); setQ(""); }}
@@ -1114,7 +1114,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       <CdsPanel state={state} visitId={visitId} />
 
       {/* Ilaj-bil-Dawa */}
-      <Panel icon={Pill} title="Ilaj-bil-Dawa — Medicines" hint="Formulations from Supplements & Herbs. Doses are the Hakim's own entry."
+      <Panel icon={Pill} title="Ilaj-bil-Dawa — Medicines" hint="Formulations from Unani Medicine. Doses are the Hakim's own entry."
         aside={<HerbPicker herbs={herbs} onPick={(h) => set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] })} />}>
         {d.prescriptions.length === 0 ? <p className="text-sm text-muted-foreground">No medicines added yet.</p> : (
           <div className="space-y-3">
