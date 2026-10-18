@@ -943,7 +943,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       <User className="h-4.5 w-4.5" />
                     </div>
                     <div>
-                      <h2 className="text-base font-semibold text-foreground leading-tight">1. Primary Patient Identification</h2>
+                      <h2 className="text-base font-semibold text-foreground leading-tight">Primary Patient Identification</h2>
                     </div>
                   </div>
                   {editingId ? (
@@ -1043,7 +1043,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           <Contact className="h-4.5 w-4.5" />
                         </div>
                         <div>
-                          <h2 className="text-base font-semibold text-foreground leading-tight">2. Emergency Contact &amp; Next of Kin</h2>
+                          <h2 className="text-base font-semibold text-foreground leading-tight">Emergency Contact &amp; Next of Kin</h2>
                         </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-4">
@@ -1066,7 +1066,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           <QrCode className="h-4.5 w-4.5" />
                         </div>
                         <div>
-                          <h2 className="text-base font-semibold text-foreground leading-tight">3. Billing, Payer Authorization &amp; Attending Hekim</h2>
+                          <h2 className="text-base font-semibold text-foreground leading-tight">Billing, Payer Authorization &amp; Attending Hekim</h2>
                         </div>
                       </div>
                       <FloatingSelect id="doctorId" label="Preferred Doctor (optional)" value={doctorId} onValueChange={setDoctorId} placeholder="Any available doctor">
@@ -1097,7 +1097,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           <BriefcaseMedical className="h-4.5 w-4.5" />
                         </div>
                         <div>
-                          <h2 className="text-base font-semibold text-foreground leading-tight">4. Chief Complaint</h2>
+                          <h2 className="text-base font-semibold text-foreground leading-tight">Chief Complaint</h2>
                         </div>
                       </div>
 
