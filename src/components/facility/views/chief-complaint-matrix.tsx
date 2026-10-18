@@ -56,6 +56,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
   const [loading, setLoading] = useState(true);
   const [complaintOptions, setComplaintOptions] = useState<ChiefComplaintCfg[]>([]);
   const [factorTags, setFactorTags] = useState<FactorTagCfg[]>([]);
+  const [factorQuery, setFactorQuery] = useState<Record<string, string>>({});
   const [severityLabels, setSeverityLabels] = useState<SeverityLabelCfg[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [activeLabel, setActiveLabel] = useState<string>(intakeComplaints[0] || "");
@@ -363,8 +364,11 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
             ]).map(({ kind, tagKind, title, tone }) => {
               const selected = active[kind];
               const available = factorTags.filter((f) => f.kind === tagKind && f.active && !selected.includes(f.label));
+              const q = (factorQuery[kind] || "").trim().toLowerCase();
+              const shown = q ? available.filter((f) => f.label.toLowerCase().includes(q)) : available;
+              const custom = q && !factorTags.some((f) => f.kind === tagKind && f.label.toLowerCase() === q) && !selected.some((l) => l.toLowerCase() === q) ? (factorQuery[kind] || "").trim() : "";
               return (
-                <Popover key={kind}>
+                <Popover key={kind} onOpenChange={(o) => { if (!o) setFactorQuery((x) => ({ ...x, [kind]: "" })); }}>
                   <FieldBox label={title} filled={selected.length > 0}>
                     {selected.map((label) => (
                       <span
@@ -397,9 +401,13 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                       </PopoverTrigger>
                     )}
                   </FieldBox>
-                  <PopoverContent className="w-60 p-1.5" align="start">
-                    <div className="flex flex-col max-h-56 overflow-y-auto">
-                      {available.map((f) => (
+                  <PopoverContent className="w-72 p-1.5" align="start">
+                    <Input autoFocus value={factorQuery[kind] || ""} onChange={(e) => setFactorQuery((x) => ({ ...x, [kind]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); const pick = shown[0]?.label || custom; if (pick) { toggleFactor(kind, pick, true); setFactorQuery((x) => ({ ...x, [kind]: "" })); } } }}
+                      placeholder={`Search ${available.length} factors…`} className="h-8 mb-1.5 text-sm" />
+                    <div className="flex flex-col max-h-64 overflow-y-auto">
+                      {shown.length === 0 && !custom && <p className="px-2.5 py-1.5 text-sm text-muted-foreground">No match</p>}
+                      {shown.map((f) => (
                         <button
                           key={f.id}
                           type="button"
@@ -409,6 +417,12 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                           {f.label}
                         </button>
                       ))}
+                      {custom && (
+                        <button type="button" onClick={() => { toggleFactor(kind, custom, true); setFactorQuery((x) => ({ ...x, [kind]: "" })); }}
+                          className="text-left px-2.5 py-1.5 text-sm rounded-md hover:bg-muted/60 transition-colors text-primary">
+                          <Plus className="inline h-3.5 w-3.5 mr-1" />Add &quot;{custom}&quot;
+                        </button>
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
