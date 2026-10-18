@@ -6,6 +6,7 @@ import { adminApi } from "@/lib/admin-api";
 import { cn } from "@/lib/utils";
 import { TASHKHEES_LISTS, type TashkheesListKey } from "@/lib/tashkhees";
 import { AsbabAdmin } from "@/components/admin/asbab-admin";
+import { TashkheesEngineAdmin } from "@/components/admin/tashkhees-engine-admin";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,16 +19,16 @@ interface Row { id: string; list: string; label: string; localName: string | nul
 
 /** Admin → Meta → Tashkhees & Ilaj: the Dala'il examination questions and the Stage 5 option lists. */
 export function TashkheesAdmin() {
-  const [part, setPart] = useState<"dalail" | "lists">("dalail");
+  const [part, setPart] = useState<"dalail" | "engine" | "lists">("dalail");
   return (
     <div className="space-y-5">
       <div className="inline-flex rounded-lg border border-border/60 bg-card/60 p-1">
-        {([["dalail", "Dala'il Examination"], ["lists", "Option Lists"]] as const).map(([k, l]) => (
+        {([["dalail", "Dala'il Examination"], ["engine", "Tashkhees Engine"], ["lists", "Option Lists"]] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setPart(k)}
             className={cn("rounded-md px-4 py-1.5 text-sm transition-colors", part === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
         ))}
       </div>
-      {part === "dalail" ? <AsbabAdmin framework="dalail" /> : <OptionLists />}
+      {part === "dalail" ? <AsbabAdmin framework="dalail" /> : part === "engine" ? <TashkheesEngineAdmin /> : <OptionLists />}
     </div>
   );
 }

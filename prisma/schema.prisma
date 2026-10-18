@@ -360,6 +360,7 @@ model Visit {
   referral                  Referral?
   amaDecline                AmaDecline?
   dalailSelection           DalailSelection?
+  tashkheesSuggestion       TashkheesSuggestion?
 }
 
 model Payment {
@@ -563,6 +564,9 @@ model AsbabOption {
   dam         Float   @default(0)
   balgham     Float   @default(0)
   sauda       Float   @default(0)
+  // Tashkhees engine: how strongly this finding indicates morbid matter
+  // (Su-e-Mizaj Maddi rather than Sada). 0 = not an indicator.
+  maddi       Float   @default(0)
   sortOrder   Int     @default(0)
   active      Boolean @default(true)
 
@@ -620,6 +624,10 @@ model TashkheesOption {
   description String?
   sortOrder   Int      @default(0)
   active      Boolean  @default(true)
+  // Tashkhees engine (organ list): which complaints / categories / symptoms /
+  // body regions point to this organ — same shape as Dala'il question links.
+  appliesTo   String   @default("{}")
+  priority    Int      @default(3)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1843,6 +1851,24 @@ model VitalsInsightRecord {
   insight     String
   generatedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+}
+
+// The Tashkhees engine's suggestion for a visit (Mizaj-e-Asli, Su-e-Mizaj,
+// Darja, organs), with the evidence behind it and what the doctor accepted —
+// so a diagnosis can always be traced back to what supported it.
+model TashkheesSuggestion {
+  id            String   @id @default(cuid())
+  visitId       String   @unique
+  suggestion    String   @default("{}") // JSON — see src/lib/tashkhees-engine.ts
+  method        String   @default("rules") // "rules" | "ranked" | "rules-fallback"
+  configVersion String?
+  contextHash   String?
+  accepted      String   @default("{}") // { mizajAsli?: at, suMizaj?: at, organs?: at }
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
 }

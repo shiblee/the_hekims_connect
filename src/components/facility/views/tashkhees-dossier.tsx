@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AKHLAT, isAnswered, questionVisible, toPercent, zeroPoints, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints, type Humour } from "@/lib/asbab";
+import { AKHLAT, isAnswered, questionVisible, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints } from "@/lib/asbab";
 import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerLine, type TashkheesOptionRow } from "@/lib/tashkhees";
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
@@ -106,7 +106,6 @@ type TashkheesState = ReturnType<typeof useTashkhees>;
 
 // ---------------------------------------------------------------- small pieces
 
-const MIZAJ_FOR: Record<Humour, string> = { safra: "Safrawi", dam: "Damawi", balgham: "Balghami", sauda: "Saudawi" };
 
 function Panel({ icon: Icon, title, aside, children }: { icon: typeof Activity; title: string; hint?: string; aside?: ReactNode; children: ReactNode }) {
   return (
@@ -404,67 +403,170 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
 
 // ---------------------------------------------------------------- tab 2: Tashkhees
 
-/** Combines the three humoral readings recorded so far into one suggestion the Hakim can apply. */
-function SynthesisCard({ state, visitId }: { state: TashkheesState; visitId: string }) {
-  const [sources, setSources] = useState<{ stage3: HumourPoints | null; asbab: HumourPoints | null } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    api.get<{ summary: any }>(`/api/facility/visits/${visitId}/clinical-summary`).then(({ summary }) => {
-      if (cancelled) return;
-      const h = summary.humoral;
-      setSources({
-        stage3: h ? { safra: Math.round(h.safraPercent), dam: Math.round(h.damPercent), balgham: Math.round(h.balghamPercent), sauda: Math.round(h.saudaPercent) } : null,
-        asbab: summary.asbab?.drift?.percent ?? null,
-      });
-    }).catch(() => setSources({ stage3: null, asbab: null }));
-    return () => { cancelled = true; };
-  }, [visitId]);
+// ---------------------------------------------------------------- Tashkhees engine card
 
-  const dalailPct = state.dalail.drift && AKHLAT.some((h) => state.dalail.drift!.total[h.key] > 0) ? state.dalail.drift.percent : null;
-  const rows = [
-    { key: "stage3", label: "Complaint humoral assessment (Stages 2–3)", pct: sources?.stage3 ?? null },
-    { key: "asbab", label: "Asbab-e-Sittah lifestyle drift (Stage 4)", pct: sources?.asbab ?? null },
-    { key: "dalail", label: "Dala'il clinical signs (this stage)", pct: dalailPct },
-  ];
-  const present = rows.filter((r) => r.pct);
-  const combined = useMemo(() => {
-    const sum = zeroPoints();
-    for (const r of present) for (const h of AKHLAT) sum[h.key] += r.pct![h.key] || 0;
-    return toPercent(sum);
-  }, [present]);
-  const dominant = present.length ? AKHLAT.reduce((a, b) => (combined[b.key] > combined[a.key] ? b : a)) : null;
-  const constitutional = dalailPct ? AKHLAT.reduce((a, b) => (dalailPct[b.key] > dalailPct[a.key] ? b : a)) : null;
+type EngPoints = Record<"safra" | "dam" | "balgham" | "sauda", number>;
+interface EngTemperament { label: string | null; humour: string | null; percent: EngPoints; lead: number; confidence: "strong" | "moderate" | "weak"; evidence: { label: string; humour: string; points: number }[]; note?: string }
+interface EngSuggestion {
+  sources: { key: string; label: string; percent: EngPoints | null; weight: number }[];
+  mizajAsli: EngTemperament | null;
+  suMizaj: (EngTemperament & { type: "Sada" | "Maddi"; maddiScore: number; maddiSigns: string[]; darja: number | null }) | null;
+  organs: { label: string; reason: string; score: number }[];
+  insufficient: string[];
+}
+const CONF_STYLE = {
+  strong: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  moderate: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  weak: "border-border/60 text-muted-foreground",
+} as const;
+
+/**
+ * The Tashkhees engine's suggestion for this visit: Mizaj-e-Asli from the
+ * constitutional signs, Su-e-Mizaj (quality, Sada/Maddi, Darja) from all three
+ * humoral readings, and the affected organs from the complaints, symptoms and
+ * body regions — each with a confidence and the findings behind it. Nothing is
+ * filled in until the Hakim accepts it.
+ */
+function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string }) {
+  const { dossier: d, set, options } = state;
+  const [data, setData] = useState<{ suggestion: EngSuggestion; method: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [running, setRunning] = useState(false);
+
+  const fetchEngine = useCallback(() =>
+    api.get<{ suggestion: EngSuggestion; method: string }>(`/api/facility/visits/${visitId}/tashkhees-engine`)
+      .then((r) => { setData(r); setFailed(false); })
+      .catch(() => setFailed(true)), [visitId]);
+  useEffect(() => { fetchEngine(); }, [fetchEngine]);
+
+  // Re-run: save the examination & dossier first so the engine sees the latest answers.
+  const rerun = async () => {
+    setRunning(true);
+    try { await state.save(false); await fetchEngine(); } finally { setRunning(false); }
+  };
+  const record = (accepted: "mizajAsli" | "suMizaj" | "organs" | "all") =>
+    api.post(`/api/facility/visits/${visitId}/tashkhees-engine`, { accepted }).catch(() => {});
+
+  const s = data?.suggestion;
+  const local = (label: string | null) => (label ? (options?.mizaj || []).find((o) => o.label === label)?.localName : null);
+  const asli = s?.mizajAsli;
+  const su = s?.suMizaj;
+  const asliApplied = !!asli?.label && d.mizajAsli === asli.label;
+  const suApplied = !!su?.label && d.suMizajQuality === su.label && d.suMizajType === su.type && (su.darja == null || d.suMizajGrade === su.darja);
+  const newOrgans = (s?.organs || []).filter((o) => !d.organs.includes(o.label));
+  const applyAsli = () => { if (!asli?.label) return; set({ mizajAsli: asli.label }); record("mizajAsli"); };
+  const applySu = () => { if (!su?.label) return; set({ suMizajQuality: su.label, suMizajType: su.type, suMizajGrade: su.darja }); record("suMizaj"); };
+  const applyOrgans = () => { if (!newOrgans.length) return; set({ organs: [...d.organs, ...newOrgans.map((o) => o.label)] }); record("organs"); };
+  const applyAll = () => {
+    set({
+      ...(asli?.label ? { mizajAsli: asli.label } : {}),
+      ...(su?.label ? { suMizajQuality: su.label, suMizajType: su.type, suMizajGrade: su.darja } : {}),
+      ...(newOrgans.length ? { organs: [...d.organs, ...newOrgans.map((o) => o.label)] } : {}),
+    });
+    record("all");
+  };
+  const canApplyAll = (!!asli?.label && !asliApplied) || (!!su?.label && !suApplied) || newOrgans.length > 0;
+
+  const Conf = ({ c }: { c: "strong" | "moderate" | "weak" }) => (
+    <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize", CONF_STYLE[c])}>{c} evidence</span>
+  );
+  const Ev = ({ items }: { items: { label: string; humour: string }[] }) => items.length ? (
+    <ul className="mt-1.5 space-y-0.5">
+      {items.slice(0, 3).map((e, i) => {
+        const h = AKHLAT.find((x) => x.key === e.humour);
+        return <li key={i} className="text-xs text-muted-foreground">• {e.label}{h && <span className={cn("ml-1 font-medium", h.text)}>→ {h.label}</span>}</li>;
+      })}
+    </ul>
+  ) : null;
+  const Apply = ({ applied, onClick, label = "Accept" }: { applied: boolean; onClick: () => void; label?: string }) => applied
+    ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Applied</span>
+    : <Button size="sm" variant="outline" className="h-7" onClick={onClick}>{label}</Button>;
 
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Akhlat Synthesis</p>
-        <span className="text-xs text-muted-foreground">A guide — the Hakim decides</span>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Tashkhees Engine</p>
+        <span className="flex items-center gap-2">
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-running…" : "Re-run"}</button>
+          {canApplyAll && <Button size="sm" className="h-7" onClick={applyAll}>Accept all</Button>}
+        </span>
       </div>
-      {!sources ? <Loading /> : present.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No humoral readings yet — record Dala'il signs or complete the earlier stages.</p>
-      ) : (
+
+      {failed ? (
+        <p className="text-sm text-muted-foreground">The suggestion couldn&apos;t be loaded — fill in the diagnosis below as usual. <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">Try again</button></p>
+      ) : !s ? <Loading /> : (
         <>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {rows.map((r) => (
+          {/* The three humoral readings and how much each counts */}
+          <div className="grid sm:grid-cols-3 gap-2.5">
+            {s.sources.map((r) => (
               <div key={r.key} className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-                <p className="text-xs text-muted-foreground mb-1.5 leading-snug">{r.label}</p>
-                {r.pct ? <HumourBars pct={r.pct} compact /> : <p className="text-xs text-muted-foreground">Not recorded</p>}
+                <p className="text-xs text-muted-foreground leading-snug">{r.label}</p>
+                <p className="text-[11px] text-muted-foreground/80 mb-1.5">{r.percent ? `counts ×${r.weight}` : "not recorded"}</p>
+                {r.percent && <HumourBars pct={r.percent} compact />}
               </div>
             ))}
           </div>
-          {dominant && (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span>Combined picture leans <span className={cn("font-semibold", dominant.text)}>{dominant.label} ({dominant.quality})</span> — suggests Su-e-Mizaj <span className="font-semibold">{MIZAJ_FOR[dominant.key]}</span>.</span>
-              <Button size="sm" variant="outline" className="h-7" onClick={() => state.set({ suMizajQuality: MIZAJ_FOR[dominant.key] })}>Use as Su-e-Mizaj</Button>
+
+          {/* Suggestions */}
+          <div className="divide-y divide-border/40 rounded-lg border border-border/50 bg-background/50">
+            <div className="flex items-start justify-between gap-3 p-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mizaj-e-Asli · constitution</p>
+                {asli?.label ? (
+                  <>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-2"><span className="text-base font-semibold">{asli.label}</span>{local(asli.label) && <span className="text-xs text-muted-foreground">{local(asli.label)}</span>}<Conf c={asli.confidence} /></p>
+                    {asli.note && <p className="mt-1 text-xs text-muted-foreground">{asli.note}</p>}
+                    <Ev items={asli.evidence} />
+                  </>
+                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Mizaj-e-Asli")) || "No suggestion"}</p>}
+              </div>
+              {asli?.label && <Apply applied={asliApplied} onClick={applyAsli} />}
             </div>
-          )}
-          {constitutional && (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span>Constitutional signs (Dala'il) lean <span className={cn("font-semibold", constitutional.text)}>{MIZAJ_FOR[constitutional.key]}</span>.</span>
-              <Button size="sm" variant="outline" className="h-7" onClick={() => state.set({ mizajAsli: MIZAJ_FOR[constitutional.key] })}>Use as Mizaj-e-Asli</Button>
+
+            <div className="flex items-start justify-between gap-3 p-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Su-e-Mizaj · present dyscrasia</p>
+                {su?.label ? (
+                  <>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-2">
+                      <span className="text-base font-semibold">{su.type} · {su.label}{su.darja ? ` · Darja ${su.darja}` : ""}</span>
+                      {local(su.label) && <span className="text-xs text-muted-foreground">{local(su.label)}</span>}
+                      <Conf c={su.confidence} />
+                    </p>
+                    {su.type === "Maddi" && su.maddiSigns.length > 0 && (
+                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Morbid-matter signs: {su.maddiSigns.slice(0, 3).join("; ")}</p>
+                    )}
+                    {su.note && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{su.note}</p>}
+                    <Ev items={su.evidence} />
+                  </>
+                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Su-e-Mizaj")) || "No suggestion"}</p>}
+              </div>
+              {su?.label && <Apply applied={suApplied} onClick={applySu} />}
             </div>
-          )}
+
+            <div className="flex items-start justify-between gap-3 p-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Udw-e-Mutathir · organs</p>
+                {s.organs.length ? (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {s.organs.map((o) => {
+                      const desc = (options?.organ || []).find((x) => x.label === o.label)?.description;
+                      return (
+                        <span key={o.label} title={o.reason} className={cn("rounded-full border px-2.5 py-0.5 text-xs", d.organs.includes(o.label) ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-primary/30 bg-primary/5")}>
+                          {o.label}{desc && <span className="text-muted-foreground"> · {desc}</span>}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("organ")) || "No suggestion"}</p>}
+                {s.organs.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{s.organs[0].reason}{s.organs.length > 1 ? " · hover an organ for its reason" : ""}</p>}
+              </div>
+              {s.organs.length > 0 && <Apply applied={newOrgans.length === 0} onClick={applyOrgans} label={`Add ${newOrgans.length}`} />}
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            A guide from the saved findings{data?.method === "ranked" ? " · organs ordered by Hakeem Insight" : ""} — the Hakim decides. Re-run after changing the examination to update it.
+          </p>
         </>
       )}
     </div>
@@ -476,7 +578,7 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
   const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, sub: o.localName || o.description }));
   return (
     <Panel icon={FileSignature} title="Tashkhees — Diagnosis" hint="Constitution, the present dyscrasia and the organs affected.">
-      <SynthesisCard state={state} visitId={visitId} />
+      <EngineCard state={state} visitId={visitId} />
       <div><Label required>Mizaj-e-Asli (baseline temperament)</Label>
         <Chips items={mizaj} selected={d.mizajAsli ? [d.mizajAsli] : []} onToggle={(l) => set({ mizajAsli: d.mizajAsli === l ? null : l })} /></div>
       <div className="space-y-3">

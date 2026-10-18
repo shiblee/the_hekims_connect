@@ -587,6 +587,7 @@ export async function seedDatabase() {
   await seedOnsetPatternTags();
   await seedOnsetPatternCatalog();
   await seedDalailBank();
+  await seedTashkheesEngine();
   await seedEmailTemplates();
 
   // Check if already seeded
@@ -931,5 +932,19 @@ export async function seedDalailBank() {
       },
     });
     p.questions.push({ id: created.id, label: created.label, appliesTo: created.appliesTo, purpose: created.purpose });
+  }
+}
+
+/** Tashkhees engine starting configuration (organ links, Maddi signs) — add-only. */
+export async function seedTashkheesEngine() {
+  const { ORGAN_LINKS, MADDI_SIGNS } = await import("@/lib/tashkhees-engine-seed");
+  for (const [label, v] of Object.entries(ORGAN_LINKS)) {
+    const o = await db.tashkheesOption.findFirst({ where: { list: "organ", label } });
+    if (o && o.appliesTo === "{}") await db.tashkheesOption.update({ where: { id: o.id }, data: { appliesTo: JSON.stringify(v.appliesTo), priority: v.priority } });
+  }
+  for (const [k, w] of Object.entries(MADDI_SIGNS)) {
+    const [section, question, option] = k.split("|");
+    const o = await db.asbabOption.findFirst({ where: { label: option, question: { label: question, pillar: { key: section } } } });
+    if (o && o.maddi === 0) await db.asbabOption.update({ where: { id: o.id }, data: { maddi: w } });
   }
 }

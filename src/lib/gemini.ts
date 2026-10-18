@@ -792,3 +792,32 @@ Pick at most ${limit}, most useful first. Use ONLY ids from the list. Respond wi
     return null;
   }
 }
+
+/**
+ * Orders candidate affected organs (Udw-e-Mutathir) for the Tashkhees engine.
+ * Chooses only among the ids given (organ labels from the admin list), sees no
+ * patient identifiers, and the caller falls back to the rule order on failure.
+ */
+export async function rankTashkheesOrgans(
+  ctx: { complaints: string[]; symptoms: string[]; regions: string[]; suMizaj: string | null },
+  candidates: { id: string; label: string }[],
+  limit: number,
+): Promise<string[] | null> {
+  if (geminiQuotaRecentlyHit()) return null;
+  const prompt = `You support a qualified Unani (Tibb) physician recording Udw-e-Mutathir (the organs affected) for a diagnosis. From the candidate organs below, choose the ones most clearly involved for THIS patient, most involved first. You do not diagnose; the physician decides.
+
+Recorded: complaints: ${ctx.complaints.join("; ") || "none"} · other symptoms: ${ctx.symptoms.join("; ") || "none"} · body regions: ${ctx.regions.join("; ") || "none"} · present temperament suggestion: ${ctx.suMizaj || "none"}.
+
+Candidates (id — organ):
+${candidates.map((c) => `- ${c.id} — ${c.label}`).join("\n")}
+
+Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences: {"selected":["id", ...]}`;
+  const raw = await callGemini(prompt);
+  if (!raw) return null;
+  try {
+    const sel = JSON.parse(stripCodeFence(raw))?.selected;
+    if (!Array.isArray(sel)) return null;
+    const allowed = new Set(candidates.map((c) => c.id));
+    return sel.filter((x: unknown): x is string => typeof x === "string" && allowed.has(x)).slice(0, limit);
+  } catch { return null; }
+}
