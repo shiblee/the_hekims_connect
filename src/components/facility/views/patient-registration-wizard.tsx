@@ -21,7 +21,7 @@ import {
 import {
   Search, Loader2, UserPlus, PartyPopper, ChevronLeft, X, History, IdCard, User, Contact, QrCode,
   BriefcaseMedical, Plus, TriangleAlert, Leaf, Pill, PersonStanding, Accessibility,
-  Bookmark, ArrowRight, Save, CheckCircle2, RotateCw, ChevronRight,
+  Bookmark, ArrowRight, Save, RotateCw, ChevronRight,
 } from "lucide-react";
 import QRCode from "qrcode";
 
@@ -376,6 +376,31 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   ];
   const mandatoryChecklist = readiness.map((r) => r.ok);
 
+  // Required fields still empty — listed by name, each one jumps to its field.
+  // Built live, so it shrinks as fields are filled and disappears when done.
+  function missingNotice(): ActionNotice | null {
+    const missing = readiness.filter((r) => !r.ok);
+    if (!missing.length) return null;
+    return {
+      tone: "warning",
+      title: `${missing.length} required ${missing.length === 1 ? "field is" : "fields are"} still empty`,
+      detail: (
+        <span className="flex flex-wrap items-center gap-1.5 mt-1">
+          {missing.map((m) => (
+            <button
+              key={m.target}
+              type="button"
+              onClick={() => jumpTo(m.target)}
+              className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-amber-500/5 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 transition-colors"
+            >
+              {m.label} <ChevronRight className="h-3 w-3" />
+            </button>
+          ))}
+        </span>
+      ),
+    };
+  }
+
   // Self-resolving notices update live and vanish once the form is fixed.
   const openFieldErrors = Object.entries(fieldErrors).filter(([k, v]) => v && k in FIELD_LABELS);
   const footerNotice: ActionNotice | null = !actionNotice ? null
@@ -395,7 +420,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
           ),
         }
         : null
-      : actionNotice.kind === "missing" && mandatoryChecklist.every(Boolean) ? null : actionNotice;
+      : actionNotice.kind === "missing"
+        ? missingNotice()
+        : actionNotice;
   const verifiedCount = mandatoryChecklist.filter(Boolean).length;
   const mandatoryDone = verifiedCount === mandatoryChecklist.length;
 
@@ -574,11 +601,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     if (Object.keys(errs).length) { showFieldErrors(errs); return; }
     if (mode === "transfer" && !mandatoryDone) {
       const missing = readiness.filter((r) => !r.ok);
-      setActionNotice({
-        tone: "warning", kind: "missing",
-        title: `${missing.length} required ${missing.length === 1 ? "field is" : "fields are"} still empty`,
-        detail: "Fill in the fields listed below before transferring to Triage & Vitals.",
-      });
+      setActionNotice({ tone: "warning", title: "", kind: "missing" });
       jumpTo(missing[0].target);
       return;
     }
@@ -1227,7 +1250,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       )}
                     />
                   )}
-                  {!visitEditMode && <ReadinessStrip items={readiness} />}
                   {visitEditMode ? (
                     <>
                       {isDirty && (
@@ -1310,55 +1332,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-/**
- * Live handover checklist above the transfer button: how many required fields
- * are done and, by name, which are still missing — each one jumps to its field.
- */
-function ReadinessStrip({ items }: { items: { label: string; ok: boolean; target: string }[] }) {
-  const done = items.filter((i) => i.ok).length;
-  const missing = items.filter((i) => !i.ok);
-  const pct = Math.round((done / items.length) * 100);
-
-  if (!missing.length) {
-    return (
-      <div role="status" className="w-full flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-sm">
-        <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-        <span className="font-medium text-emerald-700 dark:text-emerald-400">All {items.length} required fields are complete</span>
-        <span className="text-muted-foreground">— ready to transfer to Triage &amp; Vitals.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div role="status" aria-live="polite" className="w-full rounded-xl border border-border/60 bg-card/60 px-4 py-3 space-y-2.5">
-      <div className="flex items-center gap-3 flex-wrap">
-        <p className="text-sm font-semibold">
-          {done} of {items.length} required fields complete
-        </p>
-        <div className="h-1.5 flex-1 min-w-24 max-w-56 rounded-full bg-muted overflow-hidden">
-          <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="text-xs text-muted-foreground basis-full sm:basis-auto sm:ml-auto">
-          Hold and Print need only the name and mobile number.
-        </p>
-      </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-sm text-muted-foreground mr-1">Still needed to transfer:</span>
-        {missing.map((m) => (
-          <button
-            key={m.target}
-            type="button"
-            onClick={() => jumpTo(m.target)}
-            className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-amber-500/5 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 transition-colors"
-          >
-            {m.label} <ChevronRight className="h-3 w-3" />
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
