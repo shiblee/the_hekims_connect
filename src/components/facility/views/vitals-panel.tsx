@@ -352,7 +352,7 @@ export function VitalsPanel({
         className={cn(
           "group relative flex flex-col gap-2.5 rounded-xl border p-3.5 cursor-pointer outline-none transition-all",
           "hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40",
-          tone && t.status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border/50 bg-card hover:border-primary/40",
+          tone && t.status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border bg-card shadow-xs hover:border-primary/50",
         )}
       >
         {/* Name + status */}
@@ -435,7 +435,7 @@ export function VitalsPanel({
 
   return (
     <>
-    <Card className="p-5 border-border/50 bg-card/60 gap-4">
+    <Card className="p-5 border-border bg-card/60 gap-4">
       <SectionHeading
         icon={Activity}
         title="Vital Signs & Pulse (Nabz)"
@@ -503,7 +503,7 @@ export function VitalsPanel({
 
               {/* Latest reading, explained */}
               {tile.latest ? (
-                <div className={cn("rounded-xl border p-4 grid gap-4 md:grid-cols-[auto_1fr] md:items-center", tone && status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border/50 bg-muted/30")}>
+                <div className={cn("rounded-xl border p-4 grid gap-4 md:grid-cols-[auto_1fr] md:items-center", tone && status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border bg-muted/30")}>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest reading</p>
                     <p className="flex items-baseline gap-1.5 mt-1">
@@ -547,7 +547,7 @@ export function VitalsPanel({
                     { label: "Lowest", value: pair(p1?.min, p2?.min, metric.key, metric.secondaryKey) },
                     { label: "Highest", value: pair(p1?.max, p2?.max, metric.key, metric.secondaryKey) },
                   ].map((s) => (
-                    <div key={s.label} className="rounded-lg border border-border/50 bg-card px-3 py-2">
+                    <div key={s.label} className="rounded-lg border border-border bg-card px-3 py-2">
                       <p className="text-xs text-muted-foreground">{s.label}</p>
                       <p className="text-sm font-semibold">{s.value}</p>
                     </div>
@@ -631,7 +631,7 @@ export function VitalsPanel({
 
               {/* Trend */}
               {chartData.length >= 2 ? (
-                <div className="rounded-xl border border-border/50 bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-sm font-semibold mb-2">Trend</p>
                   <ResponsiveContainer width="100%" height={240}>
                     <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
@@ -672,7 +672,7 @@ export function VitalsPanel({
 
               {/* Reading history */}
               {readings.length > 0 && (
-                <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+                <div className="rounded-xl border border-border bg-card overflow-hidden">
                   <p className="text-sm font-semibold px-4 pt-3 pb-2">Reading history <span className="text-muted-foreground font-normal">· {readings.length}</span></p>
                   <div className="divide-y divide-border/50 max-h-56 overflow-y-auto">
                     {readings.slice(0, 20).map((r, i) => {
@@ -693,7 +693,7 @@ export function VitalsPanel({
 
               {/* What's normal */}
               {bands.length > 0 && (
-                <details className="group/ref rounded-xl border border-border/50 bg-card px-4 py-3">
+                <details className="group/ref rounded-xl border border-border bg-card px-4 py-3">
                   <summary className="text-sm font-semibold cursor-pointer list-none flex items-center justify-between">
                     What&apos;s normal?
                     <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/ref:rotate-90" />
