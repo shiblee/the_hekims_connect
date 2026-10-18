@@ -630,11 +630,11 @@ function Loading() {
 }
 
 const TABS = [
-  { key: "dalail", label: "Dala'il", sub: "Examination", icon: Stethoscope },
-  { key: "tashkhees", label: "Tashkhees", sub: "Diagnosis", icon: FileSignature },
-  { key: "usool", label: "Usool-e-Ilaj", sub: "Principles", icon: ClipboardCheck },
-  { key: "ilaj", label: "Ilaj", sub: "Ghiza · Dawa · Tadbeer", icon: Leaf },
-  { key: "handover", label: "Prognosis", sub: "& Handover", icon: CalendarDays },
+  { key: "dalail", label: "Dala'il", short: "Dala'il", sub: "Examination", icon: Stethoscope },
+  { key: "tashkhees", label: "Tashkhees", short: "Tashkhees", sub: "Diagnosis", icon: FileSignature },
+  { key: "usool", label: "Usool-e-Ilaj", short: "Usool", sub: "Principles", icon: ClipboardCheck },
+  { key: "ilaj", label: "Ilaj", short: "Ilaj", sub: "Ghiza · Dawa · Tadbeer", short2: "Treatment", icon: Leaf },
+  { key: "handover", label: "Prognosis", short: "Prognosis", sub: "& Handover", short2: "Handover", icon: CalendarDays },
 ] as const;
 
 /**
@@ -703,7 +703,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
                 className={cn("flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors",
                   on ? "bg-primary text-primary-foreground" : done[t.key] ? "text-emerald-700 dark:text-emerald-400 hover:bg-muted" : "text-muted-foreground hover:bg-muted")}>
                 <t.icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate hidden sm:inline">{t.label}</span>
+                <span className="truncate hidden sm:inline">{t.short}</span>
                 {done[t.key] && <Check className="h-3 w-3 shrink-0" />}
               </button>
             );
@@ -725,25 +725,31 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
             </span>
           }
         />
-        <div className="mt-3 mb-4 h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
+        <div className="mt-3 mb-3 h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
           <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / TABS.length) * 100}%` }} />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {/* Steps — one line; click jumps to the step. */}
+        <div className="@container"><div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-0.5">
           {TABS.map((t, i) => {
             const on = inView === t.key;
+            const ok = done[t.key];
             return (
-              <button key={t.key} type="button" onClick={() => jump(t.key)}
-                className={cn("rounded-xl border px-3 py-2.5 text-left transition-colors", on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/30")}>
-                <span className="flex items-center justify-between">
-                  <t.icon className={cn("h-4 w-4", on ? "text-primary" : "text-muted-foreground")} />
-                  {done[t.key] && <span className="h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center" aria-label="Recorded"><Check className="h-3 w-3" /></span>}
+              <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${t.label} — ${t.sub}${ok ? " · recorded" : ""}`}
+                className={cn("flex min-w-[7rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1.5 @3xl:gap-2 rounded-xl border px-1.5 @3xl:px-2 py-1.5 text-left transition-colors",
+                  on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/40")}>
+                <span className={cn("relative h-8 w-8 @3xl:h-9 @3xl:w-9 shrink-0 rounded-full border-2 flex items-center justify-center",
+                  ok ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : on ? "border-primary text-primary" : "border-muted text-muted-foreground")}>
+                  <t.icon className="h-4 w-4" />
+                  {ok && <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center border-2 border-card" aria-label="Recorded"><Check className="h-2 w-2" /></span>}
                 </span>
-                <span className={cn("block text-sm font-semibold mt-1.5", on && "text-primary")}>{i + 1}. {t.label}</span>
-                <span className="block text-[13px] text-muted-foreground leading-tight">{t.sub}</span>
+                <span className="min-w-0">
+                  <span className={cn("block truncate text-xs @3xl:text-[13px] font-semibold leading-tight", on && "text-primary")}>{t.short}</span>
+                  <span className={cn("block truncate text-[11px] @3xl:text-xs leading-tight", ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>{"short2" in t ? t.short2 : t.sub}</span>
+                </span>
               </button>
             );
           })}
-        </div>
+        </div></div>
       </Card>
 
       <section ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} /></section>
