@@ -86,6 +86,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     answerRows.push({ criterionId: null, criterionLabel: label, present: true });
   }
 
+  // Save Draft — store the marked signs without making the referral decision.
+  // A cleared screening stays cleared only while nothing is marked; an AMA
+  // decision is kept; otherwise it waits as "pending" for Proceed / Refer.
+  if (body.draft) {
+    const hasPresent = answerRows.some((r) => r.present);
+    const draftOutcome = existing?.outcome === "continued_ama" ? "continued_ama" : existing?.outcome === "cleared" && !hasPresent ? "cleared" : "pending";
+    const screening = await db.redFlagScreening.upsert({
+      where: { visitId: id },
+      update: { outcome: draftOutcome, recordedById: auth.type === "staff" ? auth.id : null, answers: { deleteMany: {}, create: answerRows } },
+      create: { visitId: id, outcome: draftOutcome, recordedById: auth.type === "staff" ? auth.id : null, answers: { create: answerRows } },
+      select: SCREENING_SELECT,
+    });
+    return NextResponse.json({ screening });
+  }
+
   if (outcome === "referred") {
     const referral = body.referral || {};
     if (!referral.reason || !String(referral.reason).trim()) {

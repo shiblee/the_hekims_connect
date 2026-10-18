@@ -172,12 +172,13 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       chiefComplaintRef.current?.save(),
       acuteSymptomsRef.current?.save(),
       residentNoteRef.current?.save(),
+      redFlagRef.current?.save(),
     ]);
     // The Chief Complaint Matrix save recomputes HumoralAssessment
     // server-side — the clues panel has no other way to learn its tile
     // percentages just went stale, since it only fetches once on mount.
     humoralCluesRef.current?.refresh();
-    const sections = ["Main Complaints", "Other Symptoms", "Resident Clinical Note"];
+    const sections = ["Main Complaints", "Other Symptoms", "Resident Clinical Note", "Emergency Warning Signs"];
     const failed = sections.filter((_, i) => results[i].status === "rejected");
     if (failed.length) {
       // Each section shows its own error in place; this sums it up by the buttons.

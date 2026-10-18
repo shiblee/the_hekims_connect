@@ -29,6 +29,8 @@ export interface RedFlagScreeningPanelHandle {
    * false — the caller should stop and let the doctor resolve it, then retry. */
   attemptResolve: () => Promise<boolean>;
   openReferDialog: () => void;
+  /** Save Draft: store the marked signs (no referral decision). */
+  save: () => Promise<void>;
   /** Reopen the referral pop-up pre-filled with the saved referral, to correct or remove it. */
   openEditReferral: () => void;
 }
@@ -237,7 +239,24 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
     return false;
   };
 
-  useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog, openEditReferral }), [anyPresent, screening, present, criteria, custom]);
+  const saveDraft = async () => {
+    // Nothing to store: still loading, locked after referral, or nothing marked on a fresh visit.
+    if (loading || loadError || screening?.outcome === "referred") return;
+    if (!screening && !anyPresent) return;
+    try {
+      const res = await api.post<{ screening: Screening }>(`/api/facility/visits/${visitId}/red-flag-screening`, {
+        draft: true,
+        answers: criteria.map((c) => ({ criterionId: c.id, present: !!present[c.id] })),
+        custom,
+      });
+      setScreening(res.screening);
+    } catch (e: any) {
+      msg.error("The warning signs weren't saved", `${e.message || "Network error"}. They're still marked above.`, { retry: () => { saveDraft().catch(() => {}); } });
+      throw e;
+    }
+  };
+
+  useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog, openEditReferral, save: saveDraft }), [anyPresent, screening, present, criteria, custom, loading, loadError]);
 
   if (loadError) return <LoadFailed what="the emergency warning signs" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
