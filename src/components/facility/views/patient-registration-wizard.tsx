@@ -102,6 +102,14 @@ interface RegistrationSnapshotFields {
 }
 const buildRegistrationSnapshot = (f: RegistrationSnapshotFields) => JSON.stringify(f);
 
+const MALE_RELATIONS = /\b(son|father|brother|husband|grand ?father|grand ?son|uncle|nephew|boy)\b/i;
+const FEMALE_RELATIONS = /\b(daughter|mother|sister|wife|grand ?mother|grand ?daughter|aunt|niece|girl)\b/i;
+/** The gender option a relationship implies (Son → Male, Mother → Female); null for Self, Spouse, Other and the like. */
+function genderForRelationship(relationship: string, options: string[]): string | null {
+  const want = FEMALE_RELATIONS.test(relationship) ? "female" : MALE_RELATIONS.test(relationship) ? "male" : null;
+  return want ? options.find((o) => o.toLowerCase() === want) ?? null : null;
+}
+
 export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: string; patientId?: string } = {}) {
   const router = useRouter();
   const goToPatients = () => router.push("/facility/patients");
@@ -1056,7 +1064,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           id="relationship"
                           label="Relationship to Patient"
                           value={relationship}
-                          onValueChange={setRelationship}
+                          onValueChange={(v) => {
+                            setRelationship(v);
+                            // A relationship that names a sex (Son, Mother…) sets Gender; it stays editable.
+                            const g = genderForRelationship(v, meta.gender?.options || []);
+                            if (g) { setGender(g); clearFieldError("gender"); }
+                          }}
                           options={meta.relationship.options}
                           placeholder="Search relationship…"
                         />
