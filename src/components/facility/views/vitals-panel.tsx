@@ -458,7 +458,6 @@ export function VitalsPanel({
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {tiles.map(renderTile)}
       </div>
-      <p className="text-[11px] text-muted-foreground -mt-1">Click any vital to see its history, what&apos;s normal, and to add or correct a reading.</p>
     </Card>
 
       {detailKey && (() => {
