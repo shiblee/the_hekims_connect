@@ -333,11 +333,28 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
   // Only meaningful in the reopened edit flow — a fresh registration has no
   // "previous saved state" to lose, so the guard stays inert for it.
-  const isDirty = directEntry && !!editingId && savedSnapshotRef.current !== null && savedSnapshotRef.current !== buildRegistrationSnapshot({
+  const formSnapshot = buildRegistrationSnapshot({
     titlePrefix, name, relationship, gender, approxAge, ageUnit, maritalStatus, phone,
     emergencyContact, emergencyContactName, address, cityState, doctorId,
     chiefComplaintIds, narrative, onsetTimeline, allergies, medications, mobility, amount, paymentMode,
   });
+  const isDirty = directEntry && !!editingId && savedSnapshotRef.current !== null && savedSnapshotRef.current !== formSnapshot;
+
+  // Search and form are shown one at a time. Remember the form as it was when
+  // opened, so "Back to search" only asks for confirmation if something was
+  // actually entered since.
+  const openedSnapshotRef = useRef<string | null>(null);
+  const [confirmBack, setConfirmBack] = useState(false);
+  useEffect(() => {
+    openedSnapshotRef.current = formOpen ? formSnapshot : null;
+  }, [formOpen, editingId]);
+  const enteredSinceOpen = formOpen && openedSnapshotRef.current !== null && openedSnapshotRef.current !== formSnapshot;
+  const backToSearch = (force = false) => {
+    if (!force && enteredSinceOpen) { setConfirmBack(true); return; }
+    setConfirmBack(false);
+    clearForm(); // keeps the search terms and results
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const guardedNavigate = (action: () => void) => {
     if (isDirty) {
@@ -558,12 +575,16 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
   const openNewPatient = () => {
     clearForm();
+    setConfirmBack(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setPhone(searchMobile);
     setName(searchName);
     setFormOpen(true);
   };
 
   const selectCandidate = (c: Candidate) => {
+    setConfirmBack(false);
+    if (!directEntry) window.scrollTo({ top: 0, behavior: "smooth" });
     setFormOpen(true);
     setEditingId(c.id);
     setEditingCode(c.patientCode);
@@ -849,9 +870,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         ) : (
           <div className="space-y-6">
             {/* Identify — not applicable once reopened directly for a known visit/patient */}
-            {!directEntry && (
-            <section className="space-y-3 pb-6 border-b border-border/40">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
+            {!directEntry && !formOpen && (
+            <section className="space-y-3 animate-in fade-in duration-200">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Search first so the same patient isn&apos;t registered twice.</p>
+              </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <FloatingField
                   id="searchName" label="Patient Name" value={searchName}
@@ -957,6 +981,49 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
             {formOpen && (
               <section className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                {!directEntry && (
+                  <div className="space-y-2 pb-4 border-b border-border/40">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => backToSearch()}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                      >
+                        <ChevronLeft className="h-4 w-4" /> Back to search
+                      </button>
+                      {editingId ? (
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          <span className="text-sm text-muted-foreground">Existing patient</span>
+                          <span className="text-sm font-semibold truncate">{name || "—"}</span>
+                          <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono flex items-center gap-1">
+                            <IdCard className="h-3 w-3" /> {editingCode}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs flex items-center gap-1">
+                            <History className="h-3 w-3" /> {lastVisitAt ? `Last visit ${daysAgo(lastVisitAt)}` : "First visit here"}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center"><UserPlus className="h-3.5 w-3.5" /></span>
+                          <span className="text-sm font-semibold">New patient registration</span>
+                        </div>
+                      )}
+                    </div>
+                    {confirmBack && (
+                      <InlineNotice
+                        tone="warning"
+                        title="Leave this registration?"
+                        detail="What you've entered on this form will be cleared. Your search and its results are kept."
+                        action={
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmBack(false)}>Keep editing</Button>
+                            <Button size="sm" variant="outline" onClick={() => backToSearch(true)}>Discard &amp; go back</Button>
+                          </div>
+                        }
+                      />
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -966,26 +1033,10 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       <h2 className="text-base font-semibold text-foreground leading-tight">Primary Patient Identification</h2>
                     </div>
                   </div>
-                  {editingId ? (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono flex items-center gap-1">
-                        <IdCard className="h-3 w-3" /> {editingCode}
-                      </Badge>
-                      {!directEntry && (
-                        <Badge variant="outline" className="text-sm flex items-center gap-1">
-                          <History className="h-3 w-3" /> {lastVisitAt ? `Last visit: ${daysAgo(lastVisitAt)}` : "No prior visit here"}
-                        </Badge>
-                      )}
-                      {!directEntry && (
-                        <button onClick={clearForm} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-                          <X className="h-3 w-3" /> Change patient
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <button onClick={clearForm} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-                      <X className="h-3 w-3" /> Cancel
-                    </button>
+                  {directEntry && editingId && (
+                    <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono flex items-center gap-1">
+                      <IdCard className="h-3 w-3" /> {editingCode}
+                    </Badge>
                   )}
                 </div>
 
