@@ -253,7 +253,6 @@ export function AsbabAssessmentPanel({ state }: { state: AsbabState }) {
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">Pillar {idx + 1} of {pillars.length}</p>
           <h3 className="font-serif text-lg font-semibold leading-tight">{active.label} <span className="text-sm font-sans font-normal text-muted-foreground">· {active.english}</span></h3>
-          {active.description && <p className="text-sm text-muted-foreground mt-0.5">{active.description}</p>}
         </div>
       </div>
 
