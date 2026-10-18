@@ -174,6 +174,8 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   const [allergyInput, setAllergyInput] = useState("");
   const [medications, setMedications] = useState<MedicationEntry[]>([]);
   const [medicationInput, setMedicationInput] = useState("");
+  // Unani = Meta → Supplements & Herbs; Allopathic = Meta → Medications.
+  const [medicationTab, setMedicationTab] = useState<"supplement" | "medication">("supplement");
   const [mobility, setMobility] = useState("");
 
   // Payment (optional)
@@ -514,6 +516,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     const q = medicationInput.trim().toLowerCase();
     if (!q) return [];
     return medicationOptions.filter((o) =>
+      (o.kind === "medication" ? "medication" : "supplement") === medicationTab &&
       !medications.some((x) => x.kind === o.kind && x.label.toLowerCase() === o.label.toLowerCase()) &&
       o.label.toLowerCase().includes(q)
     ).slice(0, 8);
@@ -1220,10 +1223,23 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         createLabel={(q) => `Add "${q}" as a custom allergy`}
                       />
 
+                      <div className="space-y-2">
+                      <div role="tablist" aria-label="Medicine type" className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5">
+                        {([["supplement", "Unani", Leaf], ["medication", "Allopathic", Pill]] as const).map(([k, l, Icon]) => (
+                          <button key={k} type="button" role="tab" aria-selected={medicationTab === k}
+                            onClick={() => { setMedicationTab(k); setMedicationInput(""); }}
+                            className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                              medicationTab === k
+                                ? (k === "supplement" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-primary/15 text-primary")
+                                : "text-muted-foreground hover:text-foreground")}>
+                            <Icon className="h-3.5 w-3.5" /> {l}
+                          </button>
+                        ))}
+                      </div>
                       <FloatingMultiSelect
                         id="medicationSearch"
                         label="Current medicines & herbs"
-                        placeholder="Type a herb, supplement or medication…"
+                        placeholder={medicationTab === "supplement" ? "Type a Unani medicine, herb or supplement…" : "Type an allopathic medicine…"}
                         selected={medications.map((m) => ({ id: `${m.kind}:${m.label}`, label: m.label, kind: m.kind }))}
                         onRemove={(mid) => setMedications((cur) => cur.filter((m) => `${m.kind}:${m.label}` !== mid))}
                         query={medicationInput}
@@ -1236,11 +1252,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         chipClassName={(m) => m.kind === "medication"
                           ? "bg-primary/10 border-primary/30 text-primary"
                           : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"}
-                        createOptions={(q) => [
-                          { key: "supplement", label: "Add as supplement / herb", icon: <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />, onCreate: () => addMedication(q, "supplement") },
-                          { key: "medication", label: "Add as medication", icon: <Pill className="h-3 w-3 shrink-0 text-primary" />, onCreate: () => addMedication(q, "medication") },
+                        createOptions={(q) => [medicationTab === "supplement"
+                          ? { key: "supplement", label: "Add as Unani medicine / herb", icon: <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />, onCreate: () => addMedication(q, "supplement") }
+                          : { key: "medication", label: "Add as allopathic medicine", icon: <Pill className="h-3 w-3 shrink-0 text-primary" />, onCreate: () => addMedication(q, "medication") },
                         ]}
                       />
+                      </div>
 
                       <div id="reg-mobility" className="scroll-mt-24">
                         <p className="text-sm font-medium text-muted-foreground mb-2">How did the patient arrive? <span className="text-destructive">*</span></p>
