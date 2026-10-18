@@ -194,28 +194,10 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     );
   }
 
-  if (alreadyReferred && screening?.referral) {
-    const r = screening.referral;
-    return (
-      <Card className="p-5 border-destructive/30 bg-destructive/5">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-9 w-9 rounded-lg bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
-            <ShieldAlert className="h-4.5 w-4.5" />
-          </div>
-          <div>
-            <h2 className="font-serif text-lg font-semibold">Patient Referred — Case Closed</h2>
-            <p className="text-sm text-muted-foreground">{new Date(r.createdAt).toLocaleString()}</p>
-          </div>
-          <Badge variant="outline" className="ml-auto border-destructive/40 text-destructive shrink-0">{r.urgency}</Badge>
-        </div>
-        <div className="space-y-2 text-sm">
-          <p><span className="text-muted-foreground">Referred to:</span> <span className="font-medium">{r.referredTo}</span></p>
-          <p><span className="text-muted-foreground">Reason:</span> {r.reason}</p>
-          {r.notes && <p><span className="text-muted-foreground">Notes:</span> {r.notes}</p>}
-        </div>
-      </Card>
-    );
-  }
+  // Once referred, the referral is shown as one line under the patient
+  // signature (Clinical Record) — this panel steps aside but stays mounted so
+  // the page's Proceed check still works.
+  if (alreadyReferred && screening?.referral) return null;
 
   const presentCount = criteria.filter((c) => present[c.id]).length + custom.length;
   const flaggedLabels = [...criteria.filter((c) => present[c.id]).map((c) => c.label), ...custom];

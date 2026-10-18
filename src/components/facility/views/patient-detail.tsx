@@ -288,7 +288,6 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       <PatientSignatureCard
         patient={patient}
         visitCount={visits.length}
-        lastReferralAt={referredVisits[0]?.referral?.createdAt}
         lastAmaAt={amaVisits[0]?.amaDecline?.createdAt}
         onPhotoClick={() => setPhotoDialogOpen(true)}
         visits={sortedVisits}
@@ -303,31 +302,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         onRemove={() => savePhoto(null)}
       />
 
-      {referredVisits.length > 0 && (
-        <Card className="p-4 mb-6 border-destructive/30 bg-destructive/5 space-y-3">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
-            <p className="text-sm font-semibold text-foreground">
-              Emergency Referral History {referredVisits.length > 1 && `(${referredVisits.length})`}
-            </p>
-          </div>
-          <div className="space-y-2">
-            {referredVisits.map((v) => (
-              <div key={v.id} className="rounded-lg border border-destructive/20 bg-background/60 p-3 text-sm">
-                <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-                  <span className="font-medium">{v.visitCode ? `Visit ${v.visitCode}` : "Visit"} · {daysAgo(v.referral!.createdAt)}</span>
-                  <Badge variant="outline" className="border-destructive/40 text-destructive text-xs shrink-0">{v.referral!.urgency}</Badge>
-                </div>
-                <p><span className="text-muted-foreground">Referred to:</span> <span className="font-medium">{v.referral!.referredTo}</span></p>
-                <p><span className="text-muted-foreground">Reason:</span> {v.referral!.reason}</p>
-                {v.referral!.notes && <p><span className="text-muted-foreground">Notes:</span> {v.referral!.notes}</p>}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      {referredVisits.length > 0 && <ReferralLine visits={referredVisits} />}
 
       {amaVisits.length > 0 && (
         <Card className="p-4 mb-6 border-amber-500/30 bg-amber-500/5 space-y-3">
@@ -405,6 +380,50 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         </div>
       </Card>
 
+    </div>
+  );
+}
+
+/**
+ * One slim line under the signature card summarising the visit's referral —
+ * urgency, destination, reason, notes, visit and time — with earlier
+ * referrals (if any) tucked behind a "+N earlier" toggle.
+ */
+function ReferralLine({ visits }: { visits: { id: string; visitCode?: string; referral?: { reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string } | null }[] }) {
+  const [open, setOpen] = useState(false);
+  const row = (v: (typeof visits)[number], first: boolean) => {
+    const r = v.referral!;
+    const when = `${daysAgo(r.createdAt)}, ${new Date(r.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+    const full = `Referred (${r.urgency}) to ${r.referredTo}. Reason: ${r.reason}.${r.notes ? ` Notes: ${r.notes}.` : ""} ${v.visitCode ? `Visit ${v.visitCode}, ` : ""}${when}`;
+    return (
+      <div key={v.id} title={full} className="flex items-center gap-2 min-w-0 text-sm">
+        {first ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-destructive text-white px-2 py-0.5 text-xs font-semibold shrink-0">
+            <ShieldAlert className="h-3 w-3" /> Referred · {r.urgency}
+          </span>
+        ) : (
+          <span className="rounded-full border border-destructive/30 text-destructive px-2 py-0.5 text-[11px] font-medium shrink-0">{r.urgency}</span>
+        )}
+        <span className="shrink-0"><span className="text-muted-foreground">to</span> <span className="font-semibold">{r.referredTo}</span></span>
+        <span className="truncate min-w-0 text-muted-foreground">
+          · <span className="text-foreground">{r.reason}</span>
+          {r.notes && <> · Notes: <span className="text-foreground">{r.notes}</span></>}
+        </span>
+        <span className="ml-auto shrink-0 text-xs text-muted-foreground whitespace-nowrap">{v.visitCode ? `${v.visitCode} · ` : ""}{when}</span>
+      </div>
+    );
+  };
+  return (
+    <div className="mb-6 -mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">{row(visits[0], true)}</div>
+        {visits.length > 1 && (
+          <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 text-xs font-medium text-destructive hover:underline">
+            {open ? "Hide" : `+${visits.length - 1} earlier`}
+          </button>
+        )}
+      </div>
+      {open && <div className="border-t border-destructive/20 pt-1.5 space-y-1">{visits.slice(1).map((v) => row(v, false))}</div>}
     </div>
   );
 }
