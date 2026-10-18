@@ -821,3 +821,32 @@ Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON,
     return sel.filter((x: unknown): x is string => typeof x === "string" && allowed.has(x)).slice(0, limit);
   } catch { return null; }
 }
+
+/**
+ * Orders candidate Usool-e-Ilaj (treatment principles) for the Usool engine.
+ * Chooses only among the ids given (approved principle labels), sees no
+ * identifiers, never prescribes; the caller falls back to rule order on failure.
+ */
+export async function rankUsoolPrinciples(
+  ctx: { complaints: string[]; symptoms: string[]; suMizaj: string | null; type: string | null; darja: number | null; organs: string[] },
+  candidates: { id: string; label: string }[],
+  limit: number,
+): Promise<string[] | null> {
+  if (geminiQuotaRecentlyHit()) return null;
+  const prompt = `You support a qualified Unani (Tibb) physician choosing Usool-e-Ilaj (principles of treatment). From the candidate principles below, choose those most appropriate for THIS patient, in order of importance. Follow classical reasoning (Ilaj bil Zid; for Maddi, Nuzj before Istifragh; strengthen affected organs). You do not prescribe; the physician decides.
+
+Diagnosis: Su-e-Mizaj ${[ctx.type, ctx.suMizaj, ctx.darja ? `Darja ${ctx.darja}` : ""].filter(Boolean).join(" ") || "not recorded"} · organs: ${ctx.organs.join(", ") || "none"} · complaints: ${ctx.complaints.join("; ") || "none"} · other symptoms: ${ctx.symptoms.join("; ") || "none"}.
+
+Candidates (id — principle):
+${candidates.map((c) => `- ${c.id} — ${c.label}`).join("\n")}
+
+Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences: {"selected":["id", ...]}`;
+  const raw = await callGemini(prompt);
+  if (!raw) return null;
+  try {
+    const sel = JSON.parse(stripCodeFence(raw))?.selected;
+    if (!Array.isArray(sel)) return null;
+    const allowed = new Set(candidates.map((c) => c.id));
+    return sel.filter((x: unknown): x is string => typeof x === "string" && allowed.has(x)).slice(0, limit);
+  } catch { return null; }
+}

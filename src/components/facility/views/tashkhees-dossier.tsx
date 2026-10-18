@@ -604,10 +604,109 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
 
 // ---------------------------------------------------------------- tab 3: Usool
 
-function UsoolTab({ state }: { state: TashkheesState }) {
+// ---------------------------------------------------------------- Usool-e-Ilaj engine card
+
+interface UsoolPlanItem { label: string; localName: string | null; description: string | null; phase: number; reason: string; caution?: string }
+interface UsoolPlanData {
+  basis: { suMizaj: string | null; type: string | null; darja: number | null; organs: string[]; fromEngine: boolean };
+  plan: UsoolPlanItem[]; cautions: UsoolPlanItem[]; insufficient: string[];
+}
+const USOOL_PHASES: Record<number, string> = { 1: "Remove the cause", 2: "Concoction · Nuzj", 3: "Evacuation · Istifragh", 4: "Correct the temperament", 5: "Strengthen · Taqwiyat", 6: "Relieve symptoms" };
+
+/**
+ * Suggested treatment plan — principles in the classical order, from the
+ * diagnosis and the visit's findings. Principles needing care (e.g.
+ * evacuation with a weak pulse) are listed apart with the reason and are
+ * never part of "Accept plan". The Hakim adds what fits.
+ */
+function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: string }) {
+  const { dossier: d, set } = state;
+  const [data, setData] = useState<{ plan: UsoolPlanData; method: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [running, setRunning] = useState(false);
+  const fetchPlan = useCallback(() =>
+    api.get<{ plan: UsoolPlanData; method: string }>(`/api/facility/visits/${visitId}/usool-engine`)
+      .then((r) => { setData(r); setFailed(false); })
+      .catch(() => setFailed(true)), [visitId]);
+  useEffect(() => { fetchPlan(); }, [fetchPlan]);
+  const rerun = async () => { setRunning(true); try { await state.save(false); await fetchPlan(); } finally { setRunning(false); } };
+  const record = (labels: string[]) => { if (labels.length) api.post(`/api/facility/visits/${visitId}/usool-engine`, { accepted: labels }).catch(() => {}); };
+  const add = (labels: string[]) => {
+    const fresh = labels.filter((l) => !d.usool.includes(l));
+    if (!fresh.length) return;
+    set({ usool: [...d.usool, ...fresh] });
+    record(fresh);
+  };
+
+  const p = data?.plan;
+  const missing = (p?.plan || []).filter((x) => !d.usool.includes(x.label)).map((x) => x.label);
+  const b = p?.basis;
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Suggested treatment plan</p>
+        <span className="flex items-center gap-2">
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-running…" : "Re-run"}</button>
+          {missing.length > 0 && <Button size="sm" className="h-7" onClick={() => add(missing)}>Accept plan ({missing.length})</Button>}
+        </span>
+      </div>
+      {failed ? (
+        <p className="text-sm text-muted-foreground">The plan couldn&apos;t be loaded — choose the principles below as usual. <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">Try again</button></p>
+      ) : !p ? <Loading /> : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Based on {b?.suMizaj ? <span className="font-medium text-foreground">Su-e-Mizaj {[b.type, b.suMizaj, b.darja ? `Darja ${b.darja}` : null].filter(Boolean).join(" · ")}</span> : "no diagnosis yet"}
+            {b && b.organs.length > 0 && <> · organs <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
+            {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400"> — the engine&apos;s suggested diagnosis; record the Tashkhees above for a firmer plan</span>}
+          </p>
+          {p.plan.length > 0 && (
+            <ol className="space-y-1.5">
+              {p.plan.map((x, i) => {
+                const on = d.usool.includes(x.label);
+                const newPhase = i === 0 || p.plan[i - 1].phase !== x.phase;
+                return (
+                  <li key={x.label}>
+                    {newPhase && <p className="mt-1 mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Step {x.phase} · {USOOL_PHASES[x.phase] ?? ""}</p>}
+                    <div className={cn("flex items-start justify-between gap-3 rounded-lg border px-3 py-2", on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/50")}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{x.label}{x.localName && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{x.localName}</span>}</p>
+                        {x.description && <p className="text-xs text-muted-foreground">{x.description}</p>}
+                        <p className="mt-0.5 text-xs text-primary/90 flex items-center gap-1"><Sparkles className="h-3 w-3 shrink-0" />{x.reason}</p>
+                      </div>
+                      {on
+                        ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Added</span>
+                        : <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={() => add([x.label])}>Add</Button>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {p.cautions.length > 0 && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Use with caution — not included in the plan</p>
+              {p.cautions.map((x) => (
+                <div key={x.label} className="flex items-start justify-between gap-3">
+                  <p className="text-xs"><span className="font-semibold">{x.label}</span> <span className="text-muted-foreground">— {x.caution}</span></p>
+                  {!d.usool.includes(x.label) && <button type="button" onClick={() => add([x.label])} className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline">Add anyway</button>}
+                </div>
+              ))}
+            </div>
+          )}
+          {p.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
+          <p className="text-[11px] text-muted-foreground">A guide{data?.method === "ranked" ? " · ordered by Hakeem Insight" : ""} — the Hakim decides. Re-run after changing the diagnosis.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
   return (
     <Panel icon={ClipboardCheck} title="Usool-e-Ilaj — Principles of Treatment" hint="The strategy the treatment below will follow.">
+      <UsoolEngineCard state={state} visitId={visitId} />
       <div className="grid sm:grid-cols-2 gap-2">
         {(options?.usool || []).map((o) => {
           const on = d.usool.includes(o.label);
@@ -975,7 +1074,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
 
       <section ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} visitId={visitId} /></section>
       <section ref={(el) => { refs.current.tashkhees = el; }}><TashkheesTab state={state} visitId={visitId} /></section>
-      <section ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} /></section>
+      <section ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} visitId={visitId} /></section>
       <section ref={(el) => { refs.current.ilaj = el; }}><IlajTab state={state} patientId={patientId} visitId={visitId} /></section>
       <section ref={(el) => { refs.current.handover = el; }}><HandoverTab state={state} /></section>
 

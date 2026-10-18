@@ -588,6 +588,7 @@ export async function seedDatabase() {
   await seedOnsetPatternCatalog();
   await seedDalailBank();
   await seedTashkheesEngine();
+  await seedUsoolBank();
   await seedEmailTemplates();
 
   // Check if already seeded
@@ -946,5 +947,20 @@ export async function seedTashkheesEngine() {
     const [section, question, option] = k.split("|");
     const o = await db.asbabOption.findFirst({ where: { label: option, question: { label: question, pillar: { key: section } } } });
     if (o && o.maddi === 0) await db.asbabOption.update({ where: { id: o.id }, data: { maddi: w } });
+  }
+}
+
+/** Usool-e-Ilaj principles: conditions for the existing ones (where none set) and new principles as drafts — add-only. */
+export async function seedUsoolBank() {
+  const { EXISTING_USOOL, NEW_USOOL } = await import("@/lib/usool-seed");
+  for (const [label, v] of Object.entries(EXISTING_USOOL)) {
+    const o = await db.tashkheesOption.findFirst({ where: { list: "usool", label } });
+    if (o && o.appliesTo === "{}") await db.tashkheesOption.update({ where: { id: o.id }, data: { appliesTo: JSON.stringify(v.rule), priority: v.priority } });
+  }
+  const max = await db.tashkheesOption.aggregate({ where: { list: "usool" }, _max: { sortOrder: true } });
+  let order = (max._max.sortOrder ?? -1) + 1;
+  for (const n of NEW_USOOL) {
+    if (await db.tashkheesOption.findFirst({ where: { list: "usool", label: n.label } })) continue;
+    await db.tashkheesOption.create({ data: { list: "usool", label: n.label, localName: n.localName ?? null, description: n.description, appliesTo: JSON.stringify(n.rule), priority: n.priority, reviewStatus: "draft", sortOrder: order++ } });
   }
 }

@@ -361,6 +361,7 @@ model Visit {
   amaDecline                AmaDecline?
   dalailSelection           DalailSelection?
   tashkheesSuggestion       TashkheesSuggestion?
+  usoolSuggestion           UsoolSuggestion?
 }
 
 model Payment {
@@ -617,19 +618,22 @@ model AsbabResponse {
 // "mizaj" (temperaments), "organ" (Udw), "usool" (principles of treatment),
 // "ghiza" (foods), "tadbeer" (regimens), "dosage_form", "timing", "prognosis".
 model TashkheesOption {
-  id          String   @id @default(cuid())
-  list        String
-  label       String
-  localName   String?
-  description String?
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
+  id           String   @id @default(cuid())
+  list         String
+  label        String
+  localName    String?
+  description  String?
+  sortOrder    Int      @default(0)
+  active       Boolean  @default(true)
   // Tashkhees engine (organ list): which complaints / categories / symptoms /
   // body regions point to this organ — same shape as Dala'il question links.
-  appliesTo   String   @default("{}")
-  priority    Int      @default(3)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  appliesTo    String   @default("{}")
+  priority     Int      @default(3)
+  // Usool-e-Ilaj principles written by the system arrive as "draft" and are
+  // hidden from doctors until a physician approves them. Other lists: approved.
+  reviewStatus String   @default("approved")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([list, label])
   @@index([list, sortOrder])
@@ -1866,6 +1870,23 @@ model TashkheesSuggestion {
   configVersion String?
   contextHash   String?
   accepted      String   @default("{}") // { mizajAsli?: at, suMizaj?: at, organs?: at }
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+}
+
+// The Usool-e-Ilaj engine's suggested treatment plan for a visit, what it was
+// based on, and which principles the doctor accepted.
+model UsoolSuggestion {
+  id            String   @id @default(cuid())
+  visitId       String   @unique
+  suggestion    String   @default("{}")
+  method        String   @default("rules")
+  configVersion String?
+  contextHash   String?
+  accepted      String   @default("[]") // labels accepted, with time
   latencyMs     Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
