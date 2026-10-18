@@ -14,8 +14,8 @@ import { BriefcaseMedical, CalendarDays, Flag, Loader2, Plus, X } from "lucide-r
 
 interface ScreeningOptionCfg { id: string; label: string }
 interface ChiefComplaintCfg { id: string; label: string }
-interface ScreeningQuestionCfg { id: string; label: string; type: string; options: ScreeningOptionCfg[] }
-interface ScreeningModuleCfg { id: string; triggerComplaintIds: string[]; questions: ScreeningQuestionCfg[] }
+interface ScreeningQuestionCfg { id: string; label: string; type: string; active: boolean; options: ScreeningOptionCfg[] }
+interface ScreeningModuleCfg { id: string; active: boolean; triggerComplaintIds: string[]; questions: ScreeningQuestionCfg[] }
 interface L1Answer { questionId: string | null; questionLabel: string; value: string }
 interface FactorTagCfg { id: string; kind: string; label: string; active: boolean }
 interface SeverityLabelCfg { level: number; label: string }
@@ -60,9 +60,10 @@ function relevantQuestionsFor(modules: ScreeningModuleCfg[], complaintId: string
   if (!complaintId) return [];
   const qs: ScreeningQuestionCfg[] = [];
   for (const m of modules) {
-    if (!m.triggerComplaintIds.includes(complaintId)) continue;
+    // Respect the admin's on/off switches for both modules and questions.
+    if (!m.active || !m.triggerComplaintIds.includes(complaintId)) continue;
     for (const q of m.questions) {
-      if (q.type === "instruction") continue;
+      if (!q.active || q.type === "instruction") continue;
       qs.push(q);
     }
   }
