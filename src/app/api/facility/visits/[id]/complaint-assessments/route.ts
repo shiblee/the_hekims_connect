@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const body = await req.json();
   const submitted: any[] = Array.isArray(body.complaints) ? body.complaints : [];
-  const recordedById = auth.type === "staff" ? auth.id : null;
+  const recordedById = auth.staffId ?? null;
 
   const rows = submitted.map((c, i) => ({
     visitId: id,

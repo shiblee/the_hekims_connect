@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const regions: string[] = Array.isArray(body.regions)
     ? [...new Set<string>(body.regions.filter((r: unknown): r is string => typeof r === "string" && !!r.trim()).map((r: string) => r.trim()))]
     : [];
-  const recordedById = auth!.type === "staff" ? auth!.id : null;
+  const recordedById = auth!.staffId ?? null;
 
   const selection = await db.anatomicalRegionSelection.upsert({
     where: { visitId: id },

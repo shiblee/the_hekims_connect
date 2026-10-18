@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   // Staff logins don't create a UserSession row (no staff-facing login history yet), so
   // there's nothing to close — just acknowledge the logout.
-  if (auth.type === "staff") {
+  if (auth.staffId || auth.type === "staff") {
     return NextResponse.json({ success: true });
   }
 

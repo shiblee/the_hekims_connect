@@ -6,6 +6,10 @@ import { getAuthUser } from "@/lib/api-auth";
 export async function getClinicActor(req: NextRequest) {
   const auth = await getAuthUser(req);
   if (!auth || (auth.type !== "facility" && auth.type !== "staff")) return null;
+  if (auth.staffId) {
+    const s = await db.staff.findUnique({ where: { id: auth.staffId }, select: { facilityId: true, name: true, designation: true } });
+    return s ? { type: "staff" as const, id: auth.staffId, facilityId: s.facilityId, name: s.designation ? `${s.name} (${s.designation})` : s.name } : null;
+  }
   if (auth.type === "facility") {
     const f = await db.facility.findUnique({ where: { id: auth.id }, select: { facilityName: true } });
     return f ? { type: "facility" as const, id: auth.id, facilityId: auth.id, name: f.facilityName } : null;

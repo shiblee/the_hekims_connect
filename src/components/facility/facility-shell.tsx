@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PatientReportsPanel } from "@/components/facility/reports/patient-reports-panel";
 import { FlashNotice } from "@/components/shared/flash-notice";
+import { canOpenPage } from "@/lib/staff-permissions";
 import {
   LayoutDashboard, Activity, Pill, CalendarDays, Users, MessageSquare,
-  FilePlus2, LogOut, Search, Bell, Stethoscope,
+  FilePlus2, LogOut, Search, Bell, Stethoscope, Lock,
 } from "lucide-react";
 
 type Tab = "dashboard" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions" | "profile";
@@ -41,6 +42,12 @@ export function useFacilityStats() {
 
 export function FacilityShell({ children }: { children: React.ReactNode }) {
   const facility = useAppStore((s) => s.facility);
+  // Signed-in staff: limited to their permissions (null = the clinic owner, everything).
+  const perms = useAppStore((s) => s.permissions);
+  const staff = useAppStore((s) => s.staff);
+  const staffRole = useAppStore((s) => s.staffRole);
+  const asStaff = !!staff && perms !== null;
+  const can = (path: string) => canOpenPage(asStaff ? perms : null, path);
   const logout = useAppStore((s) => s.logout);
   const router = useRouter();
   const pathname = usePathname();
@@ -61,6 +68,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const go = (tab: string) => { router.push(`/facility/${tab}`); setMobileNav(false); };
+  const pageAllowed = can(pathname);
   const onLogout = () => { logout(); router.push("/"); };
 
   if (!facility) return null;
@@ -84,7 +92,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
             truncation works and nothing is cut off at the edge. */}
         <ScrollArea className="flex-1 px-3 py-4 [&_[data-slot=scroll-area-viewport]>div]:!block">
           <nav className="space-y-1">
-            {NAV.map((n) => (
+            {NAV.filter((n) => can(`/facility/${n.id}`)).map((n) => (
               <button
                 key={n.id}
                 onClick={() => go(n.id)}
@@ -104,11 +112,11 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          <div className="mt-6 px-3">
+          {can("/facility/patients") && <div className="mt-6 px-3">
             <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => go("patients")}>
               <Stethoscope className="mr-2 h-4 w-4" /> Start Consultation
             </Button>
-          </div>
+          </div>}
 
           {/* Reports for the patient on screen (reads ?patientId — Suspense needed for useSearchParams). */}
           <Suspense fallback={null}>
@@ -118,18 +126,18 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
 
         <div className="p-3 border-t border-sidebar-border">
           <button
-            onClick={() => go("profile")}
+            onClick={() => (asStaff ? router.push(can("/facility/profile") ? "/facility/profile" : can("/facility/profile/staff") ? "/facility/profile/staff" : "/staff") : go("profile"))}
             className={cn(
               "w-full flex items-center gap-2.5 p-2 rounded-lg transition-colors",
               active === "profile" ? "bg-sidebar-accent" : "hover:bg-sidebar-accent"
             )}
           >
             <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(facility.avatarColor))}>
-              {initials(facility.facilityName)}
+              {initials(asStaff ? staff!.name : facility.facilityName)}
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium truncate">{facility.facilityName}</p>
-              <p className="text-xs text-muted-foreground truncate">{facility.specialization}</p>
+              <p className="text-sm font-medium truncate">{asStaff ? staff!.name : facility.facilityName}</p>
+              <p className="text-xs text-muted-foreground truncate">{asStaff ? `${staffRole ?? "Staff"} · ${facility.facilityName}` : facility.specialization}</p>
             </div>
           </button>
           <button onClick={onLogout} className="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
@@ -150,10 +158,10 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="font-serif text-lg lg:text-xl font-bold truncate">
-                Hello, {facility.facilityName} 👋
+                Hello, {asStaff ? staff!.name : facility.facilityName} 👋
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                {facility.specialization} · Rating {facility.rating}★
+                {asStaff ? `${staffRole ?? "Staff"} · ${facility.facilityName}` : `${facility.specialization} · Rating ${facility.rating}★`}
               </p>
             </div>
             <div className="hidden md:block relative w-56">
@@ -174,7 +182,13 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 lg:p-6">
           <FacilityStatsContext.Provider value={stats}>
             <FlashNotice />
-            {children}
+            {pageAllowed ? children : (
+              <div className="mx-auto mt-16 max-w-md rounded-2xl border border-border bg-card/70 p-8 text-center">
+                <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
+                <p className="mt-3 font-serif text-lg font-semibold">You don&apos;t have access to this page</p>
+                <p className="mt-1 text-sm text-muted-foreground">Ask the clinic owner to change your permissions (Facility Profile → Permissions).</p>
+              </div>
+            )}
           </FacilityStatsContext.Provider>
         </main>
       </div>

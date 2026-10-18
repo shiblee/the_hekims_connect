@@ -1,5 +1,6 @@
 "use client";
 
+import { firstAllowedPage } from "@/lib/staff-permissions";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -27,6 +28,7 @@ export function StaffPortal() {
   const router = useRouter();
   const staff = useAppStore((s) => s.staff);
   const logout = useAppStore((s) => s.logout);
+  const permissions = useAppStore((s) => s.permissions);
   const onLogout = () => { logout(); router.push("/"); };
 
   if (!staff) return null;
@@ -38,9 +40,14 @@ export function StaffPortal() {
       <header className="sticky top-0 z-10 glass border-b border-border">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 py-3 flex items-center justify-between">
           <BrandLogo size={30} />
+          <div className="flex items-center gap-2">
+          {firstAllowedPage(permissions ?? []) !== "/staff" && (
+            <Button size="sm" onClick={() => router.push(firstAllowedPage(permissions ?? []))}>Open clinic app</Button>
+          )}
           <Button variant="outline" size="sm" onClick={onLogout}>
             <LogOut className="h-4 w-4" /> Logout
           </Button>
+          </div>
         </div>
       </header>
 

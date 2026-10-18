@@ -116,7 +116,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     report: {
       id: `RPT-${visit.visitCode}-${stamp}`,
       generatedAt: generatedAt.toISOString(),
-      generatedBy: auth.type === "staff" ? (await db.staff.findUnique({ where: { id: auth.id }, select: { name: true } }))?.name ?? null : facility?.facilityName ?? null,
+      generatedBy: auth.staffId ? (await db.staff.findUnique({ where: { id: auth.staffId }, select: { name: true } }))?.name ?? null : facility?.facilityName ?? null,
     },
     branding,
     normalRanges: ranges.normalRanges,

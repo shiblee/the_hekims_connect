@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
       patientId,
       facilityId: auth.id,
       doctorId: validDoctorId,
+      registeredById: auth.staffId ?? null,
       reasonForVisit: reasonForVisit || null,
       status: validStatus,
     },

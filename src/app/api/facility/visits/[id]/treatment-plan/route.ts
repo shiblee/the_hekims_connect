@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     referralNotes: body.referralNotes || null,
     reviewDate: body.reviewDate ? new Date(body.reviewDate) : null,
     clinicalNotes: body.clinicalNotes || null,
-    recordedById: auth.type === "staff" ? auth.id : null,
+    recordedById: auth.staffId ?? null,
   };
 
   const plan = await db.treatmentPlan.upsert({

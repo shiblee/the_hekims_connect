@@ -15,9 +15,12 @@ import { Separator } from "@/components/ui/separator";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog,
+  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound,
 } from "lucide-react";
 import { TeamView } from "./team";
+import { PermissionsView } from "./permissions";
+import { canOpenPage } from "@/lib/staff-permissions";
+import { useAppStore } from "@/lib/store";
 
 const DAY_LABELS: Record<number, string> = {
   0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday",
@@ -30,7 +33,7 @@ const SECTIONS = [
   { key: "capacity", label: "Capacity & Schedule", icon: Gauge },
   { key: "services", label: "Services", icon: Stethoscope },
 ];
-const STAFF_SECTION = { key: "staff", label: "Staff", icon: UserCog };
+const STAFF_SECTIONS = [{ key: "staff", label: "Staff", icon: UserCog }, { key: "permissions", label: "Permissions", icon: KeyRound }];
 
 interface OperatingHourRow {
   dayOfWeek: number;
@@ -84,6 +87,7 @@ function ToggleRow({ title, checked, onCheckedChange }: { title: string; checked
 }
 
 export function ProfileView({ section }: { section: string }) {
+  const perms = useAppStore((st) => (st.staff && st.permissions !== null ? st.permissions : null));
   const router = useRouter();
   const setSection = (s: string) => router.push(`/facility/profile/${s}`);
   const [facility, setFacility] = useState<FacilityProfile | null>(null);
@@ -231,7 +235,7 @@ export function ProfileView({ section }: { section: string }) {
         <div className="space-y-4 h-fit">
           <Card className="p-2 border-border/50 bg-card/60">
             <div className="space-y-1">
-              {SECTIONS.map((s) => {
+              {SECTIONS.filter(() => canOpenPage(perms, "/facility/profile")).map((s) => {
                 const Icon = s.icon;
                 return (
                   <button
@@ -251,16 +255,21 @@ export function ProfileView({ section }: { section: string }) {
           </Card>
 
           <Card className="p-2 border-border/50 bg-card/60">
-            <button
-              onClick={() => setSection(STAFF_SECTION.key)}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-                section === STAFF_SECTION.key ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-              )}
-            >
-              <STAFF_SECTION.icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{STAFF_SECTION.label}</span>
-            </button>
+            <div className="space-y-1">
+              {STAFF_SECTIONS.filter((s) => canOpenPage(perms, `/facility/profile/${s.key}`)).map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setSection(s.key)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                    section === s.key ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+                  )}
+                >
+                  <s.icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{s.label}</span>
+                </button>
+              ))}
+            </div>
           </Card>
         </div>
 
@@ -446,6 +455,12 @@ export function ProfileView({ section }: { section: string }) {
         {section === "staff" && (
           <Card className="p-6 border-border/50 bg-card/60">
             <TeamView />
+          </Card>
+        )}
+
+        {section === "permissions" && (
+          <Card className="p-6 border-border/50 bg-card/60">
+            <PermissionsView />
           </Card>
         )}
       </div>

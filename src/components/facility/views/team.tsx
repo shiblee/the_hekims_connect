@@ -15,7 +15,8 @@ import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inl
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Search, UserCog, Loader2, Plus, Mail, Phone, ShieldCheck, Camera } from "lucide-react";
+import Link from "next/link";
+import { Search, UserCog, Loader2, Plus, Mail, Phone, ShieldCheck, Camera, Pencil, KeyRound } from "lucide-react";
 
 interface StaffRow {
   id: string;
@@ -34,6 +35,7 @@ interface StaffRow {
   role: string | null;
   responsibilities: string | null;
   active: boolean;
+  lastLoginAt?: string | null;
 }
 
 interface MetaSections {
@@ -215,27 +217,57 @@ export function TeamView() {
           <p className="text-sm text-muted-foreground">No staff added yet.</p>
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {staff.map((s) => (
-            <Card key={s.id} className="p-4 border-border/50 bg-card/60 hover:border-primary/40 transition-colors cursor-pointer" onClick={() => openEdit(s)}>
-              <div className="flex items-start gap-3">
-                <EntityAvatar name={s.name} photo={s.photo} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{s.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{s.staffCode}</p>
-                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    <Badge variant="outline">{s.employeeType}</Badge>
-                    {s.role && <Badge variant="outline" className="text-muted-foreground">{s.role}</Badge>}
-                  </div>
-                </div>
-                <Switch checked={s.active} onCheckedChange={() => toggleActive(s)} onClick={(e) => e.stopPropagation()} />
-              </div>
-              <div className="mt-3 text-xs text-muted-foreground space-y-1">
-                {s.email && <div className="flex items-center gap-1.5 truncate"><Mail className="h-3 w-3 shrink-0" /> {s.email}</div>}
-                {s.phone && <div className="flex items-center gap-1.5 truncate"><Phone className="h-3 w-3 shrink-0" /> {s.phone}</div>}
-              </div>
-            </Card>
-          ))}
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2.5">Staff</th>
+                <th className="px-3 py-2.5">Type &amp; designation</th>
+                <th className="px-3 py-2.5">Role</th>
+                <th className="px-3 py-2.5">Contact</th>
+                <th className="px-3 py-2.5">Last login</th>
+                <th className="px-3 py-2.5 text-center">Active</th>
+                <th className="px-3 py-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {staff.map((s) => (
+                <tr key={s.id} className={cn("cursor-pointer transition-colors hover:bg-muted/30", !s.active && "opacity-60")} onClick={() => openEdit(s)}>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <EntityAvatar name={s.name} photo={s.photo} size="sm" />
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">{s.staffCode}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <p className="truncate max-w-[14rem]">{s.employeeType}</p>
+                    {s.designation && <p className="text-xs text-muted-foreground">{s.designation}</p>}
+                  </td>
+                  <td className="px-3 py-2.5">{s.role ? <Badge variant="outline">{s.role}</Badge> : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                    {s.email && <div className="flex items-center gap-1.5 truncate max-w-[14rem]"><Mail className="h-3 w-3 shrink-0" /> {s.email}</div>}
+                    {s.phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3 shrink-0" /> {s.phone}</div>}
+                    {s.contactVerifiedAt && <div className="flex items-center gap-1 text-primary"><ShieldCheck className="h-3 w-3" /> Verified</div>}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{s.lastLoginAt ? formatDateTime(s.lastLoginAt) : "Never"}</td>
+                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                    <Switch checked={s.active} onCheckedChange={() => toggleActive(s)} aria-label={s.active ? `Deactivate ${s.name}` : `Activate ${s.name}`} />
+                  </td>
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                      <Button size="sm" variant="ghost" className="h-8 px-2" asChild>
+                        <Link href={`/facility/profile/permissions?staff=${s.id}`}><KeyRound className="h-3.5 w-3.5" /> Permissions</Link>
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

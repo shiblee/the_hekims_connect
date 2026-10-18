@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     requiresInvestigation: !!body.requiresInvestigation,
     requiresUrgentReferral: !!body.requiresUrgentReferral,
     notes: body.notes || null,
-    recordedById: auth.type === "staff" ? auth.id : null,
+    recordedById: auth.staffId ?? null,
   };
 
   const assessment = await db.clinicalAssessment.upsert({

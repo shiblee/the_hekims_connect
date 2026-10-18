@@ -85,12 +85,15 @@ export async function restoreSession() {
   const token = getToken();
   if (!token) return null;
   try {
-    const data = await api.get<{ user: any; role: "facility" | "patient" | "staff" }>(
+    const data = await api.get<{ user: any; role: "facility" | "patient" | "staff"; facility?: any; permissions?: string[]; staffRole?: string }>(
       "/api/auth/me"
     );
-    const { setFacility, setPatient, setStaff } = useAppStore.getState();
-    if (data.role === "facility") setFacility(data.user);
-    else if (data.role === "staff") setStaff(data.user);
+    const { setFacility, setPatient, setStaff, setPermissions } = useAppStore.getState();
+    if (data.role === "facility") { setFacility(data.user); setPermissions(null); }
+    else if (data.role === "staff") {
+      // Staff work inside their clinic's app, limited to their permissions.
+      setStaff(data.user); setFacility(data.facility ?? null); setPermissions(data.permissions ?? [], data.staffRole ?? null);
+    }
     else setPatient(data.user);
     return data;
   } catch {

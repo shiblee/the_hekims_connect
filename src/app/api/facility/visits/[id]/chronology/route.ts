@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     durationSource: b.durationSource === "manual" ? "manual" : "auto",
     sourceComplaint: typeof b.sourceComplaint === "string" && b.sourceComplaint.trim() ? b.sourceComplaint.trim() : null,
     note: typeof b.note === "string" && b.note.trim() ? b.note.trim().slice(0, 2000) : null,
-    recordedById: auth!.type === "staff" ? auth!.id : null,
+    recordedById: auth!.staffId ?? null,
   };
   const chronology = await db.visitChronology.upsert({
     where: { visitId: id }, update: data, create: { visitId: id, ...data }, select: SELECT,

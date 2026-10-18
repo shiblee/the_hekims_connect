@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ? await db.chiefComplaint.findMany({ where: { id: { in: chiefComplaintIds } }, select: { label: true } })
     : [];
 
-  const recordedById = auth.type === "staff" ? auth.id : null;
+  const recordedById = auth.staffId ?? null;
   const complaintLabels = complaints.map((c) => c.label);
 
   const data = {

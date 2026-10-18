@@ -94,8 +94,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const draftOutcome = existing?.outcome === "continued_ama" ? "continued_ama" : existing?.outcome === "cleared" && !hasPresent ? "cleared" : "pending";
     const screening = await db.redFlagScreening.upsert({
       where: { visitId: id },
-      update: { outcome: draftOutcome, recordedById: auth.type === "staff" ? auth.id : null, answers: { deleteMany: {}, create: answerRows } },
-      create: { visitId: id, outcome: draftOutcome, recordedById: auth.type === "staff" ? auth.id : null, answers: { create: answerRows } },
+      update: { outcome: draftOutcome, recordedById: auth.staffId ?? null, answers: { deleteMany: {}, create: answerRows } },
+      create: { visitId: id, outcome: draftOutcome, recordedById: auth.staffId ?? null, answers: { create: answerRows } },
       select: SCREENING_SELECT,
     });
     return NextResponse.json({ screening });
@@ -115,8 +115,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const screening = await db.redFlagScreening.upsert({
       where: { visitId: id },
-      update: { outcome: "referred", recordedById: auth.type === "staff" ? auth.id : null, answers: { deleteMany: {}, create: answerRows } },
-      create: { visitId: id, outcome: "referred", recordedById: auth.type === "staff" ? auth.id : null, answers: { create: answerRows } },
+      update: { outcome: "referred", recordedById: auth.staffId ?? null, answers: { deleteMany: {}, create: answerRows } },
+      create: { visitId: id, outcome: "referred", recordedById: auth.staffId ?? null, answers: { create: answerRows } },
       select: { id: true },
     });
 
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         referredTo: String(referral.referredTo).trim(),
         urgency: referral.urgency,
         notes: referral.notes ? String(referral.notes).trim() : null,
-        referredById: auth.type === "staff" ? auth.id : null,
+        referredById: auth.staffId ?? null,
       },
     });
     await db.visit.update({ where: { id }, data: { status: "referred" } });
@@ -149,8 +149,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const screening = await db.redFlagScreening.upsert({
       where: { visitId: id },
-      update: { outcome: "continued_ama", recordedById: auth.type === "staff" ? auth.id : null, answers: { deleteMany: {}, create: answerRows } },
-      create: { visitId: id, outcome: "continued_ama", recordedById: auth.type === "staff" ? auth.id : null, answers: { create: answerRows } },
+      update: { outcome: "continued_ama", recordedById: auth.staffId ?? null, answers: { deleteMany: {}, create: answerRows } },
+      create: { visitId: id, outcome: "continued_ama", recordedById: auth.staffId ?? null, answers: { create: answerRows } },
       select: { id: true },
     });
 
@@ -159,14 +159,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       update: {
         reason: String(ama.reason).trim(),
         patientReason: ama.patientReason ? String(ama.patientReason).trim() : null,
-        recordedById: auth.type === "staff" ? auth.id : null,
+        recordedById: auth.staffId ?? null,
       },
       create: {
         visitId: id,
         screeningId: screening.id,
         reason: String(ama.reason).trim(),
         patientReason: ama.patientReason ? String(ama.patientReason).trim() : null,
-        recordedById: auth.type === "staff" ? auth.id : null,
+        recordedById: auth.staffId ?? null,
       },
     });
     await clearClinicalRoutingInsight(id);
@@ -182,8 +182,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const screening = await db.redFlagScreening.upsert({
     where: { visitId: id },
-    update: { outcome: "cleared", recordedById: auth.type === "staff" ? auth.id : null, answers: { deleteMany: {}, create: answerRows } },
-    create: { visitId: id, outcome: "cleared", recordedById: auth.type === "staff" ? auth.id : null, answers: { create: answerRows } },
+    update: { outcome: "cleared", recordedById: auth.staffId ?? null, answers: { deleteMany: {}, create: answerRows } },
+    create: { visitId: id, outcome: "cleared", recordedById: auth.staffId ?? null, answers: { create: answerRows } },
     select: SCREENING_SELECT,
   });
   await clearClinicalRoutingInsight(id);

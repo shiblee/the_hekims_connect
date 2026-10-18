@@ -128,7 +128,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const vitals = await db.vitalSigns.upsert({
     where: { visitId: id },
     update: data,
-    create: { visitId: id, ...data },
+    create: { visitId: id, ...data, recordedById: auth.staffId ?? null },
     select: VITALS_SELECT,
   });
 

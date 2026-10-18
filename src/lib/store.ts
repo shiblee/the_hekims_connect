@@ -70,11 +70,16 @@ interface AppState {
   facility: FacilityUser | null;
   patient: PatientUser | null;
   staff: StaffUser | null;
+  /** A signed-in staff member's permissions in the clinic app; null for the clinic owner (everything). */
+  permissions: string[] | null;
+  /** The staff member's role name, for display. */
+  staffRole: string | null;
   otpPending: OtpPending | null;
 
   setFacility: (h: FacilityUser | null) => void;
   setPatient: (p: PatientUser | null) => void;
   setStaff: (s: StaffUser | null) => void;
+  setPermissions: (p: string[] | null, role?: string | null) => void;
   setOtpPending: (o: OtpPending | null) => void;
   logout: () => void;
 }
@@ -85,10 +90,13 @@ export const useAppStore = create<AppState>()(
       facility: null,
       patient: null,
       staff: null,
+      permissions: null,
+      staffRole: null,
       otpPending: null,
       setFacility: (facility) => set({ facility }),
       setPatient: (patient) => set({ patient }),
       setStaff: (staff) => set({ staff }),
+      setPermissions: (permissions, staffRole = null) => set({ permissions, staffRole }),
       setOtpPending: (otpPending) => set({ otpPending }),
       logout: () => {
         const token = localStorage.getItem("hekims-connect-token");
@@ -96,7 +104,7 @@ export const useAppStore = create<AppState>()(
           fetch("/api/auth/logout", { method: "POST", headers: { "x-hekim-auth": token } }).catch(() => {});
         }
         localStorage.removeItem("hekims-connect-token");
-        set({ facility: null, patient: null, staff: null, otpPending: null });
+        set({ facility: null, patient: null, staff: null, permissions: null, staffRole: null, otpPending: null });
       },
     }),
     {
@@ -105,6 +113,8 @@ export const useAppStore = create<AppState>()(
         facility: s.facility,
         patient: s.patient,
         staff: s.staff,
+        permissions: s.permissions,
+        staffRole: s.staffRole,
         otpPending: s.otpPending,
       }),
     }

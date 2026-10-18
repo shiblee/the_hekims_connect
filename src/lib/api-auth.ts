@@ -4,6 +4,13 @@ import { db } from "@/lib/db";
 export interface AuthUser {
   id: string;
   type: "facility" | "patient" | "staff";
+  /**
+   * Set when a staff member is signed in. They act on behalf of their clinic, so `type` is
+   * "facility" and `id` is the clinic — every clinic route is scoped correctly — while this
+   * keeps who actually did it (attribution, doctor-only checks). Permissions are enforced in
+   * src/proxy.ts before the route runs.
+   */
+  staffId?: string;
 }
 
 /**
@@ -23,11 +30,14 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
     if (type !== "facility" && type !== "patient" && type !== "staff") return null;
     if (!id) return null;
 
+    if (type === "staff") {
+      const s = await db.staff.findUnique({ where: { id }, select: { active: true, facilityId: true, facility: { select: { active: true } } } });
+      if (!s || !s.active || !s.facility.active) return null;
+      return { type: "facility", id: s.facilityId, staffId: id };
+    }
     const account = type === "facility"
       ? await db.facility.findUnique({ where: { id }, select: { active: true } })
-      : type === "patient"
-      ? await db.patient.findUnique({ where: { id }, select: { active: true } })
-      : await db.staff.findUnique({ where: { id }, select: { active: true } });
+      : await db.patient.findUnique({ where: { id }, select: { active: true } });
     if (!account || !account.active) return null;
 
     return { type, id };
@@ -48,9 +58,9 @@ export function makeToken(type: "facility" | "patient" | "staff", id: string): s
  * attribution, even though no staff-facing clinical UI calls this yet).
  */
 export async function isDoctor(auth: AuthUser): Promise<boolean> {
-  if (auth.type === "facility") return true;
-  if (auth.type !== "staff") return false;
-  const staff = await db.staff.findUnique({ where: { id: auth.id }, select: { employeeType: true } });
+  const staffId = auth.staffId ?? (auth.type === "staff" ? auth.id : null);
+  if (!staffId) return auth.type === "facility";
+  const staff = await db.staff.findUnique({ where: { id: staffId }, select: { employeeType: true } });
   return staff?.employeeType === "Hakim (Unani Physician)";
 }
 

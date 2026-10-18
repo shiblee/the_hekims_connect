@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const body = await req.json();
   const points: string[] = Array.isArray(body.points) ? body.points.filter((p: unknown) => typeof p === "string" && p.trim()) : [];
-  const recordedById = auth.type === "staff" ? auth.id : null;
+  const recordedById = auth.staffId ?? null;
 
   const note = await db.residentClinicalNote.upsert({
     where: { visitId: id },

@@ -122,17 +122,18 @@ model Facility {
   profileCompleted       Boolean   @default(false)
   profileCompletedAt     DateTime?
 
-  appointments     Appointment[]
-  mizajAssessments MizajAssessment[]
-  prescriptions    Prescription[]
-  otpCodes         OtpCode[]
-  loginEvents      LoginEvent[]
-  sessions         UserSession[]
-  operatingHours   FacilityOperatingHours[]
-  subscriptions    FacilitySubscription[]
-  staff            Staff[]
-  visits           Visit[]
-  patientReports   PatientReport[]
+  appointments         Appointment[]
+  mizajAssessments     MizajAssessment[]
+  prescriptions        Prescription[]
+  otpCodes             OtpCode[]
+  loginEvents          LoginEvent[]
+  sessions             UserSession[]
+  operatingHours       FacilityOperatingHours[]
+  subscriptions        FacilitySubscription[]
+  staff                Staff[]
+  staffRolePermissions StaffRolePermission[]
+  visits               Visit[]
+  patientReports       PatientReport[]
 
   @@map("Hakim")
 }
@@ -157,6 +158,9 @@ model Staff {
   role               String?
   // JSON-stringified array, same convention as Facility.specializations/services.
   responsibilities   String?
+  // Per-person changes on top of the role's permissions (JSON arrays of permission keys).
+  permissionGrants   String    @default("[]")
+  permissionRevokes  String    @default("[]")
   active             Boolean   @default(true)
   lastLoginAt        DateTime?
   createdAt          DateTime  @default(now())
@@ -1959,4 +1963,18 @@ model CdsDecision {
   session CdsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([visitId])
+}
+
+// What each staff role may do in a facility's clinic app (JSON array of permission keys —
+// see src/lib/staff-permissions.ts). No row = the built-in defaults for that role.
+model StaffRolePermission {
+  id          String   @id @default(cuid())
+  facilityId  String
+  role        String
+  permissions String   @default("[]")
+  updatedAt   DateTime @updatedAt
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@unique([facilityId, role])
 }

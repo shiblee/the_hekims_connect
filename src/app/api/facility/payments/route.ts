@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         ? parseFloat(amountReceived) || null
         : null,
       referenceNumber: referenceNumber || null,
-      recordedById: auth.type === "staff" ? auth.id : null,
+      recordedById: auth.staffId ?? null,
     },
   });
 

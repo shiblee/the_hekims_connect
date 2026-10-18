@@ -13,7 +13,7 @@ const SELECT = {
   contactVerifiedAt: true,
   employeeType: true, specialization: true, qualification: true, designation: true,
   registrationNumber: true, experience: true, role: true, responsibilities: true,
-  active: true, createdAt: true, updatedAt: true,
+  active: true, lastLoginAt: true, createdAt: true, updatedAt: true,
 };
 
 async function nextStaffCode() {

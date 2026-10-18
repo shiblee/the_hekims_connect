@@ -73,8 +73,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   await db.l1Screening.upsert({
     where: { visitId: id },
-    update: { chiefComplaints: JSON.stringify(chiefComplaintLabels), recordedById: auth.type === "staff" ? auth.id : null },
-    create: { visitId: id, chiefComplaints: JSON.stringify(chiefComplaintLabels), recordedById: auth.type === "staff" ? auth.id : null },
+    update: { chiefComplaints: JSON.stringify(chiefComplaintLabels), recordedById: auth.staffId ?? null },
+    create: { visitId: id, chiefComplaints: JSON.stringify(chiefComplaintLabels), recordedById: auth.staffId ?? null },
   });
 
   const aiSummary = await generateScreeningSummary(

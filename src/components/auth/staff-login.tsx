@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, Loader2, RefreshCw, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
-import { api, setToken } from "@/lib/api";
+import { api, setToken, restoreSession } from "@/lib/api";
+import { firstAllowedPage } from "@/lib/staff-permissions";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
@@ -92,8 +93,9 @@ export function StaffLogin() {
       const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code, role: "staff" });
       setToken(res.token);
       setStaff(res.user);
+      const me = await restoreSession();
       toast.success("Verified! Welcome.");
-      router.push("/staff");
+      router.push(firstAllowedPage(me?.permissions ?? []));
     } catch (err: any) {
       setOtpError(err.message || "Verification failed");
     } finally {
