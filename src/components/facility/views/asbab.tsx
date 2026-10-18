@@ -97,7 +97,7 @@ function AsbabStage({ patientId }: { patientId: string }) {
           cards as Stage 3 (Hakeem Insight, triage notes, Mizaj history), then
           what was recorded at Stage 3 (body regions, onset & chronology), this
           stage's live humoral drift, and the Resident Clinical Note last. */}
-      <div className="mb-6 grid lg:grid-cols-3 gap-5 items-start">
+      <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
             ? <AsbabAssessmentPanel state={asbab} visitId={latestVisit.id} />

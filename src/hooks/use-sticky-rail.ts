@@ -33,26 +33,39 @@ export function useStickyRail(ready: boolean) {
         return;
       }
       const spacerRect = spacer.getBoundingClientRect();
-      const maxHeight = Math.min(content.scrollHeight, window.innerHeight - TOP_OFFSET - BOTTOM_MARGIN);
+      const contentH = content.offsetHeight;
+      const vh = window.innerHeight;
 
-      if (spacerRect.top > TOP_OFFSET) {
-        // Grid section hasn't scrolled up to the pin point yet.
-        setStyle(null);
-      } else if (spacerRect.bottom < TOP_OFFSET + maxHeight) {
-        // Scrolled past — park at the bottom of the spacer so it then
-        // scrolls away normally with the rest of the page from here.
-        setStyle({ position: "absolute", bottom: 0, left: 0, width: spacerRect.width, maxHeight, overflowY: "auto" });
+      // The rail is as tall as (or taller than) its section: nothing to pin.
+      if (contentH >= spacerRect.height - 1) { setStyle(null); return; }
+
+      if (contentH <= vh - TOP_OFFSET - BOTTOM_MARGIN) {
+        // Short rail: pin its top just under the header while the section scrolls by.
+        if (spacerRect.top > TOP_OFFSET) setStyle(null);
+        else if (spacerRect.bottom < TOP_OFFSET + contentH) setStyle({ position: "absolute", bottom: 0, left: 0, width: spacerRect.width });
+        else setStyle({ position: "fixed", top: TOP_OFFSET, left: spacerRect.left, width: spacerRect.width, zIndex: 10 });
       } else {
-        setStyle({ position: "fixed", top: TOP_OFFSET, left: spacerRect.left, width: spacerRect.width, maxHeight, overflowY: "auto", zIndex: 10 });
+        // Tall rail: it scrolls with the page until its last card is in view,
+        // then stays with its bottom on screen — every card stays reachable,
+        // no scrollbar inside the column.
+        if (spacerRect.top + contentH > vh - BOTTOM_MARGIN) setStyle(null);
+        else if (spacerRect.bottom < vh - BOTTOM_MARGIN) setStyle({ position: "absolute", bottom: 0, left: 0, width: spacerRect.width });
+        else setStyle({ position: "fixed", bottom: BOTTOM_MARGIN, left: spacerRect.left, width: spacerRect.width, zIndex: 10 });
       }
     };
 
     update();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
+    // Cards load and grow after the first paint (and the centre column changes
+    // height as answers expand) — re-measure whenever either side resizes.
+    const ro = new ResizeObserver(update);
+    if (spacerRef.current) ro.observe(spacerRef.current);
+    if (contentRef.current) ro.observe(contentRef.current);
     return () => {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      ro.disconnect();
     };
   }, [ready]);
 
