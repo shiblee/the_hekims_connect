@@ -644,8 +644,8 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
 
       {/* Step through the dossier */}
       <div className="flex items-center justify-between gap-2">
-        <Button variant="outline" size="sm" onClick={() => go(-1)} disabled={tabIdx === 0}><ArrowLeft className="h-3.5 w-3.5" /> {tabIdx > 0 ? TABS[tabIdx - 1].label : "Previous"}</Button>
-        <Button variant="outline" size="sm" onClick={() => go(1)} disabled={tabIdx === TABS.length - 1}>{tabIdx < TABS.length - 1 ? TABS[tabIdx + 1].label : "Next"} <ArrowRight className="h-3.5 w-3.5" /></Button>
+        {tabIdx > 0 ? <Button variant="outline" size="sm" onClick={() => go(-1)}><ArrowLeft className="h-3.5 w-3.5" /> {TABS[tabIdx - 1].label}</Button> : <span />}
+        {tabIdx < TABS.length - 1 && <Button variant="outline" size="sm" onClick={() => go(1)}>{TABS[tabIdx + 1].label} <ArrowRight className="h-3.5 w-3.5" /></Button>}
       </div>
     </div>
   );

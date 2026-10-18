@@ -383,8 +383,8 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
           )}
 
           <div className="flex items-center justify-between gap-2">
-            <Button variant="outline" size="sm" onClick={() => go(-1)} disabled={idx === 0}><ArrowLeft className="h-3.5 w-3.5" /> {idx > 0 ? pillars[idx - 1].label : "Previous"}</Button>
-            <Button variant="outline" size="sm" onClick={() => go(1)} disabled={idx === pillars.length - 1}>{idx < pillars.length - 1 ? pillars[idx + 1].label : "Next"} <ArrowRight className="h-3.5 w-3.5" /></Button>
+            {idx > 0 ? <Button variant="outline" size="sm" onClick={() => go(-1)}><ArrowLeft className="h-3.5 w-3.5" /> {pillars[idx - 1].label}</Button> : <span />}
+            {idx < pillars.length - 1 && <Button variant="outline" size="sm" onClick={() => go(1)}>{pillars[idx + 1].label} <ArrowRight className="h-3.5 w-3.5" /></Button>}
           </div>
         </>
       )}
