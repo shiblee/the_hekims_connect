@@ -94,9 +94,9 @@ function AsbabStage({ patientId }: { patientId: string }) {
       {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
       {/* Centre (2/3): the Asbab-e-Sittah assessment. Right (1/3): the same
-          cards as Stage 3 (Hakeem Insight, Resident Clinical Note, triage
-          notes, Mizaj history), then what was recorded at Stage 3 (body
-          regions, onset & chronology), then this stage's live humoral drift. */}
+          cards as Stage 3 (Hakeem Insight, triage notes, Mizaj history), then
+          what was recorded at Stage 3 (body regions, onset & chronology), this
+          stage's live humoral drift, and the Resident Clinical Note last. */}
       <div className="mb-6 grid lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
@@ -107,11 +107,11 @@ function AsbabStage({ patientId }: { patientId: string }) {
         <div ref={spacerRef} className="relative min-w-0">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
             {latestVisit && <HakeemInsightPanel ref={insightRef} visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} />}
-            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />
             {latestVisit && <Stage3FindingsCards visitId={latestVisit.id} patientId={patientId} />}
             {latestVisit && <AsbabDriftCard state={asbab} />}
+            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
           </div>
         </div>
       </div>
