@@ -9,7 +9,7 @@ import type { ComplaintDuration } from "@/components/facility/views/chief-compla
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { FloatingField } from "@/components/shared/floating-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, CheckCircle2, Circle, Hourglass, Loader2, RotateCcw } from "lucide-react";
 
@@ -178,29 +178,46 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                 </Badge>
               )}
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center h-11 rounded-md border border-input bg-background/60 overflow-hidden">
-                <Input
-                  type="number" min={0} value={shown.value}
+            <div className="space-y-4 pt-2">
+              <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
+                <input
+                  id="chronology-duration"
+                  type="number" min={0} inputMode="decimal"
+                  value={shown.value}
                   onChange={(e) => editDuration(e.target.value, shown.unit)}
-                  placeholder="e.g. 4"
-                  aria-label="Duration"
-                  className="h-full min-w-0 flex-1 border-0 shadow-none focus-visible:ring-0 rounded-none"
+                  placeholder=" "
+                  className="peer h-full flex-1 min-w-0 bg-transparent pl-3.5 text-base font-medium outline-none"
                 />
+                <label
+                  htmlFor="chronology-duration"
+                  className={cn(
+                    "pointer-events-none absolute left-3 bg-card px-1.5 whitespace-nowrap transition-all duration-150 text-muted-foreground",
+                    "top-1/2 -translate-y-1/2 text-base font-medium",
+                    "peer-focus:top-0 peer-focus:text-sm peer-focus:font-semibold peer-focus:text-primary",
+                    "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
+                  )}
+                >
+                  How long has it lasted?
+                </label>
+                <div className="h-8 w-px bg-border/70" aria-hidden />
                 <Select value={shown.unit} onValueChange={(u) => editDuration(shown.value, u)}>
                   <SelectTrigger className="h-full border-0 shadow-none focus-visible:ring-0 w-40 shrink-0 bg-transparent"><SelectValue /></SelectTrigger>
                   <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <label className="flex items-center h-11 rounded-md border border-input bg-background/60 overflow-hidden pl-3">
-                <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-muted-foreground ml-2 shrink-0">Onset date</span>
-                <Input
+              <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
+                <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 ml-3.5" />
+                <input
+                  id="chronology-onset-date"
                   type="date" value={shown.date} max={toDateInput(new Date())}
                   onChange={(e) => editDate(e.target.value)}
-                  className="h-full min-w-0 flex-1 border-0 shadow-none focus-visible:ring-0 rounded-none bg-transparent"
+                  className="peer h-full flex-1 min-w-0 bg-transparent pl-2.5 pr-3.5 text-base font-medium outline-none"
                 />
-              </label>
+                {/* A date box always shows its dd/mm/yyyy mask, so the label sits on the border. */}
+                <label htmlFor="chronology-onset-date" className="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">
+                  When did it start?
+                </label>
+              </div>
             </div>
 
             <div className="mt-2 space-y-1.5 text-[13px] text-muted-foreground">
@@ -227,12 +244,16 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
               )}
             </div>
 
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Chronology note, e.g. episodic recurrence over the past 6 months"
-              className="h-11 bg-background/60 mt-3"
-            />
+            <div className="mt-4">
+              <FloatingField
+                id="chronology-note"
+                label="Chronology note"
+                value={note}
+                maxLength={500}
+                onChange={(e) => setNote(e.target.value)}
+                title="e.g. episodic recurrence over the past 6 months"
+              />
+            </div>
           </div>
         </div>
         <NoticeSlot state={msg} className="mt-4" />
