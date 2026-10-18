@@ -16,6 +16,7 @@ import { HakeemInsightPanel, type HakeemInsightPanelHandle } from "@/components/
 import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
 import { PatientSignatureCard } from "@/components/facility/views/patient-signature-card";
+import { ReferralLine } from "@/components/facility/views/visit-findings";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { Card } from "@/components/ui/card";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
@@ -345,59 +346,6 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         </div>
       </Card>
 
-    </div>
-  );
-}
-
-/**
- * One slim line under the signature card summarising the visit's referral —
- * urgency, destination, reason, notes, visit and time — with earlier
- * referrals (if any) tucked behind a "+N earlier" toggle.
- */
-function ReferralLine({ visits, onEdit }: { onEdit?: () => void; visits: { id: string; visitCode?: string; referral?: { reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string } | null }[] }) {
-  const [open, setOpen] = useState(false);
-  const row = (v: (typeof visits)[number], first: boolean) => {
-    const r = v.referral!;
-    const when = `${daysAgo(r.createdAt)}, ${new Date(r.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
-    const full = `Referred (${r.urgency}) to ${r.referredTo}. Reason: ${r.reason}.${r.notes ? ` Notes: ${r.notes}.` : ""} ${v.visitCode ? `Visit ${v.visitCode}, ` : ""}${when}`;
-    return (
-      <div key={v.id} title={full} className="flex items-center gap-2 min-w-0 text-sm">
-        {first ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-destructive text-white px-2 py-0.5 text-[13px] font-semibold shrink-0">
-            <ShieldAlert className="h-3 w-3" /> Referred · {r.urgency}
-          </span>
-        ) : (
-          <span className="rounded-full border border-destructive/30 text-destructive px-2 py-0.5 text-xs font-medium shrink-0">{r.urgency}</span>
-        )}
-        <span className="shrink-0"><span className="text-muted-foreground">to</span> <span className="font-semibold">{r.referredTo}</span></span>
-        <span className="truncate min-w-0 text-muted-foreground">
-          · <span className="text-foreground">{r.reason}</span>
-          {r.notes && <> · Notes: <span className="text-foreground">{r.notes}</span></>}
-        </span>
-        <span className="ml-auto shrink-0 text-[13px] text-muted-foreground whitespace-nowrap">{v.visitCode ? `${v.visitCode} · ` : ""}{when}</span>
-      </div>
-    );
-  };
-  return (
-    <div className="mb-6 -mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-1.5">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">{row(visits[0], true)}</div>
-        {onEdit && (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="shrink-0 inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-0.5 text-[13px] font-medium text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <Pencil className="h-3 w-3" /> Edit
-          </button>
-        )}
-        {visits.length > 1 && (
-          <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 text-[13px] font-medium text-destructive hover:underline">
-            {open ? "Hide" : `+${visits.length - 1} earlier`}
-          </button>
-        )}
-      </div>
-      {open && <div className="border-t border-destructive/20 pt-1.5 space-y-1">{visits.slice(1).map((v) => row(v, false))}</div>}
     </div>
   );
 }

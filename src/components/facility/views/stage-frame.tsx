@@ -7,6 +7,7 @@ import { type VisitVitals } from "@/lib/vitals-trend";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
 import { PatientSignatureCard, RecordedVitalsStrip, type SignaturePatient } from "@/components/facility/views/patient-signature-card";
+import { ReferralLine, TriageFindingsLine } from "@/components/facility/views/visit-findings";
 import { ChevronLeft, Pencil } from "lucide-react";
 
 export interface StagePatient extends SignaturePatient { id: string; mizaj: string | null }
@@ -15,7 +16,9 @@ export interface StageVisit {
   vitalSigns: VisitVitals | null;
   doctor?: { name: string } | null;
   intake?: { chiefComplaints: string; allergies?: string; medications?: string; onsetTimeline?: string | null; mobility?: string | null } | null;
-  referral?: { createdAt: string } | null;
+  referral?: { reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string } | null;
+  redFlagScreening?: { outcome: string; answers: { criterionLabel: string; present: boolean }[] } | null;
+  acuteSymptomAssessment?: { symptoms: string } | null;
   amaDecline?: { createdAt: string } | null;
 }
 
@@ -104,7 +107,6 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
       <PatientSignatureCard
         patient={patient}
         visitCount={visits.length}
-        lastReferralAt={sortedVisits.find((v) => v.referral)?.referral?.createdAt}
         lastAmaAt={sortedVisits.find((v) => v.amaDecline)?.amaDecline?.createdAt}
         onPhotoClick={() => setPhotoOpen(true)}
         visits={sortedVisits}
@@ -119,6 +121,18 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
           }
         />
       </PatientSignatureCard>
+
+      {/* What triage recorded — the referral (if any) and the findings the main doctor must see. */}
+      {sortedVisits.some((v) => v.referral) && (
+        <ReferralLine visits={sortedVisits.filter((v) => v.referral)} editHref={latest?.referral ? recordUrl : undefined} className="mb-3 -mt-3" />
+      )}
+      {latest && (
+        <TriageFindingsLine
+          visit={latest}
+          editHref={latest.referral ? undefined : recordUrl}
+          className={sortedVisits.some((v) => v.referral) ? "mb-6" : undefined}
+        />
+      )}
 
       <PhotoUploadDialog
         open={photoOpen}
