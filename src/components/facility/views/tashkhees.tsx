@@ -7,7 +7,13 @@ import { CheckCircle2, Loader2, Printer, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StageHeader, useStagePatient } from "@/components/facility/views/stage-frame";
-import { ClinicalSummaryColumn } from "@/components/facility/views/clinical-summary";
+import { HakeemInsightPanel } from "@/components/facility/views/hakeem-insight-panel";
+import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
+import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
+import { MizajHistoryCard } from "@/components/facility/views/mizaj-history-card";
+import { Stage3FindingsCards } from "@/components/facility/views/stage3-findings";
+import { Stage4AsbabCard } from "@/components/facility/views/stage4-findings";
+import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
 import { savedAt } from "@/lib/flash";
 import { TashkheesDossierPanel, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
@@ -38,6 +44,10 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   const router = useRouter();
   // Referral pop-up (shared with the earlier stages) — only its dialogs are rendered here.
   const referralRef = useRef<RedFlagScreeningPanelHandle>(null);
+  // Right column — same as Stages 3–4, then Stage 4's findings, Resident Clinical Note last.
+  const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
+  const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
+  const saveNote = () => residentNoteRef.current?.save().then(() => true, () => false) ?? Promise.resolve(true);
   // Print icon → the full assessment report (now including this dossier), in a
   // new tab. Read-only: shows what's saved, so Save Draft first.
   const openReport = () => {
@@ -56,14 +66,18 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   if (!patient) return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
 
   const finalized = t.dossier.status === "finalized";
-  const saveDraft = async () => { if (await t.save(false)) t.msg.success("Draft saved", savedAt()); };
+  const saveDraft = async () => {
+    const [ok, note] = await Promise.all([t.save(false), saveNote()]);
+    if (ok && note) t.msg.success("Draft saved", savedAt());
+  };
   const finalize = async () => {
     if (!t.dossier.mizajAsli || !t.dossier.suMizajQuality) {
       const missing = [!t.dossier.mizajAsli && "Mizaj-e-Asli", !t.dossier.suMizajQuality && "Su-e-Mizaj"].filter(Boolean).join(" and ");
       t.msg.warning(`Record the ${missing} before finalising`, "Open the Tashkhees tab above — the diagnosis is needed for the handover.");
       return;
     }
-    if (await t.save(true)) t.msg.success(finalized ? "Finalised dossier updated" : "Dossier finalised and handed over", savedAt());
+    const [ok, note] = await Promise.all([t.save(true), saveNote()]);
+    if (ok && note) t.msg.success(finalized ? "Finalised dossier updated" : "Dossier finalised and handed over", savedAt());
   };
 
   return (
@@ -71,16 +85,21 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       <StageHeader stage="handover" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} onEditReferral={() => referralRef.current?.openEditReferral()} />
       {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
-      <div className="mb-6 grid lg:grid-cols-3 gap-5 items-start">
+      <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
             ? <TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} />
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete the earlier stages first.</Card>}
         </div>
-        <div className="min-w-0">
-          {latestVisit
-            ? <ClinicalSummaryColumn visitId={latestVisit.id} showAsbab />
-            : null}
+        <div ref={spacerRef} className="relative min-w-0">
+          <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
+            {latestVisit && <HakeemInsightPanel visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} />}
+            <TriageNotesCard visits={visits} />
+            <MizajHistoryCard patientId={patientId} />
+            {latestVisit && <Stage3FindingsCards visitId={latestVisit.id} patientId={patientId} />}
+            {latestVisit && <Stage4AsbabCard visitId={latestVisit.id} patientId={patientId} />}
+            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+          </div>
         </div>
       </div>
 

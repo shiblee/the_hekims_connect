@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AKHLAT, questionVisible, toPercent, zeroPoints, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints, type Humour } from "@/lib/asbab";
+import { AKHLAT, isAnswered, questionVisible, toPercent, zeroPoints, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints, type Humour } from "@/lib/asbab";
 import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerLine, type TashkheesOptionRow } from "@/lib/tashkhees";
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
@@ -189,35 +189,91 @@ function DalailRow({ q, value, onChange }: { q: AsbabQuestionCfg; value: AsbabAn
   );
 }
 
+const DALAIL_VIEW_KEY = "hekims-dalail-view";
+
+/**
+ * Dala'il — every examination section on one screen (Nabz, Baul, Baraz,
+ * Lisan, inspection), with a jump bar. "Key signs" (default) narrows each
+ * section to its required findings; "All" shows every sign.
+ */
 function DalailTab({ state }: { state: TashkheesState }) {
-  const { pillars, answers, setAnswer, progress, drift } = state.dalail;
-  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const { pillars, answers, setAnswer, drift } = state.dalail;
+  const [view, setViewState] = useState<"key" | "all">(() => {
+    try { return localStorage.getItem(DALAIL_VIEW_KEY) === "all" ? "all" : "key"; } catch { return "key"; }
+  });
+  const setView = (v: "key" | "all") => { setViewState(v); try { localStorage.setItem(DALAIL_VIEW_KEY, v); } catch { /* per-viewer convenience only */ } };
+  const refs = useRef<Record<string, HTMLDivElement | null>>({});
   if (!pillars) return <Loading />;
-  const active = pillars.find((p) => p.key === activeKey) ?? pillars[0];
-  if (!active) return <Card className="p-5 text-sm text-muted-foreground">No examination sections are enabled — configure them in Admin → Meta → Tashkhees &amp; Ilaj.</Card>;
-  const shown = active.questions.filter((q) => questionVisible(q, answers));
+  if (!pillars.length) return <Card className="p-5 text-sm text-muted-foreground">No examination sections are enabled — configure them in Admin → Meta → Tashkhees &amp; Ilaj.</Card>;
+
+  const shownQs = (p: (typeof pillars)[number]) => p.questions.filter((q) => questionVisible(q, answers));
+  const keyQs = (p: (typeof pillars)[number]) => { const sh = shownQs(p); const req = sh.filter((q) => q.required); return req.length ? req : sh.slice(0, 1); };
+  const qsFor = (p: (typeof pillars)[number]) => (view === "key" ? keyQs(p) : shownQs(p));
+  const all = pillars.flatMap((p) => qsFor(p));
+  const answeredN = all.filter((q) => isAnswered(answers[q.id])).length;
+  const keyTotal = pillars.reduce((n, p) => n + keyQs(p).length, 0);
+  const allTotal = pillars.reduce((n, p) => n + shownQs(p).length, 0);
   const hasSigns = drift && AKHLAT.some((h) => drift.total[h.key] > 0);
+  const jump = (k: string) => { const el = refs.current[k]; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 24, behavior: "smooth" }); };
 
   return (
-    <Panel icon={Stethoscope} title="Dala'il — Clinical Signs" hint="Examination findings (Ajnas-e-Ashrah, Baul, Baraz, Lisan, inspection). Each sign points to a humour."
-      aside={<Badge variant="outline" className="mt-1 shrink-0">{progress.answered} of {progress.total} recorded</Badge>}>
-      <div className="flex flex-wrap gap-2">
+    <Panel icon={Stethoscope} title="Dala'il — Clinical Signs"
+      aside={
+        <span className="flex items-center gap-1.5 shrink-0 flex-wrap">
+          <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label="Which signs to show">
+            {([["key", `Key signs · ${keyTotal}`], ["all", `All · ${allTotal}`]] as const).map(([m, label]) => (
+              <button key={m} type="button" onClick={() => setView(m)} aria-pressed={view === m}
+                title={m === "key" ? "Only the required finding(s) of each examination" : "Every examination finding"}
+                className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", view === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                {label}
+              </button>
+            ))}
+          </span>
+          <Badge variant="outline" className="tabular-nums">{answeredN} of {all.length} recorded</Badge>
+        </span>
+      }>
+      {/* Jump bar */}
+      <div className="flex flex-wrap gap-1.5">
         {pillars.map((p) => {
-          const pr = progress.per[p.key];
-          const on = p.key === active.key;
+          const qs = qsFor(p);
+          const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+          const done = qs.length > 0 && a === qs.length;
           return (
-            <button key={p.key} type="button" onClick={() => setActiveKey(p.key)}
-              className={cn("rounded-lg border px-3 py-1.5 text-sm transition-colors", on ? "border-primary bg-primary/10 text-primary font-medium" : "border-border/50 bg-background/40 hover:border-primary/30")}>
-              {p.label} <span className="text-xs text-muted-foreground tabular-nums">{pr?.answered ?? 0}/{pr?.total ?? 0}</span>
-              {pr?.missingRequired ? <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500 align-middle" /> : null}
+            <button key={p.key} type="button" onClick={() => jump(p.key)}
+              className={cn("rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border/50 bg-background/40 hover:border-primary/40")}>
+              {p.label} <span className="text-xs tabular-nums opacity-80">{done ? "✓" : `${a}/${qs.length}`}</span>
             </button>
           );
         })}
       </div>
-      <div>
-        <p className="text-[13px] text-muted-foreground mb-1">{active.english}</p>
-        {shown.map((q) => <DalailRow key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />)}
+
+      {/* Every section, stacked */}
+      <div className="space-y-4">
+        {pillars.map((p) => {
+          const qs = qsFor(p);
+          if (!qs.length) return null;
+          const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+          const done = a === qs.length;
+          return (
+            <div key={p.key} ref={(el) => { refs.current[p.key] = el; }}
+              className={cn("rounded-xl border border-l-4 bg-background/30 px-4 pt-3 pb-1", done ? "border-border/50 border-l-emerald-500/70" : "border-border/50 border-l-primary/40")}>
+              <div className="flex items-center justify-between gap-2 pb-1">
+                <p className="text-[15px] font-semibold">{p.label} <span className="text-[13px] font-normal text-muted-foreground">· {p.english}</span></p>
+                <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-xs tabular-nums", done ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? "✓ Done" : `${a}/${qs.length}`}</span>
+              </div>
+              {qs.map((q) => <DalailRow key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />)}
+            </div>
+          );
+        })}
       </div>
+
+      {view === "key" && allTotal > keyTotal && (
+        <p className="text-[13px] text-muted-foreground">
+          Key signs are enough for the diagnosis. <button type="button" onClick={() => setView("all")} className="text-primary font-medium hover:underline">Show all {allTotal} signs</button> for a finer reading.
+        </p>
+      )}
+
       {hasSigns && drift && (
         <div className="rounded-xl border border-border/50 bg-background/40 p-3">
           <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Signs point towards</p>
