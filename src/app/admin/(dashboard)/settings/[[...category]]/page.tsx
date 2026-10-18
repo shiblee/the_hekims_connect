@@ -65,7 +65,7 @@ const ASSISTANTS: Record<string, CatalogAssistantConfig> = {
 
 const CATEGORY_META: Record<string, { label: string; description: string }> = {
   general: { label: "General", description: "Portal identity and support contact information." },
-  vitals_validation: { label: "Vitals Validation", description: "Min/max ranges for each vital, applied to the capture form across every facility." },
+  vitals_validation: { label: "Vitals Validation", description: "" },
   registration: { label: "Registration", description: "Control who can register on the portal." },
   verification: { label: "Verification", description: "OTP expiry, resend and attempt limits." },
   subscription: { label: "Subscription", description: "Free trial length and paid plan pricing for Facility accounts." },
@@ -251,17 +251,14 @@ export default function SettingsPage() {
                       return draft[draftKey] ?? row?.value ?? "";
                     };
                     return (
-                      <div key={field} className="rounded-xl border border-border/60 bg-background/60 p-4 space-y-3">
+                      <div key={field} className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
                         <p className="text-sm font-semibold">{VITALS_FIELD_LABELS[field]}</p>
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          <FloatingField id={keys.normalMin} type="number" step="any" label="Normal range — min" value={valueFor(keys.normalMin)} onChange={(e) => setDraft((d) => ({ ...d, [keys.normalMin]: e.target.value }))} />
-                          <FloatingField id={keys.normalMax} type="number" step="any" label="Normal range — max" value={valueFor(keys.normalMax)} onChange={(e) => setDraft((d) => ({ ...d, [keys.normalMax]: e.target.value }))} />
-                          <FloatingField id={keys.entryMin} type="number" step="any" label="Entry limit — min" value={valueFor(keys.entryMin)} onChange={(e) => setDraft((d) => ({ ...d, [keys.entryMin]: e.target.value }))} />
-                          <FloatingField id={keys.entryMax} type="number" step="any" label="Entry limit — max" value={valueFor(keys.entryMax)} onChange={(e) => setDraft((d) => ({ ...d, [keys.entryMax]: e.target.value }))} />
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                          <FloatingField id={keys.normalMin} type="number" step="any" label="Normal min" value={valueFor(keys.normalMin)} onChange={(e) => setDraft((d) => ({ ...d, [keys.normalMin]: e.target.value }))} />
+                          <FloatingField id={keys.normalMax} type="number" step="any" label="Normal max" value={valueFor(keys.normalMax)} onChange={(e) => setDraft((d) => ({ ...d, [keys.normalMax]: e.target.value }))} />
+                          <FloatingField id={keys.entryMin} type="number" step="any" label="Entry limit min" value={valueFor(keys.entryMin)} onChange={(e) => setDraft((d) => ({ ...d, [keys.entryMin]: e.target.value }))} />
+                          <FloatingField id={keys.entryMax} type="number" step="any" label="Entry limit max" value={valueFor(keys.entryMax)} onChange={(e) => setDraft((d) => ({ ...d, [keys.entryMax]: e.target.value }))} />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Normal range flags a reading for review without blocking it; entry limit rejects an entry outside it (catches typos, not real emergencies).
-                        </p>
                       </div>
                     );
                   })
