@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       select: { key: true, label: true, english: true, framework: true, active: true,
         questions: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, reviewStatus: true, options: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, maddi: true } } } } },
     }),
-    db.tashkheesOption.findMany({ where: { list: "organ" }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, description: true, appliesTo: true, priority: true, active: true } }),
+    db.tashkheesOption.findMany({ where: { list: "organ" }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, localName: true, description: true, appliesTo: true, priority: true, active: true } }),
   ]);
   return NextResponse.json({
     config, defaults: DEFAULT_ENGINE_CONFIG,

@@ -11,8 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FloatingMultiSelect, FloatingSelect } from "@/components/shared/floating-field";
-import { ChevronDown, ChevronRight, Loader2, Pencil, Save, Sparkles } from "lucide-react";
+import { FloatingField, FloatingMultiSelect, FloatingSelect } from "@/components/shared/floating-field";
+import { ChevronDown, ChevronRight, Loader2, Pencil, Plus, Save, Sparkles } from "lucide-react";
 
 interface Config {
   weights: { complaints: number; asbab: number; dalail: number };
@@ -22,7 +22,7 @@ interface Config {
 }
 interface Section { key: string; label: string; english: string; framework: string }
 interface MaddiSection { section: string; sectionLabel: string; questions: { id: string; label: string; reviewStatus: string; options: { id: string; label: string; maddi: number }[] }[] }
-interface Organ { id: string; label: string; description: string | null; appliesTo: string; priority: number; active: boolean }
+interface Organ { id: string; label: string; localName: string | null; description: string | null; appliesTo: string; priority: number; active: boolean }
 interface Applies { categories?: string[]; complaints?: string[]; symptoms?: string[]; regions?: string[]; sex?: "male" | "female" }
 interface Masters { categories: string[]; complaints: { key: string; label: string; category: string }[]; symptoms: string[]; regions: string[] }
 const parseApplies = (raw: string): Applies => { try { return JSON.parse(raw || "{}") || {}; } catch { return {}; } };
@@ -70,7 +70,8 @@ export function TashkheesEngineAdmin() {
   const [masters, setMasters] = useState<Masters | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
-  const [organDraft, setOrganDraft] = useState<{ organ: Organ; applies: Applies; priority: number } | null>(null);
+  // id null = a new organ. Name, meaning and on/off live here too (moved from Option Lists).
+  const [organDraft, setOrganDraft] = useState<{ organ: Organ; label: string; localName: string; description: string; applies: Applies; priority: number } | null>(null);
   const [q, setQ] = useState({ complaints: "", symptoms: "", regions: "" });
 
   const load = () => adminApi.get<{ config: Config; defaults: Config; sections: Section[]; maddi: MaddiSection[]; organs: Organ[] }>("/api/admin/tashkhees-engine")
@@ -99,12 +100,26 @@ export function TashkheesEngineAdmin() {
   };
   const saveOrgan = async () => {
     if (!organDraft) return;
+    const name = { label: organDraft.label.trim(), localName: organDraft.localName.trim(), description: organDraft.description.trim() };
+    if (!name.label) { toast.error("Enter the organ's name"); return; }
     try {
-      await adminApi.patch(`/api/admin/tashkhees-engine/organs/${organDraft.organ.id}`, { appliesTo: organDraft.applies, priority: organDraft.priority });
-      toast.success("Organ links saved");
+      let id = organDraft.organ.id;
+      if (!id) id = (await adminApi.post<{ option: { id: string } }>("/api/admin/tashkhees-options", { ...name, list: "organ" })).option.id;
+      else await adminApi.patch(`/api/admin/tashkhees-options/${id}`, { ...name, active: organDraft.organ.active });
+      await adminApi.patch(`/api/admin/tashkhees-engine/organs/${id}`, { appliesTo: organDraft.applies, priority: organDraft.priority });
+      toast.success(organDraft.organ.id ? "Organ saved" : "Organ added");
       setOrganDraft(null);
       load();
     } catch (e: any) { toast.error(e.message || "Could not save"); }
+  };
+  const toggleOrgan = async (o: Organ) => {
+    try { await adminApi.patch(`/api/admin/tashkhees-options/${o.id}`, { active: !o.active }); load(); }
+    catch (e: any) { toast.error(e.message || "Could not update"); }
+  };
+  const openOrgan = (o?: Organ) => {
+    setQ({ complaints: "", symptoms: "", regions: "" });
+    const organ = o ?? { id: "", label: "", description: null, appliesTo: "{}", priority: 3, active: true, localName: null };
+    setOrganDraft({ organ, label: organ.label, localName: organ.localName || "", description: organ.description || "", applies: parseApplies(organ.appliesTo), priority: organ.priority });
   };
   const summary = (raw: string) => {
     const a = parseApplies(raw);
@@ -206,9 +221,10 @@ export function TashkheesEngineAdmin() {
         </div>
       </Block>
 
-      <Block title="Udw-e-Mutathir — organ links" hint="Each organ is suggested when the patient's complaints, complaint categories, other symptoms or body regions match its links."
+      <Block title="Udw-e-Mutathir — organs" hint="The organ list the doctor chooses from, and when each organ is suggested — when the patient's complaints, complaint categories, other symptoms or body regions match its links."
         right={
-          <span className="flex items-center gap-3 text-sm">
+          <span className="flex items-center gap-3 text-sm flex-wrap">
+            <Button size="sm" onClick={() => openOrgan()}><Plus className="h-3.5 w-3.5" /> Add organ</Button>
             <label className="flex items-center gap-2">Max organs suggested <Input type="number" min={1} max={10} value={String(cfg.maxOrgans)} onChange={(e) => setC({ maxOrgans: Number(e.target.value) })} className="h-8 w-16 bg-background/60" /></label>
             <label className="flex items-center gap-2">Order with Hakeem Insight <Switch checked={cfg.ranking} onCheckedChange={(v) => setC({ ranking: v })} /></label>
           </span>
@@ -217,14 +233,17 @@ export function TashkheesEngineAdmin() {
           {organs.map((o) => (
             <div key={o.id} className={cn("flex items-start justify-between gap-2 rounded-lg border border-border/50 bg-background/40 px-3 py-2", !o.active && "opacity-50")}>
               <div className="min-w-0">
-                <p className="text-sm font-medium">{o.label}{o.description && <span className="text-xs font-normal text-muted-foreground"> · {o.description}</span>}<span className="ml-1.5 text-[11px] text-muted-foreground">priority {o.priority}</span></p>
+                <p className="text-sm font-medium">{o.label}{o.localName && <span className="ml-1 text-xs font-normal text-muted-foreground">{o.localName}</span>}{o.description && <span className="text-xs font-normal text-muted-foreground"> · {o.description}</span>}<span className="ml-1.5 text-[11px] text-muted-foreground">priority {o.priority}</span></p>
                 <p className="text-xs text-muted-foreground truncate" title={summary(o.appliesTo)}>{summary(o.appliesTo)}</p>
               </div>
-              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => { setQ({ complaints: "", symptoms: "", regions: "" }); setOrganDraft({ organ: o, applies: parseApplies(o.appliesTo), priority: o.priority }); }}><Pencil className="h-3.5 w-3.5" /></Button>
+              <span className="flex items-center gap-1 shrink-0">
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openOrgan(o)}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Switch checked={o.active} onCheckedChange={() => toggleOrgan(o)} aria-label={o.active ? "Switch off" : "Switch on"} />
+              </span>
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">Add, rename or switch off organs in Option Lists → Udw-e-Mutathir.</p>
+        <p className="text-xs text-muted-foreground">Switching an organ off hides it from new diagnoses; organs already recorded on visits are kept.</p>
       </Block>
 
       <div className="sticky bottom-3 z-10 flex justify-end gap-2">
@@ -234,10 +253,15 @@ export function TashkheesEngineAdmin() {
 
       <Dialog open={organDraft !== null} onOpenChange={(o) => { if (!o) setOrganDraft(null); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Organ links · {organDraft?.organ.label}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{organDraft?.organ.id ? `Organ · ${organDraft.organ.label}` : "Add organ"}</DialogTitle></DialogHeader>
           {organDraft && masters && (
             <div className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-3 pt-2">
+              <div className="grid sm:grid-cols-3 gap-3 pt-2">
+                <FloatingField id="orgLabel" label="Organ (Unani name)" required value={organDraft.label} onChange={(e) => setOrganDraft((d) => d && { ...d, label: e.target.value })} />
+                <FloatingField id="orgLocal" label="Urdu / Arabic (optional)" value={organDraft.localName} onChange={(e) => setOrganDraft((d) => d && { ...d, localName: e.target.value })} />
+                <FloatingField id="orgDesc" label="English meaning" value={organDraft.description} onChange={(e) => setOrganDraft((d) => d && { ...d, description: e.target.value })} />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 pt-1">
                 <FloatingSelect id="orgPriority" label="Priority" value={String(organDraft.priority)} onValueChange={(v) => setOrganDraft((d) => d && { ...d, priority: Number(v) })}>
                   {[5, 4, 3, 2, 1].map((x) => <SelectItem key={x} value={String(x)}>{x} — {["", "Low", "Below average", "Average", "High", "Very high"][x]}</SelectItem>)}
                 </FloatingSelect>
