@@ -304,10 +304,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <span className="h-10 w-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0"><ShieldAlert className="h-5 w-5" /></span>
-              <span>
-                <span className="block text-lg font-semibold leading-tight">Refer patient</span>
-                <span className="block text-xs font-normal text-muted-foreground">Hand this patient over to the right service</span>
-              </span>
+              <span className="text-lg font-semibold leading-tight">Refer patient</span>
             </DialogTitle>
           </DialogHeader>
 
