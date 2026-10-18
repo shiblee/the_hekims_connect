@@ -69,9 +69,9 @@ interface MedicationOption { id: string; kind: string; label: string }
 interface MedicationEntry { label: string; kind: "supplement" | "medication" }
 
 const ONSET_OPTIONS = [
-  { value: "<24h", label: "< 24 Hours" },
-  { value: "1-7d", label: "1 – 7 Days" },
-  { value: ">1m", label: "> 1 Month (Chronic)" },
+  { value: "<24h", label: "Today", hint: "< 24 hours" },
+  { value: "1-7d", label: "This week", hint: "1 – 7 days" },
+  { value: ">1m", label: "Long-term", hint: "1 month +" },
 ];
 
 interface Result {
@@ -387,9 +387,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     { label: "Gender", ok: !!gender, target: "gender" },
     { label: "Age", ok: !!approxAge, target: "approxAge" },
     { label: "Address", ok: !!address.trim(), target: "address" },
-    { label: "Chief complaint", ok: chiefComplaintIds.length > 0, target: "reg-complaints" },
-    { label: "Onset timeline", ok: !!onsetTimeline, target: "reg-onset" },
-    { label: "Mobility", ok: !!mobility, target: "reg-mobility" },
+    { label: "Symptoms", ok: chiefComplaintIds.length > 0, target: "reg-complaints" },
+    { label: "When it started", ok: !!onsetTimeline, target: "reg-onset" },
+    { label: "How they arrived", ok: !!mobility, target: "reg-mobility" },
   ];
   const mandatoryChecklist = readiness.map((r) => r.ok);
 
@@ -1175,7 +1175,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       <div id="reg-complaints" className="scroll-mt-24">
                         <FloatingMultiSelect
                           id="complaintSearch"
-                          label="Fast Symptom Selector"
+                          label="What are the symptoms?"
                           required
                           selected={chiefComplaintIds.flatMap((cid) => complaintOptions.filter((o) => o.id === cid))}
                           onRemove={toggleComplaint}
@@ -1188,14 +1188,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
                       <FloatingTextarea
                         id="narrative"
-                        label="Patient Stated Narrative"
+                        label="In the patient's own words"
                         value={narrative}
                         onChange={(e) => setNarrative(e.target.value)}
                         rows={3}
                       />
 
                       <div id="reg-onset" className="scroll-mt-24">
-                        <p className="text-sm font-medium text-muted-foreground mb-2">Symptom Onset Timeline <span className="text-destructive">*</span></p>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">When did it start? <span className="text-destructive">*</span></p>
                         <div className="grid grid-cols-3 gap-2">
                           {ONSET_OPTIONS.map((o) => (
                             <button
@@ -1203,13 +1203,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                               type="button"
                               onClick={() => setOnsetTimeline(onsetTimeline === o.value ? "" : o.value)}
                               className={cn(
-                                "rounded-lg border px-1.5 py-2 text-sm leading-tight text-center transition-colors",
+                                "rounded-lg border px-1.5 py-2 text-sm font-medium leading-tight text-center transition-colors",
                                 onsetTimeline === o.value
                                   ? "bg-amber-400/15 border-amber-400/50 text-amber-600 dark:text-amber-400 font-medium"
                                   : "border-border/60 text-muted-foreground hover:border-border"
                               )}
                             >
-                              {o.label}
+                              <span className="block">{o.label}</span>
+                              <span className={cn("block text-[11px] mt-0.5", onsetTimeline === o.value ? "opacity-80" : "text-muted-foreground/70")}>{o.hint}</span>
                             </button>
                           ))}
                         </div>
@@ -1217,7 +1218,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
                       <FloatingMultiSelect
                         id="allergySearch"
-                        label="Critical Allergies / Red Flags"
+                        label="Allergies & sensitivities"
                         tone="destructive"
                         labelIcon={TriangleAlert}
                         itemIcon={TriangleAlert}
@@ -1234,7 +1235,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
                       <FloatingMultiSelect
                         id="medicationSearch"
-                        label="Active Routine Medications / Herbs"
+                        label="Current medicines & herbs"
                         placeholder="Type a herb, supplement or medication…"
                         selected={medications.map((m) => ({ id: `${m.kind}:${m.label}`, label: m.label, kind: m.kind }))}
                         onRemove={(mid) => setMedications((cur) => cur.filter((m) => `${m.kind}:${m.label}` !== mid))}
@@ -1255,7 +1256,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       />
 
                       <div id="reg-mobility" className="scroll-mt-24">
-                        <p className="text-sm font-medium text-muted-foreground mb-2">Mobility / Special Accompaniment <span className="text-destructive">*</span></p>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">How did the patient arrive? <span className="text-destructive">*</span></p>
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
@@ -1267,7 +1268,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                                 : "border-border/60 text-muted-foreground hover:border-border"
                             )}
                           >
-                            <PersonStanding className="h-4 w-4" /> Walking Independently
+                            <PersonStanding className="h-4 w-4" /> Walking on their own
                           </button>
                           <button
                             type="button"
@@ -1279,7 +1280,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                                 : "border-border/60 text-muted-foreground hover:border-border"
                             )}
                           >
-                            <Accessibility className="h-4 w-4" /> Wheelchair Request
+                            <Accessibility className="h-4 w-4" /> Needs a wheelchair
                           </button>
                         </div>
                       </div>

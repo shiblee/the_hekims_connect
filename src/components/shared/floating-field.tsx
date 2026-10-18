@@ -230,7 +230,7 @@ const TONES = {
 export function FloatingMultiSelect<T extends { id: string; label: string }>({
   id, label, required, error, selected, onRemove, query, onQueryChange, results, onPick,
   onCreate, createLabel = (q) => `Add "${q}"`, createOptions, tone = "primary", labelIcon: LabelIcon, itemIcon: ItemIcon,
-  renderIcon, chipClassName, placeholder = "Type a symptom to search…",
+  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache",
 }: {
   id: string;
   label: string;
