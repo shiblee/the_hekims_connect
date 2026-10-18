@@ -944,7 +944,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     </div>
                     <div>
                       <h2 className="text-base font-semibold text-foreground leading-tight">1. Primary Patient Identification</h2>
-                      <p className="text-sm text-muted-foreground leading-tight mt-0.5">Verify legal identity against government or residency smart card</p>
                     </div>
                   </div>
                   {editingId ? (
@@ -1045,7 +1044,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         </div>
                         <div>
                           <h2 className="text-base font-semibold text-foreground leading-tight">2. Emergency Contact &amp; Next of Kin</h2>
-                          <p className="text-sm text-muted-foreground leading-tight mt-0.5">Designated liaison for medical emergencies and legal consent</p>
                         </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-4">
@@ -1069,7 +1067,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         </div>
                         <div>
                           <h2 className="text-base font-semibold text-foreground leading-tight">3. Billing, Payer Authorization &amp; Attending Hekim</h2>
-                          <p className="text-sm text-muted-foreground leading-tight mt-0.5">Holistic insurance eligibility and attending practitioner queue</p>
                         </div>
                       </div>
                       <FloatingSelect id="doctorId" label="Preferred Doctor (optional)" value={doctorId} onValueChange={setDoctorId} placeholder="Any available doctor">
@@ -1101,7 +1098,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         </div>
                         <div>
                           <h2 className="text-base font-semibold text-foreground leading-tight">4. Chief Complaint</h2>
-                          <p className="text-sm text-muted-foreground leading-tight mt-0.5">Immediate front-desk intake screening</p>
                         </div>
                       </div>
 
