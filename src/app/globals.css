@@ -150,6 +150,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Tailwind v4 resets buttons to the arrow cursor; clickable controls show the hand. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not(:disabled),
+  [role="option"],
+  summary {
+    cursor: pointer;
+  }
   html {
     color-scheme: light;
   }
