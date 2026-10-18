@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, FileSignature, Loader2, Printer } from "lucide-react";
+import { useRef } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Loader2, Printer, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StageHeader, useStagePatient } from "@/components/facility/views/stage-frame";
 import { ClinicalSummaryColumn } from "@/components/facility/views/clinical-summary";
 import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
 import { savedAt } from "@/lib/flash";
-import { TashkheesDossierPanel, printDossier, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
+import { TashkheesDossierPanel, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
+import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 
 /**
  * Stage 5 — Tashkhees & Handover Dossier. Same header as Stages 3–4; the
@@ -30,8 +33,22 @@ export function TashkheesView({ patientId }: { patientId?: string }) {
 }
 
 function TashkheesStage({ patientId }: { patientId: string }) {
-  const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload } = useStagePatient(patientId);
+  const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload, refreshVisits } = useStagePatient(patientId);
   const t = useTashkhees(latestVisit?.id);
+  const router = useRouter();
+  // Referral pop-up (shared with the earlier stages) — only its dialogs are rendered here.
+  const referralRef = useRef<RedFlagScreeningPanelHandle>(null);
+  // Print icon → the full assessment report (now including this dossier), in a
+  // new tab. Read-only: shows what's saved, so Save Draft first.
+  const openReport = () => {
+    if (!latestVisit) return;
+    const url = `/facility/patients/${patientId}/record/report?visit=${latestVisit.id}`;
+    if (!window.open(url, "_blank")) router.push(url);
+  };
+  const referPatient = () => {
+    if (latestVisit?.referral) referralRef.current?.openEditReferral();
+    else referralRef.current?.openReferDialog();
+  };
 
   if (loading) {
     return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
@@ -51,7 +68,8 @@ function TashkheesStage({ patientId }: { patientId: string }) {
 
   return (
     <div className="w-full">
-      <StageHeader stage="handover" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} />
+      <StageHeader stage="handover" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} onEditReferral={() => referralRef.current?.openEditReferral()} />
+      {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
       <div className="mb-6 grid lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2 min-w-0">
@@ -70,24 +88,13 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       <NoticeSlot state={t.msg} className="mb-3" />
       {latestVisit && (
         <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-              {finalized ? <CheckCircle2 className="h-5 w-5" /> : <FileSignature className="h-5 w-5" />}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">
-                {finalized ? "Dossier Finalised & Handed Over" : "Tashkhees & Handover Dossier In Progress"}
-                {t.dirty && <span className="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400">· Unsaved changes</span>}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {finalized && t.dossier.finalizedByName ? `Finalised by ${t.dossier.finalizedByName}` : "Diagnosis, treatment plan and handover for this visit"}
-              </p>
-            </div>
-          </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
-            <Button size="sm" variant="ghost" onClick={() => {
-              if (!printDossier(t, patient)) t.msg.warning("The print window was blocked", "Your browser stopped it from opening. Allow pop-ups for this site (icon at the right of the address bar), then press Print again.");
-            }} title="Print dossier"><Printer className="h-3.5 w-3.5" /> Print</Button>
+            <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report incl. this dossier (opens in a new tab; shows saved data — Save Draft first)">
+              <Printer className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/60 dark:border-destructive/40 dark:hover:bg-destructive/20 dark:hover:text-destructive" onClick={referPatient} disabled={t.saving !== null}>
+              <ShieldAlert className="h-3.5 w-3.5" /> {latestVisit.referral ? "Edit Referral" : "Refer Patient"}
+            </Button>
             <Button size="sm" variant="outline" onClick={saveDraft} disabled={t.saving !== null || !t.options}>
               {t.saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft
             </Button>

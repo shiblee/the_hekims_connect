@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AKHLAT, isAnswered, questionVisible, toPercent, zeroPoints, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints, type Humour } from "@/lib/asbab";
+import { AKHLAT, questionVisible, toPercent, zeroPoints, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints, type Humour } from "@/lib/asbab";
 import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerLine, type TashkheesOptionRow } from "@/lib/tashkhees";
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
@@ -11,12 +11,13 @@ import { LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SectionHeading } from "@/components/shared/section-heading";
+import { FloatingField, FloatingSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Activity, AlertTriangle, CalendarDays, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
-  ShieldAlert, Sparkles, Stethoscope, Trash2, Utensils, X,
+  Activity, AlertTriangle, ArrowLeft, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
+  Search, ShieldAlert, Sparkles, Stethoscope, Trash2, Utensils, X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -107,26 +108,17 @@ type TashkheesState = ReturnType<typeof useTashkhees>;
 
 const MIZAJ_FOR: Record<Humour, string> = { safra: "Safrawi", dam: "Damawi", balgham: "Balghami", sauda: "Saudawi" };
 
-function Panel({ icon: Icon, title, hint, aside, children }: { icon: typeof Activity; title: string; hint?: string; aside?: ReactNode; children: ReactNode }) {
+function Panel({ icon: Icon, title, aside, children }: { icon: typeof Activity; title: string; hint?: string; aside?: ReactNode; children: ReactNode }) {
   return (
     <Card className="p-5 border-border/50 bg-card/60 gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><Icon className="h-4.5 w-4.5" /></div>
-          <div className="min-w-0">
-            <h3 className="font-serif text-lg font-semibold leading-tight">{title}</h3>
-            {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
-          </div>
-        </div>
-        {aside}
-      </div>
+      <SectionHeading icon={Icon} title={title} right={aside} />
       {children}
     </Card>
   );
 }
 
 function Label({ children, required }: { children: ReactNode; required?: boolean }) {
-  return <p className="text-sm font-medium mb-1.5">{children}{required && <span className="text-destructive"> *</span>}</p>;
+  return <p className="text-[15px] font-semibold mb-2">{children}{required && <span className="text-destructive"> *</span>}</p>;
 }
 
 /** Selectable chips (single or multi) — same visual language as the other selectors. */
@@ -144,7 +136,7 @@ function Chips({ items, selected, onToggle, tone = "emerald" }: {
               on ? (tone === "red" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")
                 : "border-border/60 bg-background/40 hover:border-primary/40",
             )}>
-            {it.label}{it.sub && <span className="text-[11px] text-muted-foreground"> · {it.sub}</span>}
+            {it.label}{it.sub && <span className="text-xs text-muted-foreground"> · {it.sub}</span>}
           </button>
         );
       })}
@@ -169,7 +161,7 @@ function HumourBars({ pct, compact }: { pct: HumourPoints; compact?: boolean }) 
   return (
     <div className={cn("space-y-1.5", compact && "space-y-1")}>
       {AKHLAT.map((h) => (
-        <div key={h.key} className="grid grid-cols-[58px_1fr_32px] items-center gap-2 text-[11px]">
+        <div key={h.key} className="grid grid-cols-[62px_1fr_36px] items-center gap-2 text-xs">
           <span className="text-muted-foreground">{h.label}</span>
           <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full", h.bar)} style={{ width: `${pct[h.key]}%` }} /></span>
           <span className="text-right tabular-nums">{pct[h.key]}%</span>
@@ -187,11 +179,11 @@ function DalailRow({ q, value, onChange }: { q: AsbabQuestionCfg; value: AsbabAn
   return (
     <div className="grid md:grid-cols-[220px_1fr] gap-x-4 gap-y-2 py-3 border-t border-border/40 first:border-t-0">
       <div>
-        <p className="text-sm font-medium">{q.label}{q.required && <span className="text-destructive"> *</span>}</p>
-        {q.labelLocal && <p className="text-[11px] text-muted-foreground">{q.labelLocal}</p>}
+        <p className="text-[15px] font-medium">{q.label}{q.required && <span className="text-destructive"> *</span>}</p>
+        {q.labelLocal && <p className="text-[13px] text-muted-foreground">{q.labelLocal}</p>}
       </div>
       {q.type === "text"
-        ? <Input value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="h-9 bg-background/60" placeholder="Describe the finding" />
+        ? <FloatingField id={`dalail-${q.id}`} label="Describe the finding" maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
         : <Chips items={q.options.map((o) => ({ label: o.label }))} selected={sel} onToggle={toggle} />}
     </div>
   );
@@ -216,19 +208,19 @@ function DalailTab({ state }: { state: TashkheesState }) {
           return (
             <button key={p.key} type="button" onClick={() => setActiveKey(p.key)}
               className={cn("rounded-lg border px-3 py-1.5 text-sm transition-colors", on ? "border-primary bg-primary/10 text-primary font-medium" : "border-border/50 bg-background/40 hover:border-primary/30")}>
-              {p.label} <span className="text-[11px] text-muted-foreground tabular-nums">{pr?.answered ?? 0}/{pr?.total ?? 0}</span>
+              {p.label} <span className="text-xs text-muted-foreground tabular-nums">{pr?.answered ?? 0}/{pr?.total ?? 0}</span>
               {pr?.missingRequired ? <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500 align-middle" /> : null}
             </button>
           );
         })}
       </div>
       <div>
-        <p className="text-xs text-muted-foreground mb-1">{active.english}{active.description ? ` — ${active.description}` : ""}</p>
+        <p className="text-[13px] text-muted-foreground mb-1">{active.english}</p>
         {shown.map((q) => <DalailRow key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />)}
       </div>
       {hasSigns && drift && (
         <div className="rounded-xl border border-border/50 bg-background/40 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Signs point towards</p>
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Signs point towards</p>
           <HumourBars pct={drift.percent} compact />
         </div>
       )}
@@ -272,8 +264,8 @@ function SynthesisCard({ state, visitId }: { state: TashkheesState; visitId: str
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Akhlat Synthesis</p>
-        <span className="text-[11px] text-muted-foreground">A guide — the Hakim decides</span>
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Akhlat Synthesis</p>
+        <span className="text-xs text-muted-foreground">A guide — the Hakim decides</span>
       </div>
       {!sources ? <Loading /> : present.length === 0 ? (
         <p className="text-sm text-muted-foreground">No humoral readings yet — record Dala'il signs or complete the earlier stages.</p>
@@ -282,7 +274,7 @@ function SynthesisCard({ state, visitId }: { state: TashkheesState; visitId: str
           <div className="grid sm:grid-cols-3 gap-3">
             {rows.map((r) => (
               <div key={r.key} className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-                <p className="text-[11px] text-muted-foreground mb-1.5 leading-snug">{r.label}</p>
+                <p className="text-xs text-muted-foreground mb-1.5 leading-snug">{r.label}</p>
                 {r.pct ? <HumourBars pct={r.pct} compact /> : <p className="text-xs text-muted-foreground">Not recorded</p>}
               </div>
             ))}
@@ -317,7 +309,7 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
         <Label required>Su-e-Mizaj (present dyscrasia)</Label>
         <div className="flex flex-wrap items-center gap-3">
           <Segmented value={d.suMizajType} options={SU_MIZAJ_TYPES.map((t) => ({ value: t.value, label: t.value }))} onChange={(v) => set({ suMizajType: v })} />
-          <span className="text-xs text-muted-foreground">{SU_MIZAJ_TYPES.find((t) => t.value === d.suMizajType)?.description ?? "Sada (simple) or Maddi (with morbid matter)"}</span>
+          <span className="text-[13px] text-muted-foreground">{SU_MIZAJ_TYPES.find((t) => t.value === d.suMizajType)?.description ?? "Sada (simple) or Maddi (with morbid matter)"}</span>
         </div>
         <Chips items={mizaj} selected={d.suMizajQuality ? [d.suMizajQuality] : []} onToggle={(l) => set({ suMizajQuality: d.suMizajQuality === l ? null : l })} />
         <div className="flex items-center gap-3">
@@ -328,9 +320,8 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
       <div><Label>Udw-e-Mutathir (affected organs)</Label>
         <Chips items={(options?.organ || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.organs}
           onToggle={(l) => set({ organs: d.organs.includes(l) ? d.organs.filter((x) => x !== l) : [...d.organs, l] })} /></div>
-      <div><Label>Tashkhees statement</Label>
-        <Textarea maxLength={500} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })} className="min-h-[80px] bg-background/60"
-          placeholder="e.g. Su-e-Mizaj Maddi Safrawi with Hararat-e-Meda (gastric heat) and secondary Sahar" /></div>
+      <FloatingTextarea id="tashkhees-statement" label="Tashkhees statement" rows={3} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })}
+        title="e.g. Su-e-Mizaj Maddi Safrawi with Hararat-e-Meda (gastric heat) and secondary Sahar" />
     </Panel>
   );
 }
@@ -348,14 +339,14 @@ function UsoolTab({ state }: { state: TashkheesState }) {
             <button key={o.id} type="button" aria-pressed={on} onClick={() => set({ usool: on ? d.usool.filter((x) => x !== o.label) : [...d.usool, o.label] })}
               className={cn("flex items-start justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors",
                 on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30")}>
-              <span className="min-w-0"><span className="block text-sm font-semibold">{o.label}</span>{o.description && <span className="block text-xs text-muted-foreground mt-0.5">{o.description}</span>}</span>
-              <span className={cn("mt-0.5 h-4 w-4 rounded-full border shrink-0", on ? "bg-emerald-500 border-emerald-500" : "border-muted-foreground/40")} />
+              <span className="min-w-0"><span className="block text-sm font-semibold">{o.label}</span>{o.description && <span className="block text-[13px] text-muted-foreground mt-0.5">{o.description}</span>}</span>
+              <span className={cn("mt-0.5 h-4.5 w-4.5 rounded-full border shrink-0 flex items-center justify-center", on ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40")}>{on && <Check className="h-3 w-3" />}</span>
             </button>
           );
         })}
       </div>
-      <div><Label>Plan note</Label>
-        <Textarea maxLength={500} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })} className="min-h-[70px] bg-background/60" placeholder="e.g. Munzij for 7 days, then Mushil; cooling diet throughout" /></div>
+      <FloatingTextarea id="usool-note" label="Plan note" rows={2} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })}
+        title="e.g. Munzij for 7 days, then Mushil; cooling diet throughout" />
     </Panel>
   );
 }
@@ -406,7 +397,9 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       .catch(() => {});
   }, [tagKey, patientId, visitId]);
 
-  const foods = options?.ghiza || [];
+  const [foodQuery, setFoodQuery] = useState("");
+  const fq = foodQuery.trim().toLowerCase();
+  const foods = (options?.ghiza || []).filter((f) => !fq || f.label.toLowerCase().includes(fq) || (f.description || "").toLowerCase().includes(fq) || (f.localName || "").toLowerCase().includes(fq));
   const setFood = (label: string, where: "rec" | "avoid") => {
     const rec = d.ghizaRecommended.filter((x) => x !== label);
     const avoid = d.ghizaAvoid.filter((x) => x !== label);
@@ -424,13 +417,37 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       {/* Ilaj-bil-Ghiza */}
       <Panel icon={Utensils} title="Ilaj-bil-Ghiza — Diet" hint="Foods to recommend and Parhez (restrictions), with meal guidance."
         aside={<Badge variant="outline" className="mt-1 shrink-0">{d.ghizaRecommended.length} advised · {d.ghizaAvoid.length} Parhez</Badge>}>
+        {(d.ghizaRecommended.length > 0 || d.ghizaAvoid.length > 0) && (
+          <div className="grid sm:grid-cols-2 gap-3">
+            {([["rec", "Recommended", d.ghizaRecommended], ["avoid", "Parhez (avoid)", d.ghizaAvoid]] as const).map(([k, title, list]) => (
+              <div key={k} className={cn("rounded-xl border p-3", k === "rec" ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5")}>
+                <p className={cn("text-[13px] font-semibold mb-1.5", k === "rec" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>{title} · {list.length}</p>
+                {list.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {list.map((l) => (
+                      <span key={l} className={cn("inline-flex items-center gap-1 rounded-full border pl-2.5 pr-1 py-0.5 text-[13px]", k === "rec" ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300" : "border-destructive/40 text-destructive")}>
+                        {l}
+                        <button type="button" onClick={() => setFood(l, k)} aria-label={`Remove ${l}`} className="rounded-full p-0.5 hover:bg-muted"><X className="h-3 w-3" /></button>
+                      </span>
+                    ))}
+                  </div>
+                ) : <p className="text-[13px] text-muted-foreground">None yet</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input value={foodQuery} onChange={(e) => setFoodQuery(e.target.value)} placeholder={`Search ${options?.ghiza?.length ?? 0} foods — e.g. barley, milk, dates…`} className="h-11 pl-10 bg-background/60" aria-label="Search foods" />
+        </div>
         <div className="rounded-xl border border-border/50 divide-y divide-border/40 max-h-[340px] overflow-y-auto">
+          {foods.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">No food matches &quot;{foodQuery}&quot;.</p>}
           {foods.map((f) => {
             const rec = d.ghizaRecommended.includes(f.label);
             const avoid = d.ghizaAvoid.includes(f.label);
             return (
               <div key={f.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <div className="min-w-0"><p className="text-sm">{f.label}</p>{f.description && <p className="text-[11px] text-muted-foreground">{f.description}</p>}</div>
+                <div className="min-w-0"><p className="text-sm font-medium">{f.label}</p>{f.description && <p className="text-[13px] text-muted-foreground">{f.description}</p>}</div>
                 <div className="flex gap-1 shrink-0">
                   <button type="button" onClick={() => setFood(f.label, "rec")} className={cn("rounded-md border px-2.5 py-1 text-xs", rec ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "border-border/60 text-muted-foreground hover:text-foreground")}>Recommend</button>
                   <button type="button" onClick={() => setFood(f.label, "avoid")} className={cn("rounded-md border px-2.5 py-1 text-xs", avoid ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-border/60 text-muted-foreground hover:text-foreground")}>Parhez</button>
@@ -439,7 +456,8 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
             );
           })}
         </div>
-        <Textarea maxLength={500} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })} className="min-h-[60px] bg-background/60" placeholder="Meal timing & hydration guidance — e.g. 4 small meals, no iced water after meals" />
+        <FloatingTextarea id="ghiza-note" label="Meal timing & hydration guidance" rows={2} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })}
+          title="e.g. 4 small meals, no iced water after meals" />
       </Panel>
 
       {/* Ilaj-bil-Dawa */}
@@ -451,29 +469,27 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
               const w = p.tagId ? warnings[p.tagId] || [] : [];
               const formOptions = [...new Set([...(herbs.find((h) => h.id === p.tagId)?.forms || []), ...forms])];
               return (
-                <div key={i} className={cn("rounded-xl border p-3 space-y-2.5", w.some((x) => x.level === "high") ? "border-destructive/40 bg-destructive/5" : "border-border/50 bg-background/40")}>
+                <div key={i} className={cn("rounded-xl border p-3 space-y-2.5", w.some((x) => x.level === "high") ? "border-destructive/40 bg-card" : "border-border/50 bg-card")}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold flex items-center gap-1.5"><Leaf className="h-3.5 w-3.5 text-primary" />{p.name}{!p.tagId && <Badge variant="outline" className="text-[10px] font-normal">not in catalogue</Badge>}</p>
+                    <p className="text-[15px] font-semibold flex items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">not in catalogue</Badge>}</p>
                     <button type="button" onClick={() => set({ prescriptions: d.prescriptions.filter((_, n) => n !== i) })} aria-label={`Remove ${p.name}`} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                    <Select value={p.form || undefined} onValueChange={(v) => updRx(i, { form: v })}>
-                      <SelectTrigger className="h-9 bg-background/60"><SelectValue placeholder="Form" /></SelectTrigger>
-                      <SelectContent>{formOptions.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Input value={p.dose} onChange={(e) => updRx(i, { dose: e.target.value })} placeholder="Dose (e.g. 5 g)" className="h-9 bg-background/60" />
-                    <Select value={p.timing || undefined} onValueChange={(v) => updRx(i, { timing: v })}>
-                      <SelectTrigger className="h-9 bg-background/60"><SelectValue placeholder="Timing" /></SelectTrigger>
-                      <SelectContent>{timings.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Input value={p.duration} onChange={(e) => updRx(i, { duration: e.target.value })} placeholder="Duration (e.g. 14 days)" className="h-9 bg-background/60" />
-                    <Input value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} placeholder="Badraqa / with (e.g. lukewarm water)" className="h-9 bg-background/60 sm:col-span-2" />
-                    <Input value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} placeholder="Instructions" className="h-9 bg-background/60 sm:col-span-2" />
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-4 pt-2">
+                    <FloatingSelect id={`rx-form-${i}`} label="Form" value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })} placeholder="Choose">
+                      {formOptions.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                    </FloatingSelect>
+                    <FloatingField id={`rx-dose-${i}`} label="Dose" value={p.dose} onChange={(e) => updRx(i, { dose: e.target.value })} title="e.g. 5 g" />
+                    <FloatingSelect id={`rx-timing-${i}`} label="Timing" value={p.timing || ""} onValueChange={(v) => updRx(i, { timing: v })} placeholder="Choose">
+                      {timings.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </FloatingSelect>
+                    <FloatingField id={`rx-duration-${i}`} label="Duration" value={p.duration} onChange={(e) => updRx(i, { duration: e.target.value })} title="e.g. 14 days" />
+                    <div className="sm:col-span-2"><FloatingField id={`rx-with-${i}`} label="Badraqa / take with" value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title="e.g. lukewarm water" /></div>
+                    <div className="sm:col-span-2"><FloatingField id={`rx-instr-${i}`} label="Instructions" maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} /></div>
                   </div>
                   {w.length > 0 && (
                     <div className="space-y-1">
                       {w.map((x, n) => (
-                        <p key={n} className={cn("text-xs flex items-start gap-1.5", x.level === "high" ? "text-destructive" : x.level === "caution" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
+                        <p key={n} className={cn("text-[13px] flex items-start gap-1.5", x.level === "high" ? "text-destructive" : x.level === "caution" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
                           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>{x.text}{!x.verified && <span className="opacity-70"> (from the herb&apos;s reference profile — unverified)</span>}</span>
                         </p>
                       ))}
@@ -482,7 +498,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                 </div>
               );
             })}
-            <p className="text-[11px] text-muted-foreground">Safety notes compare each herb&apos;s reference profile with this patient&apos;s recorded allergies, current medicines, sex and age. They are prompts to check — the Hakim decides.</p>
+            <p className="text-xs text-muted-foreground">Safety notes compare each herb&apos;s reference profile with this patient&apos;s recorded allergies, current medicines, sex and age. They are prompts to check — the Hakim decides.</p>
           </div>
         )}
       </Panel>
@@ -498,15 +514,15 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
         {d.tadbeer.length === 0 ? <p className="text-sm text-muted-foreground">No regimens added yet.</p> : (
           <div className="space-y-2">
             {d.tadbeer.map((t, i) => (
-              <div key={t.label} className="rounded-xl border border-border/50 bg-background/40 p-3 space-y-2">
+              <div key={t.label} className="rounded-xl border border-border/50 bg-card p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold">{t.label} <span className="text-xs font-normal text-muted-foreground">{options?.tadbeer?.find((o) => o.label === t.label)?.description}</span></p>
+                  <p className="text-[15px] font-semibold">{t.label} <span className="text-[13px] font-normal text-muted-foreground">{options?.tadbeer?.find((o) => o.label === t.label)?.description}</span></p>
                   <button type="button" onClick={() => set({ tadbeer: d.tadbeer.filter((_, n) => n !== i) })} aria-label={`Remove ${t.label}`} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
                 </div>
-                <div className="grid sm:grid-cols-3 gap-2">
-                  <Input value={t.frequency} onChange={(e) => updTd(i, { frequency: e.target.value })} placeholder="Frequency (e.g. weekly)" className="h-9 bg-background/60" />
-                  <Input value={t.duration} onChange={(e) => updTd(i, { duration: e.target.value })} placeholder="Duration (e.g. 3 sessions)" className="h-9 bg-background/60" />
-                  <Input value={t.notes} onChange={(e) => updTd(i, { notes: e.target.value })} placeholder="Site / notes" className="h-9 bg-background/60" />
+                <div className="grid sm:grid-cols-3 gap-2 pt-2">
+                  <FloatingField id={`td-freq-${i}`} label="Frequency" value={t.frequency} onChange={(e) => updTd(i, { frequency: e.target.value })} title="e.g. weekly" />
+                  <FloatingField id={`td-dur-${i}`} label="Duration" value={t.duration} onChange={(e) => updTd(i, { duration: e.target.value })} title="e.g. 3 sessions" />
+                  <FloatingField id={`td-notes-${i}`} label="Site / notes" value={t.notes} onChange={(e) => updTd(i, { notes: e.target.value })} />
                 </div>
               </div>
             ))}
@@ -527,20 +543,23 @@ function HandoverTab({ state }: { state: TashkheesState }) {
       <div><Label>Prognosis (Inzar)</Label>
         <Chips items={(options?.prognosis || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.prognosis ? [d.prognosis] : []}
           onToggle={(l) => set({ prognosis: d.prognosis === l ? null : l })} /></div>
-      <div className="grid sm:grid-cols-[200px_1fr] gap-3">
-        <div><Label>Follow-up date</Label>
-          <Input type="date" value={d.followUpDate ?? ""} onChange={(e) => set({ followUpDate: e.target.value || null })} className="h-10 bg-background/60" /></div>
-        <div><Label>Follow-up plan</Label>
-          <Input value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })} placeholder="e.g. Re-assess Nabz, tongue coating and bowel habit" className="h-10 bg-background/60" /></div>
+      <div className="grid sm:grid-cols-[220px_1fr] gap-3 pt-1">
+        <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
+          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 ml-3.5" />
+          <input id="followup-date" type="date" value={d.followUpDate ?? ""} onChange={(e) => set({ followUpDate: e.target.value || null })}
+            className="peer h-full flex-1 min-w-0 bg-transparent pl-2.5 pr-3 text-base font-medium outline-none" />
+          {/* A date box always shows its dd/mm/yyyy mask, so the label sits on the border. */}
+          <label htmlFor="followup-date" className="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">Follow-up date</label>
+        </div>
+        <FloatingField id="followup-note" label="Follow-up plan" maxLength={500} value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })}
+          title="e.g. Re-assess Nabz, tongue coating and bowel habit" />
       </div>
       <div><Label>Priority</Label>
         <Segmented value={d.priority} options={PRIORITIES} onChange={(v) => set({ priority: v ?? "routine" })} /></div>
-      <div><Label>Urgent directives for the patient</Label>
-        <Textarea maxLength={500} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })} className="min-h-[60px] bg-background/60 border-destructive/30"
-          placeholder="Warning signs that need immediate attention — e.g. vomiting blood, severe abdominal pain" /></div>
-      <div><Label>Handover note</Label>
-        <Textarea maxLength={500} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })} className="min-h-[110px] bg-background/60"
-          placeholder="Summary for the treating / senior Hakim — presentation, key findings, diagnosis and plan" /></div>
+      <FloatingTextarea id="urgent-directives" label="🚨 Urgent directives for the patient" rows={2} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })}
+        title="Warning signs that need immediate attention — e.g. vomiting blood, severe abdominal pain" />
+      <FloatingTextarea id="handover-note" label="Handover note" rows={4} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })}
+        title="Summary for the treating / senior Hakim — presentation, key findings, diagnosis and plan" />
       {d.status === "finalized" && d.finalizedByName && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-emerald-500" /> Finalised by {d.finalizedByName}{d.finalizedAt && ` · ${new Date(d.finalizedAt).toLocaleString()}`}</p>
       )}
@@ -573,6 +592,9 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
     ilaj: d.prescriptions.length + d.tadbeer.length + d.ghizaRecommended.length + d.ghizaAvoid.length > 0,
     handover: !!d.prognosis || !!d.handoverNote,
   };
+  const doneCount = Object.values(done).filter(Boolean).length;
+  const tabIdx = TABS.findIndex((t) => t.key === tab);
+  const go = (dir: -1 | 1) => { const t = TABS[tabIdx + dir]; if (t) { setTab(t.key); window.scrollTo({ top: 0, behavior: "smooth" }); } };
   if (!state.options) {
     if (state.loadError) return <LoadFailed what="the dossier" detail={state.loadError} onRetry={state.reload} />;
     return <Card className="p-5 border-border/50 bg-card/60"><Loading /></Card>;
@@ -580,18 +602,21 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
 
   return (
     <div className="space-y-5">
-      <Card className="p-5 border-border/50 bg-card/60">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><FileSignature className="h-4.5 w-4.5" /></div>
-            <div className="min-w-0">
-              <h2 className="font-serif text-lg font-semibold">Tashkhees &amp; Handover Dossier</h2>
-              <p className="text-sm text-muted-foreground">Examine, diagnose, set the principles and the Ilaj trinity, then hand over.</p>
-            </div>
-          </div>
-          {d.status === "finalized"
-            ? <Badge variant="outline" className="mt-1 shrink-0 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Finalised</Badge>
-            : <Badge variant="outline" className="mt-1 shrink-0">Draft</Badge>}
+      <Card className="p-5 border-border/50 bg-card/60 gap-0">
+        <SectionHeading
+          icon={FileSignature}
+          title="Tashkhees & Handover Dossier"
+          right={
+            <span className="flex items-center gap-1.5 shrink-0">
+              <Badge variant="outline">{doneCount} of {TABS.length} steps</Badge>
+              {d.status === "finalized"
+                ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Finalised</Badge>
+                : <Badge variant="outline">Draft</Badge>}
+            </span>
+          }
+        />
+        <div className="mt-3 mb-4 h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
+          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / TABS.length) * 100}%` }} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {TABS.map((t, i) => {
@@ -601,10 +626,10 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
                 className={cn("rounded-xl border px-3 py-2.5 text-left transition-colors", on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/30")}>
                 <span className="flex items-center justify-between">
                   <t.icon className={cn("h-4 w-4", on ? "text-primary" : "text-muted-foreground")} />
-                  {done[t.key] && <span className="h-2 w-2 rounded-full bg-emerald-500" aria-label="Recorded" />}
+                  {done[t.key] && <span className="h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center" aria-label="Recorded"><Check className="h-3 w-3" /></span>}
                 </span>
-                <span className={cn("block text-xs font-semibold mt-1.5", on && "text-primary")}>{i + 1}. {t.label}</span>
-                <span className="block text-[11px] text-muted-foreground leading-tight">{t.sub}</span>
+                <span className={cn("block text-sm font-semibold mt-1.5", on && "text-primary")}>{i + 1}. {t.label}</span>
+                <span className="block text-[13px] text-muted-foreground leading-tight">{t.sub}</span>
               </button>
             );
           })}
@@ -616,63 +641,12 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
       {tab === "usool" && <UsoolTab state={state} />}
       {tab === "ilaj" && <IlajTab state={state} patientId={patientId} visitId={visitId} />}
       {tab === "handover" && <HandoverTab state={state} />}
+
+      {/* Step through the dossier */}
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="outline" size="sm" onClick={() => go(-1)} disabled={tabIdx === 0}><ArrowLeft className="h-3.5 w-3.5" /> {tabIdx > 0 ? TABS[tabIdx - 1].label : "Previous"}</Button>
+        <Button variant="outline" size="sm" onClick={() => go(1)} disabled={tabIdx === TABS.length - 1}>{tabIdx < TABS.length - 1 ? TABS[tabIdx + 1].label : "Next"} <ArrowRight className="h-3.5 w-3.5" /></Button>
+      </div>
     </div>
   );
-}
-
-// ---------------------------------------------------------------- print
-
-const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
-
-/** Opens a print-ready dossier (same approach as the triage slip on Stage 2). */
-export function printDossier(state: TashkheesState, patient: { name: string; patientCode: string | null; gender: string | null; dob: string | null }): boolean {
-  const d = state.dossier;
-  const win = window.open("", "_blank");
-  if (!win) return false; // blocked — the caller explains how to allow it
-  const dalail = (state.dalail.pillars || []).map((p) => {
-    const rows = p.questions.filter((q) => isAnswered(state.dalail.answers[q.id])).map((q) => {
-      const v = state.dalail.answers[q.id];
-      return `<div class="row"><span>${esc(q.label)}</span><b>${esc(Array.isArray(v) ? v.join(", ") : v)}</b></div>`;
-    }).join("");
-    return rows ? `<h3>${esc(p.label)}</h3>${rows}` : "";
-  }).join("");
-  const list = (xs: string[]) => xs.map((x) => `<span class="chip">${esc(x)}</span>`).join("") || "—";
-  win.document.write(`<html><head><title>Dossier - ${esc(patient.name)}</title><style>
-    body{font-family:Georgia,serif;padding:36px;max-width:760px;margin:auto;color:#1a1a1a}
-    h1{color:#0f766e;margin:0} .meta{color:#666;font-size:13px;margin:4px 0 20px}
-    h2{color:#b45309;font-size:15px;border-bottom:2px solid #b45309;padding-bottom:5px;margin-top:22px}
-    h3{font-size:13px;margin:12px 0 4px;color:#0f766e}
-    .row{display:flex;justify-content:space-between;gap:16px;padding:3px 0;border-bottom:1px dotted #ddd;font-size:13px}
-    .chip{display:inline-block;background:#f3f1ea;border-radius:10px;padding:2px 9px;margin:2px;font-size:12px}
-    table{width:100%;border-collapse:collapse;font-size:12px} td,th{border-bottom:1px solid #ddd;padding:5px;text-align:left}
-    .note{font-size:13px;white-space:pre-wrap} .warn{color:#b91c1c}
-  </style></head><body>
-    <h1>The Hekim&apos;s Connect</h1>
-    <div class="meta">Tashkhees &amp; Handover Dossier · ${esc(patient.name)} ${patient.patientCode ? `(${esc(patient.patientCode)})` : ""} · ${esc(patient.gender || "")}<br/>
-    ${new Date().toLocaleDateString("en-IN", { dateStyle: "full" })}${d.status === "finalized" && d.finalizedByName ? ` · Finalised by ${esc(d.finalizedByName)}` : " · Draft"}</div>
-    <h2>Tashkhees (Diagnosis)</h2>
-    <div class="row"><span>Mizaj-e-Asli</span><b>${esc(d.mizajAsli || "—")}</b></div>
-    <div class="row"><span>Su-e-Mizaj</span><b>${esc([d.suMizajType, d.suMizajQuality, d.suMizajGrade ? `Darja ${d.suMizajGrade}` : ""].filter(Boolean).join(" · ") || "—")}</b></div>
-    <div class="row"><span>Affected organs</span><b>${esc(d.organs.join(", ") || "—")}</b></div>
-    ${d.diagnosisNote ? `<p class="note">${esc(d.diagnosisNote)}</p>` : ""}
-    ${dalail ? `<h2>Dala'il (Clinical Signs)</h2>${dalail}` : ""}
-    <h2>Usool-e-Ilaj</h2><div>${list(d.usool)}</div>${d.usoolNote ? `<p class="note">${esc(d.usoolNote)}</p>` : ""}
-    <h2>Ilaj-bil-Ghiza</h2>
-    <div class="row"><span>Recommended</span><span>${list(d.ghizaRecommended)}</span></div>
-    <div class="row"><span>Parhez (avoid)</span><span>${list(d.ghizaAvoid)}</span></div>
-    ${d.ghizaNote ? `<p class="note">${esc(d.ghizaNote)}</p>` : ""}
-    <h2>Ilaj-bil-Dawa</h2>
-    ${d.prescriptions.length ? `<table><tr><th>Medicine</th><th>Form</th><th>Dose</th><th>Timing</th><th>Duration</th><th>With</th></tr>${d.prescriptions.map((p) => `<tr><td>${esc(p.name)}${p.instructions ? `<br/><small>${esc(p.instructions)}</small>` : ""}</td><td>${esc(p.form)}</td><td>${esc(p.dose)}</td><td>${esc(p.timing)}</td><td>${esc(p.duration)}</td><td>${esc(p.adjuvant)}</td></tr>`).join("")}</table>` : "—"}
-    <h2>Ilaj-bil-Tadbeer</h2>
-    ${d.tadbeer.length ? d.tadbeer.map((t) => `<div class="row"><span>${esc(t.label)}</span><b>${esc([t.frequency, t.duration, t.notes].filter(Boolean).join(" · "))}</b></div>`).join("") : "—"}
-    <h2>Prognosis &amp; Follow-up</h2>
-    <div class="row"><span>Prognosis</span><b>${esc(d.prognosis || "—")}</b></div>
-    <div class="row"><span>Follow-up</span><b>${esc(d.followUpDate ? new Date(d.followUpDate).toLocaleDateString() : "—")}${d.followUpNote ? ` — ${esc(d.followUpNote)}` : ""}</b></div>
-    ${d.urgentDirectives ? `<p class="note warn"><b>Urgent:</b> ${esc(d.urgentDirectives)}</p>` : ""}
-    ${d.handoverNote ? `<h2>Handover Note</h2><p class="note">${esc(d.handoverNote)}</p>` : ""}
-    <p style="margin-top:36px;font-size:11px;color:#999">Generated by The Hekim's Connect for clinical handover.</p>
-  </body></html>`);
-  win.document.close();
-  win.print();
-  return true;
 }

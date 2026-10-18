@@ -50,12 +50,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       anatomicalRegionSelection: { select: { regions: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
       chronology: { select: { onsetPatterns: true, durationValue: true, durationUnit: true, onsetDate: true, note: true, durationSource: true, sourceComplaint: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
       asbabAssessments: { where: { framework: "asbab" }, select: { status: true, completedAt: true, updatedAt: true, humoral: true, recordedBy: { select: { name: true } }, responses: { select: { pillarKey: true, questionLabel: true, value: true } } } },
-      tashkheesDossier: { select: { status: true, mizajAsli: true, suMizajType: true, suMizajQuality: true, suMizajGrade: true, diagnosisNote: true, finalizedAt: true, finalizedByName: true } },
+      tashkheesDossier: { include: { recordedBy: { select: { name: true } }, prescriptions: { orderBy: { sortOrder: "asc" }, select: { name: true, form: true, dose: true, timing: true, duration: true, adjuvant: true, instructions: true } } } },
     },
   });
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
-  const [patient, facility, priorVisits, reports, criteriaCount, branding, ranges, severityLabels, mizajAssessment, asbabPillars] = await Promise.all([
+  const [patient, facility, priorVisits, reports, criteriaCount, branding, ranges, severityLabels, mizajAssessment, asbabPillars, dalailAssessment, dalailPillars] = await Promise.all([
     db.patient.findUnique({
       where: { id: visit.patientId },
       select: {
@@ -92,6 +92,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       select: { result: true, pulse: true, notes: true, dam: true, saffra: true, balgham: true, sauda: true, createdAt: true },
     }),
     db.asbabPillar.findMany({ where: { framework: "asbab" }, orderBy: { sortOrder: "asc" }, select: { key: true, label: true, english: true } }),
+    // Stage 5 Dala'il (examination signs) — stored like Asbab under framework "dalail".
+    db.asbabAssessment.findUnique({ where: { visitId_framework: { visitId: id, framework: "dalail" } }, select: { humoral: true, responses: { select: { pillarKey: true, questionLabel: true, value: true } } } }),
+    db.asbabPillar.findMany({ where: { framework: "dalail" }, orderBy: { sortOrder: "asc" }, select: { key: true, label: true, english: true } }),
   ]);
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
@@ -169,7 +172,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }));
         return { status: a.status, completedAt: a.completedAt, updatedAt: a.updatedAt, recordedBy: a.recordedBy, humoral: parse<Record<string, unknown> | null>(a.humoral, null), pillars };
       })() : null,
-      dossier: visit.tashkheesDossier,
+      dossier: visit.tashkheesDossier && {
+        ...visit.tashkheesDossier,
+        organs: parse<string[]>(visit.tashkheesDossier.organs, []),
+        usool: parse<string[]>(visit.tashkheesDossier.usool, []),
+        ghizaRecommended: parse<string[]>(visit.tashkheesDossier.ghizaRecommended, []),
+        ghizaAvoid: parse<string[]>(visit.tashkheesDossier.ghizaAvoid, []),
+        tadbeer: parse<{ label: string; frequency: string; duration: string; notes: string }[]>(visit.tashkheesDossier.tadbeer, []),
+      },
+      dalail: dalailAssessment ? {
+        humoral: parse<Record<string, unknown> | null>(dalailAssessment.humoral, null),
+        sections: dalailPillars.map((p) => ({
+          ...p,
+          answers: dalailAssessment.responses.filter((r) => r.pillarKey === p.key).map((r) => {
+            const v = parse<string | string[]>(r.value, "");
+            return { question: r.questionLabel, answer: Array.isArray(v) ? v.join(", ") : String(v) };
+          }).filter((x) => x.answer.trim()),
+        })).filter((p) => p.answers.length),
+      } : null,
       mizajAssessment,
     },
     reports,
