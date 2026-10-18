@@ -1,5 +1,5 @@
 import { REPORT_DEFAULTS } from "@/lib/report-branding";
-import { WARNING_SIGN_SEED, OTHER_SYMPTOM_SEED } from "@/lib/triage-catalog-seed";
+import { WARNING_SIGN_SEED, OTHER_SYMPTOM_SEED, ONSET_PATTERN_SEED } from "@/lib/triage-catalog-seed";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/lib/notifications";
@@ -585,6 +585,7 @@ export async function seedDatabase() {
   await (await import("@/lib/asbab-seed")).seedAsbabConfig();
   await (await import("@/lib/tashkhees-seed")).seedTashkheesConfig();
   await seedOnsetPatternTags();
+  await seedOnsetPatternCatalog();
   await seedEmailTemplates();
 
   // Check if already seeded
@@ -881,5 +882,17 @@ export async function seedTriageCatalogs() {
   for (const t of OTHER_SYMPTOM_SEED) {
     if (haveTag.has(t.label.toLowerCase())) continue;
     await db.acuteSymptomTag.create({ data: { ...t, sortOrder: order++ } });
+  }
+}
+
+/** Fills Onset Nature & Rhythm with the Unani catalogue — add-only by label; never edits or reactivates existing rows. */
+export async function seedOnsetPatternCatalog() {
+  const rows = await db.onsetPatternTag.findMany({ select: { label: true, sortOrder: true } });
+  const have = new Set(rows.map((r) => r.label.toLowerCase()));
+  let order = Math.max(-1, ...rows.map((r) => r.sortOrder)) + 1;
+  for (const p of ONSET_PATTERN_SEED) {
+    if (have.has(p.label.toLowerCase())) continue;
+    await db.onsetPatternTag.create({ data: { ...p, sortOrder: order++ } });
+    have.add(p.label.toLowerCase());
   }
 }

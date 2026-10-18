@@ -199,3 +199,109 @@ export const OTHER_SYMPTOM_SEED: SymptomSeed[] = [
   { label: "White discharge", description: "Sayalan-ur-Rahem" },
   { label: "Hot flushes", description: "Sudden waves of heat" },
 ];
+
+// ---------------------------------------------------------------------------
+// Onset Nature & Rhythm (Stage 3, Admin → Meta → Onset). How the complaint
+// began, how it runs, and what makes it come on or worsen — grouped along the
+// classical Unani frame: mode of onset (Ibtida), course (Mudda / Nauba),
+// timing, and the six essential factors (Asbab-e-Sitta Zarooriya: air, food &
+// drink, movement & rest, sleep & wakefulness, emotions, retention &
+// evacuation), plus season. Humoral notes only where the association is
+// classical; a guide for the physician, not a diagnosis.
+// ---------------------------------------------------------------------------
+
+export const ONSET_PATTERN_SEED: { label: string; description: string }[] = [
+  // Mode of onset (Ibtida)
+  { label: "Sudden Paroxysmal", description: "Abrupt onset, comes in attacks" },
+  { label: "Insidious Gradual", description: "Slow, creeping onset" },
+  { label: "Sudden onset (Daf'atan)", description: "Started abruptly at a clear moment" },
+  { label: "Gradual onset (Tadreejan)", description: "Built up slowly over days or weeks" },
+  { label: "After an injury or strain (Zarba / Sadma)", description: "Began after a fall, blow, sprain or heavy lifting" },
+  { label: "After a fever or infection", description: "Began during or after a febrile illness (Humma)" },
+  { label: "After a new medicine or remedy", description: "Started after a new drug, herb or supplement" },
+  { label: "After childbirth (Nifas)", description: "Began in the weeks after delivery" },
+  { label: "After surgery or a procedure", description: "Began following an operation or procedure" },
+  { label: "After emotional shock or grief", description: "Followed a sudden fright, loss or distress (Sadma-e-Nafsani)" },
+  { label: "After exposure to cold or wet", description: "Followed chill, rain or cold water — Barid / Ratab cause" },
+  { label: "After exposure to heat or sun", description: "Followed heat, sun or a hot environment — Haar cause" },
+  { label: "After unaccustomed or heavy food", description: "Followed a heavy, rich or unusual meal (Tukhma)" },
+
+  // Course & rhythm (Mudda / Nauba)
+  { label: "Continuous (Daimi / Mutbiqa)", description: "Present all the time without relief" },
+  { label: "Intermittent (Nauba-war)", description: "Comes and goes with symptom-free intervals" },
+  { label: "Episodic attacks (Daura)", description: "Distinct attacks with return to normal between them" },
+  { label: "Recurrent / relapsing (Naksa)", description: "Settles, then returns again" },
+  { label: "Progressive, worsening (Mutazayid)", description: "Steadily getting worse over time" },
+  { label: "Improving (Mutanaqis)", description: "Steadily getting better" },
+  { label: "Fluctuating", description: "Varies from day to day without a clear pattern" },
+  { label: "Daily recurring (Nauba-e-Yaumiya)", description: "Returns every day — classically a Balghami pattern" },
+  { label: "Alternate-day recurring (Ghib)", description: "Returns every other day — classically a Safrawi pattern" },
+  { label: "Every third day (Rib')", description: "Returns with two clear days between — classically a Saudawi pattern" },
+  { label: "Continuous fever pattern (Humma-e-Mutbiqa)", description: "Unremitting fever — classically a Damawi pattern" },
+  { label: "Periodic / cyclical", description: "Returns at regular weeks or months" },
+  { label: "Constant background with flare-ups", description: "Always present, with periods of sudden worsening" },
+
+  // Time of day (Auqat)
+  { label: "Worse on waking / early morning", description: "Worst at dawn or on getting up (Subh)" },
+  { label: "Morning stiffness", description: "Stiff on rising, eases with movement" },
+  { label: "Worse at midday / afternoon", description: "Peaks in the hot part of the day (Zuhr)" },
+  { label: "Worse in the evening", description: "Builds up towards evening (Masa)" },
+  { label: "Nocturnal Exacerbation (Layli)", description: "Worse at night" },
+  { label: "Wakes the patient from sleep", description: "Disturbs or breaks sleep at night" },
+  { label: "Same time every day", description: "Comes on at a fixed hour daily" },
+
+  // Food & drink (Makool-o-Mashroob)
+  { label: "Post-Prandial Exacerbation", description: "Worse after meals" },
+  { label: "Worse on an empty stomach (Khali Me'da)", description: "Worse when hungry or fasting" },
+  { label: "Relieved by eating", description: "Eases after food" },
+  { label: "Worse with oily or fried food (Ghiza-e-Dasim)", description: "Rich, fatty food brings it on" },
+  { label: "Worse with spicy or hot food (Ghiza-e-Haar)", description: "Pungent, heating food brings it on" },
+  { label: "Worse with cold food or drinks (Ghiza-e-Barid)", description: "Cold, chilled food or water brings it on" },
+  { label: "Worse with sour food (Turshi)", description: "Sour or fermented food brings it on" },
+  { label: "Worse with sweets (Shireeni)", description: "Sugar or sweet food brings it on" },
+  { label: "Worse with milk or dairy", description: "Milk, curd or cheese brings it on" },
+  { label: "Worse with flatulent food (Nafakh)", description: "Pulses, beans or gas-forming food bring it on" },
+  { label: "Worse during fasting (Roza)", description: "Comes on during a religious or long fast" },
+
+  // Movement & rest (Harkat-o-Sukoon)
+  { label: "Worse on exertion (Harkat)", description: "Brought on by walking, work or exercise" },
+  { label: "Worse with rest / inactivity (Sukoon)", description: "Worse after sitting or lying still; eases on moving" },
+  { label: "Worse on lying down", description: "Comes on or worsens when lying flat" },
+  { label: "Worse on standing for long", description: "Builds up with prolonged standing" },
+  { label: "Worse with a particular posture or movement", description: "A specific position or movement triggers it" },
+  { label: "Worse after travel or a journey (Safar)", description: "Comes on with travel or long sitting in a vehicle" },
+
+  // Sleep & wakefulness (Naum-o-Yaqza)
+  { label: "Worse after poor sleep / night waking (Sahar)", description: "Follows sleeplessness or late nights" },
+  { label: "Worse after daytime sleep", description: "Comes on after sleeping in the day" },
+  { label: "Worse after oversleeping (Kasrat-e-Naum)", description: "Comes on after excessive sleep" },
+
+  // Emotions (A'raz-e-Nafsaniya)
+  { label: "Worse with stress or worry (Fikr)", description: "Brought on by tension, overthinking or anxiety" },
+  { label: "Worse with anger (Ghazab)", description: "Comes on after anger or agitation" },
+  { label: "Worse with grief or sadness (Gham / Huzn)", description: "Follows sorrow or low mood" },
+  { label: "Worse with fear or fright (Khauf)", description: "Comes on with fear or sudden fright" },
+
+  // Retention & evacuation (Ihtibas-o-Istifragh)
+  { label: "Worse with constipation (Qabz)", description: "Worse when the bowels are held up" },
+  { label: "Worse after loose motions or vomiting", description: "Follows excessive evacuation (Istifragh)" },
+  { label: "Related to the menstrual cycle (Ayyam-e-Haiz)", description: "Comes on before or during periods" },
+  { label: "Worse with suppressed or scanty periods (Ihtibas-e-Tams)", description: "Linked to delayed, scanty or stopped periods" },
+  { label: "Worse with suppressed sweating or urine", description: "Linked to holding in urine or reduced sweating" },
+
+  // Air & environment (Hawa-e-Muheet)
+  { label: "Worse with dust, smoke or smells", description: "Polluted air, dust or strong odours bring it on" },
+  { label: "Worse with weather change", description: "Comes on when the weather turns" },
+  { label: "Worse in humid / damp air (Hawa-e-Ratab)", description: "Moist, muggy or rainy air brings it on" },
+  { label: "Worse in dry air (Hawa-e-Yabis)", description: "Dry, windy air brings it on" },
+  { label: "Worse in cold wind (Hawa-e-Barid)", description: "Cold or windy air brings it on" },
+  { label: "Worse in a hot room or crowd", description: "Heat, closed rooms or crowds bring it on" },
+
+  // Season (Fusool)
+  { label: "Worse in winter (Sarma)", description: "Cold season — classically aggravates Balgham" },
+  { label: "Worse in summer (Garma)", description: "Hot season — classically aggravates Safra" },
+  { label: "Worse in autumn (Khareef)", description: "Autumn — classically aggravates Sauda" },
+  { label: "Worse in spring (Rabee')", description: "Spring — classically aggravates Dam" },
+  { label: "Worse in the rainy season (Barsat)", description: "Monsoon dampness brings it on" },
+  { label: "Seasonal — returns every year", description: "Recurs at the same time each year" },
+];
