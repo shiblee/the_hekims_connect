@@ -1,3 +1,4 @@
+import { REPORT_DEFAULTS } from "@/lib/report-branding";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/lib/notifications";
@@ -600,6 +601,7 @@ export async function seedDatabase() {
     { category: "general", key: "portal_name", value: "The Hekim's Connect" },
     { category: "general", key: "support_email", value: "care@hekims.connect" },
     { category: "general", key: "support_phone", value: "+91 98765 43210" },
+    ...Object.entries(REPORT_DEFAULTS).filter(([k]) => k !== "portal_name").map(([key, value]) => ({ category: "report", key, value })),
     { category: "registration", key: "facility_registration_enabled", value: "true" },
     { category: "registration", key: "patient_registration_enabled", value: "true" },
     { category: "registration", key: "require_license_for_facility", value: "false" },

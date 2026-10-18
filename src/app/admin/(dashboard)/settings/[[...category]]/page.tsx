@@ -65,6 +65,7 @@ const ASSISTANTS: Record<string, CatalogAssistantConfig> = {
 
 const CATEGORY_META: Record<string, { label: string; description: string }> = {
   general: { label: "General", description: "Portal identity and support contact information." },
+  report: { label: "Clinical Report", description: "Branding and wording printed on the patient assessment report." },
   vitals_validation: { label: "Vitals Validation", description: "" },
   registration: { label: "Registration", description: "Control who can register on the portal." },
   verification: { label: "Verification", description: "OTP expiry, resend and attempt limits." },
@@ -77,7 +78,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
 // Explicit order for the sidebar (the settings themselves load alphabetically
 // by category) so Vitals Validation sits right after General rather than
 // wherever its name happens to sort.
-const CATEGORY_ORDER = ["general", "vitals_validation", "registration", "verification", "subscription", "patient_defaults", "vitals", "chief_complaint_assistant", "allergy_assistant", "supplement_assistant", "medication_assistant"];
+const CATEGORY_ORDER = ["general", "report", "vitals_validation", "registration", "verification", "subscription", "patient_defaults", "vitals", "chief_complaint_assistant", "allergy_assistant", "supplement_assistant", "medication_assistant"];
 
 const VITALS_FIELD_LABELS: Record<VitalsRangeField, string> = {
   pulse: "Pulse (bpm)",
@@ -88,6 +89,13 @@ const VITALS_FIELD_LABELS: Record<VitalsRangeField, string> = {
 };
 
 const KEY_LABELS: Record<string, string> = {
+  website_url: "Official website URL",
+  slogan: "Slogan",
+  report_title: "Report title",
+  report_subtitle: "Report subtitle",
+  copyright_owner: "Copyright owner (legal name)",
+  confidentiality: "Confidentiality notice",
+  insight_disclaimer: "Hakeem Insight disclaimer",
   portal_name: "Portal name",
   support_email: "Support email",
   support_phone: "Support phone",
