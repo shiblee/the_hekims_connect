@@ -123,16 +123,16 @@ function Label({ children, required }: { children: ReactNode; required?: boolean
 
 /** Selectable chips (single or multi) — same visual language as the other selectors. */
 function Chips({ items, selected, onToggle, tone = "emerald" }: {
-  items: { label: string; sub?: string | null }[]; selected: string[]; onToggle: (label: string) => void; tone?: "emerald" | "red";
+  items: { label: string; sub?: string | null; tip?: string | null }[]; selected: string[]; onToggle: (label: string) => void; tone?: "emerald" | "red";
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap content-start items-start self-start gap-2">
       {items.map((it) => {
         const on = selected.includes(it.label);
         return (
-          <button key={it.label} type="button" onClick={() => onToggle(it.label)} aria-pressed={on} title={it.sub || undefined}
+          <button key={it.label} type="button" onClick={() => onToggle(it.label)} aria-pressed={on} title={it.tip || it.sub || undefined}
             className={cn(
-              "rounded-full border px-3 py-1 text-sm transition-colors text-left",
+              "rounded-full border px-3 py-1 text-sm leading-snug transition-colors text-left",
               on ? (tone === "red" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")
                 : "border-border/60 bg-background/40 hover:border-primary/40",
             )}>
@@ -203,7 +203,7 @@ function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
       </div>
       {q.type === "text"
         ? <FloatingField id={`dalail-${q.id}`} label="Describe the finding" maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-        : <Chips items={q.options.map((o) => ({ label: o.label, sub: o.description }))} selected={sel} onToggle={toggle} />}
+        : <Chips items={q.options.map((o) => ({ label: o.label, tip: o.description }))} selected={sel} onToggle={toggle} />}
     </div>
   );
 }
