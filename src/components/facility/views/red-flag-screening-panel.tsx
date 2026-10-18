@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { setFlash } from "@/lib/flash";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -196,24 +197,20 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
 
   return (
     <Card className={cn("p-4 gap-3 border-border/50 bg-card transition-colors", anyPresent && "border-destructive/40")}>
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", anyPresent ? "bg-destructive/15 text-destructive" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
-            {anyPresent ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-          </div>
-          <div>
-            <h2 className="font-serif text-base font-semibold leading-tight">Emergency Warning Signs</h2>
-            <p className="text-[11px] text-muted-foreground leading-tight">Tap any sign the patient has · hover for details</p>
-          </div>
-        </div>
-        <span className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
-          anyPresent ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-        )}>
-          <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
-          {anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
-        </span>
-      </div>
+      <SectionHeading
+        icon={anyPresent ? ShieldAlert : ShieldCheck}
+        tone={anyPresent ? "danger" : "success"}
+        title="Emergency Warning Signs"
+        right={
+          <span className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+            anyPresent ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+          )}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
+            {anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
+          </span>
+        }
+      />
 
       {criteria.length === 0 ? (
         <p className="text-sm text-muted-foreground">No warning signs configured yet.</p>

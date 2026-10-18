@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -76,23 +77,18 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
 
   return (
     <Card className="p-4 gap-3 border-border/50 bg-card">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
-            <ListChecks className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="font-serif text-base font-semibold leading-tight">Other Symptoms</h2>
-            <p className="text-[11px] text-muted-foreground leading-tight">Alamat-e-Izafiya · tap all that apply</p>
-          </div>
-        </div>
-        <span className={cn(
-          "rounded-full border px-2.5 py-1 text-xs font-semibold",
-          selected.length ? "border-primary/30 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground",
-        )}>
-          {selected.length ? `${selected.length} noted` : "None noted"}
-        </span>
-      </div>
+      <SectionHeading
+        icon={ListChecks}
+        title="Other Symptoms"
+        right={
+          <span className={cn(
+            "rounded-full border px-2.5 py-1 text-xs font-semibold",
+            selected.length ? "border-primary/30 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground",
+          )}>
+            {selected.length ? `${selected.length} noted` : "None noted"}
+          </span>
+        }
+      />
 
       {tags.length === 0 ? (
         <p className="text-sm text-muted-foreground">No symptoms configured yet.</p>

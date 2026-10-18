@@ -14,6 +14,7 @@ import { FloatingField, FloatingSelect, FloatingSplitField, FieldError, Floating
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
 import { InlineNotice, type Notice } from "@/components/shared/inline-notice";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { setFlash } from "@/lib/flash";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -1024,21 +1025,15 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     )}
                   </div>
                 )}
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <User className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-semibold text-foreground leading-tight">Patient Details</h2>
-                    </div>
-                  </div>
-                  {directEntry && editingId && (
+                <SectionHeading
+                  icon={User}
+                  title="Patient Details"
+                  right={directEntry && editingId && (
                     <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono flex items-center gap-1">
                       <IdCard className="h-3 w-3" /> {editingCode}
                     </Badge>
                   )}
-                </div>
+                />
 
                 <div className="grid lg:grid-cols-10 gap-6 items-start">
                   <div className="lg:col-span-7 space-y-4">
@@ -1109,14 +1104,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     </div>
 
                     <section className="space-y-3 pt-4 border-t border-border/50">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
-                          <Contact className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <h2 className="text-base font-semibold text-foreground leading-tight">Emergency Contact</h2>
-                        </div>
-                      </div>
+                      <SectionHeading icon={Contact} title="Emergency Contact" />
                       <div className="grid sm:grid-cols-2 gap-4">
                         <FloatingField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
                         <div>
@@ -1132,14 +1120,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     </section>
 
                     <section className="space-y-3 pt-4 border-t border-border/50">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          <QrCode className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <h2 className="text-base font-semibold text-foreground leading-tight">Doctor &amp; Payment</h2>
-                        </div>
-                      </div>
+                      <SectionHeading icon={QrCode} title="Doctor & Payment" />
                       <FloatingSelect id="doctorId" label="Preferred Doctor (optional)" value={doctorId} onValueChange={setDoctorId} placeholder="Any available doctor">
                         {doctors.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}{d.designation ? ` — ${d.designation}` : ""}</SelectItem>)}
                       </FloatingSelect>
@@ -1163,14 +1144,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
                   <div className="lg:col-span-3">
                     <section className="space-y-4 lg:sticky lg:top-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
-                          <BriefcaseMedical className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <h2 className="text-base font-semibold text-foreground leading-tight">Reason for Visit</h2>
-                        </div>
-                      </div>
+                      <SectionHeading icon={BriefcaseMedical} title="Reason for Visit" />
 
                       <div id="reg-complaints" className="scroll-mt-24">
                         <FloatingMultiSelect

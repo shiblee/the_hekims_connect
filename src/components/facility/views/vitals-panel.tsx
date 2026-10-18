@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { daysAgo } from "@/lib/age";
@@ -435,10 +436,10 @@ export function VitalsPanel({
   return (
     <>
     <Card className="p-5 border-border/50 bg-card/60 gap-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" /> Vital Signs &amp; Pulse (Nabz)
-        </p>
+      <SectionHeading
+        icon={Activity}
+        title="Vital Signs & Pulse (Nabz)"
+        right={
         <div className="flex items-center gap-2 text-xs">
           {visitsWithVitals.length > 0 && (needAttention > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-semibold text-red-600 dark:text-red-400">
@@ -451,7 +452,8 @@ export function VitalsPanel({
           ))}
           {lastRecordedAt && <span className="text-muted-foreground">Last recorded {when(lastRecordedAt)}</span>}
         </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {tiles.map(renderTile)}

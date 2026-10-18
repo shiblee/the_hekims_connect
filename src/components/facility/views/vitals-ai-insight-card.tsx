@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 
@@ -55,15 +56,16 @@ export function VitalsAiInsightCard({
   };
 
   return (
-    <Card className="p-4 border-primary/20 bg-primary/5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-          <Sparkles className="h-3.5 w-3.5 text-primary" /> Hakeem Insight
-        </p>
-        <Button size="sm" variant="outline" onClick={getInsight} disabled={insightState === "loading"}>
-          {insightState === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Get Hakeem Insight
-        </Button>
-      </div>
+    <Card className="p-4 gap-2 border-primary/20 bg-primary/5">
+      <SectionHeading
+        icon={Sparkles}
+        title="Hakeem Insight"
+        right={
+          <Button size="sm" variant="outline" onClick={getInsight} disabled={insightState === "loading"}>
+            {insightState === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Get Hakeem Insight
+          </Button>
+        }
+      />
       {insight && <p className="text-sm mt-2 leading-relaxed">{insight}</p>}
       {insightState === "not_configured" && <p className="text-xs text-muted-foreground mt-2">Hakeem Insight isn&apos;t configured for this portal yet.</p>}
       {insightState === "no_data" && <p className="text-xs text-muted-foreground mt-2">Not enough recorded vitals to generate an insight.</p>}

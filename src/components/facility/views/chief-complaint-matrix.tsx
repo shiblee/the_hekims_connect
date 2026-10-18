@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -212,17 +213,15 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
 
   return (
     <Card className="p-5 border-border/50 bg-card">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
-            <BriefcaseMedical className="h-4.5 w-4.5" />
-          </div>
-          <h2 className="font-serif text-lg font-semibold">Main Complaints</h2>
-        </div>
-        <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center gap-1">
-          <Flag className="h-3 w-3" /> Unani Triage Stage 1
-        </Badge>
-      </div>
+      <SectionHeading
+        icon={BriefcaseMedical}
+        title="Main Complaints"
+        right={
+          <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center gap-1">
+            <Flag className="h-3 w-3" /> Unani Triage Stage 1
+          </Badge>
+        }
+      />
 
       <div className="space-y-5">
         <div className="grid sm:grid-cols-[3fr_2fr] gap-4">
