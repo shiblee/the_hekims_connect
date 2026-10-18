@@ -5,20 +5,18 @@ import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { daysAgo } from "@/lib/age";
-import { isOutOfRange } from "@/lib/vitals-ranges";
 import { useVitalsRangeConfig } from "@/lib/use-vitals-ranges";
-import { calculateBmi, bmiBand } from "@/lib/bmi";
+import { calculateBmi } from "@/lib/bmi";
+import { bpStatus, pulseStatus, spo2Status, temperatureStatus, bmiStatus, referenceBands, TONE_STYLES, GAUGE_SCALE, type VitalTone } from "@/lib/vital-status";
 import { type VisitWithVitals, type VisitVitals, findLatestVitalSignsFor, findLatestVisitFor } from "@/lib/vitals-trend";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FloatingField } from "@/components/shared/floating-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tooltip as UiTooltip, TooltipTrigger as UiTooltipTrigger, TooltipContent as UiTooltipContent } from "@/components/ui/tooltip";
 import {
   HeartPulse, Gauge, Droplets, Thermometer, Plus, Lightbulb,
   Loader2, Activity, ArrowUp, ArrowDown, Minus, X, AlertTriangle,
-  Ruler, Pencil, Scale, HelpCircle,
+  Ruler, Pencil, Scale, HelpCircle, ChevronRight,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceArea, CartesianGrid, Legend,
@@ -34,15 +32,6 @@ interface TrendPoint {
   bmi: number | null;
 }
 
-// Gradient-track + marker bars (vs. the plain single-color fill used by
-// Temperature/Glucose) for metrics with a wide reference window rather than
-// a tight pass/fail range — the gradient makes "roughly where am I on the
-// whole scale" readable at a glance, with a marker pinned to the exact spot.
-const GRADIENT_BAR_KEYS: Partial<Record<keyof TrendPoint, string>> = {
-  // 15–40 kg/m² window; bands at the WHO thresholds 18.5 / 25 / 30.
-  bmi: "linear-gradient(to right, #f59e0b 0%, #f59e0b 14%, #10b981 14%, #10b981 40%, #f59e0b 40%, #f59e0b 60%, #ef4444 60%, #ef4444 100%)",
-};
-
 interface MetricConfig {
   key: keyof TrendPoint;
   secondaryKey?: keyof TrendPoint;
@@ -52,7 +41,12 @@ interface MetricConfig {
   color: string;
   secondaryColor?: string;
   secondaryLabel?: string;
+  /** Unani term shown under the plain name. */
+  unani: string;
+  /** Chart legend name for the primary series when there are two (e.g. "Systolic"). */
+  primaryLabel?: string;
   range?: [number, number];
+  secondaryRange?: [number, number];
   /** A derived value (e.g. BMI) with no field of its own to record — hides the Add/Edit Reading controls. */
   isComputed?: boolean;
   /** Overrides which VitalSigns field "latest" is looked up by, for a metric whose own key isn't a recorded field. */
@@ -223,6 +217,10 @@ export function VitalsPanel({
       }
       body[f.key] = raw;
     }
+    // The lower number can never be above the upper one — almost always a swapped entry.
+    if (metric.key === "bpSystolic" && !errors.bpSystolic && !errors.bpDiastolic && parseFloat(body.bpDiastolic) >= parseFloat(body.bpSystolic)) {
+      errors.bpDiastolic = "Must be lower than systolic — check the two numbers aren't swapped";
+    }
     if (Object.keys(errors).length > 0) {
       setQuickErrors(errors);
       return;
@@ -290,381 +288,449 @@ export function VitalsPanel({
   }, [visitsWithVitals]);
 
   const METRICS: MetricConfig[] = [
-    { key: "bpSystolic", secondaryKey: "bpDiastolic", secondaryLabel: "Diastolic", label: "Blood Pressure (Dabao-e-Khoon)", icon: Gauge, unit: "mmHg", color: "#f97316", secondaryColor: "#fb923c", range: normalRanges.bpSystolic },
-    { key: "pulse", label: "Pulse (Nabz)", icon: HeartPulse, unit: "bpm", color: "#ef4444", range: normalRanges.pulse },
-    { key: "spo2", label: "SpO₂ (Oxygen)", icon: Droplets, unit: "%", color: "#3b82f6", range: normalRanges.spo2 },
-    { key: "temperatureF", label: "Temperature (Hararat)", icon: Thermometer, unit: "°F", color: "#f59e0b", range: normalRanges.temperatureF },
-    { key: "heightCm", secondaryKey: "weightKg", secondaryLabel: "Weight", label: "Height / Weight (Qad/Wazan)", icon: Ruler, unit: "cm/kg", color: "#0ea5e9", secondaryColor: "#14b8a6" },
-    { key: "bmi", lookupKey: "heightCm", label: "BMI", icon: Scale, unit: "kg/m²", color: "#14b8a6", isComputed: true },
+    { key: "bpSystolic", secondaryKey: "bpDiastolic", label: "Blood Pressure", unani: "Dabao-e-Khoon", primaryLabel: "Systolic", secondaryLabel: "Diastolic", icon: Gauge, unit: "mmHg", color: "#f97316", secondaryColor: "#8b5cf6", range: normalRanges.bpSystolic, secondaryRange: normalRanges.bpDiastolic },
+    { key: "pulse", label: "Pulse", unani: "Nabz", icon: HeartPulse, unit: "bpm", color: "#ef4444", range: normalRanges.pulse },
+    { key: "spo2", label: "Oxygen", unani: "SpO₂ saturation", icon: Droplets, unit: "%", color: "#3b82f6", range: normalRanges.spo2 },
+    { key: "temperatureF", label: "Temperature", unani: "Hararat", icon: Thermometer, unit: "°F", color: "#f59e0b", range: normalRanges.temperatureF },
+    { key: "heightCm", secondaryKey: "weightKg", label: "Height & Weight", unani: "Qad / Wazan", primaryLabel: "Height (cm)", secondaryLabel: "Weight (kg)", icon: Ruler, unit: "", color: "#0ea5e9", secondaryColor: "#14b8a6" },
+    { key: "bmi", lookupKey: "heightCm", label: "BMI", unani: "Body mass index", icon: Scale, unit: "kg/m²", color: "#14b8a6", isComputed: true, formula: "Weight (kg) ÷ height (m)², from the latest height and weight." },
   ];
 
-  const statCards = METRICS.map((m) => {
-    let value: string = "—";
-    let sub = m.unit;
-    let out = false;
-    let badge: string | null = null;
-    let subStats: [string] | null = null;
-    let progress: { value: number; min: number; max: number } | null = null;
+  const statusFor = (key: keyof TrendPoint, p: { bpSystolic?: number | null; bpDiastolic?: number | null; pulse?: number | null; spo2?: number | null; temperatureF?: number | null; bmi?: number | null }) =>
+    key === "bpSystolic" ? bpStatus(p.bpSystolic ?? null, p.bpDiastolic ?? null, normalRanges)
+      : key === "pulse" ? pulseStatus(p.pulse ?? null, normalRanges)
+        : key === "spo2" ? spo2Status(p.spo2 ?? null, normalRanges)
+          : key === "temperatureF" ? temperatureStatus(p.temperatureF ?? null, normalRanges)
+            : key === "bmi" || key === "heightCm" ? bmiStatus(p.bmi ?? null)
+              : null;
 
+  const formatValue = (key: keyof TrendPoint, p: TrendPoint | VisitVitals) => {
+    if (key === "bpSystolic") return p.bpSystolic != null || p.bpDiastolic != null ? `${p.bpSystolic ?? "—"}/${p.bpDiastolic ?? "—"}` : "—";
+    if (key === "heightCm") return p.heightCm != null || p.weightKg != null ? `${p.heightCm ?? "—"} cm · ${p.weightKg ?? "—"} kg` : "—";
+    if (key === "bmi") { const b = calculateBmi(p.heightCm, p.weightKg); return b != null ? b.toFixed(1) : "—"; }
+    const v = p[key as keyof typeof p] as number | null;
+    return v != null ? String(v) : "—";
+  };
+
+  const tiles = METRICS.map((m) => {
     // Scoped to this metric's own history, so a quick reading recorded for a
-    // different metric (which leaves every other field null on that visit)
-    // can't make this tile look blank — see findLatestVitalSignsFor.
-    const latest = findLatestVitalSignsFor(visitsWithVitals, (m.lookupKey ?? m.key) as keyof VisitVitals);
-
-    if (latest) {
-      if (m.key === "bpSystolic") {
-        value = latest.bpSystolic != null || latest.bpDiastolic != null ? `${latest.bpSystolic ?? "—"}/${latest.bpDiastolic ?? "—"}` : "—";
-        const sysOut = isOutOfRange(normalRanges, "bpSystolic", latest.bpSystolic);
-        const diaOut = isOutOfRange(normalRanges, "bpDiastolic", latest.bpDiastolic);
-        out = sysOut || diaOut;
-        badge = out ? "Review" : "Optimal";
-        if (latest.bpSystolic != null && latest.bpDiastolic != null) {
-          subStats = [`Sys ${sysOut ? "Review" : "Normal"} · Dia ${diaOut ? "Review" : "Steady"}`];
-        }
-      } else if (m.key === "heightCm") {
-        value = latest.heightCm != null || latest.weightKg != null ? `${latest.heightCm ?? "—"}/${latest.weightKg ?? "—"}` : "—";
-      } else if (m.key === "bmi") {
-        // BMI = weight(kg) / height(m)² — reuses the same calculateBmi used
-        // elsewhere in the app (e.g. the patient profile's Biometrics card),
-        // computed from the same visit findLatestVitalSignsFor("heightCm")
-        // already resolved, so it stays in sync with the Height/Weight tile.
-        const bmi = calculateBmi(latest.heightCm, latest.weightKg);
-        value = bmi != null ? bmi.toFixed(1) : "—";
-        const band = bmiBand(bmi);
-        if (band) {
-          badge = band.label;
-          out = band.label !== "Normal";
-        }
-        if (bmi != null) {
-          // 15–40 window matches the patient profile's own BMI bar, so the
-          // same value reads at the same relative position in both places.
-          progress = { value: bmi, min: 15, max: 40 };
-        }
-      } else if (m.key === "spo2") {
-        value = latest.spo2 != null ? `${latest.spo2}%` : "—";
-        out = isOutOfRange(normalRanges, "spo2", latest.spo2);
-        badge = latest.spo2 != null ? (out ? "Review" : "Normal") : null;
-      } else if (m.key === "temperatureF") {
-        value = latest.temperatureF != null ? `${latest.temperatureF}°F` : "—";
-        sub = latest.temperatureC != null ? `${latest.temperatureC}°C` : "";
-        out = isOutOfRange(normalRanges, "temperatureF", latest.temperatureF);
-        if (latest.temperatureF != null) {
-          badge = out ? "Febrile" : "Normothermic";
-          subStats = [out ? "Review" : "Euthermic"];
-          progress = { value: latest.temperatureF, min: normalRanges.temperatureF[0] - 2, max: normalRanges.temperatureF[1] + 3 };
-        }
-      } else {
-        const raw = latest[m.key as keyof VisitVitals] as number | null;
-        value = raw != null ? String(raw) : "—";
-        if (m.range) {
-          out = isOutOfRange(normalRanges, m.key, raw);
-        }
-        if (raw != null) {
-          if (m.range) badge = out ? "Review" : "Normal";
-          subStats = m.key === "pulse"
-            ? [out ? "Needs Review" : "Regular Nabz"]
-            : null;
-        }
-      }
-    }
-    // Scoped to this metric alone — a quick reading recorded for a different
-    // metric must never show up as a gap or phantom point on this one's
-    // sparkline/chart, matching how its "latest" value is already scoped.
+    // different metric can't make this tile look blank — see findLatestVitalSignsFor.
+    const lookup = (m.lookupKey ?? m.key) as keyof VisitVitals;
+    const latest = findLatestVitalSignsFor(visitsWithVitals, lookup);
+    const latestVisit = findLatestVisitFor(visitsWithVitals, lookup);
     const cardTrend = trend.filter((t) => t[m.key] != null);
-    return { ...m, value, sub, out, badge, subStats, progress, points: cardTrend.length, cardTrend };
+    const bmi = latest ? calculateBmi(latest.heightCm, latest.weightKg) : null;
+    const status = latest ? statusFor(m.key, { ...latest, bmi }) : null;
+    const last = cardTrend[cardTrend.length - 1];
+    const prev = cardTrend[cardTrend.length - 2];
+    const delta = last && prev ? (last[m.key] as number) - (prev[m.key] as number) : null;
+    return { ...m, latest, latestVisit, cardTrend, status, delta, bmi };
   });
+  const needAttention = tiles.filter((t) => t.status && t.status.tone !== "ok").length;
+  const lastRecordedAt = visitsWithVitals[0]?.visitDate;
 
-  const renderStatCard = (c: (typeof statCards)[number]) => (
-    <Card
-      key={c.label}
-      onClick={() => openDetail(c.key)}
-      className={cn(
-        "relative overflow-hidden p-3.5 border-border/50 bg-card cursor-pointer hover:border-primary/40 transition-colors gap-2.5",
-        c.out && "border-destructive/40 bg-destructive/5"
-      )}
-    >
-      <div className="flex items-center justify-between gap-1.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          {c.label}
-          {c.formula && (
-            <UiTooltip>
-              <UiTooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-muted-foreground/50 hover:text-foreground shrink-0"
-                >
-                  <HelpCircle className="h-3 w-3" />
-                </button>
-              </UiTooltipTrigger>
-              <UiTooltipContent side="top" className="max-w-[200px] whitespace-pre-line text-center text-[11px] normal-case font-normal">
-                {c.formula}
-              </UiTooltipContent>
-            </UiTooltip>
-          )}
-        </p>
-        <c.icon className={cn("h-3.5 w-3.5 shrink-0", c.out ? "text-destructive" : "text-muted-foreground/70")} />
-      </div>
+  const when = (iso: string) => `${daysAgo(iso)}, ${new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })}`;
 
-      <div className="flex items-end justify-between gap-1.5">
-        <p className="flex items-baseline gap-1.5 min-w-0">
-          <span className={cn(c.key === "bmi" ? "text-2xl" : "text-3xl", "font-bold leading-none tracking-tight", c.out && "text-destructive")}>{c.value}</span>
-          <span className={cn("text-xs truncate", c.out ? "text-destructive font-medium" : "text-muted-foreground")}>{c.sub}</span>
-        </p>
-        {c.points >= 2 && (
-          <div className="w-14 h-9 shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={c.cardTrend}>
-                <Line type="monotone" dataKey={c.key} stroke={c.color} strokeWidth={1.5} dot={false} connectNulls />
-              </LineChart>
-            </ResponsiveContainer>
+  const renderTile = (t: (typeof tiles)[number]) => {
+    const tone = t.status ? TONE_STYLES[t.status.tone] : null;
+    const empty = !t.latest;
+    return (
+      <div
+        key={t.key}
+        role="button"
+        tabIndex={0}
+        onClick={() => openDetail(t.key)}
+        onKeyDown={(e) => { if (e.key === "Enter") openDetail(t.key); }}
+        className={cn(
+          "group relative flex flex-col gap-2.5 rounded-xl border p-3.5 cursor-pointer outline-none transition-all",
+          "hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40",
+          tone && t.status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border/50 bg-card hover:border-primary/40",
+        )}
+      >
+        {/* Name + status */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${t.color}1f`, color: t.color }}>
+              <t.icon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight">{t.label}</p>
+              <p className="text-[11px] text-muted-foreground leading-tight">{t.unani}</p>
+            </div>
           </div>
+          {t.cardTrend.length >= 2 && (
+            <div className="w-12 h-7 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" title="Trend">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={t.cardTrend}>
+                  <Line type="monotone" dataKey={t.key} stroke={t.color} strokeWidth={1.75} dot={false} connectNulls isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {empty ? (
+          <div className="flex-1 flex flex-col items-start justify-center gap-2 py-1">
+            <p className="text-sm text-muted-foreground">{t.isComputed ? "Needs height and weight" : "Not recorded yet"}</p>
+            {showNewVisitButton && !t.isComputed && (
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); openDetail(t.key); openQuickAdd(); }}>
+                <Plus className="h-3 w-3" /> Add reading
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Value + status */}
+            <div className="flex items-end justify-between gap-2 flex-wrap">
+              <p className="flex items-baseline gap-1 min-w-0">
+                <span className={cn("font-bold leading-none tracking-tight", t.key === "heightCm" ? "text-xl" : "text-3xl", tone && t.status!.tone !== "ok" && tone.text)}>
+                  {formatValue(t.key, t.latest!)}
+                </span>
+                {t.unit && <span className="text-xs text-muted-foreground">{t.unit}</span>}
+                {t.key === "temperatureF" && t.latest!.temperatureC != null && <span className="text-xs text-muted-foreground">· {t.latest!.temperatureC}°C</span>}
+              </p>
+              {t.status && tone && (
+                <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap", tone.text, tone.bg, tone.border)}>
+                  {t.status.tone === "urgent" ? <AlertTriangle className="h-3 w-3" /> : t.status.tone === "check" ? <HelpCircle className="h-3 w-3" /> : <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />}
+                  {t.status.label}
+                </span>
+              )}
+            </div>
+
+            {/* Where the reading sits against normal */}
+            {t.key === "bpSystolic" ? (
+              <div className="space-y-1">
+                <RangeBar label="S" value={t.latest!.bpSystolic} scale={GAUGE_SCALE.bpSystolic} normal={normalRanges.bpSystolic} tone={t.status?.tone} />
+                <RangeBar label="D" value={t.latest!.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={t.status?.tone} />
+              </div>
+            ) : t.key === "heightCm" ? (
+              <p className="text-xs text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}{t.status ? ` · ${t.status.label}` : ""}</p>
+            ) : GAUGE_SCALE[t.key] ? (
+              <RangeBar value={t.key === "bmi" ? t.bmi : (t.latest![t.key as keyof VisitVitals] as number | null)} scale={GAUGE_SCALE[t.key]} normal={t.key === "bmi" ? [18.5, 24.9] : t.range!} tone={t.status?.tone} />
+            ) : null}
+
+            {/* Change + when */}
+            <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground mt-auto pt-0.5">
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                {t.delta == null ? "First reading" : t.delta === 0 ? <><Minus className="h-3 w-3" /> Same as last</> : (
+                  <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{Math.abs(t.delta).toFixed(t.key === "temperatureF" || t.key === "bmi" ? 1 : 0)} vs last</>
+                )}
+              </span>
+              {t.latestVisit && <span className="truncate text-right group-hover:hidden">{when(t.latestVisit.visitDate)}</span>}
+              <span className="hidden group-hover:flex items-center gap-0.5 text-primary font-medium whitespace-nowrap">View details <ChevronRight className="h-3 w-3" /></span>
+            </div>
+          </>
         )}
       </div>
-
-      {c.progress && (GRADIENT_BAR_KEYS[c.key] ? (
-        <div className="relative h-2 rounded-full overflow-hidden" style={{ background: GRADIENT_BAR_KEYS[c.key] }}>
-          <div
-            className="absolute top-1/2 h-3.5 w-1.5 -translate-y-1/2 -translate-x-1/2 rounded-full bg-foreground ring-2 ring-background"
-            style={{ left: `${Math.min(100, Math.max(0, ((c.progress.value - c.progress.min) / (c.progress.max - c.progress.min)) * 100))}%` }}
-          />
-        </div>
-      ) : (
-        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn("h-full rounded-full", c.out ? "bg-destructive" : "bg-emerald-500")}
-            style={{ width: `${Math.min(100, Math.max(0, ((c.progress.value - c.progress.min) / (c.progress.max - c.progress.min)) * 100))}%` }}
-          />
-        </div>
-      ))}
-
-      {(c.badge || c.subStats) && (
-        <div className="flex items-center justify-between gap-1.5">
-          {c.badge ? (
-            <Badge
-              variant="outline"
-              className={cn(
-                "rounded-full border text-[10px] px-2.5 py-0.5 font-semibold",
-                c.out ? "bg-destructive/15 text-destructive border-destructive/30" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-              )}
-            >
-              {c.badge}
-            </Badge>
-          ) : <span />}
-          {c.subStats && <span className="text-[11px] text-muted-foreground truncate">{c.subStats[0]}</span>}
-        </div>
-      )}
-    </Card>
-  );
+    );
+  };
 
   return (
     <>
-    <Card className="p-5 border-border/50 bg-card/60">
+    <Card className="p-5 border-border/50 bg-card/60 gap-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" /> Vital Signs &amp; Pulse (Nabz)
         </p>
+        <div className="flex items-center gap-2 text-xs">
+          {visitsWithVitals.length > 0 && (needAttention > 0 ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-semibold text-red-600 dark:text-red-400">
+              <AlertTriangle className="h-3 w-3" /> {needAttention} {needAttention === 1 ? "reading needs" : "readings need"} attention
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-semibold text-emerald-700 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All readings normal
+            </span>
+          ))}
+          {lastRecordedAt && <span className="text-muted-foreground">Last recorded {when(lastRecordedAt)}</span>}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {statCards.map(renderStatCard)}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {tiles.map(renderTile)}
       </div>
+      <p className="text-[11px] text-muted-foreground -mt-1">Click any vital to see its history, what&apos;s normal, and to add or correct a reading.</p>
     </Card>
 
       {detailKey && (() => {
         const metric = METRICS.find((m) => m.key === detailKey);
-        if (!metric) return null;
-        // Chronological (oldest first) and newest-first views of this
-        // metric's own readings only — a visit where only a different
-        // metric was quick-added has no entry here at all, so it can't
-        // show up as a gap or phantom tick on this metric's chart.
+        const tile = tiles.find((t) => t.key === detailKey);
+        if (!metric || !tile) return null;
+        // This metric's own readings only — a visit where only a different
+        // metric was quick-added has no entry here at all.
         const chartData = trend.filter((t) => t[metric.key] != null);
         const readings = [...chartData].reverse();
-        const values = readings.map((r) => r[metric.key] as number);
-        const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
-        const min = values.length ? Math.min(...values) : null;
-        const max = values.length ? Math.max(...values) : null;
-        const latestVal = readings[0] ? (readings[0][metric.key] as number) : null;
-        const previousVal = readings[1] ? (readings[1][metric.key] as number) : null;
-        const delta = latestVal != null && previousVal != null ? latestVal - previousVal : null;
-        const latestOut = latestVal != null && metric.range ? latestVal < metric.range[0] || latestVal > metric.range[1] : false;
-
-        const insightParts: string[] = [];
-        if (latestVal != null && metric.range) {
-          if (latestVal < metric.range[0]) insightParts.push(`Below the normal range (${metric.range[0]}–${metric.range[1]} ${metric.unit})`);
-          else if (latestVal > metric.range[1]) insightParts.push(`Above the normal range (${metric.range[0]}–${metric.range[1]} ${metric.unit})`);
-          else insightParts.push(`Within the normal range (${metric.range[0]}–${metric.range[1]} ${metric.unit})`);
-        }
-        if (delta != null) {
-          insightParts.push(delta === 0 ? "unchanged since the last reading" : `${delta > 0 ? "increased" : "decreased"} by ${Math.abs(delta).toFixed(1)} ${metric.unit} since the last reading`);
-        }
-        const insightText = insightParts.length ? insightParts.join(", ") + "." : null;
+        const nums = (k: keyof TrendPoint) => readings.map((r) => r[k] as number | null).filter((v): v is number => v != null);
+        const stat = (k: keyof TrendPoint) => {
+          const v = nums(k);
+          return v.length ? { avg: v.reduce((a, b) => a + b, 0) / v.length, min: Math.min(...v), max: Math.max(...v) } : null;
+        };
+        const p1 = stat(metric.key); const p2 = metric.secondaryKey ? stat(metric.secondaryKey) : null;
+        const dp = (k: keyof TrendPoint) => (k === "temperatureF" || k === "bmi" || k === "weightKg" ? 1 : 0);
+        const pair = (a: number | undefined, b: number | undefined, k1: keyof TrendPoint, k2?: keyof TrendPoint) =>
+          a == null ? "—" : b != null && k2 ? `${a.toFixed(dp(k1))}/${b.toFixed(dp(k2))}` : a.toFixed(dp(k1));
+        const status = tile.status; const tone = status ? TONE_STYLES[status.tone] : null;
+        const bands = referenceBands(metric.key, normalRanges);
+        const deltaText = tile.delta == null ? "First reading" : tile.delta === 0 ? "No change" : `${tile.delta > 0 ? "+" : "−"}${Math.abs(tile.delta).toFixed(dp(metric.key))}`;
 
         return (
           <Dialog open onOpenChange={(o) => { if (!o) { setDetailKey(null); msg.clear(); } }}>
-            <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto gap-4">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-xl">
-                  <metric.icon className="h-5 w-5 text-primary" />{metric.label}
-                  {latestOut && (
-                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-[10px]">Out of range</Badge>
+                <DialogTitle className="flex items-center gap-3">
+                  <span className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${metric.color}1f`, color: metric.color }}>
+                    <metric.icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-lg font-semibold leading-tight">{metric.label}</span>
+                    <span className="block text-xs font-normal text-muted-foreground">{metric.unani}</span>
+                  </span>
+                  {status && tone && (
+                    <span className={cn("ml-auto mr-6 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold", tone.text, tone.bg, tone.border)}>
+                      <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} /> {status.label}
+                    </span>
                   )}
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-5">
-                {/* Summary — single line */}
-                <Card className={cn("p-3 flex flex-row items-center flex-wrap gap-x-5 gap-y-2", latestOut ? "border-destructive/40 bg-destructive/5" : "border-primary/30 bg-primary/5")}>
-                  <span className="flex items-baseline gap-1.5">
-                    <span className={cn("text-2xl font-bold leading-none", latestOut && "text-destructive")}>
-                      {latestVal ?? "—"}{metric.secondaryKey && readings[0] ? `/${readings[0][metric.secondaryKey] ?? "—"}` : ""}
-                    </span>
-                    <span className="text-sm text-muted-foreground">{metric.unit}</span>
-                  </span>
-                  <span className={cn("text-xs flex items-center gap-0.5", delta == null ? "text-muted-foreground/60" : delta > 0 ? "text-amber-600 dark:text-amber-400" : delta < 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")}>
-                    {delta == null ? "First reading" : delta === 0 ? <><Minus className="h-3 w-3 shrink-0" /> No change</> : (
-                      <>{delta > 0 ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />}{Math.abs(delta).toFixed(1)} vs last</>
-                    )}
-                  </span>
-                  <span className="text-border">·</span>
-                  <span className="text-xs text-muted-foreground">Avg {avg != null ? avg.toFixed(1) : "—"}</span>
-                  <span className="text-border">·</span>
-                  <span className="text-xs text-muted-foreground">Range {min ?? "—"}–{max ?? "—"}</span>
-                  <span className="text-border">·</span>
-                  <span className="text-xs text-muted-foreground">{readings.length} {readings.length === 1 ? "reading" : "readings"}</span>
-                </Card>
+              {/* Latest reading, explained */}
+              {tile.latest ? (
+                <div className={cn("rounded-xl border p-4 grid gap-4 md:grid-cols-[auto_1fr] md:items-center", tone && status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border/50 bg-muted/30")}>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Latest reading</p>
+                    <p className="flex items-baseline gap-1.5 mt-1">
+                      <span className={cn("text-4xl font-bold leading-none tracking-tight", tone && status!.tone !== "ok" && tone.text)}>{formatValue(metric.key, tile.latest)}</span>
+                      {metric.unit && <span className="text-sm text-muted-foreground">{metric.unit}</span>}
+                    </p>
+                    {tile.latestVisit && <p className="text-xs text-muted-foreground mt-1.5">{when(tile.latestVisit.visitDate)}</p>}
+                  </div>
+                  <div className="space-y-3 min-w-0">
+                    {status && <p className="text-sm leading-relaxed">{status.detail}</p>}
+                    {metric.key === "bpSystolic" ? (
+                      <div className="space-y-1.5">
+                        <RangeBar label="Systolic" value={tile.latest.bpSystolic} scale={GAUGE_SCALE.bpSystolic} normal={normalRanges.bpSystolic} tone={status?.tone} large />
+                        <RangeBar label="Diastolic" value={tile.latest.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={status?.tone} large />
+                      </div>
+                    ) : GAUGE_SCALE[metric.key === "heightCm" ? "bmi" : metric.key] ? (
+                      <RangeBar
+                        label={metric.key === "heightCm" ? "BMI" : undefined}
+                        value={metric.key === "bmi" || metric.key === "heightCm" ? tile.bmi : (tile.latest[metric.key as keyof VisitVitals] as number | null)}
+                        scale={GAUGE_SCALE[metric.key === "heightCm" ? "bmi" : metric.key]}
+                        normal={metric.key === "bmi" || metric.key === "heightCm" ? [18.5, 24.9] : metric.range!}
+                        tone={status?.tone}
+                        large
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/70 p-6 text-center">
+                  <p className="text-sm font-medium">{metric.isComputed ? "BMI appears once height and weight are recorded" : `No ${metric.label.toLowerCase()} reading yet`}</p>
+                  {!metric.isComputed && showNewVisitButton && <p className="text-xs text-muted-foreground mt-1">Add the first reading below.</p>}
+                </div>
+              )}
 
-                {showNewVisitButton && !metric.isComputed && (showQuickAdd ? (
-                  <Card className="relative px-3.5 pb-2.5 pt-6 border-primary/30 bg-primary/5 space-y-1.5">
+              {/* At a glance */}
+              {readings.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { label: "Change vs last", value: deltaText },
+                    { label: "Average", value: pair(p1?.avg, p2?.avg, metric.key, metric.secondaryKey) },
+                    { label: "Lowest", value: pair(p1?.min, p2?.min, metric.key, metric.secondaryKey) },
+                    { label: "Highest", value: pair(p1?.max, p2?.max, metric.key, metric.secondaryKey) },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-lg border border-border/50 bg-card px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                      <p className="text-sm font-semibold">{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add / correct */}
+              {showNewVisitButton && !metric.isComputed && (showQuickAdd ? (
+                <Card className="relative px-3.5 pb-2.5 pt-3 border-primary/30 bg-primary/5 gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-primary">{editingVisitId ? "Correct the last reading" : "New reading"}</p>
                     <button
                       type="button"
+                      aria-label="Close"
                       onClick={() => { setShowQuickAdd(false); setQuickValues({}); setQuickErrors({}); setEditingVisitId(null); setEditingVitals(null); }}
-                      className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
-                    {(() => {
-                      const fields = QUICK_FIELDS[metric.key].map((f) => {
-                        const raw = quickValues[f.key] ?? "";
-                        const num = parseFloat(raw);
-                        const outOfBounds = f.bound != null && raw !== "" && !Number.isNaN(num) && (num < f.bound[0] || num > f.bound[1]);
-                        return { ...f, raw, outOfBounds };
-                      });
-                      return (
-                        <div className="flex items-start gap-2">
-                          <div className={cn("grid gap-2 flex-1", fields.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
-                            {fields.map((f) => {
-                              const fieldError = quickErrors[f.key];
-                              return (
-                                <div key={f.key}>
-                                  <FloatingField
-                                    id={`quick-${f.key}`}
-                                    label={f.bound ? `${f.label} (${f.bound[0]}–${f.bound[1]})` : f.label}
-                                    type="number"
-                                    inputMode="decimal"
-                                    value={f.raw}
-                                    onChange={(e) => setQuickValue(f.key, e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        saveQuickReading(metric);
-                                      }
-                                    }}
-                                    endAdornment={unitAdornment(f.unit)}
-                                    error={f.outOfBounds || !!fieldError}
-                                    className="h-10"
-                                  />
-                                  {fieldError && (
-                                    <div className="flex items-center gap-0.5 mt-1 px-0.5 text-[11px] text-destructive font-medium">
-                                      <AlertTriangle className="h-3 w-3" /> {fieldError}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <Button size="sm" className="h-10 shrink-0" onClick={() => saveQuickReading(metric)} disabled={addingReading || checkingEditable}>
-                            {addingReading ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : editingVisitId ? (
-                              <Pencil className="h-3.5 w-3.5" />
-                            ) : (
-                              <Plus className="h-3.5 w-3.5" />
-                            )} {editingVisitId ? "Update" : "Save"}
-                          </Button>
-                        </div>
-                      );
-                    })()}
-                  </Card>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={openQuickAdd}>
-                      <Plus className="h-3.5 w-3.5" /> Add {metric.label} Reading
-                    </Button>
-                    {findLatestVisitFor(visitsWithVitals, metric.key as keyof VisitVitals) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0"
-                        onClick={() => openEditLastReading(metric)}
-                        disabled={checkingEditable}
-                      >
-                        {checkingEditable ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />} Edit Last
-                      </Button>
-                    )}
                   </div>
-                ))}
-                <NoticeSlot state={msg} />
+                  {(() => {
+                    const fields = QUICK_FIELDS[metric.key].map((f) => {
+                      const raw = quickValues[f.key] ?? "";
+                      const num = parseFloat(raw);
+                      const outOfBounds = f.bound != null && raw !== "" && !Number.isNaN(num) && (num < f.bound[0] || num > f.bound[1]);
+                      return { ...f, raw, outOfBounds };
+                    });
+                    return (
+                      <div className="flex items-start gap-2">
+                        <div className={cn("grid gap-2 flex-1", fields.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+                          {fields.map((f) => {
+                            const fieldError = quickErrors[f.key];
+                            return (
+                              <div key={f.key}>
+                                <FloatingField
+                                  id={`quick-${f.key}`}
+                                  label={f.label}
+                                  type="number"
+                                  inputMode="decimal"
+                                  value={f.raw}
+                                  autoFocus={f === fields[0]}
+                                  onChange={(e) => setQuickValue(f.key, e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveQuickReading(metric); } }}
+                                  endAdornment={unitAdornment(f.unit)}
+                                  error={f.outOfBounds || !!fieldError}
+                                  className="h-11"
+                                />
+                                {fieldError ? (
+                                  <div className="flex items-center gap-0.5 mt-1 px-0.5 text-[11px] text-destructive font-medium">
+                                    <AlertTriangle className="h-3 w-3" /> {fieldError}
+                                  </div>
+                                ) : f.bound ? (
+                                  <p className="mt-1 px-0.5 text-[11px] text-muted-foreground">Accepted {f.bound[0]}–{f.bound[1]} {f.unit}</p>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <Button className="h-11 shrink-0" onClick={() => saveQuickReading(metric)} disabled={addingReading || checkingEditable}>
+                          {addingReading ? <Loader2 className="h-4 w-4 animate-spin" /> : editingVisitId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                          {editingVisitId ? "Update" : "Save"}
+                        </Button>
+                      </div>
+                    );
+                  })()}
+                </Card>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" onClick={openQuickAdd}>
+                    <Plus className="h-3.5 w-3.5" /> Add new reading
+                  </Button>
+                  {findLatestVisitFor(visitsWithVitals, metric.key as keyof VisitVitals) && (
+                    <Button size="sm" variant="outline" onClick={() => openEditLastReading(metric)} disabled={checkingEditable}>
+                      {checkingEditable ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />} Correct last reading
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <NoticeSlot state={msg} />
 
-                {insightText && (
-                  <p className="text-sm text-muted-foreground flex items-start gap-1.5 px-1">
-                    <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
-                    {insightText}
-                  </p>
-                )}
-
-                {/* Big chart */}
-                <Card className="p-4 border-border/50 bg-card/60">
-                  <ResponsiveContainer width="100%" height={280}>
-                    <AreaChart data={chartData}>
+              {/* Trend */}
+              {chartData.length >= 2 ? (
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-sm font-semibold mb-2">Trend</p>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id={`fill-${String(metric.key)}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={metric.color} stopOpacity={0.25} />
                           <stop offset="95%" stopColor={metric.color} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      {metric.range && <ReferenceArea y1={metric.range[0]} y2={metric.range[1]} fill="#10b981" fillOpacity={0.08} />}
+                      {metric.range && <ReferenceArea y1={metric.range[0]} y2={metric.range[1]} fill="#10b981" fillOpacity={0.1} ifOverflow="extendDomain" />}
+                      {metric.secondaryRange && <ReferenceArea y1={metric.secondaryRange[0]} y2={metric.secondaryRange[1]} fill="#8b5cf6" fillOpacity={0.07} ifOverflow="extendDomain" />}
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                      <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} angle={-20} textAnchor="end" height={50} />
-                      <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} width={36} domain={["dataMin - 5", "dataMax + 5"]} />
-                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10 }} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
+                      <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={36} domain={["dataMin - 5", "dataMax + 5"]} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 12, borderRadius: 10 }}
+                        labelFormatter={(_, payload) => { const p = payload?.[0]?.payload as TrendPoint | undefined; return p ? `${p.fullDate}, ${p.time}` : ""; }}
+                      />
                       {metric.secondaryKey && <Legend wrapperStyle={{ fontSize: 12 }} />}
-                      <Area type="monotone" dataKey={metric.key} stroke={metric.color} strokeWidth={2.5} fill={`url(#fill-${String(metric.key)})`} dot={ColorDot(metric.range, metric.color)} connectNulls name={metric.label} />
+                      <Area type="monotone" dataKey={metric.key} stroke={metric.color} strokeWidth={2.5} fill={`url(#fill-${String(metric.key)})`} dot={ColorDot(metric.range, metric.color)} connectNulls name={metric.primaryLabel || metric.label} />
                       {metric.secondaryKey && (
-                        <Area type="monotone" dataKey={metric.secondaryKey} stroke={metric.secondaryColor} strokeWidth={2.5} fill="transparent" dot={ColorDot(undefined, metric.secondaryColor || metric.color)} connectNulls name={metric.secondaryLabel || "Secondary"} />
+                        <Area type="monotone" dataKey={metric.secondaryKey} stroke={metric.secondaryColor} strokeWidth={2.5} fill="transparent" dot={ColorDot(metric.secondaryRange, metric.secondaryColor || metric.color)} connectNulls name={metric.secondaryLabel} />
                       )}
                     </AreaChart>
                   </ResponsiveContainer>
                   {metric.range && (
-                    <p className="text-[11px] text-muted-foreground flex items-center flex-wrap gap-1 mt-2">
-                      Normal range: {metric.range[0]}–{metric.range[1]} {metric.unit}
-                      <span className="inline-flex items-center gap-1 ml-2"><span className="h-2 w-2 rounded-full bg-emerald-500" /> in range</span>
-                      <span className="inline-flex items-center gap-1 ml-2"><span className="h-2 w-2 rounded-full bg-destructive" /> out of range</span>
+                    <p className="text-[11px] text-muted-foreground flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
+                      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-4 rounded-sm bg-emerald-500/20" /> Normal zone</span>
+                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive" /> Outside normal</span>
                     </p>
                   )}
-                  {metric.formula && (
-                    <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 mt-2">
-                      <Lightbulb className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
-                      <span className="whitespace-pre-line">{metric.formula}</span>
-                    </p>
-                  )}
-                </Card>
+                </div>
+              ) : readings.length === 1 ? (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5 px-1">
+                  <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" /> The trend chart appears once there are two or more readings.
+                </p>
+              ) : null}
 
-              </div>
+              {/* Reading history */}
+              {readings.length > 0 && (
+                <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+                  <p className="text-sm font-semibold px-4 pt-3 pb-2">Reading history <span className="text-muted-foreground font-normal">· {readings.length}</span></p>
+                  <div className="divide-y divide-border/50 max-h-56 overflow-y-auto">
+                    {readings.slice(0, 20).map((r, i) => {
+                      const st = statusFor(metric.key, { ...r, bmi: r.bmi });
+                      const ts = st ? TONE_STYLES[st.tone] : null;
+                      return (
+                        <div key={i} className="flex items-center gap-3 px-4 py-2 text-sm">
+                          <span className="w-32 shrink-0 text-xs text-muted-foreground">{r.fullDate}<span className="block">{r.time}</span></span>
+                          <span className="font-semibold flex-1">{formatValue(metric.key, r)} <span className="text-xs font-normal text-muted-foreground">{metric.unit}</span></span>
+                          {i === 0 && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Latest</span>}
+                          {st && ts && <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap", ts.text, ts.bg, ts.border)}>{st.label}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* What's normal */}
+              {bands.length > 0 && (
+                <details className="group/ref rounded-xl border border-border/50 bg-card px-4 py-3">
+                  <summary className="text-sm font-semibold cursor-pointer list-none flex items-center justify-between">
+                    What&apos;s normal?
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/ref:rotate-90" />
+                  </summary>
+                  <div className="mt-3 grid gap-y-1.5 max-w-md">
+                    {bands.map((b) => (
+                      <div key={b.label} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="flex items-center gap-2"><span className={cn("h-2 w-2 rounded-full", TONE_STYLES[b.tone].dot)} />{b.label}</span>
+                        <span className="text-muted-foreground tabular-nums">{b.range}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {metric.formula ?? "Normal ranges are set by your administrator. Guidance only — the doctor makes the clinical judgement."}
+                  </p>
+                </details>
+              )}
             </DialogContent>
           </Dialog>
         );
       })()}
     </>
+  );
+}
+
+/** Horizontal scale with the normal zone shaded and a marker at the reading. */
+function RangeBar({ value, scale, normal, tone, label, large }: {
+  value: number | null | undefined; scale: [number, number]; normal: [number, number]; tone?: VitalTone; label?: string; large?: boolean;
+}) {
+  const pct = (v: number) => Math.min(100, Math.max(0, ((v - scale[0]) / (scale[1] - scale[0])) * 100));
+  const marker = value != null ? pct(value) : null;
+  const color = TONE_STYLES[tone ?? "ok"].bar;
+  return (
+    <div className="flex items-center gap-2" title={`Normal ${normal[0]}–${normal[1]}`}>
+      {label && <span className={cn("shrink-0 text-muted-foreground", large ? "w-16 text-xs" : "w-3 text-[10px] font-semibold")}>{label}</span>}
+      <div className={cn("relative flex-1 rounded-full bg-muted", large ? "h-2.5" : "h-1.5")}>
+        <div className="absolute inset-y-0 rounded-full bg-emerald-500/30" style={{ left: `${pct(normal[0])}%`, width: `${pct(normal[1]) - pct(normal[0])}%` }} />
+        {marker != null && (
+          <div
+            className={cn("absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background", large ? "h-4 w-4" : "h-3 w-3")}
+            style={{ left: `${marker}%`, background: color }}
+          />
+        )}
+      </div>
+      {large && value != null && <span className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums">{value}</span>}
+    </div>
   );
 }

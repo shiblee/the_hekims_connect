@@ -187,6 +187,9 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         ? [`${FIELD_LABELS[field]} must be between ${min} and ${max}${field === "temperatureF" ? "°F" : ""}`]
         : [];
     });
+    if (entryValues.bpSystolic != null && entryValues.bpDiastolic != null && entryValues.bpDiastolic >= entryValues.bpSystolic) {
+      outOfBounds.push("BP Diastolic (lower number) must be below Systolic — check the two numbers aren't swapped");
+    }
     if (outOfBounds.length) {
       msg.warning(
         outOfBounds.length === 1 ? "One value looks like a typo — please check it" : `${outOfBounds.length} values look like typos — please check them`,
