@@ -809,7 +809,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       </div>
 
       <PatientStageTracker
-        steps={PATIENT_JOURNEY_STEPS.map((s) => (s.key === "registration" && isDirty ? { ...s, variant: "warning" as const, variantLabel: "Unsaved Changes" } : s))}
+        steps={PATIENT_JOURNEY_STEPS.map((s) => (s.key === "registration" && isDirty ? { ...s, variant: "warning" as const, variantLabel: "Unsaved changes" } : s))}
         activeKey="registration"
         completedKeys={[]}
         onNavigate={(href) => guardedNavigate(() => router.push(href))}
