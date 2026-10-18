@@ -157,12 +157,12 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
           </div>
           <div className="min-w-0">
             <h2 className="font-serif text-lg font-semibold leading-tight">Hakeem Insight</h2>
-            <p className="text-[11px] text-muted-foreground leading-tight">
+            <p className="text-xs text-muted-foreground leading-tight">
               {generatedAt ? `Updated ${daysAgo(generatedAt)}` : "Triage & humoral reading"}
             </p>
           </div>
         </div>
-        <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 shrink-0">Preliminary</span>
+        <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 shrink-0">Preliminary</span>
       </div>
 
       <Button onClick={generate} disabled={running || !loaded} className="w-full">
@@ -174,7 +174,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       {running && (
         <ol className="space-y-1.5 rounded-lg border border-border/50 bg-background/60 p-3 animate-in fade-in">
           {STEPS.map((s, i) => (
-            <li key={s} className={cn("flex items-center gap-2 text-xs", i < step! ? "text-foreground" : i === step ? "text-primary font-medium" : "text-muted-foreground")}>
+            <li key={s} className={cn("flex items-center gap-2 text-[13px]", i < step! ? "text-foreground" : i === step ? "text-primary font-medium" : "text-muted-foreground")}>
               {i < step! ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : i === step ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Circle className="h-3.5 w-3.5" />}
               {s}
             </li>
@@ -187,12 +187,12 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       {!running && !hasAny && loaded && (
         <div className="rounded-lg border border-dashed border-border/70 p-3 space-y-2.5">
           <p className="text-sm font-semibold">One click gives you:</p>
-          <ul className="space-y-1.5 text-xs text-muted-foreground">
+          <ul className="space-y-1.5 text-[13px] text-muted-foreground">
             <li className="flex items-center gap-2"><Milestone className="h-3.5 w-3.5 text-primary" /> Triage priority and the next step</li>
             <li className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-primary" /> The four-humour balance (Akhlat)</li>
             <li className="flex items-center gap-2"><Quote className="h-3.5 w-3.5 text-primary" /> A plain-language explanation</li>
           </ul>
-          <div className="border-t border-border/50 pt-2 space-y-1 text-[11px]">
+          <div className="border-t border-border/50 pt-2 space-y-1 text-xs">
             <p className={cn("flex items-center gap-1.5", hasVitals ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
               {hasVitals ? <Check className="h-3 w-3" /> : <HeartPulse className="h-3 w-3" />} Vitals {hasVitals ? "recorded" : "not recorded yet"}
             </p>
@@ -208,18 +208,18 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
         <section className={cn("rounded-xl border p-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-300", tone.ring)}>
           <div className="flex items-start gap-2.5">
             <span className={cn("h-9 w-9 rounded-lg flex flex-col items-center justify-center shrink-0 leading-none", tone.badge)}>
-              {tone.level != null ? <><span className="text-[8px] font-semibold uppercase opacity-80">Level</span><span className="text-base font-bold">{tone.level}</span></> : <Milestone className="h-4 w-4" />}
+              {tone.level != null ? <><span className="text-[9px] font-semibold uppercase opacity-80">Level</span><span className="text-base font-bold">{tone.level}</span></> : <Milestone className="h-4 w-4" />}
             </span>
             <div className="min-w-0">
-              <p className={cn("text-[10px] font-semibold uppercase tracking-wide", tone.text)}>Triage priority{tone.word && ` · ${tone.word}`}</p>
+              <p className={cn("text-[11px] font-semibold uppercase tracking-wide", tone.text)}>Triage priority{tone.word && ` · ${tone.word}`}</p>
               <p className="text-sm font-semibold leading-snug">{routing.priorityLevel.replace(/^priority\s*level\s*\d\s*[:\-–]\s*/i, "")}</p>
             </div>
           </div>
-          <p className="flex items-start gap-1.5 text-xs">
+          <p className="flex items-start gap-1.5 text-[13px]">
             <ArrowRight className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
             <span><span className="text-muted-foreground">Next step:</span> <span className="font-medium">{routing.triageStream}</span></span>
           </p>
-          <p className="text-xs text-muted-foreground leading-relaxed">{routing.justification}</p>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">{routing.justification}</p>
         </section>
       )}
 
@@ -228,7 +228,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
         <section className="rounded-xl border border-border/50 bg-card p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-foreground flex items-center gap-1.5"><Scale className="h-4 w-4 text-primary" /> Humoral balance</p>
-            {humoral.dominantOverride && <span className="text-[10px] text-muted-foreground">Doctor&apos;s pick · engine said {humoral.dominant}</span>}
+            {humoral.dominantOverride && <span className="text-[11px] text-muted-foreground">Doctor&apos;s pick · engine said {humoral.dominant}</span>}
           </div>
           <div className="space-y-1.5">
             {HUMORS.map((h) => {
@@ -247,7 +247,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
                     isTop ? h.soft : "border-transparent hover:border-border/60 hover:bg-muted/40",
                   )}
                 >
-                  <div className="flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center justify-between gap-2 text-[13px]">
                     <span className="flex items-center gap-1.5 min-w-0">
                       {isTop && <Crown className={cn("h-3 w-3 shrink-0", h.text)} />}
                       <span className={cn("font-semibold", isTop && h.text)}>{c?.unaniLabel || h.dominant}</span>
@@ -262,20 +262,20 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
               );
             })}
           </div>
-          <p className="text-[10px] text-muted-foreground">Tap a humour to set your own pick.</p>
+          <p className="text-[11px] text-muted-foreground">Tap a humour to set your own pick.</p>
         </section>
       )}
 
       {/* 3 — Explanation */}
       {humoral?.aiClue && (
         <section className="rounded-xl border-l-4 border-primary/50 bg-primary/5 px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1 mb-1"><Quote className="h-3 w-3" /> Why {cfg(HUMORS.find((h) => h.dominant === effective)?.key ?? "")?.unaniLabel || effective}?</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1 mb-1"><Quote className="h-3 w-3" /> Why {cfg(HUMORS.find((h) => h.dominant === effective)?.key ?? "")?.unaniLabel || effective}?</p>
           <p className="text-sm leading-relaxed">{humoral.aiClue}</p>
         </section>
       )}
 
       {hasAny && (
-        <p className="text-[10px] text-muted-foreground italic">Decision support only — not a diagnosis. Confirm before acting.</p>
+        <p className="text-[11px] text-muted-foreground italic">Decision support only — not a diagnosis. Confirm before acting.</p>
       )}
     </Card>
   );

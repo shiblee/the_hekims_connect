@@ -282,13 +282,13 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           {/* What triggered it */}
           {flaggedLabels.length > 0 ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-destructive mb-1.5 flex items-center gap-1"><TriangleAlert className="h-3 w-3" /> Warning signs present</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-destructive mb-1.5 flex items-center gap-1"><TriangleAlert className="h-3 w-3" /> Warning signs present</p>
               <div className="flex flex-wrap gap-1.5">
-                {flaggedLabels.map((l) => <span key={l} className="rounded-full bg-destructive/10 border border-destructive/30 text-destructive px-2.5 py-0.5 text-xs font-medium">{l}</span>)}
+                {flaggedLabels.map((l) => <span key={l} className="rounded-full bg-destructive/10 border border-destructive/30 text-destructive px-2.5 py-0.5 text-[13px] font-medium">{l}</span>)}
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-2">No emergency warning signs are marked — describe why the patient is being referred.</p>
+            <p className="text-[13px] text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-2">No emergency warning signs are marked — describe why the patient is being referred.</p>
           )}
 
           <FloatingTextarea id="referReason" label="Reason for referral" required value={referReason} onChange={(e) => setReferReason(e.target.value)} rows={2} />
@@ -303,7 +303,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
                   type="button"
                   onClick={() => setReferredTo(d.name)}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] transition-colors",
                     referredTo === d.name ? "border-primary bg-primary text-primary-foreground" : d.suggested ? "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10" : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border",
                   )}
                 >
@@ -329,7 +329,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
                   )}
                 >
                   <span className="flex items-center gap-1.5 text-sm font-semibold"><span className={cn("h-2 w-2 rounded-full", u.dot)} />{u.label}</span>
-                  <span className="block text-[11px] text-muted-foreground mt-0.5">{u.when}</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{u.when}</span>
                 </button>
               ))}
             </div>
@@ -338,7 +338,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           <FloatingTextarea id="referNotes" label="Notes for the receiving doctor (optional)" value={referNotes} onChange={(e) => setReferNotes(e.target.value)} rows={2} />
 
           {/* What happens next */}
-          <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground flex items-start gap-2">
+          <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] text-muted-foreground flex items-start gap-2">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
               {referredTo.trim()
@@ -431,7 +431,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         title="Emergency Warning Signs"
         right={
           <span className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-semibold",
             anyPresent || locked ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
           )}>
             <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
@@ -448,7 +448,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
             </span>
           ))}
           {presentCount === 0 && <span className="text-sm text-muted-foreground">No warning signs were marked.</span>}
-          <span className="text-xs text-muted-foreground ml-auto">Locked after referral — to change, remove the referral (Edit on the referral line).</span>
+          <span className="text-[13px] text-muted-foreground ml-auto">Locked after referral — to change, remove the referral (Edit on the referral line).</span>
         </div>
       ) : (
       <FloatingMultiSelect
@@ -479,14 +479,14 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       )}
 
       {anyPresent && !locked && screening?.outcome !== "continued_ama" && (
-        <p className="text-xs text-destructive">
+        <p className="text-[13px] text-destructive">
           Referral recommended — use <span className="font-semibold">Refer Patient</span> at the bottom of the page, or{" "}
           <button type="button" onClick={openAmaDialog} className="underline underline-offset-2 hover:text-destructive/80">continue against advice</button>.
         </p>
       )}
 
       {screening?.outcome === "continued_ama" && screening.amaDecline && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px]">
           <ShieldQuestion className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-muted-foreground">
             <span className="font-semibold text-amber-700 dark:text-amber-400">Continuing against medical advice</span>

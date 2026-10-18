@@ -95,7 +95,7 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
         title="Other Symptoms"
         right={
           <span className={cn(
-            "rounded-full border px-2.5 py-1 text-xs font-semibold",
+            "rounded-full border px-2.5 py-1 text-[13px] font-semibold",
             selected.length ? "border-primary/30 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground",
           )}>
             {selected.length ? `${selected.length} noted` : "None noted"}

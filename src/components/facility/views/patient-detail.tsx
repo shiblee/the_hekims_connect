@@ -362,18 +362,18 @@ function ReferralLine({ visits, onEdit }: { onEdit?: () => void; visits: { id: s
     return (
       <div key={v.id} title={full} className="flex items-center gap-2 min-w-0 text-sm">
         {first ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-destructive text-white px-2 py-0.5 text-xs font-semibold shrink-0">
+          <span className="inline-flex items-center gap-1 rounded-full bg-destructive text-white px-2 py-0.5 text-[13px] font-semibold shrink-0">
             <ShieldAlert className="h-3 w-3" /> Referred · {r.urgency}
           </span>
         ) : (
-          <span className="rounded-full border border-destructive/30 text-destructive px-2 py-0.5 text-[11px] font-medium shrink-0">{r.urgency}</span>
+          <span className="rounded-full border border-destructive/30 text-destructive px-2 py-0.5 text-xs font-medium shrink-0">{r.urgency}</span>
         )}
         <span className="shrink-0"><span className="text-muted-foreground">to</span> <span className="font-semibold">{r.referredTo}</span></span>
         <span className="truncate min-w-0 text-muted-foreground">
           · <span className="text-foreground">{r.reason}</span>
           {r.notes && <> · Notes: <span className="text-foreground">{r.notes}</span></>}
         </span>
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground whitespace-nowrap">{v.visitCode ? `${v.visitCode} · ` : ""}{when}</span>
+        <span className="ml-auto shrink-0 text-[13px] text-muted-foreground whitespace-nowrap">{v.visitCode ? `${v.visitCode} · ` : ""}{when}</span>
       </div>
     );
   };
@@ -385,13 +385,13 @@ function ReferralLine({ visits, onEdit }: { onEdit?: () => void; visits: { id: s
           <button
             type="button"
             onClick={onEdit}
-            className="shrink-0 inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-0.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-0.5 text-[13px] font-medium text-destructive hover:bg-destructive/10 transition-colors"
           >
             <Pencil className="h-3 w-3" /> Edit
           </button>
         )}
         {visits.length > 1 && (
-          <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 text-xs font-medium text-destructive hover:underline">
+          <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 text-[13px] font-medium text-destructive hover:underline">
             {open ? "Hide" : `+${visits.length - 1} earlier`}
           </button>
         )}

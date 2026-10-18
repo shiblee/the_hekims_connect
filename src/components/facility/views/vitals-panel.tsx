@@ -79,7 +79,7 @@ function buildQuickFields(entryBounds: Record<string, [number, number]>): Record
 }
 
 function unitAdornment(unit: string) {
-  return <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{unit}</span>;
+  return <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground pointer-events-none">{unit}</span>;
 }
 
 function ColorDot(range: [number, number] | undefined, color: string) {
@@ -363,7 +363,7 @@ export function VitalsPanel({
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold leading-tight">{t.label}</p>
-              <p className="text-[11px] text-muted-foreground leading-tight">{t.unani}</p>
+              <p className="text-xs text-muted-foreground leading-tight">{t.unani}</p>
             </div>
           </div>
           {t.cardTrend.length >= 2 && (
@@ -381,7 +381,7 @@ export function VitalsPanel({
           <div className="flex-1 flex flex-col items-start justify-center gap-2 py-1">
             <p className="text-sm text-muted-foreground">{t.isComputed ? "Needs height and weight" : "Not recorded yet"}</p>
             {showNewVisitButton && !t.isComputed && (
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); openDetail(t.key); openQuickAdd(); }}>
+              <Button size="sm" variant="outline" className="h-7 text-[13px]" onClick={(e) => { e.stopPropagation(); openDetail(t.key); openQuickAdd(); }}>
                 <Plus className="h-3 w-3" /> Add reading
               </Button>
             )}
@@ -394,11 +394,11 @@ export function VitalsPanel({
                 <span className={cn("font-bold leading-none tracking-tight", t.key === "heightCm" ? "text-xl" : "text-3xl", tone && t.status!.tone !== "ok" && tone.text)}>
                   {formatValue(t.key, t.latest!)}
                 </span>
-                {t.unit && <span className="text-xs text-muted-foreground">{t.unit}</span>}
-                {t.key === "temperatureF" && t.latest!.temperatureC != null && <span className="text-xs text-muted-foreground">· {t.latest!.temperatureC}°C</span>}
+                {t.unit && <span className="text-[13px] text-muted-foreground">{t.unit}</span>}
+                {t.key === "temperatureF" && t.latest!.temperatureC != null && <span className="text-[13px] text-muted-foreground">· {t.latest!.temperatureC}°C</span>}
               </p>
               {t.delta != null && (
-                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground whitespace-nowrap" title="Change since the previous reading">
+                <span className="flex items-center gap-0.5 text-xs text-muted-foreground whitespace-nowrap" title="Change since the previous reading">
                   {t.delta === 0 ? <><Minus className="h-3 w-3" /> same</> : <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{Math.abs(t.delta).toFixed(t.key === "temperatureF" || t.key === "bmi" ? 1 : 0)}</>}
                 </span>
               )}
@@ -411,15 +411,15 @@ export function VitalsPanel({
                 <RangeBar label="D" value={t.latest!.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={t.status?.tone} />
               </div>
             ) : t.key === "heightCm" ? (
-              <p className="text-xs text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}</p>
+              <p className="text-[13px] text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}</p>
             ) : GAUGE_SCALE[t.key] ? (
               <RangeBar value={t.key === "bmi" ? t.bmi : (t.latest![t.key as keyof VisitVitals] as number | null)} scale={GAUGE_SCALE[t.key]} normal={t.key === "bmi" ? [18.5, 24.9] : t.range!} tone={t.status?.tone} />
             ) : null}
 
             {/* Change + when */}
-            <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground mt-auto pt-0.5">
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground mt-auto pt-0.5">
               {t.status && tone ? (
-                <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap", tone.text, tone.bg, tone.border)}>
+                <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold whitespace-nowrap", tone.text, tone.bg, tone.border)}>
                   {t.status.tone === "urgent" ? <AlertTriangle className="h-3 w-3" /> : t.status.tone === "check" ? <HelpCircle className="h-3 w-3" /> : <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />}
                   {t.status.label}
                 </span>
@@ -440,7 +440,7 @@ export function VitalsPanel({
         icon={Activity}
         title="Vital Signs & Pulse (Nabz)"
         right={
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-[13px]">
           {visitsWithVitals.length > 0 && (needAttention > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-semibold text-red-600 dark:text-red-400">
               <AlertTriangle className="h-3 w-3" /> {needAttention} {needAttention === 1 ? "reading needs" : "readings need"} attention
@@ -491,10 +491,10 @@ export function VitalsPanel({
                   </span>
                   <span className="min-w-0">
                     <span className="block text-lg font-semibold leading-tight">{metric.label}</span>
-                    <span className="block text-xs font-normal text-muted-foreground">{metric.unani}</span>
+                    <span className="block text-[13px] font-normal text-muted-foreground">{metric.unani}</span>
                   </span>
                   {status && tone && (
-                    <span className={cn("ml-auto mr-6 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold", tone.text, tone.bg, tone.border)}>
+                    <span className={cn("ml-auto mr-6 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-semibold", tone.text, tone.bg, tone.border)}>
                       <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} /> {status.label}
                     </span>
                   )}
@@ -505,12 +505,12 @@ export function VitalsPanel({
               {tile.latest ? (
                 <div className={cn("rounded-xl border p-4 grid gap-4 md:grid-cols-[auto_1fr] md:items-center", tone && status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border/50 bg-muted/30")}>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Latest reading</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest reading</p>
                     <p className="flex items-baseline gap-1.5 mt-1">
                       <span className={cn("text-4xl font-bold leading-none tracking-tight", tone && status!.tone !== "ok" && tone.text)}>{formatValue(metric.key, tile.latest)}</span>
                       {metric.unit && <span className="text-sm text-muted-foreground">{metric.unit}</span>}
                     </p>
-                    {tile.latestVisit && <p className="text-xs text-muted-foreground mt-1.5">{when(tile.latestVisit.visitDate)}</p>}
+                    {tile.latestVisit && <p className="text-[13px] text-muted-foreground mt-1.5">{when(tile.latestVisit.visitDate)}</p>}
                   </div>
                   <div className="space-y-3 min-w-0">
                     {status && <p className="text-sm leading-relaxed">{status.detail}</p>}
@@ -534,7 +534,7 @@ export function VitalsPanel({
               ) : (
                 <div className="rounded-xl border border-dashed border-border/70 p-6 text-center">
                   <p className="text-sm font-medium">{metric.isComputed ? "BMI appears once height and weight are recorded" : `No ${metric.label.toLowerCase()} reading yet`}</p>
-                  {!metric.isComputed && showNewVisitButton && <p className="text-xs text-muted-foreground mt-1">Add the first reading below.</p>}
+                  {!metric.isComputed && showNewVisitButton && <p className="text-[13px] text-muted-foreground mt-1">Add the first reading below.</p>}
                 </div>
               )}
 
@@ -548,7 +548,7 @@ export function VitalsPanel({
                     { label: "Highest", value: pair(p1?.max, p2?.max, metric.key, metric.secondaryKey) },
                   ].map((s) => (
                     <div key={s.label} className="rounded-lg border border-border/50 bg-card px-3 py-2">
-                      <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
                       <p className="text-sm font-semibold">{s.value}</p>
                     </div>
                   ))}
@@ -559,7 +559,7 @@ export function VitalsPanel({
               {showNewVisitButton && !metric.isComputed && (showQuickAdd ? (
                 <Card className="relative px-3.5 pb-2.5 pt-3 border-primary/30 bg-primary/5 gap-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-primary">{editingVisitId ? "Correct the last reading" : "New reading"}</p>
+                    <p className="text-[13px] font-semibold text-primary">{editingVisitId ? "Correct the last reading" : "New reading"}</p>
                     <button
                       type="button"
                       aria-label="Close"
@@ -597,11 +597,11 @@ export function VitalsPanel({
                                   className="h-11"
                                 />
                                 {fieldError ? (
-                                  <div className="flex items-center gap-0.5 mt-1 px-0.5 text-[11px] text-destructive font-medium">
+                                  <div className="flex items-center gap-0.5 mt-1 px-0.5 text-xs text-destructive font-medium">
                                     <AlertTriangle className="h-3 w-3" /> {fieldError}
                                   </div>
                                 ) : f.bound ? (
-                                  <p className="mt-1 px-0.5 text-[11px] text-muted-foreground">Accepted {f.bound[0]}–{f.bound[1]} {f.unit}</p>
+                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">Accepted {f.bound[0]}–{f.bound[1]} {f.unit}</p>
                                 ) : null}
                               </div>
                             );
@@ -658,14 +658,14 @@ export function VitalsPanel({
                     </AreaChart>
                   </ResponsiveContainer>
                   {metric.range && (
-                    <p className="text-[11px] text-muted-foreground flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
+                    <p className="text-xs text-muted-foreground flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
                       <span className="inline-flex items-center gap-1"><span className="h-2.5 w-4 rounded-sm bg-emerald-500/20" /> Normal zone</span>
                       <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive" /> Outside normal</span>
                     </p>
                   )}
                 </div>
               ) : readings.length === 1 ? (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5 px-1">
+                <p className="text-[13px] text-muted-foreground flex items-center gap-1.5 px-1">
                   <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" /> The trend chart appears once there are two or more readings.
                 </p>
               ) : null}
@@ -680,10 +680,10 @@ export function VitalsPanel({
                       const ts = st ? TONE_STYLES[st.tone] : null;
                       return (
                         <div key={i} className="flex items-center gap-3 px-4 py-2 text-sm">
-                          <span className="w-32 shrink-0 text-xs text-muted-foreground">{r.fullDate}<span className="block">{r.time}</span></span>
-                          <span className="font-semibold flex-1">{formatValue(metric.key, r)} <span className="text-xs font-normal text-muted-foreground">{metric.unit}</span></span>
-                          {i === 0 && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Latest</span>}
-                          {st && ts && <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap", ts.text, ts.bg, ts.border)}>{st.label}</span>}
+                          <span className="w-32 shrink-0 text-[13px] text-muted-foreground">{r.fullDate}<span className="block">{r.time}</span></span>
+                          <span className="font-semibold flex-1">{formatValue(metric.key, r)} <span className="text-[13px] font-normal text-muted-foreground">{metric.unit}</span></span>
+                          {i === 0 && <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Latest</span>}
+                          {st && ts && <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap", ts.text, ts.bg, ts.border)}>{st.label}</span>}
                         </div>
                       );
                     })}
@@ -706,7 +706,7 @@ export function VitalsPanel({
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-3">
+                  <p className="text-xs text-muted-foreground mt-3">
                     {metric.formula ?? "Normal ranges are set by your administrator. Guidance only — the doctor makes the clinical judgement."}
                   </p>
                 </details>
@@ -728,7 +728,7 @@ function RangeBar({ value, scale, normal, tone, label, large }: {
   const color = TONE_STYLES[tone ?? "ok"].bar;
   return (
     <div className="flex items-center gap-2" title={`Normal ${normal[0]}–${normal[1]}`}>
-      {label && <span className={cn("shrink-0 text-muted-foreground", large ? "w-16 text-xs" : "w-3 text-[10px] font-semibold")}>{label}</span>}
+      {label && <span className={cn("shrink-0 text-muted-foreground", large ? "w-16 text-[13px]" : "w-3 text-[11px] font-semibold")}>{label}</span>}
       <div className={cn("relative flex-1 rounded-full bg-muted", large ? "h-2.5" : "h-1.5")}>
         <div className="absolute inset-y-0 rounded-full bg-emerald-500/30" style={{ left: `${pct(normal[0])}%`, width: `${pct(normal[1]) - pct(normal[0])}%` }} />
         {marker != null && (
@@ -738,7 +738,7 @@ function RangeBar({ value, scale, normal, tone, label, large }: {
           />
         )}
       </div>
-      {large && value != null && <span className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums">{value}</span>}
+      {large && value != null && <span className="w-12 shrink-0 text-right text-[13px] font-semibold tabular-nums">{value}</span>}
     </div>
   );
 }

@@ -281,12 +281,12 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                         <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {c.label}
                       </button>
                     ))}
-                    {addComplaintResults.length === 0 && <p className="text-xs text-muted-foreground px-3 py-1.5">No matching complaints</p>}
+                    {addComplaintResults.length === 0 && <p className="text-[13px] text-muted-foreground px-3 py-1.5">No matching complaints</p>}
                   </div>
                 )}
               </div>
             </FieldBox>
-            <p className="text-[11px] text-muted-foreground mt-1.5 px-1">
+            <p className="text-xs text-muted-foreground mt-1.5 px-1">
               {complaintLabels.length > 1
                 ? <>Filling in details for <span className="font-semibold text-foreground">{activeLabel}</span> — click another complaint to switch.</>
                 : "From reception's intake — add or remove as the consultation reveals more."}
@@ -323,7 +323,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                 </Select>
                 <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 mr-3" />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5 px-1">For <span className="font-medium text-foreground">{activeLabel}</span>{active.onsetValue ? ` · ${active.onsetValue} ${active.onsetUnit}` : ""}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 px-1">For <span className="font-medium text-foreground">{activeLabel}</span>{active.onsetValue ? ` · ${active.onsetValue} ${active.onsetUnit}` : ""}</p>
             </div>
           )}
         </div>
@@ -342,13 +342,13 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                 className="flex-1"
               />
               <span className={cn(
-                "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+                "shrink-0 rounded-full px-2.5 py-0.5 text-[13px] font-semibold whitespace-nowrap",
                 active.severityScore >= 8 ? "bg-red-500/10 text-red-600 dark:text-red-400" : active.severityScore >= 5 ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
               )}>
                 {active.severityScore}/10{severityLabelFor(active.severityScore) ? ` · ${severityLabelFor(active.severityScore)}` : ""}
               </span>
             </div>
-            <div className="flex items-center justify-between mt-1.5 text-[11px] text-muted-foreground pr-1">
+            <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground pr-1">
               <span>1 · {severityAnchor(1) || "Mild"}</span>
               <span>5 · {severityAnchor(5) || "Moderate"}</span>
               <span>10 · {severityAnchor(10) || "Severe"}</span>
@@ -392,7 +392,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                           )}
                           aria-label={`Add to ${title}`}
                         >
-                          <Plus className="h-4 w-4" />{selected.length > 0 && <span className="text-xs">Add</span>}
+                          <Plus className="h-4 w-4" />{selected.length > 0 && <span className="text-[13px]">Add</span>}
                         </button>
                       </PopoverTrigger>
                     )}

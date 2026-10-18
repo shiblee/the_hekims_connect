@@ -71,7 +71,7 @@ export function PatientStageTracker({
                 )}
               >
                 <span className={cn(
-                  "relative h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-transform",
+                  "relative h-7 w-7 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 transition-transform",
                   variant === "complete" && "bg-emerald-500 text-white",
                   variant === "active" && "bg-emerald-500 text-white",
                   variant === "warning" && "bg-amber-500 text-white",
@@ -106,12 +106,12 @@ export function PatientStageTracker({
                 >
                   <span className="flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-foreground">Step {i + 1} · {s.label}</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">{status}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">{status}</span>
                   </span>
-                  {s.subtitle && <span className="block text-xs font-medium text-emerald-700 dark:text-emerald-400 mt-0.5">{s.subtitle}</span>}
-                  {s.description && <span className="block text-xs text-muted-foreground mt-1 leading-relaxed">{s.description}</span>}
+                  {s.subtitle && <span className="block text-[13px] font-medium text-emerald-700 dark:text-emerald-400 mt-0.5">{s.subtitle}</span>}
+                  {s.description && <span className="block text-[13px] text-muted-foreground mt-1 leading-relaxed">{s.description}</span>}
                   {hint && (
-                    <span className={cn("mt-2 flex items-center gap-1 text-[11px] font-medium", clickable ? "text-primary" : "text-muted-foreground")}>
+                    <span className={cn("mt-2 flex items-center gap-1 text-xs font-medium", clickable ? "text-primary" : "text-muted-foreground")}>
                       {clickable && <ChevronRight className="h-3 w-3" />}{hint}
                     </span>
                   )}
@@ -129,7 +129,7 @@ export function PatientStageTracker({
             </li>
           );
         })}
-        <li className="hidden lg:block shrink-0 pl-3 ml-1 border-l border-border/60 text-xs text-muted-foreground whitespace-nowrap">
+        <li className="hidden lg:block shrink-0 pl-3 ml-1 border-l border-border/60 text-[13px] text-muted-foreground whitespace-nowrap">
           Step <span className="font-semibold text-foreground">{activeIndex + 1}</span>/{steps.length}
         </li>
       </ol>

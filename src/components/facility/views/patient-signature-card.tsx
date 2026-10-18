@@ -48,7 +48,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       title={`Copy ${label}`}
       className="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
     >
-      {copied ? <><Check className="h-3 w-3 text-emerald-500" /><span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span></> : <Copy className="h-3 w-3" />}
+      {copied ? <><Check className="h-3 w-3 text-emerald-500" /><span className="text-[11px] text-emerald-600 dark:text-emerald-400">Copied</span></> : <Copy className="h-3 w-3" />}
     </button>
   );
 }
@@ -57,7 +57,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 function Fact({ icon: Icon, label, children, className }: { icon: typeof Phone; label: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Icon className="h-3 w-3" />{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Icon className="h-3 w-3" />{label}</p>
       <div className="text-sm font-medium text-foreground leading-snug mt-0.5">{children}</div>
     </div>
   );
@@ -135,16 +135,16 @@ export function PatientSignatureCard({
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="font-serif text-lg sm:text-xl font-bold tracking-tight leading-tight">{patient.name}</h1>
               {patient.patientCode && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 text-amber-700 dark:text-amber-400 border border-amber-400/30 font-mono text-[11px] pl-1.5 pr-1 py-0.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 text-amber-700 dark:text-amber-400 border border-amber-400/30 font-mono text-xs pl-1.5 pr-1 py-0.5">
                   <IdCard className="h-3 w-3" /> {patient.patientCode}
                   <CopyButton value={patient.patientCode} label="patient code" />
                 </span>
               )}
-              <Badge variant="outline" className="bg-muted/60 text-muted-foreground border-border/50 text-[11px] font-medium">
+              <Badge variant="outline" className="bg-muted/60 text-muted-foreground border-border/50 text-xs font-medium">
                 {visitCount <= 1 ? "First visit" : `Returning · ${visitCount} visits`}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <p className="text-[13px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
               <span>{patient.gender || "Gender —"}</span>
               <span className="text-border">·</span>
               <span>{age === "—" ? "Age —" : `${patient.dobApprox ? "~" : ""}${age}`}</span>
@@ -177,7 +177,7 @@ export function PatientSignatureCard({
             {latest ? (
               <span className="whitespace-nowrap">
                 {daysAgo(latest.visitDate)}
-                {latest.visitCode && <span className="text-muted-foreground font-normal font-mono text-xs"> · {latest.visitCode}</span>}
+                {latest.visitCode && <span className="text-muted-foreground font-normal font-mono text-[13px]"> · {latest.visitCode}</span>}
                 <span className="text-muted-foreground font-normal"> · {latest.doctor?.name ? latest.doctor.name : "Any doctor"}</span>
               </span>
             ) : <span className="text-muted-foreground font-normal">No visit yet</span>}
@@ -189,33 +189,33 @@ export function PatientSignatureCard({
       {hasRow2 && (
         <div className="mt-2.5 pt-2.5 border-t border-border/50 flex items-center gap-x-2 gap-y-1.5 flex-wrap">
           {allergies.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[13px] font-medium text-destructive">
               <AlertTriangle className="h-3 w-3 shrink-0" /> Allergic to: {allergies.join(", ")}
             </span>
           )}
           {lastReferralAt && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[13px] font-medium text-destructive">
               <ShieldAlert className="h-3 w-3 shrink-0" /> Referred out {daysAgo(lastReferralAt)}
             </span>
           )}
           {lastAmaAt && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[13px] font-medium text-amber-700 dark:text-amber-400">
               <ShieldQuestion className="h-3 w-3 shrink-0" /> Declined referral {daysAgo(lastAmaAt)}
             </span>
           )}
           {wheelchair && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[13px] font-medium text-amber-700 dark:text-amber-400">
               <Accessibility className="h-3 w-3 shrink-0" /> Wheelchair
             </span>
           )}
           {(complaints.length > 0 || intake?.onsetTimeline) && (
             <>
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 ml-1"><Stethoscope className="h-3 w-3" /> Came in for</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 ml-1"><Stethoscope className="h-3 w-3" /> Came in for</span>
               {complaints.map((c) => (
-                <span key={c} className="rounded-full bg-primary/10 border border-primary/25 text-primary px-2 py-0.5 text-xs font-medium">{c}</span>
+                <span key={c} className="rounded-full bg-primary/10 border border-primary/25 text-primary px-2 py-0.5 text-[13px] font-medium">{c}</span>
               ))}
               {intake?.onsetTimeline && ONSET[intake.onsetTimeline] && (
-                <span className="rounded-full bg-muted/60 text-muted-foreground px-2 py-0.5 text-xs">{ONSET[intake.onsetTimeline]}</span>
+                <span className="rounded-full bg-muted/60 text-muted-foreground px-2 py-0.5 text-[13px]">{ONSET[intake.onsetTimeline]}</span>
               )}
             </>
           )}
@@ -224,7 +224,7 @@ export function PatientSignatureCard({
               type="button"
               onClick={() => setExpanded((v) => !v)}
               aria-expanded={expanded}
-              className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"
             >
               {expanded ? "Fewer details" : "More details"}
               <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
@@ -243,7 +243,7 @@ export function PatientSignatureCard({
               {medicines.length > 0 ? (
                 <span className="flex flex-wrap gap-1 mt-0.5">
                   {medicines.map((m) => (
-                    <span key={`${m.kind}:${m.label}`} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-normal",
+                    <span key={`${m.kind}:${m.label}`} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[13px] font-normal",
                       m.kind === "medication" ? "bg-primary/10 border-primary/25 text-primary" : "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400")}>
                       {m.kind === "medication" ? <Pill className="h-3 w-3" /> : <Leaf className="h-3 w-3" />}{m.label}
                     </span>
@@ -301,7 +301,7 @@ export function RecordedVitalsStrip({ vitals, visits, action }: {
   return (
     <div className="border-t border-border/50 pt-4">
       <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
           <Activity className="h-3.5 w-3.5" /> Recorded Vitals
           {vitals?.updatedAt && <span className="normal-case tracking-normal font-normal">· {new Date(vitals.updatedAt).toLocaleString()}</span>}
         </p>
@@ -313,12 +313,12 @@ export function RecordedVitalsStrip({ vitals, visits, action }: {
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
           {tiles.map((t) => (
             <div key={t.label} className={cn("rounded-lg border px-3 py-2", t.flagged ? "border-destructive/40 bg-destructive/5" : "border-border/50 bg-background/40")}>
-              <p className="text-[11px] text-muted-foreground">{t.label}</p>
+              <p className="text-xs text-muted-foreground">{t.label}</p>
               <p className={cn("text-base font-semibold leading-tight", t.flagged && "text-destructive")}>
-                {t.value} <span className="text-[11px] font-normal text-muted-foreground">{t.value !== "—" ? t.unit : ""}</span>
+                {t.value} <span className="text-xs font-normal text-muted-foreground">{t.value !== "—" ? t.unit : ""}</span>
               </p>
-              {t.flagged && <p className="text-[10px] text-destructive">Outside normal range</p>}
-              {t.note && <p className={cn("text-[10px]", t.noteClass)}>{t.note}</p>}
+              {t.flagged && <p className="text-[11px] text-destructive">Outside normal range</p>}
+              {t.note && <p className={cn("text-[11px]", t.noteClass)}>{t.note}</p>}
             </div>
           ))}
         </div>
