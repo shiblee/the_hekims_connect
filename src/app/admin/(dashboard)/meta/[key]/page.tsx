@@ -359,9 +359,6 @@ export default function MetaSectionPage() {
     const Icon = kind === "aggravating" ? TrendingUp : TrendingDown;
     return (
       <div className="space-y-1.5">
-        <p className="text-sm text-muted-foreground mb-3">
-          Active factors are offered to the doctor as chips for each chief complaint in the Chief Complaint Matrix.
-        </p>
         {list.map((f, idx) => (
           <div key={f.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
             <div className="flex flex-col -my-1">
