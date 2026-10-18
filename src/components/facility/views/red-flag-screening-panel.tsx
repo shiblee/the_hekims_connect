@@ -418,10 +418,10 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
     </>
   );
 
-  // Once referred, the referral shows as one line under the patient signature
-  // (with Edit) — the panel itself steps aside but keeps its dialogs and stays
-  // mounted, so the page's Proceed check and Edit still work.
-  if (alreadyReferred && screening?.referral) return dialogs;
+  // After a referral the signs are locked (the visit's emergency decision is made);
+  // the referral itself is shown — and edited — on the line under the signature card.
+  const locked = alreadyReferred && !!screening?.referral;
+
 
   return (
     <Card className={cn("p-4 gap-3 border-border/50 bg-card transition-colors", anyPresent && "border-destructive/40")}>
@@ -432,14 +432,25 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         right={
           <span className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
-            anyPresent ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+            anyPresent || locked ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
           )}>
             <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
-            {anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
+            {locked ? `Referred · ${presentCount ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"}` : "no signs marked"}` : anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
           </span>
         }
       />
 
+      {locked ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[...criteria.filter((c) => present[c.id]).map((c) => c.label), ...custom].map((l) => (
+            <span key={l} className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-0.5 text-sm text-destructive">
+              <TriangleAlert className="h-3 w-3" />{l}
+            </span>
+          ))}
+          {presentCount === 0 && <span className="text-sm text-muted-foreground">No warning signs were marked.</span>}
+          <span className="text-xs text-muted-foreground ml-auto">Locked after referral — to change, remove the referral (Edit on the referral line).</span>
+        </div>
+      ) : (
       <FloatingMultiSelect
         id="warningSignSearch"
         label="Search emergency warning signs"
@@ -465,8 +476,9 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         onCreate={addCustomSign}
         createLabel={(q) => `Add "${q}" as another warning sign`}
       />
+      )}
 
-      {anyPresent && screening?.outcome !== "continued_ama" && (
+      {anyPresent && !locked && screening?.outcome !== "continued_ama" && (
         <p className="text-xs text-destructive">
           Referral recommended — use <span className="font-semibold">Refer Patient</span> at the bottom of the page, or{" "}
           <button type="button" onClick={openAmaDialog} className="underline underline-offset-2 hover:text-destructive/80">continue against advice</button>.
