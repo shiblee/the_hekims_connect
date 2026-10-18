@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { formatAge, ageFromDob } from "@/lib/age";
 import { calculateBmi } from "@/lib/bmi";
+import { courseFor } from "@/lib/chronology";
 import { bpStatus, pulseStatus, spo2Status, temperatureStatus, bmiStatus, type VitalStatus } from "@/lib/vital-status";
 import { LoadFailed } from "@/components/shared/inline-notice";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,9 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   // ---------------------------------------------------------------- status
   const ws = data.warningSigns;
   const decided = ws && ["cleared", "referred", "continued_ama"].includes(ws.outcome);
+  const chron = data.later?.chronology;
+  const course = chron?.durationValue != null ? courseFor(String(chron.durationValue), chron.durationUnit || "days") : null;
+  const mz = data.later?.mizajAssessment;
   const missing = [
     !data.vitals && "Vital signs",
     !(data.complaints?.length) && "Main complaints",
@@ -69,7 +73,8 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
     !data.otherSymptoms && "Other symptoms",
   ].filter(Boolean) as string[];
   const complete = missing.length === 0;
-  const statusLabel = data.referral ? "Referred" : complete ? "Stage 2 assessment complete" : "DRAFT — INCOMPLETE ASSESSMENT";
+  const stage3 = data.later?.regions?.length > 0 || !!chron;
+  const statusLabel = data.referral ? "Referred" : complete ? (stage3 ? "Stage 3 assessment recorded" : "Stage 2 assessment complete") : "DRAFT — INCOMPLETE ASSESSMENT";
 
   const p = data.patient;
   const v = data.vitals || {};
@@ -283,15 +288,6 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     “{data.intake.narrative}”
                   </blockquote>
                 )}
-                {data.later.chronology && (
-                  <Facts className="mt-2" rows={[
-                    ["Onset pattern", data.later.chronology.onsetPatterns.join(", ") || null],
-                    ["Overall duration", data.later.chronology.durationValue != null ? `${data.later.chronology.durationValue} ${data.later.chronology.durationUnit || ""}` : null],
-                    ["Onset date", data.later.chronology.onsetDate ? fmtDate(data.later.chronology.onsetDate) : null],
-                    ["Chronology note", data.later.chronology.note],
-                  ]} />
-                )}
-                {data.later.regions?.length > 0 && <Facts className="mt-1" rows={[["Body regions involved", data.later.regions.join(", ")]]} />}
               </Section>
 
               {/* ---------------- Warning signs ---------------- */}
@@ -334,15 +330,47 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     : <p className="text-[10.5pt]">None marked at assessment ({fmtDateTime(data.otherSymptoms.updatedAt)}).</p>}
               </Section>
 
+              {/* ---------------- Stage 3: Mizaj & Morphometry ---------------- */}
+              <Section title="Mizaj & Morphometry — doctor's assessment" n={7} meta={chron?.updatedAt ? `Updated ${fmtDateTime(chron.updatedAt)}` : undefined}>
+                {!data.later.regions?.length && !chron && !mz ? <Empty>Stage 3 not yet recorded for this visit.</Empty> : (
+                  <>
+                    {data.later.regions?.length > 0 && (
+                      <div className="rpt-keep mb-2">
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold mb-1">Body regions & organ systems involved</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {data.later.regions.map((r: string, i: number) => (
+                            <span key={r} className={`rounded border px-2 py-0.5 text-[10pt] ${i === 0 ? "border-[#0f766e] bg-[#f0fdfa] font-semibold text-[#0f766e]" : "border-[#d1d5db]"}`}>
+                              {r}{i === 0 && <span className="ml-1 text-[8.5pt]">PRIMARY</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <Facts rows={[
+                      ["Onset & rhythm", chron?.onsetPatterns?.length ? chron.onsetPatterns.join(", ") : null],
+                      ["Overall duration", chron?.durationValue != null
+                        ? `${chron.durationValue} ${chron.durationUnit || ""}${course ? ` — ${course.label} (${course.unani}, ${course.range})` : ""}${chron.durationSource === "auto" && chron.sourceComplaint ? ` · from the longest complaint, ${chron.sourceComplaint}` : ""}`
+                        : null],
+                      ["Started around", chron?.onsetDate ? fmtDate(chron.onsetDate) : null],
+                      ["Chronology note", chron?.note],
+                      ["Latest Mizaj assessment", mz ? `${mz.result.split(" — ")[0]} · Damawi ${mz.dam}% · Safrawi ${mz.saffra}% · Balghami ${mz.balgham}% · Saudawi ${mz.sauda}% (${fmtDate(mz.createdAt)})` : null],
+                      ["Nabz (pulse) on Mizaj assessment", mz?.pulse],
+                      ["Mizaj notes", mz?.notes],
+                    ]} />
+                    <p className="mt-1 text-[9pt] text-[#6b7280]">Duration course (acute / subacute / chronic) is a guide from the recorded duration. Main complaints above include the doctor&apos;s Stage 3 edits.</p>
+                  </>
+                )}
+              </Section>
+
               {/* ---------------- Allergies & medicines ---------------- */}
               <div className="grid grid-cols-2 gap-4">
-                <Section title="Allergies & sensitivities" n={7}>
+                <Section title="Allergies & sensitivities" n={8}>
                   {allergies.length ? (
                     <ul className="text-[10.5pt] space-y-0.5">{allergies.map((a) => <li key={a}>• <b>{a}</b> <span className="text-[9pt] text-[#6b7280]">— patient-reported; reaction & severity not recorded</span></li>)}</ul>
                   ) : data.intake ? <Empty>No allergies were reported at registration. This is not a confirmed absence of allergies.</Empty>
                     : <Empty>Allergy information not recorded.</Empty>}
                 </Section>
-                <Section title="Current medicines & herbs" n={8}>
+                <Section title="Current medicines & herbs" n={9}>
                   {data.intake?.medications?.length || p.currentMedications ? (
                     <>
                       {data.intake?.medications?.length > 0 && (
@@ -356,7 +384,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </div>
 
               {/* ---------------- Background ---------------- */}
-              <Section title="Medical background" n={9}>
+              <Section title="Medical background" n={10}>
                 {[p.chronicConditions, p.medicalHistory, p.surgicalHistory, p.familyHistory, p.lifestyle, p.occupation].some(Boolean) ? (
                   <Facts rows={[
                     ["Chronic conditions", p.chronicConditions], ["Medical history", p.medicalHistory], ["Surgical history", p.surgicalHistory],
@@ -366,7 +394,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Doctor notes ---------------- */}
-              <Section title="Doctor's observations & clinical notes" n={10} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
+              <Section title="Doctor's observations & clinical notes" n={11} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
                 {data.residentNotes?.points?.length ? (
                   <ul className="text-[10.5pt] space-y-0.5 list-disc pl-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
                 ) : <Empty>No clinical notes recorded.</Empty>}
@@ -374,7 +402,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Unani context ---------------- */}
-              <Section title="Unani assessment context" n={11}>
+              <Section title="Unani assessment context" n={12}>
                 <Facts rows={[
                   ["Recorded Mizaj (profile)", p.mizaj],
                   ["Humoral balance (computed)", data.humoral ? `Damawi ${Math.round(data.humoral.damPercent)}% · Safrawi ${Math.round(data.humoral.safraPercent)}% · Balghami ${Math.round(data.humoral.balghamPercent)}% · Saudawi ${Math.round(data.humoral.saudaPercent)}%` : null],
@@ -386,7 +414,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Hakeem Insight ---------------- */}
-              <Section title="Hakeem Insight — automated decision support" n={12}>
+              <Section title="Hakeem Insight — automated decision support" n={13}>
                 <p className="mb-2 rounded bg-[#f3f4f6] px-2 py-1 text-[9pt] text-[#4b5563]">Generated automatically from this visit&apos;s recorded data. Not verified by a doctor; not a diagnosis or prescription.</p>
                 {!l1 && !data.routing && !data.humoral?.aiClue && !data.vitalsInsight ? <Empty>No Hakeem Insight was generated for this visit.</Empty> : (
                   <div className="space-y-2">
@@ -419,7 +447,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Reports ---------------- */}
-              <Section title="Patient reports on file" n={13}>
+              <Section title="Patient reports on file" n={14}>
                 {data.reports?.length ? (
                   <table className="w-full text-[10pt] border-collapse">
                     <thead><tr className="text-left text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">

@@ -14,10 +14,11 @@ import { AnatomicalRegionSelector, type AnatomicalRegionSelectorHandle } from "@
 import { HakeemInsightPanel, type HakeemInsightPanelHandle } from "@/components/facility/views/hakeem-insight-panel";
 import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
 import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
+import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { savedAt } from "@/lib/flash";
-import { ArrowRight, Loader2, History } from "lucide-react";
+import { ArrowRight, Loader2, History, Printer, ShieldAlert } from "lucide-react";
 
 // Colours for the Mizaj History balance bar.
 const AKHLAT = [
@@ -74,7 +75,7 @@ function PatientPicker({ onPick }: { onPick: (id: string) => void }) {
 
 function MizajStage({ patientId }: { patientId: string }) {
   const router = useRouter();
-  const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload } = useStagePatient(patientId);
+  const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload, refreshVisits } = useStagePatient(patientId);
   const msg = useNotice();
   const [history, setHistory] = useState<Assessment[]>([]);
   const [saving, setSaving] = useState<"draft" | "proceed" | null>(null);
@@ -85,6 +86,8 @@ function MizajStage({ patientId }: { patientId: string }) {
   const [complaintDurations, setComplaintDurations] = useState<ComplaintDuration[] | null>(null);
   const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
   const humoralCluesRef = useRef<HakeemInsightPanelHandle>(null);
+  // Referral pop-up (shared with Stage 2) — only its dialogs are rendered here.
+  const referralRef = useRef<RedFlagScreeningPanelHandle>(null);
   const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
 
   const loadHistory = () =>
@@ -138,6 +141,22 @@ function MizajStage({ patientId }: { patientId: string }) {
     }
   };
 
+  // Print icon → the Comprehensive Assessment Report (now including this
+  // stage's findings), in a new tab. Read-only: it shows what's saved, so
+  // Save Draft first to include edits made on this page.
+  const openReport = () => {
+    if (!latestVisit) return;
+    const url = `/facility/patients/${patientId}/record/report?visit=${latestVisit.id}`;
+    if (!window.open(url, "_blank")) router.push(url);
+  };
+
+  // Refer Patient — the same referral pop-up as Stage 2; if the visit is
+  // already referred it opens that referral to edit or remove instead.
+  const referPatient = () => {
+    if (latestVisit?.referral) referralRef.current?.openEditReferral();
+    else referralRef.current?.openReferDialog();
+  };
+
   if (loading) {
     return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   }
@@ -145,7 +164,8 @@ function MizajStage({ patientId }: { patientId: string }) {
 
   return (
     <div className="w-full">
-      <StageHeader stage="mizaj" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} />
+      <StageHeader stage="mizaj" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} onEditReferral={() => referralRef.current?.openEditReferral()} />
+      {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
       <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5 min-w-0">
@@ -202,6 +222,16 @@ function MizajStage({ patientId }: { patientId: string }) {
       <NoticeSlot state={msg} className="mb-3" />
       <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
         <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
+          {latestVisit && (
+            <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report (opens in a new tab; shows saved data — Save Draft first to include new edits)">
+              <Printer className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {latestVisit && (
+            <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/60 dark:border-destructive/40 dark:hover:bg-destructive/20 dark:hover:text-destructive" onClick={referPatient} disabled={saving !== null}>
+              <ShieldAlert className="h-3.5 w-3.5" /> {latestVisit.referral ? "Edit Referral" : "Refer Patient"}
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={saveDraft} disabled={saving !== null}>
             {saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft
           </Button>

@@ -45,3 +45,29 @@ export function durationFromDate(date: string, today = new Date()): { value: num
   if (days < 0) return null;
   return days === 0 ? { value: Math.max(1, today.getHours()), unit: "hours" } : { value: days, unit: "days" };
 }
+
+// Course of illness by duration, in classical Unani terms: acute illnesses
+// (Amraz-e-Haadda) reach their crisis (Buhran) within about 14 days; those
+// lasting beyond about 40 days are chronic (Amraz-e-Muzmina). A guide only.
+export const COURSES = [
+  { key: "acute", label: "Acute", unani: "Haad", range: "up to 14 days", maxDays: 14,
+    hint: "Short illness — usually still moving towards its crisis (Buhran).",
+    style: { text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/5", border: "border-amber-500/30", bar: "bg-amber-500", dot: "#f59e0b" } },
+  { key: "subacute", label: "Subacute", unani: "Mumtad", range: "15–40 days", maxDays: 40,
+    hint: "Lasted past the usual crisis period — watch whether it is settling or becoming long-standing.",
+    style: { text: "text-orange-700 dark:text-orange-400", bg: "bg-orange-500/5", border: "border-orange-500/30", bar: "bg-orange-500", dot: "#f97316" } },
+  { key: "chronic", label: "Chronic", unani: "Muzmin", range: "over 40 days", maxDays: 365 * 3,
+    hint: "Long-standing illness — the underlying temperament and humours usually need attention.",
+    style: { text: "text-violet-700 dark:text-violet-400", bg: "bg-violet-500/5", border: "border-violet-500/30", bar: "bg-violet-500", dot: "#8b5cf6" } },
+] as const;
+
+export function courseFor(value: string, unit: string) {
+  const n = parseFloat(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const days = durationInHours(n, unit) / 24;
+  const i = days <= 14 ? 0 : days <= 40 ? 1 : 2;
+  const lo = i === 0 ? 0 : COURSES[i - 1].maxDays;
+  const within = Math.min(1, (days - lo) / (COURSES[i].maxDays - lo));
+  // Marker sits inside its own third of the bar, a little in from the edges.
+  return { ...COURSES[i], pos: (i + 0.08 + within * 0.84) * (100 / 3) };
+}

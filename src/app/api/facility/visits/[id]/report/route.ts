@@ -48,14 +48,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       vitalsInsightRecord: { select: { insight: true, generatedAt: true, updatedAt: true } },
       residentClinicalNote: { select: { points: true, updatedAt: true } },
       anatomicalRegionSelection: { select: { regions: true } },
-      chronology: { select: { onsetPatterns: true, durationValue: true, durationUnit: true, onsetDate: true, note: true } },
+      chronology: { select: { onsetPatterns: true, durationValue: true, durationUnit: true, onsetDate: true, note: true, durationSource: true, sourceComplaint: true, updatedAt: true } },
       asbabAssessments: { where: { framework: "asbab" }, select: { status: true, completedAt: true } },
       tashkheesDossier: { select: { status: true, mizajAsli: true, suMizajType: true, suMizajQuality: true, suMizajGrade: true, diagnosisNote: true, finalizedAt: true, finalizedByName: true } },
     },
   });
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
-  const [patient, facility, priorVisits, reports, criteriaCount, branding, ranges, severityLabels] = await Promise.all([
+  const [patient, facility, priorVisits, reports, criteriaCount, branding, ranges, severityLabels, mizajAssessment] = await Promise.all([
     db.patient.findUnique({
       where: { id: visit.patientId },
       select: {
@@ -85,6 +85,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     getReportBranding(),
     getVitalsRangeConfig(),
     db.severityScaleLabel.findMany({ select: { level: true, label: true } }),
+    // The patient's most recent Mizaj assessment at this clinic (Stage 3 history).
+    db.mizajAssessment.findFirst({
+      where: { patientId: visit.patientId, facilityId },
+      orderBy: { createdAt: "desc" },
+      select: { result: true, pulse: true, notes: true, dam: true, saffra: true, balgham: true, sauda: true, createdAt: true },
+    }),
   ]);
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
@@ -139,6 +145,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       chronology: visit.chronology && { ...visit.chronology, onsetPatterns: parse<string[]>(visit.chronology.onsetPatterns, []) },
       asbab: visit.asbabAssessments[0] ?? null,
       dossier: visit.tashkheesDossier,
+      mizajAssessment,
     },
     reports,
   });

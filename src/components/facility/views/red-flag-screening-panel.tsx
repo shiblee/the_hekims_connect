@@ -57,7 +57,9 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   visitId: string;
   /** Called after a referral is made, edited or removed, so the page can refresh its referral line. */
   onReferralChange?: () => void;
-}>(function RedFlagScreeningPanel({ visitId, onReferralChange }, ref) {
+  /** Render only the referral / AMA pop-ups (for later stages, which refer without showing the signs list). */
+  dialogsOnly?: boolean;
+}>(function RedFlagScreeningPanel({ visitId, onReferralChange, dialogsOnly }, ref) {
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [screening, setScreening] = useState<Screening | null>(null);
   const [present, setPresent] = useState<Record<string, boolean>>({});
@@ -258,6 +260,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
 
   useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog, openEditReferral, save: saveDraft }), [anyPresent, screening, present, criteria, custom, loading, loadError]);
 
+  if (dialogsOnly && (loading || loadError)) return null;
   if (loadError) return <LoadFailed what="the emergency warning signs" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
     return (
@@ -436,6 +439,8 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       </Dialog>
     </>
   );
+
+  if (dialogsOnly) return dialogs;
 
   // After a referral the signs are locked (the visit's emergency decision is made);
   // the referral itself is shown — and edited — on the line under the signature card.

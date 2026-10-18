@@ -42,12 +42,15 @@ export function useStagePatient(patientId: string) {
     return () => { cancelled = true; };
   }, [patientId, reloadTick]);
   const reload = () => { setLoading(true); setLoadError(null); setReloadTick((t) => t + 1); };
+  /** Re-fetch the visits in place (no loading screen), so unsaved edits on the page survive. */
+  const refreshVisits = () =>
+    api.get<{ visits: StageVisit[] }>(`/api/facility/visits?patientId=${patientId}`).then((v) => setVisits(v.visits || [])).catch(() => {});
 
   const sortedVisits = useMemo(
     () => [...visits].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()),
     [visits],
   );
-  return { loading, patient, setPatient, visits, sortedVisits, latestVisit: sortedVisits[0] as StageVisit | undefined, loadError, reload };
+  return { loading, patient, setPatient, visits, sortedVisits, latestVisit: sortedVisits[0] as StageVisit | undefined, loadError, reload, refreshVisits };
 }
 
 type StageKey = "mizaj" | "asbab" | "handover";
@@ -58,13 +61,15 @@ const STAGE_TITLES: Record<StageKey, string> = { mizaj: "Mizaj & Morphometry", a
  * with links to earlier stages, and the patient signature card with the
  * vitals recorded at Stage 2.
  */
-export function StageHeader({ stage, patientId, patient, onPatientChange, visits, sortedVisits }: {
+export function StageHeader({ stage, patientId, patient, onPatientChange, visits, sortedVisits, onEditReferral }: {
   stage: StageKey;
   patientId: string;
   patient: StagePatient;
   onPatientChange: (p: StagePatient) => void;
   visits: StageVisit[];
   sortedVisits: StageVisit[];
+  /** Edit the referral right here (opens the referral pop-up) instead of linking back to the Clinical Record. */
+  onEditReferral?: () => void;
 }) {
   const router = useRouter();
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -124,7 +129,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
 
       {/* What triage recorded — the referral (if any) and the findings the main doctor must see. */}
       {sortedVisits.some((v) => v.referral) && (
-        <ReferralLine visits={sortedVisits.filter((v) => v.referral)} editHref={latest?.referral ? recordUrl : undefined} className="mb-3 -mt-3" />
+        <ReferralLine visits={sortedVisits.filter((v) => v.referral)} onEdit={latest?.referral ? onEditReferral : undefined} editHref={latest?.referral && !onEditReferral ? recordUrl : undefined} className="mb-3 -mt-3" />
       )}
       {latest && (
         <TriageFindingsLine

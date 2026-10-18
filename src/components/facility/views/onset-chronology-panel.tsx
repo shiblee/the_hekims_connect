@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "r
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { DURATION_UNITS, durationInHours, longestDuration, onsetDateFor } from "@/lib/chronology";
+import { COURSES, courseFor, DURATION_UNITS, longestDuration, onsetDateFor } from "@/lib/chronology";
 import type { ComplaintDuration } from "@/components/facility/views/chief-complaint-matrix";
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -35,32 +35,6 @@ const QUICK_DURATIONS = [
   { label: "6 months", value: 6, unit: "months" },
   { label: "1 year +", value: 1, unit: "years" },
 ];
-
-// Course of illness by duration, in classical Unani terms: acute illnesses
-// (Amraz-e-Haadda) reach their crisis (Buhran) within about 14 days; those
-// lasting beyond about 40 days are chronic (Amraz-e-Muzmina). A guide only.
-const COURSES = [
-  { key: "acute", label: "Acute", unani: "Haad", range: "up to 14 days", maxDays: 14,
-    hint: "Short illness — usually still moving towards its crisis (Buhran).",
-    style: { text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/5", border: "border-amber-500/30", bar: "bg-amber-500", dot: "#f59e0b" } },
-  { key: "subacute", label: "Subacute", unani: "Mumtad", range: "15–40 days", maxDays: 40,
-    hint: "Lasted past the usual crisis period — watch whether it is settling or becoming long-standing.",
-    style: { text: "text-orange-700 dark:text-orange-400", bg: "bg-orange-500/5", border: "border-orange-500/30", bar: "bg-orange-500", dot: "#f97316" } },
-  { key: "chronic", label: "Chronic", unani: "Muzmin", range: "over 40 days", maxDays: 365 * 3,
-    hint: "Long-standing illness — the underlying temperament and humours usually need attention.",
-    style: { text: "text-violet-700 dark:text-violet-400", bg: "bg-violet-500/5", border: "border-violet-500/30", bar: "bg-violet-500", dot: "#8b5cf6" } },
-] as const;
-
-function courseFor(value: string, unit: string) {
-  const n = parseFloat(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const days = durationInHours(n, unit) / 24;
-  const i = days <= 14 ? 0 : days <= 40 ? 1 : 2;
-  const lo = i === 0 ? 0 : COURSES[i - 1].maxDays;
-  const within = Math.min(1, (days - lo) / (COURSES[i].maxDays - lo));
-  // Marker sits inside its own third of the bar, a little in from the edges.
-  return { ...COURSES[i], pos: (i + 0.08 + within * 0.84) * (100 / 3) };
-}
 
 const longDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
