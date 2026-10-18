@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,18 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
     const [loadError, setLoadError] = useState<string | null>(null);
     const [reloadTick, setReloadTick] = useState(0);
     const msg = useNotice();
+    // Show the "scroll for more" hint only when the list really overflows.
+    const listRef = useRef<HTMLDivElement>(null);
+    const [overflows, setOverflows] = useState(false);
+    useEffect(() => {
+      const el = listRef.current;
+      if (!el) return;
+      const check = () => setOverflows(el.scrollHeight > el.clientHeight + 2);
+      check();
+      const ro = new ResizeObserver(check);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, [loading, regions.length]);
 
     useEffect(() => {
       let cancelled = false;
@@ -118,11 +130,12 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
               }))}
             />
           </div>
-          <div className="space-y-2 min-w-0">
-          {/* Five rows visible (about the body map's height), the rest scrolls
-              inside the card: every card is the same height (80px), so
-              5 rows + 4 gaps of 8px = 432px (+ padding so borders aren't clipped). */}
-          <div className="grid sm:grid-cols-2 gap-2 max-h-[436px] overflow-y-auto p-0.5 pr-1.5 -m-0.5">
+          <div className="@container space-y-2 min-w-0">
+          {/* Compact one-line cards (56px) so the list shows as many regions as
+              possible beside the body map: seven rows (7×56 + 6×6 = 428px),
+              three columns when there's room — so 18 regions fit without
+              scrolling on a wide screen. Full names show on hover. */}
+          <div ref={listRef} className="grid @sm:grid-cols-2 @3xl:grid-cols-3 gap-1.5 max-h-[432px] overflow-y-auto p-0.5 pr-1.5 -m-0.5">
             {cards.map((r) => {
               const idx = selected.indexOf(r.label);
               const checked = idx >= 0;
@@ -135,26 +148,26 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
                   aria-pressed={checked}
                   title={r.localTerms ? `${r.label} — ${r.localTerms}` : r.label}
                   className={cn(
-                    "h-20 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2 text-left transition-colors",
+                    "h-14 flex items-center justify-between gap-2.5 rounded-lg border px-3 py-1.5 text-left transition-colors",
                     checked ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30"
                   )}
                 >
-                  <span className="flex items-center gap-3 min-w-0">
-                    <Icon className={cn("h-4.5 w-4.5 shrink-0", checked ? "text-emerald-500" : "text-muted-foreground")} />
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <Icon className={cn("h-4 w-4 shrink-0", checked ? "text-emerald-500" : "text-muted-foreground")} />
                     <span className="min-w-0">
-                      <span className="text-sm font-semibold line-clamp-2">{r.label}</span>
-                      {r.localTerms && <span className="block text-[13px] text-muted-foreground mt-0.5 truncate">{r.localTerms}</span>}
+                      <span className="block text-sm font-semibold truncate leading-snug">{r.label}</span>
+                      {r.localTerms && <span className="block text-xs text-muted-foreground truncate leading-snug">{r.localTerms}</span>}
                     </span>
                   </span>
-                  <span className="flex flex-col items-center gap-0.5 shrink-0">
-                    {checked ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-muted-foreground/40" />}
-                    {idx === 0 && <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Primary</span>}
+                  <span className="flex flex-col items-center shrink-0">
+                    {checked ? <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" /> : <Circle className="h-4.5 w-4.5 text-muted-foreground/40" />}
+                    {idx === 0 && <span className="text-[10px] font-medium leading-tight text-emerald-600 dark:text-emerald-400">Primary</span>}
                   </span>
                 </button>
               );
             })}
           </div>
-          {cards.length > 10 && (
+          {overflows && (
             <p className="text-[13px] text-muted-foreground">Scroll the list to see all {cards.length} regions.</p>
           )}
           </div>
