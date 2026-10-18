@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, Loader2,
-  CheckCircle2, Printer, ArrowRight, ShieldAlert, ShieldQuestion,
+  Printer, ArrowRight, ShieldAlert, ShieldQuestion,
 } from "lucide-react";
 
 interface Patient {
@@ -385,25 +385,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         "p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap",
         checkInComplete ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/50 bg-card/60"
       )}>
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={cn(
-            "h-9 w-9 rounded-full flex items-center justify-center shrink-0",
-            checkInComplete ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"
-          )}>
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">
-              {checkInComplete ? "Triage Check-in Ready for Doctor Handover" : "Triage Check-in In Progress"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {checkInComplete
-                ? "Vitals and screening recorded for this visit · Next phase: Mizaj Constitution & Pulse (Nabz) Assessment"
-                : "Record vitals and complete L1 screening to proceed to the Mizaj exam."}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
           {latestVisit && (
             <Button size="sm" variant="ghost" onClick={printTriageSlip} title="Print Triage Slip">
               <Printer className="h-3.5 w-3.5" />
