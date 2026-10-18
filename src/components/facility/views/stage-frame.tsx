@@ -11,9 +11,10 @@ import { ChevronLeft, Pencil } from "lucide-react";
 
 export interface StagePatient extends SignaturePatient { id: string; mizaj: string | null }
 export interface StageVisit {
-  id: string; visitDate: string;
+  id: string; visitDate: string; visitCode?: string;
   vitalSigns: VisitVitals | null;
-  intake?: { chiefComplaints: string } | null;
+  doctor?: { name: string } | null;
+  intake?: { chiefComplaints: string; allergies?: string; medications?: string; onsetTimeline?: string | null; mobility?: string | null } | null;
   referral?: { createdAt: string } | null;
   amaDecline?: { createdAt: string } | null;
 }
@@ -106,6 +107,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
         lastReferralAt={sortedVisits.find((v) => v.referral)?.referral?.createdAt}
         lastAmaAt={sortedVisits.find((v) => v.amaDecline)?.amaDecline?.createdAt}
         onPhotoClick={() => setPhotoOpen(true)}
+        visits={sortedVisits}
       >
         <RecordedVitalsStrip
           vitals={latest?.vitalSigns ?? null}

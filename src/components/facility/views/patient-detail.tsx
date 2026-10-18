@@ -294,6 +294,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         lastReferralAt={referredVisits[0]?.referral?.createdAt}
         lastAmaAt={amaVisits[0]?.amaDecline?.createdAt}
         onPhotoClick={() => setPhotoDialogOpen(true)}
+        visits={sortedVisits}
       />
 
       <PhotoUploadDialog
