@@ -249,19 +249,11 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
         </div>
       )}
 
-      {/* A positive sign needs a decision — offered right here */}
       {anyPresent && screening?.outcome !== "continued_ama" && (
-        <div className="flex items-center gap-3 flex-wrap rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 animate-in fade-in slide-in-from-top-1 duration-200">
-          <p className="text-xs text-destructive font-medium flex-1 min-w-48">
-            Referral is recommended — decide before moving on.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="destructive" className="h-8" onClick={openReferDialog}>
-              <ShieldAlert className="h-3.5 w-3.5" /> Refer patient
-            </Button>
-            <Button size="sm" variant="outline" className="h-8" onClick={openAmaDialog}>Continue against advice</Button>
-          </div>
-        </div>
+        <p className="text-xs text-destructive">
+          Referral recommended — use <span className="font-semibold">Refer Patient</span> at the bottom of the page, or{" "}
+          <button type="button" onClick={openAmaDialog} className="underline underline-offset-2 hover:text-destructive/80">continue against advice</button>.
+        </p>
       )}
 
       {screening?.outcome === "continued_ama" && screening.amaDecline && (
