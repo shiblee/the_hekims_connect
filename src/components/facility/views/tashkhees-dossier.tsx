@@ -957,7 +957,8 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                     <p className="text-[15px] font-semibold flex items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">not in catalogue</Badge>}</p>
                     <button type="button" onClick={() => set({ prescriptions: d.prescriptions.filter((_, n) => n !== i) })} aria-label={`Remove ${p.name}`} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-4 pt-2">
+                  {/* One line where there's room (six fields), otherwise three per row. */}
+                  <div className="@container"><div className="grid grid-cols-2 @min-[28rem]:grid-cols-3 @min-[34rem]:grid-cols-[0.9fr_0.75fr_1.3fr_0.95fr_0.95fr_1.2fr] gap-x-2 gap-y-4 pt-2">
                     <FloatingSelect id={`rx-form-${i}`} label="Form" value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })} placeholder="Choose">
                       {formOptions.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                     </FloatingSelect>
@@ -966,9 +967,9 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                       {timings.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </FloatingSelect>
                     <FloatingField id={`rx-duration-${i}`} label="Duration" value={p.duration} onChange={(e) => updRx(i, { duration: e.target.value })} title="e.g. 14 days" />
-                    <div className="sm:col-span-2"><FloatingField id={`rx-with-${i}`} label="Badraqa / take with" value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title="e.g. lukewarm water" /></div>
-                    <div className="sm:col-span-2"><FloatingField id={`rx-instr-${i}`} label="Instructions" maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} /></div>
-                  </div>
+                    <FloatingField id={`rx-with-${i}`} label="Badraqa" value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title="Badraqa / take with — e.g. lukewarm water" />
+                    <FloatingField id={`rx-instr-${i}`} label="Instructions" maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} title={p.instructions || "Instructions"} />
+                  </div></div>
                   {w.length > 0 && (
                     <div className="space-y-1">
                       {w.map((x, n) => (
