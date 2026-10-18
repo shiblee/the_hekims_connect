@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, Loader2,
-  Printer, ArrowRight, ShieldAlert, ShieldQuestion,
+  Printer, ArrowRight, ShieldAlert, ShieldQuestion, Pencil,
 } from "lucide-react";
 
 interface Patient {
@@ -302,7 +302,12 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         onRemove={() => savePhoto(null)}
       />
 
-      {referredVisits.length > 0 && <ReferralLine visits={referredVisits} />}
+      {referredVisits.length > 0 && (
+        <ReferralLine
+          visits={referredVisits}
+          onEdit={latestVisit && referredVisits[0].id === latestVisit.id ? () => redFlagRef.current?.openEditReferral() : undefined}
+        />
+      )}
 
       {amaVisits.length > 0 && (
         <Card className="p-4 mb-6 border-amber-500/30 bg-amber-500/5 space-y-3">
@@ -336,7 +341,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
               intakeComplaints={intakeComplaints}
             />
           )}
-          {latestVisit && <RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} />}
+          {latestVisit && <RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} onReferralChange={refreshVisits} />}
           {latestVisit && <AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} />}
         </div>
         <div ref={rightRailSpacerRef} className="relative">
@@ -389,7 +394,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
  * urgency, destination, reason, notes, visit and time — with earlier
  * referrals (if any) tucked behind a "+N earlier" toggle.
  */
-function ReferralLine({ visits }: { visits: { id: string; visitCode?: string; referral?: { reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string } | null }[] }) {
+function ReferralLine({ visits, onEdit }: { onEdit?: () => void; visits: { id: string; visitCode?: string; referral?: { reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string } | null }[] }) {
   const [open, setOpen] = useState(false);
   const row = (v: (typeof visits)[number], first: boolean) => {
     const r = v.referral!;
@@ -417,6 +422,15 @@ function ReferralLine({ visits }: { visits: { id: string; visitCode?: string; re
     <div className="mb-6 -mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-1.5">
       <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0">{row(visits[0], true)}</div>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="shrink-0 inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-0.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <Pencil className="h-3 w-3" /> Edit
+          </button>
+        )}
         {visits.length > 1 && (
           <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 text-xs font-medium text-destructive hover:underline">
             {open ? "Hide" : `+${visits.length - 1} earlier`}

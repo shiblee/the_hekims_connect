@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { InlineNotice, LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { setFlash } from "@/lib/flash";
 import { api } from "@/lib/api";
@@ -15,7 +15,7 @@ import { FloatingField, FloatingMultiSelect, FloatingTextarea } from "@/componen
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, Check, TriangleAlert, Sparkles, Info } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, TriangleAlert, Sparkles, Info, Pencil, Trash2 } from "lucide-react";
 
 interface Criterion { id: string; label: string; description: string | null }
 interface Answer { id: string; criterionId: string | null; criterionLabel: string; present: boolean }
@@ -29,6 +29,8 @@ export interface RedFlagScreeningPanelHandle {
    * false — the caller should stop and let the doctor resolve it, then retry. */
   attemptResolve: () => Promise<boolean>;
   openReferDialog: () => void;
+  /** Reopen the referral pop-up pre-filled with the saved referral, to correct or remove it. */
+  openEditReferral: () => void;
 }
 
 // Where a patient is usually sent for a given warning sign — offered as one-tap suggestions.
@@ -49,7 +51,11 @@ const URGENCY = [
   { value: "Routine", label: "Routine", when: "Planned appointment", tone: "border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-400", dot: "bg-sky-500", button: "bg-sky-600 hover:bg-sky-700 text-white" },
 ] as const;
 
-export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { visitId: string }>(function RedFlagScreeningPanel({ visitId }, ref) {
+export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
+  visitId: string;
+  /** Called after a referral is made, edited or removed, so the page can refresh its referral line. */
+  onReferralChange?: () => void;
+}>(function RedFlagScreeningPanel({ visitId, onReferralChange }, ref) {
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [screening, setScreening] = useState<Screening | null>(null);
   const [present, setPresent] = useState<Record<string, boolean>>({});
@@ -69,6 +75,8 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
   const [referredTo, setReferredTo] = useState("");
   const [urgency, setUrgency] = useState("Emergency");
   const [referNotes, setReferNotes] = useState("");
+  const [editingReferral, setEditingReferral] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const [amaDialogOpen, setAmaDialogOpen] = useState(false);
   const [amaReason, setAmaReason] = useState("");
@@ -106,7 +114,21 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
   };
 
   const anyPresentRef = () => Object.values(present).some(Boolean) || custom.length > 0;
+  const openEditReferral = () => {
+    const r = screening?.referral;
+    if (!r) return;
+    setReferReason(r.reason);
+    setReferredTo(r.referredTo);
+    setUrgency(r.urgency);
+    setReferNotes(r.notes || "");
+    setEditingReferral(true);
+    setConfirmRemove(false);
+    dialogMsg.clear();
+    setReferDialogOpen(true);
+  };
   const openReferDialog = () => {
+    setEditingReferral(false);
+    setConfirmRemove(false);
     setReferReason(flaggedSummary());
     setReferredTo("");
     setUrgency(anyPresentRef() ? "Emergency" : "Urgent");
@@ -138,8 +160,9 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
       setScreening(res.screening);
       msg.clear();
       if (outcome === "referred") {
-        // The panel itself turns into the "Patient Referred — Case Closed" card.
+        // The page shows it as a one-line summary under the signature card.
         setReferDialogOpen(false);
+        onReferralChange?.();
       } else if (outcome === "continued_ama") {
         setAmaDialogOpen(false);
         msg.success("Recorded — continuing treatment against medical advice", "The patient's decision and acknowledgement are saved on this visit.");
@@ -161,9 +184,40 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     }
   };
 
+  const saveReferralEdit = async () => {
+    setSaving(true);
+    try {
+      const res = await api.patch<{ referral: ReferralRecord }>(`/api/facility/visits/${visitId}/referral`, { reason: referReason, referredTo, urgency, notes: referNotes });
+      setScreening((sc) => (sc ? { ...sc, referral: res.referral } : sc));
+      setReferDialogOpen(false);
+      onReferralChange?.();
+    } catch (e: any) {
+      dialogMsg.error("The referral wasn't updated", `${e.message || "Network error"}. Your changes are still here — try again.`, { retry: saveReferralEdit, retryLabel: "Save again" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeReferral = async () => {
+    setSaving(true);
+    try {
+      await api.delete(`/api/facility/visits/${visitId}/referral`);
+      setScreening((sc) => (sc ? { ...sc, referral: null, outcome: "pending" } : sc));
+      setReferDialogOpen(false);
+      setConfirmRemove(false);
+      onReferralChange?.();
+      msg.info("Referral removed", anyPresentRef() ? "Warning signs are still marked — choose Refer Patient or continue against advice before moving on." : "The emergency check will be confirmed when you proceed.");
+    } catch (e: any) {
+      dialogMsg.error("The referral wasn't removed", `${e.message || "Network error"}. Try again.`, { retry: removeReferral, retryLabel: "Try again" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const submitReferral = () => {
     if (!referReason.trim()) { dialogMsg.warning("Enter a reason for referral", "It's recorded on the referral and in the visit history."); document.getElementById("referReason")?.focus(); return; }
     if (!referredTo.trim()) { dialogMsg.warning("Enter where the patient is being referred to", "For example Emergency Department or Cardiology."); document.getElementById("referredTo")?.focus(); return; }
+    if (editingReferral) { saveReferralEdit(); return; }
     submitScreening("referred", { referral: { reason: referReason, referredTo, urgency, notes: referNotes || undefined } });
   };
 
@@ -183,7 +237,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     return false;
   };
 
-  useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog }), [anyPresent, screening, present, criteria, custom]);
+  useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog, openEditReferral }), [anyPresent, screening, present, criteria, custom]);
 
   if (loadError) return <LoadFailed what="the emergency warning signs" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
@@ -194,10 +248,6 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     );
   }
 
-  // Once referred, the referral is shown as one line under the patient
-  // signature (Clinical Record) — this panel steps aside but stays mounted so
-  // the page's Proceed check still works.
-  if (alreadyReferred && screening?.referral) return null;
 
   const presentCount = criteria.filter((c) => present[c.id]).length + custom.length;
   const flaggedLabels = [...criteria.filter((c) => present[c.id]).map((c) => c.label), ...custom];
@@ -218,75 +268,14 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     setCustom((cur) => (cur.some((x) => x.toLowerCase() === text.toLowerCase()) ? cur : [...cur, text]));
   };
 
-  return (
-    <Card className={cn("p-4 gap-3 border-border/50 bg-card transition-colors", anyPresent && "border-destructive/40")}>
-      <SectionHeading
-        icon={anyPresent ? ShieldAlert : ShieldCheck}
-        tone={anyPresent ? "danger" : "success"}
-        title="Emergency Warning Signs"
-        right={
-          <span className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
-            anyPresent ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-          )}>
-            <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
-            {anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
-          </span>
-        }
-      />
-
-      <FloatingMultiSelect
-        id="warningSignSearch"
-        label="Search emergency warning signs"
-        tone="destructive"
-        labelIcon={TriangleAlert}
-        itemIcon={TriangleAlert}
-        placeholder="Type a sign — e.g. chest pain, bleeding, breathless…"
-        openOnFocus
-        emptyHint={criteria.length > 6 ? `Common signs · type to search all ${criteria.length}` : "Warning signs"}
-        selected={[
-          ...criteria.filter((c) => present[c.id]).map((c) => ({ id: c.id, label: c.label, description: c.description })),
-          ...custom.map((label) => ({ id: `other:${label}`, label, description: "Added by staff" })),
-        ]}
-        onRemove={(sid) => {
-          if (sid.startsWith("other:")) setCustom((cur) => cur.filter((x) => `other:${x}` !== sid));
-          else setPresent((p) => ({ ...p, [sid]: false }));
-        }}
-        query={signQuery}
-        onQueryChange={setSignQuery}
-        results={signSuggestions}
-        describe={(c) => c.description}
-        onPick={(cid) => setPresent((p) => ({ ...p, [cid]: true }))}
-        onCreate={addCustomSign}
-        createLabel={(q) => `Add "${q}" as another warning sign`}
-      />
-
-      {anyPresent && screening?.outcome !== "continued_ama" && (
-        <p className="text-xs text-destructive">
-          Referral recommended — use <span className="font-semibold">Refer Patient</span> at the bottom of the page, or{" "}
-          <button type="button" onClick={openAmaDialog} className="underline underline-offset-2 hover:text-destructive/80">continue against advice</button>.
-        </p>
-      )}
-
-      {screening?.outcome === "continued_ama" && screening.amaDecline && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
-          <ShieldQuestion className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-          <p className="text-muted-foreground">
-            <span className="font-semibold text-amber-700 dark:text-amber-400">Continuing against medical advice</span>
-            {" · "}{screening.amaDecline.reason}
-            {screening.amaDecline.patientReason && <> · Patient: “{screening.amaDecline.patientReason}”</>}
-            {" · "}{new Date(screening.amaDecline.createdAt).toLocaleDateString()}
-          </p>
-        </div>
-      )}
-      <NoticeSlot state={msg} />
-
+  const dialogs = (
+    <>
       <Dialog open={referDialogOpen} onOpenChange={setReferDialogOpen}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto gap-4 bg-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <span className="h-10 w-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0"><ShieldAlert className="h-5 w-5" /></span>
-              <span className="text-lg font-semibold leading-tight">Refer patient</span>
+              <span className="text-lg font-semibold leading-tight">{editingReferral ? "Edit referral" : "Refer patient"}</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -355,16 +344,40 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
               {referredTo.trim()
                 ? <>Refer to <span className="font-semibold text-foreground">{referredTo.trim()}</span> · <span className="font-semibold text-foreground">{urgency}</span>. </>
                 : null}
-              Confirming saves the referral to this visit and closes today&apos;s Unani consultation for it.
+              {editingReferral ? "Saving updates this visit\u2019s referral record." : "Confirming saves the referral to this visit and closes today\u2019s Unani consultation for it."}
             </span>
           </div>
 
+          {/* Remove — edit mode only, confirmed in place */}
+          {editingReferral && confirmRemove && (
+            <InlineNotice
+              tone="error"
+              title="Remove this referral?"
+              detail="The referral record is deleted and this visit goes back to needing an emergency decision. This can't be undone."
+              action={
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(false)} disabled={saving}>Keep</Button>
+                  <Button size="sm" variant="destructive" onClick={removeReferral} disabled={saving}>
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
+                  </Button>
+                </div>
+              }
+            />
+          )}
           <NoticeSlot state={dialogMsg} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReferDialogOpen(false)}>Cancel</Button>
-            <Button onClick={submitReferral} disabled={saving} className={URGENCY.find((u) => u.value === urgency)?.button}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />} Confirm referral &amp; close case
-            </Button>
+          <DialogFooter className="sm:justify-between gap-2">
+            {editingReferral ? (
+              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 sm:mr-auto" onClick={() => setConfirmRemove(true)} disabled={saving || confirmRemove}>
+                <Trash2 className="h-4 w-4" /> Remove referral
+              </Button>
+            ) : <span />}
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setReferDialogOpen(false)}>Cancel</Button>
+              <Button onClick={submitReferral} disabled={saving} className={URGENCY.find((u) => u.value === urgency)?.button}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingReferral ? <Pencil className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                {editingReferral ? "Save changes" : "Confirm referral & close case"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -402,6 +415,78 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+
+  // Once referred, the referral shows as one line under the patient signature
+  // (with Edit) — the panel itself steps aside but keeps its dialogs and stays
+  // mounted, so the page's Proceed check and Edit still work.
+  if (alreadyReferred && screening?.referral) return dialogs;
+
+  return (
+    <Card className={cn("p-4 gap-3 border-border/50 bg-card transition-colors", anyPresent && "border-destructive/40")}>
+      <SectionHeading
+        icon={anyPresent ? ShieldAlert : ShieldCheck}
+        tone={anyPresent ? "danger" : "success"}
+        title="Emergency Warning Signs"
+        right={
+          <span className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+            anyPresent ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+          )}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
+            {anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
+          </span>
+        }
+      />
+
+      <FloatingMultiSelect
+        id="warningSignSearch"
+        label="Search emergency warning signs"
+        tone="destructive"
+        labelIcon={TriangleAlert}
+        itemIcon={TriangleAlert}
+        placeholder="Type a sign — e.g. chest pain, bleeding, breathless…"
+        openOnFocus
+        emptyHint={criteria.length > 6 ? `Common signs · type to search all ${criteria.length}` : "Warning signs"}
+        selected={[
+          ...criteria.filter((c) => present[c.id]).map((c) => ({ id: c.id, label: c.label, description: c.description })),
+          ...custom.map((label) => ({ id: `other:${label}`, label, description: "Added by staff" })),
+        ]}
+        onRemove={(sid) => {
+          if (sid.startsWith("other:")) setCustom((cur) => cur.filter((x) => `other:${x}` !== sid));
+          else setPresent((p) => ({ ...p, [sid]: false }));
+        }}
+        query={signQuery}
+        onQueryChange={setSignQuery}
+        results={signSuggestions}
+        describe={(c) => c.description}
+        onPick={(cid) => setPresent((p) => ({ ...p, [cid]: true }))}
+        onCreate={addCustomSign}
+        createLabel={(q) => `Add "${q}" as another warning sign`}
+      />
+
+      {anyPresent && screening?.outcome !== "continued_ama" && (
+        <p className="text-xs text-destructive">
+          Referral recommended — use <span className="font-semibold">Refer Patient</span> at the bottom of the page, or{" "}
+          <button type="button" onClick={openAmaDialog} className="underline underline-offset-2 hover:text-destructive/80">continue against advice</button>.
+        </p>
+      )}
+
+      {screening?.outcome === "continued_ama" && screening.amaDecline && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+          <ShieldQuestion className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <p className="text-muted-foreground">
+            <span className="font-semibold text-amber-700 dark:text-amber-400">Continuing against medical advice</span>
+            {" · "}{screening.amaDecline.reason}
+            {screening.amaDecline.patientReason && <> · Patient: “{screening.amaDecline.patientReason}”</>}
+            {" · "}{new Date(screening.amaDecline.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+      )}
+      <NoticeSlot state={msg} />
+
+      {dialogs}
     </Card>
   );
 });
