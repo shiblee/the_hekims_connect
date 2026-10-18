@@ -329,7 +329,7 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
         <Chips items={(options?.organ || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.organs}
           onToggle={(l) => set({ organs: d.organs.includes(l) ? d.organs.filter((x) => x !== l) : [...d.organs, l] })} /></div>
       <div><Label>Tashkhees statement</Label>
-        <Textarea value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })} className="min-h-[80px] bg-background/60"
+        <Textarea maxLength={500} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })} className="min-h-[80px] bg-background/60"
           placeholder="e.g. Su-e-Mizaj Maddi Safrawi with Hararat-e-Meda (gastric heat) and secondary Sahar" /></div>
     </Panel>
   );
@@ -355,7 +355,7 @@ function UsoolTab({ state }: { state: TashkheesState }) {
         })}
       </div>
       <div><Label>Plan note</Label>
-        <Textarea value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })} className="min-h-[70px] bg-background/60" placeholder="e.g. Munzij for 7 days, then Mushil; cooling diet throughout" /></div>
+        <Textarea maxLength={500} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })} className="min-h-[70px] bg-background/60" placeholder="e.g. Munzij for 7 days, then Mushil; cooling diet throughout" /></div>
     </Panel>
   );
 }
@@ -439,7 +439,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
             );
           })}
         </div>
-        <Textarea value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })} className="min-h-[60px] bg-background/60" placeholder="Meal timing & hydration guidance — e.g. 4 small meals, no iced water after meals" />
+        <Textarea maxLength={500} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })} className="min-h-[60px] bg-background/60" placeholder="Meal timing & hydration guidance — e.g. 4 small meals, no iced water after meals" />
       </Panel>
 
       {/* Ilaj-bil-Dawa */}
@@ -536,10 +536,10 @@ function HandoverTab({ state }: { state: TashkheesState }) {
       <div><Label>Priority</Label>
         <Segmented value={d.priority} options={PRIORITIES} onChange={(v) => set({ priority: v ?? "routine" })} /></div>
       <div><Label>Urgent directives for the patient</Label>
-        <Textarea value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })} className="min-h-[60px] bg-background/60 border-destructive/30"
+        <Textarea maxLength={500} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })} className="min-h-[60px] bg-background/60 border-destructive/30"
           placeholder="Warning signs that need immediate attention — e.g. vomiting blood, severe abdominal pain" /></div>
       <div><Label>Handover note</Label>
-        <Textarea value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })} className="min-h-[110px] bg-background/60"
+        <Textarea maxLength={500} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })} className="min-h-[110px] bg-background/60"
           placeholder="Summary for the treating / senior Hakim — presentation, key findings, diagnosis and plan" /></div>
       {d.status === "finalized" && d.finalizedByName && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-emerald-500" /> Finalised by {d.finalizedByName}{d.finalizedAt && ` · ${new Date(d.finalizedAt).toLocaleString()}`}</p>

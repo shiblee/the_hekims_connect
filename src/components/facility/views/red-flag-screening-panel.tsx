@@ -392,7 +392,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
               Referral is clinically recommended based on the flagged findings. Use this only when the patient has been informed and still declines referral.
             </div>
             <FloatingField id="amaReason" label="Why referral was recommended" value={amaReason} onChange={(e) => setAmaReason(e.target.value)} />
-            <Textarea
+            <Textarea maxLength={500}
               placeholder="Patient's stated reason for declining (optional)"
               value={amaPatientReason}
               onChange={(e) => setAmaPatientReason(e.target.value)}

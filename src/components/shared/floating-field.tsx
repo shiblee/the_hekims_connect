@@ -370,7 +370,7 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
 }
 
 /** A textarea with the same floating label as FloatingField. */
-export function FloatingTextarea({ id, label, required, error, className, ...props }: {
+export function FloatingTextarea({ id, label, required, error, className, maxLength = TEXT_LIMIT, ...props }: {
   id: string;
   label: string;
   required?: boolean;
@@ -378,22 +378,46 @@ export function FloatingTextarea({ id, label, required, error, className, ...pro
 } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const [focused, setFocused] = useState(false);
   const floated = focused || !!props.value;
+  const length = typeof props.value === "string" ? props.value.length : 0;
   return (
-    <div className="relative">
+    // The border lives on this wrapper (with top padding) so scrolled text
+    // stays below the floating label instead of sliding up behind it.
+    <div className={cn(
+      "relative rounded-lg border pt-4 pb-1 transition-colors",
+      error ? "border-destructive" : focused ? "border-primary" : "border-input",
+    )}>
       <textarea
         id={id}
+        maxLength={maxLength}
         {...props}
         onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
         onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
         className={cn(
-          "w-full min-h-24 rounded-lg border bg-transparent px-3.5 pt-4 pb-2 text-base font-medium text-foreground outline-none transition-colors resize-y",
-          error ? "border-destructive" : "border-input focus:border-primary",
+          "block w-full min-h-20 bg-transparent px-3.5 pt-1 pb-1 text-base font-medium text-foreground outline-none resize-y",
           className,
         )}
       />
+      <CharCount length={length} max={maxLength} className="px-3.5" />
       <label htmlFor={id} className={cn(floatLabel(floated, error, focused), !floated && "top-4")}>
         {label}{required && <span className="text-destructive"> *</span>}
       </label>
     </div>
+  );
+}
+
+/** Default length for free-text boxes on the patient pages. */
+export const TEXT_LIMIT = 500;
+
+/** "120 / 500" under a text box — turns amber near the limit and red at it. */
+export function CharCount({ length, max, className }: { length: number; max?: number; className?: string }) {
+  if (!max) return null;
+  return (
+    <p className={cn(
+      "text-right text-[11px] tabular-nums",
+      length >= max ? "text-destructive font-medium" : length >= max * 0.9 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
+      className,
+    )}>
+      {length} / {max}
+    </p>
   );
 }

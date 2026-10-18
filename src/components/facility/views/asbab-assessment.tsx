@@ -168,7 +168,7 @@ export function QuestionCard({ q, index, count, pillarLabel, value, onChange }: 
       ) : q.type === "numeric" ? (
         <Input type="number" min={0} step="any" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="h-11 w-48 bg-background/60" placeholder="Enter a number" />
       ) : (
-        <Textarea value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="min-h-[80px] bg-background/60" placeholder="Type the answer" />
+        <Textarea maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="min-h-[80px] bg-background/60" placeholder="Type the answer" />
       )}
     </Card>
   );

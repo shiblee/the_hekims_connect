@@ -259,7 +259,7 @@ export function PharmacyView() {
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Description</Label>
-              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-background/60 min-h-[60px]" />
+              <Textarea maxLength={500} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-background/60 min-h-[60px]" />
             </div>
           </div>
           <NoticeSlot state={dialogMsg} />

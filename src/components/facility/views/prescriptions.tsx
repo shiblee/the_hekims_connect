@@ -167,7 +167,7 @@ export function PrescriptionsView() {
 
               <div className="space-y-1.5">
                 <Label>Notes</Label>
-                <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Duration, follow-up advice…" className="bg-background/60 min-h-[60px]" />
+                <Textarea maxLength={500} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Duration, follow-up advice…" className="bg-background/60 min-h-[60px]" />
               </div>
             </div>
           </ScrollArea>

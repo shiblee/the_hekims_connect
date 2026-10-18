@@ -238,7 +238,7 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
               {RESULT_FLAGS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
             </FloatingSelect>
           </div>
-          <Textarea
+          <Textarea maxLength={500}
             value={form.findings}
             onChange={(e) => set({ findings: e.target.value })}
             placeholder="Key findings or remarks (optional) — e.g. Hb low, advised repeat after 4 weeks"

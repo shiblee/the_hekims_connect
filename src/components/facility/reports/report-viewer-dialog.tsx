@@ -238,7 +238,7 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
                   </>
                 ) : (
                   <>
-                    <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Review note (optional)" className="min-h-[60px] bg-background/60" />
+                    <Textarea maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Review note (optional)" className="min-h-[60px] bg-background/60" />
                     <Button size="sm" className="w-full" onClick={() => setStatus("reviewed")} disabled={busy}>
                       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Mark as reviewed{idx < reportIds.length - 1 ? " & next" : ""}
                     </Button>

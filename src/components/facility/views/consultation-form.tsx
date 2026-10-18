@@ -268,7 +268,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
           <Stethoscope className="h-3.5 w-3.5 text-primary" /> Doctor Review
         </p>
 
-        <Textarea
+        <Textarea maxLength={500}
           placeholder="Clinical findings…"
           value={assessment.clinicalFindings || ""}
           onChange={(e) => setAssessment((p) => ({ ...p, clinicalFindings: e.target.value }))}
@@ -280,7 +280,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
           value={assessment.workingDiagnosis || ""}
           onChange={(e) => setAssessment((p) => ({ ...p, workingDiagnosis: e.target.value }))}
         />
-        <Textarea
+        <Textarea maxLength={500}
           placeholder="Treatment rationale…"
           value={assessment.treatmentRationale || ""}
           onChange={(e) => setAssessment((p) => ({ ...p, treatmentRationale: e.target.value }))}
@@ -305,7 +305,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
             <Label htmlFor="requiresUrgentReferral" className="text-sm font-normal cursor-pointer text-destructive">Requires urgent referral</Label>
           </div>
         </div>
-        <Textarea
+        <Textarea maxLength={500}
           placeholder="Additional notes…"
           value={assessment.notes || ""}
           onChange={(e) => setAssessment((p) => ({ ...p, notes: e.target.value }))}
@@ -332,21 +332,21 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
           value={plan.diagnosis || ""}
           onChange={(e) => setPlan((p) => ({ ...p, diagnosis: e.target.value }))}
         />
-        <Textarea
+        <Textarea maxLength={500}
           placeholder="Treatment objective…"
           value={plan.treatmentObjective || ""}
           onChange={(e) => setPlan((p) => ({ ...p, treatmentObjective: e.target.value }))}
           className="bg-background/60"
           rows={2}
         />
-        <Textarea
+        <Textarea maxLength={500}
           placeholder="Planned investigations…"
           value={plan.plannedInvestigations || ""}
           onChange={(e) => setPlan((p) => ({ ...p, plannedInvestigations: e.target.value }))}
           className="bg-background/60"
           rows={2}
         />
-        <Textarea
+        <Textarea maxLength={500}
           placeholder="Planned treatment modalities (diet, medicine, regimen, etc.)…"
           value={plan.plannedModalities || ""}
           onChange={(e) => setPlan((p) => ({ ...p, plannedModalities: e.target.value }))}
@@ -363,7 +363,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
           <Label htmlFor="referralRequired" className="text-sm font-normal cursor-pointer">Referral required</Label>
         </div>
         {plan.referralRequired && (
-          <Textarea
+          <Textarea maxLength={500}
             placeholder="Referral details (facility, specialty, urgency, reason)…"
             value={plan.referralNotes || ""}
             onChange={(e) => setPlan((p) => ({ ...p, referralNotes: e.target.value }))}
@@ -381,7 +381,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
             className="bg-background/60"
           />
         </div>
-        <Textarea
+        <Textarea maxLength={500}
           placeholder="Clinical notes…"
           value={plan.clinicalNotes || ""}
           onChange={(e) => setPlan((p) => ({ ...p, clinicalNotes: e.target.value }))}
