@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Search, Loader2, UserPlus, PartyPopper, ChevronLeft, X, History, IdCard, User, Contact, QrCode,
-  BriefcaseMedical, Plus, TriangleAlert, Leaf, Pill, PersonStanding, Accessibility, Activity,
+  BriefcaseMedical, Plus, TriangleAlert, Leaf, Pill, PersonStanding, Accessibility,
   Bookmark, ArrowRight, Save, CheckCircle2, RotateCw, ChevronRight,
 } from "lucide-react";
 import QRCode from "qrcode";
@@ -1210,15 +1210,6 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-border/50 bg-muted/30 p-3 flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          <Activity className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Next Step</p>
-                          <p className="text-sm font-medium">Vitals &amp; Pulse Triage Booth</p>
-                        </div>
-                      </div>
                     </section>
                   </div>
                 </div>
