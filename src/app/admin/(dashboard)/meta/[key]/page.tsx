@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Loader2, Plus, ChevronUp, ChevronDown, ListChecks, Pencil, X,
   CircleDot, CheckSquare, Hash, Type, Info, TriangleAlert, Search, Pill, Leaf, Tablets, TrendingUp, TrendingDown, PersonStanding, Hourglass,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SupplementProfileDialog } from "@/components/admin/supplement-profile-dialog";
@@ -65,7 +66,7 @@ function countNoun(scope: CountScope, n: number): string {
 // ---------- L1 Screening types (Chief Complaints / Allergies / Medications & Herbs) ----------
 interface ChiefComplaintRow { id: string; key: string; label: string; labelLocal: string | null; category: string; active: boolean }
 interface ScreeningConfig { complaints: ChiefComplaintRow[] }
-interface FactorTagRow { id: string; kind: "aggravating" | "relieving"; label: string; sortOrder: number; active: boolean }
+interface FactorTagRow { id: string; kind: "aggravating" | "relieving"; label: string; sortOrder: number; active: boolean; updatedAt?: string }
 type FactorKind = FactorTagRow["kind"];
 // Aggravating / Relieving factor chips offered to the doctor in the Chief
 // Complaint Matrix (stored as ComplaintFactorTag rows).
@@ -77,8 +78,25 @@ interface OnsetRow { id: string; label: string; description: string | null; sort
 interface RegionRow { id: string; label: string; localTerms: string | null; icon: string; gender: string; bodyZone: string | null; sortOrder: number; active: boolean }
 interface AllergyRow { id: string; label: string; sortOrder: number; active: boolean; patientCount: number; patientPercent: number }
 interface MedicationRow { id: string; kind: string; label: string; sortOrder: number; active: boolean; patientCount: number; patientPercent: number }
-interface RedFlagRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
-interface AcuteSymptomRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
+interface RedFlagRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean; updatedAt?: string }
+interface AcuteSymptomRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean; updatedAt?: string }
+
+/** "Last updated …" for a manually curated list — the newest change across its rows. */
+function LastUpdated({ rows }: { rows: { updatedAt?: string }[] }) {
+  const times = rows.map((r) => (r.updatedAt ? new Date(r.updatedAt).getTime() : NaN)).filter((t) => !Number.isNaN(t));
+  if (!times.length) return null;
+  const last = new Date(Math.max(...times));
+  const sameDay = times.filter((t) => new Date(t).toDateString() === last.toDateString()).length;
+  const days = Math.floor((Date.now() - last.getTime()) / 86400000);
+  const ago = days <= 0 ? "today" : days === 1 ? "yesterday" : days < 30 ? `${days} days ago` : days < 365 ? `${Math.floor(days / 30)} month${days < 60 ? "" : "s"} ago` : `${Math.floor(days / 365)} year${days < 730 ? "" : "s"} ago`;
+  return (
+    <p className="mb-3 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+      <CalendarClock className="h-3.5 w-3.5" />
+      Last updated <span className="font-medium text-foreground">{last.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}, {last.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+      {" "}· {ago} · {sameDay} item{sameDay === 1 ? "" : "s"} changed that day · {rows.length} in total
+    </p>
+  );
+}
 
 const SCREENING_TABS = ["complaints", "asbab", "tashkhees", "allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions", "onset"] as const;
 // Allergies, Supplements & Herbs, Medications and Red Flags are reachable from
@@ -1819,6 +1837,7 @@ export default function MetaSectionPage() {
             {activeCategory === "redflags" ? (
               <>
                 <h2 className="font-serif text-lg font-semibold">Emergency Warning Signs</h2>
+                <LastUpdated rows={redFlags} />
                 <div className="space-y-1.5">
                 {redFlags.map((r, idx) => (
                   <div key={r.id} className="flex items-start gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
@@ -1850,6 +1869,7 @@ export default function MetaSectionPage() {
             ) : activeCategory === "aggravating" || activeCategory === "relieving" ? (
               <>
                 <h2 className="font-serif text-lg font-semibold">{FACTOR_META[activeCategory].title}</h2>
+                <LastUpdated rows={factorTags.filter((f) => f.kind === activeCategory)} />
                 {renderFactorRows(activeCategory)}
               </>
             ) : activeCategory === "onset" ? (
@@ -1930,6 +1950,7 @@ export default function MetaSectionPage() {
             ) : activeCategory === "symptoms" ? (
               <>
                 <h2 className="font-serif text-lg font-semibold">Accompanying Acute Symptoms (Alamat-e-Izafiya)</h2>
+                <LastUpdated rows={acuteSymptoms} />
         <div className="space-y-1.5">
           {acuteSymptoms.map((s, idx) => (
             <div key={s.id} className="flex items-start gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
