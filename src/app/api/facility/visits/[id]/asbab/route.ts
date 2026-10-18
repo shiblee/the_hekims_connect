@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const framework = frameworkOf(req.nextUrl.searchParams.get("framework"));
   const [a, activeQuestions] = await Promise.all([
     db.asbabAssessment.findUnique({ where: { visitId_framework: { visitId: id, framework } }, include: { responses: true } }),
-    db.asbabQuestion.findMany({ where: { active: true, pillar: { active: true, framework } }, select: { id: true } }),
+    db.asbabQuestion.findMany({ where: { active: true, reviewStatus: "approved", pillar: { active: true, framework } }, select: { id: true } }),
   ]);
   const active = new Set(activeQuestions.map((q) => q.id));
   const isLive = (qid: string | null) => !!qid && active.has(qid);

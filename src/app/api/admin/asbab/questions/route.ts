@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/request-info";
-import { parseQuestionBody } from "@/lib/asbab-validate";
+import { parseQuestionBody, parseSelectionMeta } from "@/lib/asbab-validate";
 
 /** Body: { pillarId, label, labelLocal, helpText, type, required, weight, showIfQuestionId, showIfOption, options: [...] } */
 export async function POST(req: NextRequest) {
@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
   const question = await db.asbabQuestion.create({
     data: {
       ...parsed.data, pillarId: pillar.id, sortOrder: (max._max.sortOrder ?? -1) + 1,
+      // New Dala'il questions start as drafts unless the admin sets a status; Asbab questions are live.
+      reviewStatus: pillar.framework === "dalail" ? "draft" : "approved",
+      ...parseSelectionMeta(b),
       options: { create: (parsed.options || []).map((o, i) => ({ ...o, sortOrder: i })) },
     },
   });

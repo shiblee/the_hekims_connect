@@ -586,6 +586,7 @@ export async function seedDatabase() {
   await (await import("@/lib/tashkhees-seed")).seedTashkheesConfig();
   await seedOnsetPatternTags();
   await seedOnsetPatternCatalog();
+  await seedDalailBank();
   await seedEmailTemplates();
 
   // Check if already seeded
@@ -894,5 +895,41 @@ export async function seedOnsetPatternCatalog() {
     if (have.has(p.label.toLowerCase())) continue;
     await db.onsetPatternTag.create({ data: { ...p, sortOrder: order++ } });
     have.add(p.label.toLowerCase());
+  }
+}
+
+/**
+ * Dala'il adaptive bank: adds selection links to the existing examination
+ * questions (only where none are set yet — admin edits are never overwritten),
+ * adds the new examination sections, and adds the starter questions as DRAFTS
+ * (hidden from doctors until approved in Admin). Add-only and idempotent.
+ */
+export async function seedDalailBank() {
+  const { EXISTING_DALAIL_META, NEW_DALAIL_SECTIONS, NEW_DALAIL_QUESTIONS } = await import("@/lib/dalail-bank-seed");
+  const pillars = await db.asbabPillar.findMany({ where: { framework: "dalail" }, include: { questions: { select: { id: true, label: true, appliesTo: true, purpose: true } } } });
+  let order = Math.max(-1, ...pillars.map((p) => p.sortOrder)) + 1;
+  for (const s of NEW_DALAIL_SECTIONS) {
+    if (pillars.some((p) => p.key === s.key)) continue;
+    const created = await db.asbabPillar.create({ data: { framework: "dalail", key: s.key, label: s.label, english: s.english, sortOrder: order++ } });
+    pillars.push({ ...created, questions: [] });
+  }
+  for (const [k, meta] of Object.entries(EXISTING_DALAIL_META)) {
+    const [key, label] = k.split("|");
+    const q = pillars.find((p) => p.key === key)?.questions.find((x) => x.label === label);
+    if (!q || q.appliesTo !== "{}" || q.purpose) continue;
+    await db.asbabQuestion.update({ where: { id: q.id }, data: { appliesTo: JSON.stringify(meta.appliesTo), priority: meta.priority, purpose: meta.purpose, safetyCritical: !!meta.safetyCritical } });
+  }
+  for (const nq of NEW_DALAIL_QUESTIONS) {
+    const p = pillars.find((x) => x.key === nq.section);
+    if (!p || p.questions.some((x) => x.label === nq.label)) continue;
+    const qOrder = p.questions.length;
+    const created = await db.asbabQuestion.create({
+      data: {
+        pillarId: p.id, label: nq.label, labelLocal: nq.labelLocal ?? null, type: nq.type ?? "single_select", sortOrder: qOrder, weight: 1,
+        appliesTo: JSON.stringify(nq.appliesTo), priority: nq.priority, purpose: nq.purpose, safetyCritical: !!nq.safetyCritical, reviewStatus: "draft",
+        options: { create: nq.options.map(([label, description, safra, dam, balgham, sauda], i) => ({ label, description, safra, dam, balgham, sauda, sortOrder: i })) },
+      },
+    });
+    p.questions.push({ id: created.id, label: created.label, appliesTo: created.appliesTo, purpose: created.purpose });
   }
 }

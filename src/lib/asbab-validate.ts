@@ -33,3 +33,26 @@ export function parseQuestionBody(b: any): { error: string } | {
     options: isChoice ? options : [],
   };
 }
+
+const REVIEW = new Set(["draft", "approved", "retired"]);
+const strList = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim()))].slice(0, 200) : []);
+
+/** Adaptive-selection metadata (Dala'il). Returns only the fields present in the body. */
+export function parseSelectionMeta(b: any): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (b.appliesTo && typeof b.appliesTo === "object") {
+    const a = b.appliesTo;
+    const clean: Record<string, unknown> = {};
+    if (a.always) clean.always = true;
+    for (const k of ["categories", "complaints", "symptoms", "regions"]) { const l = strList(a[k]); if (l.length) clean[k] = l; }
+    if (a.sex === "male" || a.sex === "female") clean.sex = a.sex;
+    for (const k of ["minAge", "maxAge"]) { const n = Number(a[k]); if (a[k] !== "" && a[k] != null && Number.isFinite(n) && n >= 0 && n <= 120) clean[k] = Math.round(n); }
+    out.appliesTo = JSON.stringify(clean);
+  }
+  if (b.priority !== undefined) { const n = Number(b.priority); out.priority = Number.isFinite(n) ? Math.max(1, Math.min(5, Math.round(n))) : 3; }
+  if (b.safetyCritical !== undefined) out.safetyCritical = !!b.safetyCritical;
+  if (typeof b.reviewStatus === "string" && REVIEW.has(b.reviewStatus)) out.reviewStatus = b.reviewStatus;
+  if (b.purpose !== undefined) out.purpose = str(b.purpose).slice(0, 200) || null;
+  if (b.reference !== undefined) out.reference = str(b.reference).slice(0, 300) || null;
+  return out;
+}

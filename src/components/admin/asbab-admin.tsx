@@ -14,22 +14,33 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
-import { ChevronDown, ChevronUp, GitBranch, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { FloatingField, FloatingMultiSelect, FloatingSelect } from "@/components/shared/floating-field";
+import { CheckCircle2, ChevronDown, ChevronUp, GitBranch, Loader2, Pencil, Plus, ShieldAlert, Sparkles, Trash2 } from "lucide-react";
 
 interface Option { id?: string; label: string; description: string | null; safra: number; dam: number; balgham: number; sauda: number; active: boolean }
 interface Question {
   id: string; pillarId: string; label: string; labelLocal: string | null; helpText: string | null; type: string; required: boolean;
   weight: number; showIfQuestionId: string | null; showIfOption: string | null; sortOrder: number; active: boolean; version: number; options: Option[];
+  // Adaptive selection (Dala'il)
+  appliesTo: string; priority: number; safetyCritical: boolean; reviewStatus: string; purpose: string | null; reference: string | null;
 }
+interface Applies { always?: boolean; categories?: string[]; complaints?: string[]; symptoms?: string[]; regions?: string[]; sex?: "male" | "female"; minAge?: number; maxAge?: number }
+interface Masters { categories: string[]; complaints: { key: string; label: string; category: string }[]; symptoms: string[]; regions: string[] }
+const parseApplies = (raw: string | undefined): Applies => { try { return JSON.parse(raw || "{}") || {}; } catch { return {}; } };
+const REVIEW_STYLES: Record<string, string> = {
+  draft: "border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10",
+  approved: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10",
+  retired: "border-border/60 text-muted-foreground",
+};
 interface Pillar { id: string; key: string; label: string; english: string; description: string | null; sortOrder: number; active: boolean; questions: Question[] }
 
-type Draft = Omit<Question, "id" | "pillarId" | "sortOrder" | "version"> & { id: string | null };
+type Draft = Omit<Question, "id" | "pillarId" | "sortOrder" | "version" | "appliesTo"> & { id: string | null; applies: Applies };
 
 const blankOption = (): Option => ({ label: "", description: null, safra: 0, dam: 0, balgham: 0, sauda: 0, active: true });
 const blankDraft = (): Draft => ({
   id: null, label: "", labelLocal: "", helpText: "", type: "single_select", required: false, weight: 1,
   showIfQuestionId: null, showIfOption: null, active: true, options: [blankOption(), blankOption()],
+  applies: {}, priority: 3, safetyCritical: false, reviewStatus: "draft", purpose: "", reference: "",
 });
 const typeLabel = (t: string) => QUESTION_TYPES.find((x) => x.value === t)?.label ?? t;
 const isChoice = (t: string) => t === "single_select" || t === "multi_select";
@@ -53,6 +64,34 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
   const [pillarDraft, setPillarDraft] = useState<{ id: string; label: string; english: string; description: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [previewAnswer, setPreviewAnswer] = useState<AsbabAnswer | undefined>(undefined);
+  const isDalail = framework === "dalail";
+  // Lists a Dala'il question can be linked to, and the selection settings.
+  const [masters, setMasters] = useState<Masters | null>(null);
+  const [linkQuery, setLinkQuery] = useState<{ complaints: string; symptoms: string; regions: string }>({ complaints: "", symptoms: "", regions: "" });
+  const [cap, setCap] = useState("7");
+  const [ranking, setRanking] = useState(true);
+  useEffect(() => {
+    if (!isDalail) return;
+    adminApi.get<Masters>("/api/admin/asbab/selection-masters").then(setMasters).catch(() => {});
+    adminApi.get<{ settings: { category: string; key: string; value: string }[] }>("/api/admin/settings").then((r) => {
+      const get = (k: string) => r.settings.find((x) => x.category === "dalail" && x.key === k)?.value;
+      if (get("max_questions")) setCap(get("max_questions")!);
+      setRanking(get("ranking") !== "off");
+    }).catch(() => {});
+  }, [isDalail]);
+  const saveSetting = async (key: string, value: string) => {
+    try { await adminApi.put("/api/admin/settings", { updates: [{ category: "dalail", key, value }] }); toast.success("Saved"); }
+    catch (e: any) { toast.error(e.message || "Could not save"); }
+  };
+  const setReview = async (q: Question, reviewStatus: string) => {
+    try { await adminApi.patch(`/api/admin/asbab/questions/${q.id}`, { reviewStatus }); load(); }
+    catch (e: any) { toast.error(e.message || "Could not update the question"); }
+  };
+  const approveAll = async (ids: string[]) => {
+    if (!ids.length || !window.confirm(`Approve ${ids.length} draft question${ids.length === 1 ? "" : "s"}? Only approve after a qualified Unani physician has reviewed the wording, options and humoral points.`)) return;
+    try { const r = await adminApi.post<{ approved: number }>("/api/admin/asbab/questions/approve", { ids }); toast.success(`${r.approved} approved`); load(); }
+    catch (e: any) { toast.error(e.message || "Could not approve"); }
+  };
 
   const load = () => adminApi.get<{ pillars: Pillar[] }>(`/api/admin/asbab?framework=${framework}`)
     .then((r) => setPillars(r.pillars))
@@ -86,7 +125,11 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
 
   const openQuestion = (q?: Question) => {
     setPreviewAnswer(undefined);
-    setDraft(q ? { ...q, labelLocal: q.labelLocal || "", helpText: q.helpText || "", options: q.options.map((o) => ({ ...o })) } : blankDraft());
+    setLinkQuery({ complaints: "", symptoms: "", regions: "" });
+    setDraft(q ? {
+      ...q, labelLocal: q.labelLocal || "", helpText: q.helpText || "", options: q.options.map((o) => ({ ...o })),
+      applies: parseApplies(q.appliesTo), purpose: q.purpose || "", reference: q.reference || "",
+    } : { ...blankDraft(), reviewStatus: isDalail ? "draft" : "approved" });
   };
   const setD = (patch: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
   const setOpt = (i: number, patch: Partial<Option>) => setDraft((d) => (d ? { ...d, options: d.options.map((o, n) => (n === i ? { ...o, ...patch } : o)) } : d));
@@ -101,7 +144,8 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
     if (!draft || !active) return;
     setSaving(true);
     try {
-      const body = { ...draft, pillarId: active.id, options: isChoice(draft.type) ? draft.options : [] };
+      const { applies, ...rest } = draft;
+      const body = { ...rest, pillarId: active.id, options: isChoice(draft.type) ? draft.options : [], ...(isDalail ? { appliesTo: applies } : {}) };
       if (draft.id) await adminApi.patch(`/api/admin/asbab/questions/${draft.id}`, body);
       else await adminApi.post("/api/admin/asbab/questions", body);
       toast.success(draft.id ? "Question updated" : "Question added");
@@ -144,7 +188,28 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
 
   if (!pillars) return <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
 
+  const setA = (patch: Partial<Applies>) => setDraft((d) => (d ? { ...d, applies: { ...d.applies, ...patch } } : d));
+  const drafts = (active?.questions || []).filter((q) => q.reviewStatus === "draft").map((q) => q.id);
+  const linkSummary = (raw: string) => {
+    const a = parseApplies(raw);
+    const parts = [a.always && "Every patient", ...(a.categories || []), ...(a.complaints || []).map((k) => masters?.complaints.find((c) => c.key === k)?.label ?? k), ...(a.symptoms || []), ...(a.regions || [])].filter(Boolean) as string[];
+    return parts.length ? parts.slice(0, 4).join(" · ") + (parts.length > 4 ? ` +${parts.length - 4}` : "") : "Not linked — shown only when a doctor adds it";
+  };
+
   return (
+    <div className="space-y-6">
+    {isDalail && (
+      <Card className="p-4 border-primary/25 bg-primary/5 flex-row flex-wrap items-center gap-x-6 gap-y-3">
+        <p className="text-sm font-semibold flex items-center gap-2 text-primary"><Sparkles className="h-4 w-4" /> Adaptive selection</p>
+        <label className="flex items-center gap-2 text-sm">Questions per patient
+          <Input type="number" min={3} max={25} value={cap} onChange={(e) => setCap(e.target.value)} onBlur={() => saveSetting("max_questions", String(Math.max(3, Math.min(25, Number(cap) || 7))))} className="h-8 w-20 bg-background/60" />
+        </label>
+        <label className="flex items-center gap-2 text-sm">Order with Hakeem Insight
+          <Switch checked={ranking} onCheckedChange={(v) => { setRanking(v); saveSetting("ranking", v ? "on" : "off"); }} />
+        </label>
+        <p className="text-xs text-muted-foreground basis-full">Doctors see only <b>Approved</b> questions linked to the patient&apos;s complaints, symptoms or body regions (plus &ldquo;every patient&rdquo; core signs). Safety questions are always included. Drafts stay hidden until approved after clinical review.</p>
+      </Card>
+    )}
     <div className="grid md:grid-cols-[280px_1fr] gap-6">
       <Card className="p-3 border-border/50 bg-card/60 h-fit gap-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-2 pt-1 pb-2">{words.sections}</p>
@@ -184,6 +249,11 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
               <span className={cn("text-xs font-medium", active.active ? "text-emerald-500" : "text-muted-foreground")}>{active.active ? `${words.section} enabled` : `${words.section} disabled`}</span>
               <Switch checked={active.active} onCheckedChange={(v) => patchPillar(active.id, { active: v })} />
               <Button size="sm" variant="outline" onClick={() => setPillarDraft({ id: active.id, label: active.label, english: active.english, description: active.description || "" })}><Pencil className="h-3.5 w-3.5" /> Edit {words.section.toLowerCase()}</Button>
+              {isDalail && drafts.length > 0 && (
+                <Button size="sm" variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400" onClick={() => approveAll(drafts)}>
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Approve {drafts.length} draft{drafts.length === 1 ? "" : "s"}
+                </Button>
+              )}
               <Button size="sm" onClick={() => openQuestion()}><Plus className="h-3.5 w-3.5" /> Add Question</Button>
             </div>
           </div>
@@ -205,8 +275,19 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
                       {isChoice(q.type) && <span className="text-[11px] text-muted-foreground">{q.options.filter((o) => o.active).length} options</span>}
                       {parentQ && <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1"><GitBranch className="h-3 w-3" /> only if &quot;{q.showIfOption}&quot;</span>}
                       <span className="text-[11px] text-muted-foreground">v{q.version}</span>
+                      {isDalail && (
+                        <>
+                          <Badge variant="outline" className={cn("text-[10px] font-medium capitalize", REVIEW_STYLES[q.reviewStatus])}>{q.reviewStatus}</Badge>
+                          {q.safetyCritical && <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive"><ShieldAlert className="h-2.5 w-2.5" /> Safety</Badge>}
+                          <span className="text-[11px] text-muted-foreground">Priority {q.priority}</span>
+                        </>
+                      )}
                     </div>
+                    {isDalail && <p className="mt-1 text-[11px] text-muted-foreground truncate" title={linkSummary(q.appliesTo)}>Shown for: {linkSummary(q.appliesTo)}</p>}
                   </div>
+                  {isDalail && q.reviewStatus === "draft" && (
+                    <Button size="sm" variant="outline" className="h-8 shrink-0 border-emerald-500/40 text-emerald-700 dark:text-emerald-400" onClick={() => setReview(q, "approved")}>Approve</Button>
+                  )}
                   <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => openQuestion(q)}><Pencil className="h-3.5 w-3.5" /></Button>
                   <span className={cn("text-xs font-medium w-14 text-right shrink-0 pt-2", q.active ? "text-emerald-500" : "text-muted-foreground")}>{q.active ? "Active" : "Inactive"}</span>
                   <Switch className="mt-1.5" checked={q.active} onCheckedChange={() => toggleQuestion(q)} />
@@ -288,6 +369,78 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
                 </div>
               )}
 
+              {isDalail && (
+                <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3.5">
+                  <p className="text-sm font-semibold flex items-center gap-2 text-primary"><Sparkles className="h-4 w-4" /> Patient selection</p>
+                  <div className="grid sm:grid-cols-3 gap-3 pt-1">
+                    <FloatingSelect id="dlReview" label="Review status" value={draft.reviewStatus} onValueChange={(v) => setD({ reviewStatus: v })}>
+                      <SelectItem value="draft">Draft — awaiting clinical review</SelectItem>
+                      <SelectItem value="approved">Approved — can be shown</SelectItem>
+                      <SelectItem value="retired">Retired — never shown</SelectItem>
+                    </FloatingSelect>
+                    <FloatingSelect id="dlPriority" label="Clinical priority" value={String(draft.priority)} onValueChange={(v) => setD({ priority: Number(v) })}>
+                      {[5, 4, 3, 2, 1].map((n) => <SelectItem key={n} value={String(n)}>{n} — {["", "Low", "Below average", "Average", "High", "Very high"][n]}</SelectItem>)}
+                    </FloatingSelect>
+                    <FloatingSelect id="dlSex" label="Patients" value={draft.applies.sex || "any"} onValueChange={(v) => setA({ sex: v === "any" ? undefined : (v as "male" | "female") })}>
+                      <SelectItem value="any">Any sex</SelectItem>
+                      <SelectItem value="female">Women only</SelectItem>
+                      <SelectItem value="male">Men only</SelectItem>
+                    </FloatingSelect>
+                  </div>
+                  <div className="pt-2"><FloatingField id="dlPurpose" label="Why this question (shown to the doctor)" maxLength={200} value={draft.purpose || ""} onChange={(e) => setD({ purpose: e.target.value })} /></div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2">
+                      <span className="text-sm">Ask every patient (core sign)</span>
+                      <Switch checked={!!draft.applies.always} onCheckedChange={(v) => setA({ always: v || undefined })} />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                      <span className="text-sm flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-destructive" /> Safety-critical (always included)</span>
+                      <Switch checked={draft.safetyCritical} onCheckedChange={(v) => setD({ safetyCritical: v })} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">Complaint categories</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(masters?.categories || []).map((c) => {
+                        const on = (draft.applies.categories || []).includes(c);
+                        return (
+                          <button key={c} type="button" onClick={() => setA({ categories: on ? (draft.applies.categories || []).filter((x) => x !== c) : [...(draft.applies.categories || []), c] })}
+                            className={cn("rounded-full border px-2.5 py-0.5 text-xs transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-border/60 hover:border-primary/40")}>{c}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {masters && (
+                    <div className="grid gap-4 pt-1">
+                      <FloatingMultiSelect id="dlComplaints" label="Specific complaints (optional)" openOnFocus
+                        selected={(draft.applies.complaints || []).map((k) => ({ id: k, label: masters.complaints.find((c) => c.key === k)?.label ?? k }))}
+                        onRemove={(k) => setA({ complaints: (draft.applies.complaints || []).filter((x) => x !== k) })}
+                        query={linkQuery.complaints} onQueryChange={(q) => setLinkQuery((l) => ({ ...l, complaints: q }))}
+                        results={masters.complaints.filter((c) => !(draft.applies.complaints || []).includes(c.key) && (!linkQuery.complaints.trim() || c.label.toLowerCase().includes(linkQuery.complaints.trim().toLowerCase()))).slice(0, 12).map((c) => ({ id: c.key, label: c.label, category: c.category }))}
+                        describe={(c) => (c as { category?: string }).category}
+                        onPick={(k) => setA({ complaints: [...(draft.applies.complaints || []), k] })} placeholder="Type a complaint…" />
+                      <FloatingMultiSelect id="dlSymptoms" label="Other symptoms (optional)" openOnFocus
+                        selected={(draft.applies.symptoms || []).map((x) => ({ id: x, label: x }))}
+                        onRemove={(x) => setA({ symptoms: (draft.applies.symptoms || []).filter((y) => y !== x) })}
+                        query={linkQuery.symptoms} onQueryChange={(q) => setLinkQuery((l) => ({ ...l, symptoms: q }))}
+                        results={masters.symptoms.filter((x) => !(draft.applies.symptoms || []).includes(x) && (!linkQuery.symptoms.trim() || x.toLowerCase().includes(linkQuery.symptoms.trim().toLowerCase()))).slice(0, 12).map((x) => ({ id: x, label: x }))}
+                        onPick={(x) => setA({ symptoms: [...(draft.applies.symptoms || []), x] })} placeholder="Type a symptom…" />
+                      <FloatingMultiSelect id="dlRegions" label="Body regions (optional)" openOnFocus
+                        selected={(draft.applies.regions || []).map((x) => ({ id: x, label: x }))}
+                        onRemove={(x) => setA({ regions: (draft.applies.regions || []).filter((y) => y !== x) })}
+                        query={linkQuery.regions} onQueryChange={(q) => setLinkQuery((l) => ({ ...l, regions: q }))}
+                        results={masters.regions.filter((x) => !(draft.applies.regions || []).includes(x) && (!linkQuery.regions.trim() || x.toLowerCase().includes(linkQuery.regions.trim().toLowerCase()))).slice(0, 12).map((x) => ({ id: x, label: x }))}
+                        onPick={(x) => setA({ regions: [...(draft.applies.regions || []), x] })} placeholder="Type a region…" />
+                    </div>
+                  )}
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <FloatingField id="dlMinAge" label="Minimum age (optional)" type="number" min={0} max={120} value={draft.applies.minAge ?? ""} onChange={(e) => setA({ minAge: e.target.value === "" ? undefined : Number(e.target.value) })} />
+                    <FloatingField id="dlMaxAge" label="Maximum age (optional)" type="number" min={0} max={120} value={draft.applies.maxAge ?? ""} onChange={(e) => setA({ maxAge: e.target.value === "" ? undefined : Number(e.target.value) })} />
+                    <FloatingField id="dlRef" label="Reference source (optional)" maxLength={300} value={draft.reference || ""} onChange={(e) => setD({ reference: e.target.value })} />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2.5">
                 <span className="text-sm font-medium">Question enabled</span>
                 <Switch checked={draft.active} onCheckedChange={(v) => setD({ active: v })} />
@@ -327,6 +480,7 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   );
 }

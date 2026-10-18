@@ -11,22 +11,22 @@ datasource db {
 }
 
 model Admin {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  password      String
-  avatarColor   String    @default("teal")
-  avatarImage   String?
-  active        Boolean   @default(true)
-  failedAttempts Int      @default(0)
-  lockedUntil   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  password       String
+  avatarColor    String    @default("teal")
+  avatarImage    String?
+  active         Boolean   @default(true)
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  otpCodes     OtpCode[]
-  loginEvents  AdminLoginEvent[]
-  sessions     AdminSession[]
-  activityLogs AdminActivityLog[]
+  otpCodes                          OtpCode[]
+  loginEvents                       AdminLoginEvent[]
+  sessions                          AdminSession[]
+  activityLogs                      AdminActivityLog[]
   reviewedChiefComplaintSuggestions ChiefComplaintSuggestion[]
 }
 
@@ -74,72 +74,72 @@ model AdminActivityLog {
 }
 
 model Facility {
-  id             String   @id @default(cuid())
-  facilityName   String   @map("name")
-  email          String?  @unique
-  phone          String?  @unique
-  password       String
-  license        String?
-  specialization String   @default("General Unani Practice")
-  experience     Int      @default(0)
-  rating         Float    @default(5.0)
-  bio            String?
-  avatarColor    String   @default("teal")
-  verified       Boolean  @default(false)
-  active         Boolean  @default(true)
-  failedLoginAttempts Int @default(0)
-  lockedUntil    DateTime?
-  lastLoginAt    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  facilityName        String    @map("name")
+  email               String?   @unique
+  phone               String?   @unique
+  password            String
+  license             String?
+  specialization      String    @default("General Unani Practice")
+  experience          Int       @default(0)
+  rating              Float     @default(5.0)
+  bio                 String?
+  avatarColor         String    @default("teal")
+  verified            Boolean   @default(false)
+  active              Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Facility Profile Completion (onboarding wizard)
   registeredFacilityName String?
   facilityType           String?
-  hfrNumber               String?  @unique
-  establishmentDate       DateTime?
-  alternateContactNumber  String?
-  addressLine1            String?
-  addressLine2            String?
-  locality                String?
-  city                    String?
-  district                String?
-  state                   String?
-  country                 String?
-  pincode                 String?
-  latitude                Float?
-  longitude               Float?
-  googlePlaceId           String?
-  bedCapacity             Int?
-  dailyOpdCount           Int?
-  dailyAdmissions         Int?
-  isOperational           Boolean   @default(true)
-  is24x7                  Boolean   @default(false)
-  emergencyServices       Boolean   @default(false)
-  ambulanceAvailable      Boolean   @default(false)
-  specializations         String?
-  services                String?
-  profileCompleted        Boolean   @default(false)
-  profileCompletedAt      DateTime?
+  hfrNumber              String?   @unique
+  establishmentDate      DateTime?
+  alternateContactNumber String?
+  addressLine1           String?
+  addressLine2           String?
+  locality               String?
+  city                   String?
+  district               String?
+  state                  String?
+  country                String?
+  pincode                String?
+  latitude               Float?
+  longitude              Float?
+  googlePlaceId          String?
+  bedCapacity            Int?
+  dailyOpdCount          Int?
+  dailyAdmissions        Int?
+  isOperational          Boolean   @default(true)
+  is24x7                 Boolean   @default(false)
+  emergencyServices      Boolean   @default(false)
+  ambulanceAvailable     Boolean   @default(false)
+  specializations        String?
+  services               String?
+  profileCompleted       Boolean   @default(false)
+  profileCompletedAt     DateTime?
 
-  appointments    Appointment[]
+  appointments     Appointment[]
   mizajAssessments MizajAssessment[]
-  prescriptions   Prescription[]
-  otpCodes        OtpCode[]
-  loginEvents     LoginEvent[]
-  sessions        UserSession[]
-  operatingHours  FacilityOperatingHours[]
-  subscriptions   FacilitySubscription[]
-  staff           Staff[]
-  visits          Visit[]
-  patientReports  PatientReport[]
+  prescriptions    Prescription[]
+  otpCodes         OtpCode[]
+  loginEvents      LoginEvent[]
+  sessions         UserSession[]
+  operatingHours   FacilityOperatingHours[]
+  subscriptions    FacilitySubscription[]
+  staff            Staff[]
+  visits           Visit[]
+  patientReports   PatientReport[]
 
   @@map("Hakim")
 }
 
 model Staff {
-  id                 String   @id @default(cuid())
-  staffCode          String   @unique
+  id                 String    @id @default(cuid())
+  staffCode          String    @unique
   facilityId         String
   name               String
   photo              String?
@@ -157,38 +157,38 @@ model Staff {
   role               String?
   // JSON-stringified array, same convention as Facility.specializations/services.
   responsibilities   String?
-  active             Boolean  @default(true)
+  active             Boolean   @default(true)
   lastLoginAt        DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  facility Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  otpCodes OtpCode[]
-  doctorVisits       Visit[]      @relation("VisitDoctor")
-  registeredVisits   Visit[]      @relation("VisitRegisteredBy")
-  recordedPayments   Payment[]
-  recordedVitalSigns VitalSigns[]
-  recordedScreenings L1Screening[]
-  recordedClinicalAssessments ClinicalAssessment[]
-  recordedTreatmentPlans      TreatmentPlan[]
-  recordedComplaintAssessments ComplaintAssessment[]
-  recordedVisitIntakes         VisitIntake[]
-  recordedRedFlagScreenings    RedFlagScreening[]
-  recordedAcuteSymptomAssessments AcuteSymptomAssessment[]
+  facility                           Facility                    @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  otpCodes                           OtpCode[]
+  doctorVisits                       Visit[]                     @relation("VisitDoctor")
+  registeredVisits                   Visit[]                     @relation("VisitRegisteredBy")
+  recordedPayments                   Payment[]
+  recordedVitalSigns                 VitalSigns[]
+  recordedScreenings                 L1Screening[]
+  recordedClinicalAssessments        ClinicalAssessment[]
+  recordedTreatmentPlans             TreatmentPlan[]
+  recordedComplaintAssessments       ComplaintAssessment[]
+  recordedVisitIntakes               VisitIntake[]
+  recordedRedFlagScreenings          RedFlagScreening[]
+  recordedAcuteSymptomAssessments    AcuteSymptomAssessment[]
   recordedAnatomicalRegionSelections AnatomicalRegionSelection[]
   recordedVisitChronologies          VisitChronology[]
   recordedAsbabAssessments           AsbabAssessment[]
   recordedTashkheesDossiers          TashkheesDossier[]
-  recordedResidentClinicalNotes ResidentClinicalNote[]
-  referralsMade                Referral[]
-  amaDeclinesRecorded          AmaDecline[]
+  recordedResidentClinicalNotes      ResidentClinicalNote[]
+  referralsMade                      Referral[]
+  amaDeclinesRecorded                AmaDecline[]
 }
 
 model FacilityOperatingHours {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   facilityId   String
   dayOfWeek    Int
-  isOpen       Boolean  @default(true)
+  isOpen       Boolean @default(true)
   openingTime  String?
   closingTime  String?
   // Optional second shift the same day (e.g. a morning + evening clinic schedule).
@@ -239,55 +239,55 @@ model MetadataOption {
 }
 
 model Patient {
-  id                String   @id @default(cuid())
+  id                    String    @id @default(cuid())
   // Platform-wide display code, e.g. "PT00001234" — backfilled for pre-existing
   // rows, generated at creation going forward (see scripts/backfill-patient-codes.ts).
-  patientCode       String?  @unique
-  name              String
-  email             String?  @unique
+  patientCode           String?   @unique
+  name                  String
+  email                 String?   @unique
   // Not unique: one mobile number can register multiple family members
   // (self/spouse/child/etc.) as distinct Patient rows.
-  phone             String?
-  password          String
-  failedLoginAttempts Int @default(0)
-  lockedUntil       DateTime?
-  titlePrefix       String?
+  phone                 String?
+  password              String
+  failedLoginAttempts   Int       @default(0)
+  lockedUntil           DateTime?
+  titlePrefix           String?
   // Meta: registration_for (Self/Spouse/Child/Parent/Other) — set once at creation,
   // describes this patient's relation to whoever registered them.
-  registrationFor  String?
-  relationship      String?
-  dob               String?
+  registrationFor       String?
+  relationship          String?
+  dob                   String?
   // True when the exact date of birth isn't known and `dob` holds an
   // approximate, calculated-from-age value instead of a real DOB.
-  dobApprox         Boolean  @default(false)
-  gender            String?
-  maritalStatus     String?
-  bloodGroup        String?
-  address           String?
-  state             String?
-  city              String?
-  emergencyContact  String?
-  emergencyContactName   String?
-  emergencyRelationship  String?
-  occupation        String?
-  height            String?
-  weight            String?
+  dobApprox             Boolean   @default(false)
+  gender                String?
+  maritalStatus         String?
+  bloodGroup            String?
+  address               String?
+  state                 String?
+  city                  String?
+  emergencyContact      String?
+  emergencyContactName  String?
+  emergencyRelationship String?
+  occupation            String?
+  height                String?
+  weight                String?
   // Medical history
-  familyHistory     String?
-  medicalHistory    String?
-  chronicConditions String?
-  allergies         String?
-  currentMedications String?
-  surgicalHistory   String?
-  lifestyle         String?
-  mizaj             String?
-  photo             String?
-  avatarColor       String   @default("amber")
-  verified          Boolean  @default(false)
-  active            Boolean  @default(true)
-  lastLoginAt       DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  familyHistory         String?
+  medicalHistory        String?
+  chronicConditions     String?
+  allergies             String?
+  currentMedications    String?
+  surgicalHistory       String?
+  lifestyle             String?
+  mizaj                 String?
+  photo                 String?
+  avatarColor           String    @default("amber")
+  verified              Boolean   @default(false)
+  active                Boolean   @default(true)
+  lastLoginAt           DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   appointments     Appointment[]
   records          Record[]
@@ -301,20 +301,20 @@ model Patient {
 }
 
 model Appointment {
-  id        String   @id @default(cuid())
-  facilityId String  @map("hakimId")
-  patientId String
-  date      String
-  time      String
-  type      String   @default("Consultation")
-  reason    String?
-  status    String   @default("scheduled")
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  facilityId String   @map("hakimId")
+  patientId  String
+  date       String
+  time       String
+  type       String   @default("Consultation")
+  reason     String?
+  status     String   @default("scheduled")
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility      Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
   prescriptions Prescription[]
 }
 
@@ -322,43 +322,44 @@ model Appointment {
 // day. Distinct from Appointment (which is the patient's own advance-booking
 // self-service flow) — the two aren't unified yet, see the Patient Module plan.
 model Visit {
-  id              String   @id @default(cuid())
-  visitCode       String   @unique
-  patientId       String
-  facilityId      String
-  doctorId        String?
+  id             String   @id @default(cuid())
+  visitCode      String   @unique
+  patientId      String
+  facilityId     String
+  doctorId       String?
   // Staff.id of whoever registered this visit; null when the acting user was
   // the Facility account itself rather than a logged-in staff member.
-  registeredById  String?
-  reasonForVisit  String?
-  status          String   @default("registered")
-  visitDate       DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  registeredById String?
+  reasonForVisit String?
+  status         String   @default("registered")
+  visitDate      DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  facility     Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  doctor       Staff?   @relation("VisitDoctor", fields: [doctorId], references: [id], onDelete: SetNull)
-  registeredBy Staff?   @relation("VisitRegisteredBy", fields: [registeredById], references: [id], onDelete: SetNull)
-  payments           Payment[]
-  vitalSigns         VitalSigns?
-  l1Screening        L1Screening?
-  clinicalAssessment ClinicalAssessment?
-  treatmentPlan      TreatmentPlan?
-  complaintAssessments ComplaintAssessment[]
-  humoralAssessment    HumoralAssessment?
-  acuteSymptomAssessment AcuteSymptomAssessment?
+  patient                   Patient                    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility                  Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  doctor                    Staff?                     @relation("VisitDoctor", fields: [doctorId], references: [id], onDelete: SetNull)
+  registeredBy              Staff?                     @relation("VisitRegisteredBy", fields: [registeredById], references: [id], onDelete: SetNull)
+  payments                  Payment[]
+  vitalSigns                VitalSigns?
+  l1Screening               L1Screening?
+  clinicalAssessment        ClinicalAssessment?
+  treatmentPlan             TreatmentPlan?
+  complaintAssessments      ComplaintAssessment[]
+  humoralAssessment         HumoralAssessment?
+  acuteSymptomAssessment    AcuteSymptomAssessment?
   anatomicalRegionSelection AnatomicalRegionSelection?
   chronology                VisitChronology?
   asbabAssessments          AsbabAssessment[]
   tashkheesDossier          TashkheesDossier?
-  residentClinicalNote   ResidentClinicalNote?
-  clinicalRoutingInsight ClinicalRoutingInsight?
-  vitalsInsightRecord    VitalsInsightRecord?
-  intake               VisitIntake?
-  redFlagScreening     RedFlagScreening?
-  referral             Referral?
-  amaDecline           AmaDecline?
+  residentClinicalNote      ResidentClinicalNote?
+  clinicalRoutingInsight    ClinicalRoutingInsight?
+  vitalsInsightRecord       VitalsInsightRecord?
+  intake                    VisitIntake?
+  redFlagScreening          RedFlagScreening?
+  referral                  Referral?
+  amaDecline                AmaDecline?
+  dalailSelection           DalailSelection?
 }
 
 model Payment {
@@ -385,7 +386,7 @@ model VitalSigns {
   visitId            String   @unique
   bpSystolic         Int?
   bpDiastolic        Int?
-  heartRate          Int?    // monitor/ECG-derived rate, recorded separately from manual Pulse
+  heartRate          Int? // monitor/ECG-derived rate, recorded separately from manual Pulse
   pulse              Int?
   spo2               Int?
   spo2Context        String?
@@ -440,16 +441,16 @@ model PatientReport {
   id             String    @id @default(cuid())
   patientId      String
   facilityId     String
-  category       String    // see REPORT_CATEGORIES in src/lib/reports.ts
+  category       String // see REPORT_CATEGORIES in src/lib/reports.ts
   title          String
   reportDate     DateTime?
-  source         String?   // lab / hospital / imaging centre
+  source         String? // lab / hospital / imaging centre
   resultFlag     String    @default("unknown") // "normal" | "abnormal" | "critical" | "unknown"
-  findings       String?   // key findings, typed by staff
+  findings       String? // key findings, typed by staff
   // Hakeem Insight reading of the files: { summary, values: [{ name, value, unit, range, flag }] }
   extraction     String?
   status         String    @default("pending_review") // "pending_review" | "reviewed"
-  uploadedByType String    // "facility" | "staff"
+  uploadedByType String // "facility" | "staff"
   uploadedById   String
   uploadedByName String
   reviewedByName String?
@@ -490,8 +491,8 @@ model AsbabPillar {
   // Lisan, physical inspection). Same engine, same admin, separate answers.
   framework   String   @default("asbab")
   key         String   @unique // e.g. "hawa" … "ihtibas"; "nabz", "baul", "baraz", "lisan", "zahiri"
-  label       String   // e.g. "Hawa-e-Muheet"
-  english     String   // e.g. "Ambient Air & Environment"
+  label       String // e.g. "Hawa-e-Muheet"
+  english     String // e.g. "Ambient Air & Environment"
   description String?
   sortOrder   Int      @default(0)
   active      Boolean  @default(true)
@@ -501,25 +502,55 @@ model AsbabPillar {
 }
 
 model AsbabQuestion {
-  id          String   @id @default(cuid())
-  pillarId    String
-  label       String
-  labelLocal  String?
-  helpText    String?
-  type        String   // "single_select" | "multi_select" | "numeric" | "text"
-  required    Boolean  @default(false)
-  weight      Float    @default(1) // constitutional weight — multiplies this question's humoral points
+  id               String   @id @default(cuid())
+  pillarId         String
+  label            String
+  labelLocal       String?
+  helpText         String?
+  type             String // "single_select" | "multi_select" | "numeric" | "text"
+  required         Boolean  @default(false)
+  weight           Float    @default(1) // constitutional weight — multiplies this question's humoral points
   // Optional follow-up rule: only shown when question `showIfQuestionId` has `showIfOption` selected.
   showIfQuestionId String?
   showIfOption     String?
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
-  version     Int      @default(1) // bumped when wording/options change; responses keep their own snapshot
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  sortOrder        Int      @default(0)
+  active           Boolean  @default(true)
+  version          Int      @default(1) // bumped when wording/options change; responses keep their own snapshot
+  // --- Adaptive selection metadata (used by Stage 5 Dala'il; ignored elsewhere) ---
+  // JSON { always?: boolean, complaints?: string[] (ChiefComplaint keys), symptoms?: string[]
+  // (AcuteSymptomTag labels), regions?: string[] (AnatomicalRegionTag labels), sex?: "male"|"female",
+  // minAge?: number, maxAge?: number }. Empty = not linked to anything (only shown on request).
+  appliesTo        String   @default("{}")
+  priority         Int      @default(3) // 1 (low) … 5 (high clinical value)
+  safetyCritical   Boolean  @default(false) // always included when eligible, beyond the question cap
+  reviewStatus     String   @default("approved") // "draft" | "approved" | "retired" — only approved questions are selected
+  purpose          String? // short clinical intent, shown to the doctor as "why this question"
+  reference        String? // supporting source
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   pillar  AsbabPillar   @relation(fields: [pillarId], references: [id], onDelete: Cascade)
   options AsbabOption[]
+}
+
+// Which Dala'il questions were selected for a visit, how, and from which
+// question-bank version — so it can always be explained later. Answers are
+// stored with the Dala'il assessment as before; this only records the selection.
+model DalailSelection {
+  id            String   @id @default(cuid())
+  visitId       String   @unique
+  questionIds   String   @default("[]") // ordered, selected by the engine
+  reasons       String   @default("{}") // { [questionId]: short reason }
+  addedIds      String   @default("[]") // added by the doctor ("+ Add a question")
+  method        String   @default("rules") // "rules" | "ranked" | "rules-fallback"
+  bankVersion   String? // hash of the approved question bank used
+  contextHash   String? // hash of the patient context used; a change triggers reselection
+  eligibleCount Int      @default(0)
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
 }
 
 // Points each option contributes to the four Akhlat (humours).
@@ -544,7 +575,7 @@ model AsbabAssessment {
   visitId      String
   framework    String    @default("asbab")
   status       String    @default("draft") // "draft" | "completed"
-  humoral      String?   // computed drift at last save: { total: {safra,dam,balgham,sauda}, pillars: {...} }
+  humoral      String? // computed drift at last save: { total: {safra,dam,balgham,sauda}, pillars: {...} }
   recordedById String?
   completedAt  DateTime?
   createdAt    DateTime  @default(now())
@@ -568,7 +599,7 @@ model AsbabResponse {
   questionType    String
   questionVersion Int
   weight          Float
-  value           String  // JSON: string[] of option labels for choices; number or string otherwise
+  value           String // JSON: string[] of option labels for choices; number or string otherwise
   selectedOptions String  @default("[]") // JSON: [{ label, safra, dam, balgham, sauda }]
 
   assessment AsbabAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
@@ -599,35 +630,35 @@ model TashkheesOption {
 // The Hakim's diagnosis, treatment plan and handover for a visit. Option
 // values are snapshotted by label (same convention as the rest of the visit).
 model TashkheesDossier {
-  id                String    @id @default(cuid())
-  visitId           String    @unique
-  status            String    @default("draft") // "draft" | "finalized"
-  mizajAsli         String?
-  suMizajType       String?   // "Sada" | "Maddi"
-  suMizajQuality    String?
-  suMizajGrade      Int?      // Darja 1-4
-  organs            String    @default("[]")
-  diagnosisNote     String?
-  usool             String    @default("[]")
-  usoolNote         String?
-  ghizaRecommended  String    @default("[]")
-  ghizaAvoid        String    @default("[]")
-  ghizaNote         String?
-  tadbeer           String    @default("[]") // [{ label, frequency, duration, notes }]
-  prognosis         String?
-  followUpDate      DateTime?
-  followUpNote      String?
-  urgentDirectives  String?
-  priority          String    @default("routine") // "routine" | "priority" | "urgent"
-  handoverNote      String?
-  finalizedAt       DateTime?
-  finalizedByName   String?
-  recordedById      String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  visitId          String    @unique
+  status           String    @default("draft") // "draft" | "finalized"
+  mizajAsli        String?
+  suMizajType      String? // "Sada" | "Maddi"
+  suMizajQuality   String?
+  suMizajGrade     Int? // Darja 1-4
+  organs           String    @default("[]")
+  diagnosisNote    String?
+  usool            String    @default("[]")
+  usoolNote        String?
+  ghizaRecommended String    @default("[]")
+  ghizaAvoid       String    @default("[]")
+  ghizaNote        String?
+  tadbeer          String    @default("[]") // [{ label, frequency, duration, notes }]
+  prognosis        String?
+  followUpDate     DateTime?
+  followUpNote     String?
+  urgentDirectives String?
+  priority         String    @default("routine") // "routine" | "priority" | "urgent"
+  handoverNote     String?
+  finalizedAt      DateTime?
+  finalizedByName  String?
+  recordedById     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  visit         Visit                   @relation(fields: [visitId], references: [id], onDelete: Cascade)
-  recordedBy    Staff?                  @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  visit         Visit                 @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  recordedBy    Staff?                @relation(fields: [recordedById], references: [id], onDelete: SetNull)
   prescriptions DossierPrescription[]
 }
 
@@ -683,30 +714,30 @@ model MizajAssessment {
 }
 
 model PharmacyItem {
-  id          String   @id @default(cuid())
-  name        String
-  category    String   @default("General")
-  form        String   @default("Powder")
-  quantity    Int      @default(0)
-  unit        String   @default("g")
-  reorderLevel Int     @default(10)
-  price       Float    @default(0)
-  expiryDate  String?
-  description String?
-  inStock     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  category     String   @default("General")
+  form         String   @default("Powder")
+  quantity     Int      @default(0)
+  unit         String   @default("g")
+  reorderLevel Int      @default(10)
+  price        Float    @default(0)
+  expiryDate   String?
+  description  String?
+  inStock      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Prescription {
-  id           String   @id @default(cuid())
+  id            String   @id @default(cuid())
   appointmentId String?
-  patientId    String
-  facilityId   String   @map("hakimId")
-  items        String
-  notes        String?
-  therapyType  String   @default("Ilaj-bil-Dawa")
-  createdAt    DateTime @default(now())
+  patientId     String
+  facilityId    String   @map("hakimId")
+  items         String
+  notes         String?
+  therapyType   String   @default("Ilaj-bil-Dawa")
+  createdAt     DateTime @default(now())
 
   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -732,19 +763,19 @@ model PortalSetting {
 }
 
 model EmailConfig {
-  id          String   @id @default(cuid())
-  provider    String   @default("smtp")
-  smtpHost    String?
-  smtpPort    Int?
-  encryption  String   @default("tls")
-  username    String?
-  secretEnc   String?
-  fromEmail   String?
-  fromName    String?
-  replyTo     String?
-  active      Boolean  @default(false)
-  updatedBy   String?
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  provider   String   @default("smtp")
+  smtpHost   String?
+  smtpPort   Int?
+  encryption String   @default("tls")
+  username   String?
+  secretEnc  String?
+  fromEmail  String?
+  fromName   String?
+  replyTo    String?
+  active     Boolean  @default(false)
+  updatedBy  String?
+  updatedAt  DateTime @updatedAt
 }
 
 model EmailTemplate {
@@ -771,20 +802,20 @@ model NotificationLog {
 }
 
 model OtpCode {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   identifier String
-  role      String?
-  code      String
-  purpose   String   @default("login")
-  expiresAt DateTime
-  used      Boolean  @default(false)
+  role       String?
+  code       String
+  purpose    String    @default("login")
+  expiresAt  DateTime
+  used       Boolean   @default(false)
   verifiedAt DateTime?
-  attempts  Int      @default(0)
-  facilityId String? @map("hakimId")
-  patientId String?
-  adminId   String?
-  staffId   String?
-  createdAt DateTime @default(now())
+  attempts   Int       @default(0)
+  facilityId String?   @map("hakimId")
+  patientId  String?
+  adminId    String?
+  staffId    String?
+  createdAt  DateTime  @default(now())
 
   facility Facility? @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -917,7 +948,7 @@ model ChiefComplaint {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  manifestations ComplaintManifestation[]
+  manifestations  ComplaintManifestation[]
   supplementLinks SupplementComplaintLink[]
 }
 
@@ -926,10 +957,10 @@ model ChiefComplaint {
 // whether anything was actually found that run.
 model ChiefComplaintBotRun {
   id               String    @id @default(cuid())
-  trigger          String    // "scheduled" | "manual"
+  trigger          String // "scheduled" | "manual"
   startedAt        DateTime  @default(now())
   finishedAt       DateTime?
-  status           String    // "running" | "success" | "no_candidates" | "failed"
+  status           String // "running" | "success" | "no_candidates" | "failed"
   suggestionsCount Int       @default(0)
   errorMessage     String?
 
@@ -944,31 +975,27 @@ model ChiefComplaintBotRun {
 // kept for any suggestion created through a possible future manual-review
 // path; the bot's own runs never leave a row in those states.
 model ChiefComplaintSuggestion {
-  id           String    @id @default(cuid())
-  runId        String
-  label        String
-  labelLocal   String?
-  category     String
+  id                   String    @id @default(cuid())
+  runId                String
+  label                String
+  labelLocal           String?
+  category             String
   // The AI's one-line note on why this is Unani-relevant.
-  rationale    String?
-  status       String    @default("pending") // "pending" | "auto_approved" | "approved" | "rejected"
-  reviewedById String?
-  reviewedAt   DateTime?
+  rationale            String?
+  status               String    @default("pending") // "pending" | "auto_approved" | "approved" | "rejected"
+  reviewedById         String?
+  reviewedAt           DateTime?
   resultingComplaintId String?
-  createdAt    DateTime  @default(now())
+  createdAt            DateTime  @default(now())
 
   run        ChiefComplaintBotRun @relation(fields: [runId], references: [id], onDelete: Cascade)
   reviewedBy Admin?               @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
 }
 
-
-
-
-
 model L1Screening {
   id              String   @id @default(cuid())
   visitId         String   @unique
-  chiefComplaints String   // JSON array of ChiefComplaint keys selected
+  chiefComplaints String // JSON array of ChiefComplaint keys selected
   aiSummary       String?
   recordedById    String?
   createdAt       DateTime @default(now())
@@ -977,7 +1004,6 @@ model L1Screening {
   visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
   recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
 }
-
 
 // Front-desk quick-intake snapshot, captured during registration (Section 4
 // of the registration wizard) — distinct from L1Screening (the nurse's fuller
@@ -988,10 +1014,10 @@ model VisitIntake {
   visitId         String   @unique
   chiefComplaints String   @default("[]") // JSON array of ChiefComplaint labels, same snapshot convention as L1Screening.chiefComplaints
   narrative       String?
-  onsetTimeline   String?  // "<24h" | "1-7d" | ">1m"
+  onsetTimeline   String? // "<24h" | "1-7d" | ">1m"
   allergies       String   @default("[]") // JSON array of strings
   medications     String   @default("[]") // JSON array of { label, kind }, kind: "supplement" | "medication"
-  mobility        String?  // "independent" | "wheelchair"
+  mobility        String? // "independent" | "wheelchair"
   recordedById    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -1021,7 +1047,7 @@ model RedFlagCriterion {
 model RedFlagScreening {
   id           String   @id @default(cuid())
   visitId      String   @unique
-  outcome      String   // "cleared" | "referred" | "continued_ama" | "pending" (referral withdrawn, decision needed)
+  outcome      String // "cleared" | "referred" | "continued_ama" | "pending" (referral withdrawn, decision needed)
   recordedById String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1056,7 +1082,7 @@ model Referral {
   screeningId  String   @unique
   reason       String
   referredTo   String
-  urgency      String   // "Emergency" | "Urgent" | "Routine"
+  urgency      String // "Emergency" | "Urgent" | "Routine"
   notes        String?
   referredById String?
   createdAt    DateTime @default(now())
@@ -1071,13 +1097,13 @@ model Referral {
 // treatment anyway — Against Medical Advice. Unlike Referral, this does NOT
 // close the visit; it's a documented exception, not a case closure.
 model AmaDecline {
-  id             String   @id @default(cuid())
-  visitId        String   @unique
-  screeningId    String   @unique
-  reason         String   // clinical reason referral was recommended (the flagged criteria)
-  patientReason  String?  // why the patient declined, if stated
-  recordedById   String?
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  visitId       String   @unique
+  screeningId   String   @unique
+  reason        String // clinical reason referral was recommended (the flagged criteria)
+  patientReason String? // why the patient declined, if stated
+  recordedById  String?
+  createdAt     DateTime @default(now())
 
   visit      Visit            @relation(fields: [visitId], references: [id], onDelete: Cascade)
   screening  RedFlagScreening @relation(fields: [screeningId], references: [id], onDelete: Cascade)
@@ -1140,9 +1166,9 @@ model ComplaintAssessment {
   // readable even if the ChiefComplaint config row is later edited/removed.
   chiefComplaintLabel      String
   onsetValue               Int?
-  onsetUnit                String?  // "hours" | "days" | "weeks" | "months" | "years"
-  onsetPattern             String?  // "Acute" | "Gradual" | "Chronic" | "Episodic/Recurrent"
-  severityScore            Int?     // 0-10
+  onsetUnit                String? // "hours" | "days" | "weeks" | "months" | "years"
+  onsetPattern             String? // "Acute" | "Gradual" | "Chronic" | "Episodic/Recurrent"
+  severityScore            Int? // 0-10
   character                String?
   // JSON array of ComplaintManifestation.key strings selected for this complaint.
   associatedManifestations String   @default("[]")
@@ -1168,26 +1194,26 @@ model ComplaintAssessment {
 // contributed what) behind the normalized percentages, so "why is Safra 62%"
 // is always answerable from this one row.
 model HumoralAssessment {
-  id             String   @id @default(cuid())
-  visitId        String   @unique
-  safraPercent   Float
-  damPercent     Float
-  saudaPercent   Float
-  balghamPercent Float
-  dominant       String   // "Safra" | "Dam" | "Sauda" | "Balgham"
+  id                String    @id @default(cuid())
+  visitId           String    @unique
+  safraPercent      Float
+  damPercent        Float
+  saudaPercent      Float
+  balghamPercent    Float
+  dominant          String // "Safra" | "Dam" | "Sauda" | "Balgham"
   // Doctor-picked override from the Constitutional Tendency tiles — takes
   // precedence over `dominant` for display. Never touched by the engine's
   // recompute on a ComplaintAssessment save, so a manual pick survives edits.
-  dominantOverride String?
-  breakdown      String   @default("[]") // JSON: [{ source, safra, dam, sauda, balgham }]
+  dominantOverride  String?
+  breakdown         String    @default("[]") // JSON: [{ source, safra, dam, sauda, balgham }]
   // The AI-written plain-language explanation of the breakdown above, from
   // the "Generate" button — persisted (not just ephemeral) so the doctor's
   // record shows what was actually seen and acted on, not a regeneration
   // that could read differently on request.
   aiClue            String?
   aiClueGeneratedAt DateTime?
-  createdAt      DateTime @default(now())
-  computedAt     DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  computedAt        DateTime  @updatedAt
 
   visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
 }
@@ -1215,7 +1241,7 @@ model ComplaintManifestation {
 // exposure", "rest") and complaint-scoping would just force duplicate entries.
 model ComplaintFactorTag {
   id        String   @id @default(cuid())
-  kind      String   // "aggravating" | "relieving"
+  kind      String // "aggravating" | "relieving"
   label     String
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
@@ -1244,10 +1270,10 @@ model AllergyTag {
 // shown as run history in Admin -> Settings whether or not it found anything.
 model AllergyAssistantRun {
   id               String    @id @default(cuid())
-  trigger          String    // "scheduled" | "manual"
+  trigger          String // "scheduled" | "manual"
   startedAt        DateTime  @default(now())
   finishedAt       DateTime?
-  status           String    // "running" | "success" | "no_candidates" | "failed"
+  status           String // "running" | "success" | "no_candidates" | "failed"
   suggestionsCount Int       @default(0)
   errorMessage     String?
 
@@ -1278,15 +1304,15 @@ model AllergySuggestion {
 // A typed value not on this list is still accepted as a free-text entry.
 model MedicationTag {
   id        String   @id @default(cuid())
-  kind      String   // "supplement" | "medication"
+  kind      String // "supplement" | "medication"
   label     String
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile SupplementProfile?
-  ingredientOf      SupplementIngredient[] @relation("IngredientTag")
+  profile            SupplementProfile?
+  ingredientOf       SupplementIngredient[] @relation("IngredientTag")
   interactionsAsDrug SupplementSafetyItem[] @relation("InteractionDrug")
 
   @@unique([kind, label])
@@ -1298,55 +1324,55 @@ model MedicationTag {
 // JSON-array fields are stored as strings (SQLite convention in this repo).
 // Dosage is deliberately not captured: doses are prescribing decisions.
 model SupplementProfile {
-  id             String    @id @default(cuid())
-  tagId          String    @unique
-  status         String    @default("pending") // "pending" | "enriched" | "failed"
-  unaniName      String?
-  englishName    String?
-  botanicalName  String?
-  herbType       String?   // "Single Herb (Mufrad)" | "Compound Formulation (Murakkab)" | ...
-  mizaj          String?   // temperament, e.g. "Hot 2° / Dry 2°"
-  partsUsed      String?   // single herbs
-  keyIngredients String    @default("[]") // formulations
-  actions        String    @default("[]") // Unani pharmacological actions
-  dosageForms    String    @default("[]")
-  brands         String    @default("[]") // [{ manufacturer, product }]
-  cautions       String    @default("[]")
-  summary        String?
+  id                     String    @id @default(cuid())
+  tagId                  String    @unique
+  status                 String    @default("pending") // "pending" | "enriched" | "failed"
+  unaniName              String?
+  englishName            String?
+  botanicalName          String?
+  herbType               String? // "Single Herb (Mufrad)" | "Compound Formulation (Murakkab)" | ...
+  mizaj                  String? // temperament, e.g. "Hot 2° / Dry 2°"
+  partsUsed              String? // single herbs
+  keyIngredients         String    @default("[]") // formulations
+  actions                String    @default("[]") // Unani pharmacological actions
+  dosageForms            String    @default("[]")
+  brands                 String    @default("[]") // [{ manufacturer, product }]
+  cautions               String    @default("[]")
+  summary                String?
   // Traditional uses that didn't match any current ChiefComplaint — kept so
   // nothing is lost; a later re-enrich can link them once the catalog grows.
-  unmatchedUses  String    @default("[]")
+  unmatchedUses          String    @default("[]")
   // --- Search-backed enrichment (v2) ---
   urduName               String?
   hindiName              String?
   arabicName             String?
-  family                 String?   // botanical family, single herbs only
+  family                 String? // botanical family, single herbs only
   synonyms               String    @default("[]")
-  preparation            String?   // preparation / processing methods
+  preparation            String? // preparation / processing methods
   routes                 String    @default("[]") // administration routes
-  traditionalDescription String?   // classical Unani description
-  modernEvidence         String?   // modern scientific evidence — kept apart from traditional claims
+  traditionalDescription String? // classical Unani description
+  modernEvidence         String? // modern scientific evidence — kept apart from traditional claims
   // Fields the search explicitly found NOT documented — shown as "Not
   // documented", never read as "safe" / "none".
   unknownFields          String    @default("[]")
   // --- Allopathic medication fields (MedicationTag kind "medication") ---
-  genericName            String?   // INN / generic name
-  saltForm               String?   // e.g. "Hydrochloride"
+  genericName            String? // INN / generic name
+  saltForm               String? // e.g. "Hydrochloride"
   therapeuticClass       String?
   pharmacologicalClass   String?
-  mechanism              String?   // mechanism of action
-  atcCode                String?   // WHO ATC code(s)
-  rxStatus               String?   // e.g. "Prescription only (Schedule H)"
-  productStatus          String?   // "active" | "discontinued" | "unknown"
+  mechanism              String? // mechanism of action
+  atcCode                String? // WHO ATC code(s)
+  rxStatus               String? // e.g. "Prescription only (Schedule H)"
+  productStatus          String? // "active" | "discontinued" | "unknown"
   strengths              String    @default("[]") // available strengths / formulations, e.g. "500 mg tablet" — never a dose to take
   enrichmentVersion      Int       @default(1) // 1 = model knowledge only (no sources), 2 = search-backed
   completeness           Int       @default(0) // % of the fields applicable to this item's type that are filled
-  errorMessage   String?
-  enrichedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  errorMessage           String?
+  enrichedAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  tag        MedicationTag             @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tag          MedicationTag               @relation(fields: [tagId], references: [id], onDelete: Cascade)
   complaints   SupplementComplaintLink[]
   allergies    SupplementAllergyLink[]
   symptoms     SupplementSymptomLink[]
@@ -1363,22 +1389,22 @@ model SupplementComplaintLink {
   profileId   String
   complaintId String
 
-  profile   SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  complaint ChiefComplaint    @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  profile            SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  complaint          ChiefComplaint    @relation(fields: [complaintId], references: [id], onDelete: Cascade)
   // Supplements: "traditional_use". Medications: "approved_indication" |
   // "evidence_supported" | "symptom_relief" | "off_label" | "not_recommended".
-  relationType String @default("traditional_use")
+  relationType       String            @default("traditional_use")
   // Provenance + review state (shared by every supplement relationship row).
   rationale          String?
-  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
-  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  evidenceType       String            @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String            @default("unverified") // "unverified" | "verified" | "rejected" | "conflict"
   confidence         Float?
-  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  provenance         String            @default("legacy") // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
   reviewedById       String?
   reviewedAt         DateTime?
   reviewNote         String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @default(now()) @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @default(now()) @updatedAt
 
   @@unique([profileId, complaintId])
 }
@@ -1392,19 +1418,19 @@ model SupplementAllergyLink {
   allergyId String
   relation  String // "relief" | "caution"
 
-  profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  allergy AllergyTag        @relation(fields: [allergyId], references: [id], onDelete: Cascade)
+  profile            SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  allergy            AllergyTag        @relation(fields: [allergyId], references: [id], onDelete: Cascade)
   // Provenance + review state (shared by every supplement relationship row).
   rationale          String?
-  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
-  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  evidenceType       String            @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String            @default("unverified") // "unverified" | "verified" | "rejected" | "conflict"
   confidence         Float?
-  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  provenance         String            @default("legacy") // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
   reviewedById       String?
   reviewedAt         DateTime?
   reviewNote         String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @default(now()) @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @default(now()) @updatedAt
 
   @@unique([profileId, allergyId, relation])
 }
@@ -1415,19 +1441,19 @@ model SupplementSymptomLink {
   profileId String
   symptomId String
 
-  profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  symptom AcuteSymptomTag   @relation(fields: [symptomId], references: [id], onDelete: Cascade)
+  profile            SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  symptom            AcuteSymptomTag   @relation(fields: [symptomId], references: [id], onDelete: Cascade)
   // Provenance + review state (shared by every supplement relationship row).
   rationale          String?
-  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
-  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  evidenceType       String            @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String            @default("unverified") // "unverified" | "verified" | "rejected" | "conflict"
   confidence         Float?
-  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  provenance         String            @default("legacy") // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
   reviewedById       String?
   reviewedAt         DateTime?
   reviewNote         String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @default(now()) @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @default(now()) @updatedAt
 
   @@unique([profileId, symptomId])
 }
@@ -1443,19 +1469,19 @@ model SupplementIngredient {
   role            String? // "principal" | "supporting" | "base" | "vehicle" | "unknown"
   proportion      String? // only when documented
 
-  profile       SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  ingredientTag MedicationTag?    @relation("IngredientTag", fields: [ingredientTagId], references: [id], onDelete: SetNull)
+  profile            SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  ingredientTag      MedicationTag?    @relation("IngredientTag", fields: [ingredientTagId], references: [id], onDelete: SetNull)
   // Provenance + review state (shared by every supplement relationship row).
   rationale          String?
-  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
-  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  evidenceType       String            @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String            @default("unverified") // "unverified" | "verified" | "rejected" | "conflict"
   confidence         Float?
-  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  provenance         String            @default("legacy") // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
   reviewedById       String?
   reviewedAt         DateTime?
   reviewNote         String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @default(now()) @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @default(now()) @updatedAt
 
   @@unique([profileId, name])
 }
@@ -1466,24 +1492,24 @@ model SupplementIngredient {
 model SupplementSafetyItem {
   id              String  @id @default(cuid())
   profileId       String
-  category        String  // "contraindication" | "precaution" | "pregnancy" | "lactation" | "pediatric" | "adverse_effect" | "toxicity" | "interaction" | "allergy_warning"
+  category        String // "contraindication" | "precaution" | "pregnancy" | "lactation" | "pediatric" | "adverse_effect" | "toxicity" | "interaction" | "allergy_warning"
   text            String
   severity        String? // "high" | "moderate" | "low"
   medicationTagId String?
 
-  profile    SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  medication MedicationTag?    @relation("InteractionDrug", fields: [medicationTagId], references: [id], onDelete: SetNull)
+  profile            SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  medication         MedicationTag?    @relation("InteractionDrug", fields: [medicationTagId], references: [id], onDelete: SetNull)
   // Provenance + review state (shared by every supplement relationship row).
   rationale          String?
-  evidenceType       String    @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
-  verificationStatus String    @default("unverified")  // "unverified" | "verified" | "rejected" | "conflict"
+  evidenceType       String            @default("traditional") // "traditional" | "clinical" | "preclinical" | "regulatory" | "unspecified"
+  verificationStatus String            @default("unverified") // "unverified" | "verified" | "rejected" | "conflict"
   confidence         Float?
-  provenance         String    @default("legacy")      // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
+  provenance         String            @default("legacy") // "legacy" (model knowledge, no sources) | "search" (search-backed) | "admin"
   reviewedById       String?
   reviewedAt         DateTime?
   reviewNote         String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @default(now()) @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @default(now()) @updatedAt
 
   @@index([profileId])
 }
@@ -1498,7 +1524,7 @@ model SupplementFieldReview {
   confidence         Float?
   evidenceType       String?
   provenance         String    @default("search")
-  note               String?   // e.g. the conflicting claims, for "conflict"
+  note               String? // e.g. the conflicting claims, for "conflict"
   reviewedById       String?
   reviewedAt         DateTime?
   updatedAt          DateTime  @default(now()) @updatedAt
@@ -1511,12 +1537,12 @@ model SupplementFieldReview {
 // A web page the search-backed enrichment actually read (redirect resolved
 // to the real URL). Shared across profiles.
 model EvidenceSource {
-  id          String   @id @default(cuid())
-  url         String   @unique
-  title       String?
-  domain      String
-  createdAt   DateTime @default(now())
-  lastSeenAt  DateTime @default(now())
+  id         String   @id @default(cuid())
+  url        String   @unique
+  title      String?
+  domain     String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
 
   citations SupplementCitation[]
 }
@@ -1527,9 +1553,9 @@ model SupplementCitation {
   id          String   @id @default(cuid())
   profileId   String
   sourceId    String
-  subjectType String   // "field" | "complaint" | "allergy" | "symptom" | "ingredient" | "safety"
+  subjectType String // "field" | "complaint" | "allergy" | "symptom" | "ingredient" | "safety"
   subjectKey  String
-  snippet     String?  // the sentence this source was matched to
+  snippet     String? // the sentence this source was matched to
   createdAt   DateTime @default(now())
 
   profile SupplementProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -1544,9 +1570,9 @@ model SupplementCitation {
 model SupplementProfileRevision {
   id        String   @id @default(cuid())
   profileId String
-  reason    String   // "enrichment" | "review" | "restore"
+  reason    String // "enrichment" | "review" | "restore"
   summary   String?
-  actorId   String?  // Admin id; null for automatic runs
+  actorId   String? // Admin id; null for automatic runs
   snapshot  String
   createdAt DateTime @default(now())
 
@@ -1559,9 +1585,9 @@ model SupplementProfileRevision {
 model SupplementEnrichmentJob {
   id           String    @id @default(cuid())
   kind         String    @default("supplement") // MedicationTag kind: "supplement" | "medication"
-  mode         String    // "pilot" | "batch" | "single" | "new"
-  status       String    // "running" | "paused" | "completed" | "cancelled"
-  tagIds       String    // JSON array, in processing order
+  mode         String // "pilot" | "batch" | "single" | "new"
+  status       String // "running" | "paused" | "completed" | "cancelled"
+  tagIds       String // JSON array, in processing order
   processedIds String    @default("[]")
   failedItems  String    @default("[]") // [{ tagId, label, error }]
   createdById  String?
@@ -1574,10 +1600,10 @@ model SupplementEnrichmentJob {
 // manual), shown as run history in Admin -> Settings.
 model MedicationAssistantRun {
   id               String    @id @default(cuid())
-  trigger          String    // "scheduled" | "manual"
+  trigger          String // "scheduled" | "manual"
   startedAt        DateTime  @default(now())
   finishedAt       DateTime?
-  status           String    // "running" | "success" | "no_candidates" | "failed"
+  status           String // "running" | "success" | "no_candidates" | "failed"
   suggestionsCount Int       @default(0)
   errorMessage     String?
 
@@ -1606,10 +1632,10 @@ model MedicationSuggestion {
 // or manual), shown as run history in Admin -> Settings.
 model SupplementAssistantRun {
   id               String    @id @default(cuid())
-  trigger          String    // "scheduled" | "manual"
+  trigger          String // "scheduled" | "manual"
   startedAt        DateTime  @default(now())
   finishedAt       DateTime?
-  status           String    // "running" | "success" | "no_candidates" | "failed"
+  status           String // "running" | "success" | "no_candidates" | "failed"
   suggestionsCount Int       @default(0)
   errorMessage     String?
 
@@ -1640,14 +1666,14 @@ model SupplementSuggestion {
 // schema change.
 model HumorWeightRule {
   id            String   @id @default(cuid())
-  sourceType    String   // "manifestation" | "factor" | "severity_band" | "onset_pattern"
-  sourceValue   String   // a ComplaintManifestation.key, a ComplaintFactorTag.label, "severe", etc.
+  sourceType    String // "manifestation" | "factor" | "severity_band" | "onset_pattern"
+  sourceValue   String // a ComplaintManifestation.key, a ComplaintFactorTag.label, "severe", etc.
   safraPoints   Float    @default(0)
   damPoints     Float    @default(0)
   saudaPoints   Float    @default(0)
   balghamPoints Float    @default(0)
   active        Boolean  @default(true)
-  notes         String?  // admin's rationale; shown only in the admin UI
+  notes         String? // admin's rationale; shown only in the admin UI
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1738,7 +1764,7 @@ model VisitChronology {
   visitId         String    @unique
   onsetPatterns   String    @default("[]")
   durationValue   Float?
-  durationUnit    String?   // "hours" | "days" | "weeks" | "months" | "years"
+  durationUnit    String? // "hours" | "days" | "weeks" | "months" | "years"
   onsetDate       DateTime?
   durationSource  String    @default("auto") // "auto" | "manual"
   sourceComplaint String?
@@ -1787,9 +1813,9 @@ model ResidentClinicalNote {
 model HumorDisplayConfig {
   id          String   @id @default(cuid())
   humor       String   @unique // "safra" | "dam" | "sauda" | "balgham"
-  axisLabel   String   // "Fire", "Air", "Water", "Earth"
-  unaniLabel  String   // "Safrawi", "Damawi", "Balghami", "Saudawi"
-  description String?  // e.g. "Hot & Dry"
+  axisLabel   String // "Fire", "Air", "Water", "Earth"
+  unaniLabel  String // "Safrawi", "Damawi", "Balghami", "Saudawi"
+  description String? // e.g. "Hot & Dry"
   updatedAt   DateTime @updatedAt
 }
 

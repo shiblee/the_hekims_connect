@@ -12,7 +12,8 @@ export async function loadAsbabConfig(activeOnly: boolean, framework: Framework 
     orderBy: { sortOrder: "asc" },
     include: {
       questions: {
-        where: activeOnly ? { active: true } : {},
+        // Doctors only see approved questions (drafts await clinical review; retired are kept for history).
+        where: activeOnly ? { active: true, reviewStatus: "approved" } : {},
         orderBy: { sortOrder: "asc" },
         include: { options: { where: activeOnly ? { active: true } : {}, orderBy: { sortOrder: "asc" } } },
       },

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/request-info";
-import { parseQuestionBody } from "@/lib/asbab-validate";
+import { parseQuestionBody, parseSelectionMeta } from "@/lib/asbab-validate";
 
 /**
  * Body { active } or { sortOrder } toggles/reorders; otherwise a full edit
@@ -20,6 +20,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (b.active !== undefined && Object.keys(b).length === 1) {
     const q = await db.asbabQuestion.update({ where: { id }, data: { active: !!b.active } });
     await logAdminActivity(session.admin.id, "asbab_config_updated", `${q.active ? "Enabled" : "Disabled"} Asbab-e-Sittah question "${q.label}"`, getClientIp(req));
+    return NextResponse.json({ question: q });
+  }
+  if (b.reviewStatus !== undefined && Object.keys(b).length === 1) {
+    const meta = parseSelectionMeta(b);
+    if (!meta.reviewStatus) return NextResponse.json({ error: "Unknown review status" }, { status: 400 });
+    const q = await db.asbabQuestion.update({ where: { id }, data: { reviewStatus: meta.reviewStatus as string } });
+    await logAdminActivity(session.admin.id, "asbab_config_updated", `Set Dala'il question "${q.label}" to ${q.reviewStatus}`, getClientIp(req));
     return NextResponse.json({ question: q });
   }
   if (b.sortOrder !== undefined && Object.keys(b).length === 1) {
@@ -41,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id },
       data: {
         ...parsed.data,
+        ...parseSelectionMeta(b),
         ...(typeof b.active === "boolean" ? { active: b.active } : {}),
         version: changed ? existing.version + 1 : existing.version,
         options: { create: (parsed.options || []).map((o, i) => ({ ...o, sortOrder: i })) },

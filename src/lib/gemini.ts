@@ -738,3 +738,57 @@ Only suggest real, approved allopathic medicines — never a Unani/Ayurvedic/her
   }
   return null;
 }
+
+// ---------------------------------------------------------------- Dala'il question ranking
+
+export interface DalailRankContext {
+  complaints: string[]; symptoms: string[]; regions: string[]; onset: string[];
+  duration: string | null; vitals: string[]; sex: string | null; ageBand: string | null;
+}
+
+/**
+ * Orders candidate Dala'il (clinical-sign) questions by how much each would
+ * help the Hakim with THIS patient. It only ever chooses among the IDs it is
+ * given — it never writes or rewords questions — and receives no names or
+ * identifiers, only the clinical picture. The caller validates every ID and
+ * falls back to the rule order on any failure. Server-side only.
+ */
+export async function rankDalailQuestions(
+  ctx: DalailRankContext,
+  candidates: { id: string; section: string; question: string; purpose: string | null }[],
+  limit: number,
+): Promise<{ id: string; reason: string }[] | null> {
+  if (geminiQuotaRecentlyHit()) return null;
+  const list = candidates.map((c) => `- ${c.id} | ${c.section} | ${c.question}${c.purpose ? ` — ${c.purpose}` : ""}`).join("\n");
+  const prompt = `You support a qualified Unani (Tibb) physician during the clinical-sign examination (Dala'il: Nabz, Baul, Baraz, Lisan, physical inspection). Choose which examination questions are most useful for THIS patient — the ones whose answers best clarify the presenting complaints and could change the physician's assessment. Avoid near-duplicates; prefer signs the physician can actually observe now. You do not diagnose.
+
+Patient picture (already recorded):
+- Complaints: ${ctx.complaints.join("; ") || "none recorded"}
+- Other symptoms: ${ctx.symptoms.join("; ") || "none recorded"}
+- Body regions: ${ctx.regions.join("; ") || "none recorded"}
+- Onset & rhythm: ${ctx.onset.join("; ") || "not recorded"}${ctx.duration ? ` · duration ${ctx.duration}` : ""}
+- Vitals flags: ${ctx.vitals.join("; ") || "none"}
+- Sex: ${ctx.sex || "not recorded"} · Age group: ${ctx.ageBand || "not recorded"}
+(Anything "not recorded" is unknown — not absent.)
+
+Candidate questions (id | examination | question — purpose):
+${list}
+
+Pick at most ${limit}, most useful first. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences:
+{"selected":[{"id":"...","reason":"one short clinical reason, max 12 words, no diagnosis"}]}`;
+
+  const raw = await callGemini(prompt);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(stripCodeFence(raw));
+    const sel = parsed?.selected;
+    if (!Array.isArray(sel)) return null;
+    const allowed = new Set(candidates.map((c) => c.id));
+    return sel
+      .filter((s: any) => s && typeof s.id === "string" && allowed.has(s.id))
+      .map((s: any) => ({ id: s.id, reason: typeof s.reason === "string" ? s.reason.slice(0, 120) : "" }))
+      .slice(0, limit);
+  } catch {
+    return null;
+  }
+}

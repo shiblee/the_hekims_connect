@@ -173,105 +173,223 @@ function HumourBars({ pct, compact }: { pct: HumourPoints; compact?: boolean }) 
 
 // ---------------------------------------------------------------- tab 1: Dala'il
 
-function DalailRow({ q, value, onChange }: { q: AsbabQuestionCfg; value: AsbabAnswer | undefined; onChange: (v: AsbabAnswer) => void }) {
+function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
+  q: AsbabQuestionCfg; value: AsbabAnswer | undefined; onChange: (v: AsbabAnswer) => void;
+  /** Why this question was selected for the patient. */
+  reason?: string;
+  tag?: "new" | "added" | "safety" | "earlier";
+  onRemove?: () => void;
+}) {
   const sel = Array.isArray(value) ? value : [];
   const toggle = (l: string) => onChange(q.type === "multi_select" ? (sel.includes(l) ? sel.filter((x) => x !== l) : [...sel, l]) : (sel.includes(l) ? [] : [l]));
   return (
-    <div className="grid md:grid-cols-[220px_1fr] gap-x-4 gap-y-2 py-3 border-t border-border/40 first:border-t-0">
+    <div className="grid md:grid-cols-[230px_1fr] gap-x-4 gap-y-2 py-3 border-t border-border/40 first:border-t-0">
       <div>
-        <p className="text-[15px] font-medium">{q.label}{q.required && <span className="text-destructive"> *</span>}</p>
+        <p className="text-[15px] font-medium">
+          {q.label}{q.required && <span className="text-destructive"> *</span>}
+          {tag === "safety" && <span className="ml-1.5 align-middle rounded-full bg-destructive/10 border border-destructive/30 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-destructive">Safety</span>}
+          {tag === "new" && <span className="ml-1.5 align-middle rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">New</span>}
+        </p>
         {q.labelLocal && <p className="text-[13px] text-muted-foreground">{q.labelLocal}</p>}
+        {reason && (
+          <p className="mt-0.5 flex items-start gap-1 text-xs text-primary/90"><Sparkles className="mt-0.5 h-3 w-3 shrink-0" /><span>{reason}</span></p>
+        )}
+        {tag === "added" && (
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">Added by you
+            {onRemove && <button type="button" onClick={onRemove} className="text-primary hover:underline">remove</button>}
+          </p>
+        )}
+        {tag === "earlier" && <p className="mt-0.5 text-xs text-muted-foreground">Recorded earlier on this visit</p>}
       </div>
       {q.type === "text"
         ? <FloatingField id={`dalail-${q.id}`} label="Describe the finding" maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-        : <Chips items={q.options.map((o) => ({ label: o.label }))} selected={sel} onToggle={toggle} />}
+        : <Chips items={q.options.map((o) => ({ label: o.label, sub: o.description }))} selected={sel} onToggle={toggle} />}
     </div>
   );
 }
 
 const DALAIL_VIEW_KEY = "hekims-dalail-view";
 
+interface DalailSelectionData {
+  questionIds: string[]; reasons: Record<string, string>; addedIds: string[]; newIds: string[]; safetyIds: string[];
+  method: string; eligibleCount: number; bankSize: number;
+  context: { complaints: { label: string; primary: boolean }[]; symptoms: string[]; regions: string[] };
+}
+
 /**
- * Dala'il — every examination section on one screen (Nabz, Baul, Baraz,
- * Lisan, inspection), with a jump bar. "Key signs" (default) narrows each
- * section to its required findings; "All" shows every sign.
+ * Dala'il — adaptive clinical signs. The server selects a small set of
+ * approved examination questions from what's already recorded for the visit
+ * (complaints, other symptoms, body regions, onset, vitals); each shows why it
+ * was selected. Answered questions always stay visible; the doctor can add any
+ * approved question or switch to the full bank.
  */
-function DalailTab({ state }: { state: TashkheesState }) {
+function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { pillars, answers, setAnswer, drift } = state.dalail;
-  const [view, setViewState] = useState<"key" | "all">(() => {
-    try { return localStorage.getItem(DALAIL_VIEW_KEY) === "all" ? "all" : "key"; } catch { return "key"; }
+  const [view, setViewState] = useState<"selected" | "all">(() => {
+    try { return localStorage.getItem(DALAIL_VIEW_KEY) === "all" ? "all" : "selected"; } catch { return "selected"; }
   });
-  const setView = (v: "key" | "all") => { setViewState(v); try { localStorage.setItem(DALAIL_VIEW_KEY, v); } catch { /* per-viewer convenience only */ } };
+  const setView = (v: "selected" | "all") => { setViewState(v); try { localStorage.setItem(DALAIL_VIEW_KEY, v); } catch { /* per-viewer convenience only */ } };
+  const [sel, setSel] = useState<DalailSelectionData | null>(null);
+  const [selError, setSelError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addQuery, setAddQuery] = useState("");
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const fetchSel = useCallback((refresh: boolean) =>
+    api.get<{ selection: DalailSelectionData }>(`/api/facility/visits/${visitId}/dalail-selection${refresh ? "?refresh=1" : ""}`)
+      .then((r) => { setSel(r.selection); setSelError(false); })
+      .catch(() => setSelError(true)), [visitId]);
+  const load = (refresh: boolean) => { setRefreshing(true); fetchSel(refresh).finally(() => setRefreshing(false)); };
+  useEffect(() => { fetchSel(false); }, [fetchSel]);
+
   if (!pillars) return <Loading />;
   if (!pillars.length) return <Card className="p-5 text-sm text-muted-foreground">No examination sections are enabled — configure them in Admin → Meta → Tashkhees &amp; Ilaj.</Card>;
 
-  const shownQs = (p: (typeof pillars)[number]) => p.questions.filter((q) => questionVisible(q, answers));
-  const keyQs = (p: (typeof pillars)[number]) => { const sh = shownQs(p); const req = sh.filter((q) => q.required); return req.length ? req : sh.slice(0, 1); };
-  const qsFor = (p: (typeof pillars)[number]) => (view === "key" ? keyQs(p) : shownQs(p));
-  const all = pillars.flatMap((p) => qsFor(p));
-  const answeredN = all.filter((q) => isAnswered(answers[q.id])).length;
-  const keyTotal = pillars.reduce((n, p) => n + keyQs(p).length, 0);
-  const allTotal = pillars.reduce((n, p) => n + shownQs(p).length, 0);
+  const allQs = pillars.flatMap((p) => p.questions.filter((q) => questionVisible(q, answers)).map((q) => ({ p, q })));
+  // Without a selection (still loading or it failed) fall back to every question, so the examination is never blocked.
+  const mode = sel && !selError ? view : "all";
+  const picked = new Set(sel ? [...sel.questionIds, ...sel.addedIds] : []);
+  const visibleIds = new Set(mode === "all"
+    ? allQs.map(({ q }) => q.id)
+    : allQs.filter(({ q }) => picked.has(q.id) || isAnswered(answers[q.id])).map(({ q }) => q.id));
+  const sections = pillars.map((p) => ({ p, qs: p.questions.filter((q) => visibleIds.has(q.id) && questionVisible(q, answers)) })).filter((x) => x.qs.length);
+  const shown = sections.flatMap((x) => x.qs);
+  const answeredN = shown.filter((q) => isAnswered(answers[q.id])).length;
   const hasSigns = drift && AKHLAT.some((h) => drift.total[h.key] > 0);
   const jump = (k: string) => { const el = refs.current[k]; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 64, behavior: "smooth" }); };
+  const tagFor = (id: string): "new" | "added" | "safety" | "earlier" | undefined => {
+    if (!sel || mode === "all") return undefined;
+    if (sel.safetyIds.includes(id) && sel.questionIds.includes(id)) return "safety";
+    if (sel.newIds.includes(id)) return "new";
+    if (sel.addedIds.includes(id) && !sel.questionIds.includes(id)) return "added";
+    if (!picked.has(id)) return "earlier";
+    return undefined;
+  };
+  const changeAdded = async (id: string, add: boolean) => {
+    try {
+      const r = await api.post<{ addedIds: string[] }>(`/api/facility/visits/${visitId}/dalail-selection`, add ? { add: id } : { remove: id });
+      setSel((cur) => (cur ? { ...cur, addedIds: r.addedIds } : cur));
+    } catch { /* the list simply stays as it was */ }
+  };
+  const aq = addQuery.trim().toLowerCase();
+  const addable = allQs.filter(({ q }) => !visibleIds.has(q.id) && (!aq || q.label.toLowerCase().includes(aq) || q.options.some((o) => o.label.toLowerCase().includes(aq))));
 
   return (
     <Panel icon={Stethoscope} title="Dala'il — Clinical Signs"
       aside={
         <span className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label="Which signs to show">
-            {([["key", `Key signs · ${keyTotal}`], ["all", `All · ${allTotal}`]] as const).map(([m, label]) => (
-              <button key={m} type="button" onClick={() => setView(m)} aria-pressed={view === m}
-                title={m === "key" ? "Only the required finding(s) of each examination" : "Every examination finding"}
-                className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", view === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-                {label}
-              </button>
-            ))}
-          </span>
-          <Badge variant="outline" className="tabular-nums">{answeredN} of {all.length} recorded</Badge>
+          {sel && !selError && (
+            <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label="Which signs to show">
+              {([["selected", `For this patient · ${sel.questionIds.length + sel.addedIds.filter((x) => !sel.questionIds.includes(x)).length}`], ["all", `All · ${allQs.length}`]] as const).map(([m, label]) => (
+                <button key={m} type="button" onClick={() => setView(m)} aria-pressed={view === m}
+                  className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", view === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  {label}
+                </button>
+              ))}
+            </span>
+          )}
+          <Badge variant="outline" className="tabular-nums">{answeredN} of {shown.length} recorded</Badge>
         </span>
       }>
-      {/* Jump bar */}
-      <div className="flex flex-wrap gap-1.5">
-        {pillars.map((p) => {
-          const qs = qsFor(p);
-          const a = qs.filter((q) => isAnswered(answers[q.id])).length;
-          const done = qs.length > 0 && a === qs.length;
-          return (
-            <button key={p.key} type="button" onClick={() => jump(p.key)}
-              className={cn("rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border/50 bg-background/40 hover:border-primary/40")}>
-              {p.label} <span className="text-xs tabular-nums opacity-80">{done ? "✓" : `${a}/${qs.length}`}</span>
+
+      {/* What the selection was based on */}
+      {sel && !selError && mode === "selected" && (
+        <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 space-y-2">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <p className="text-[13px] font-semibold text-primary flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> Selected for this patient</p>
+            <button type="button" onClick={() => load(true)} disabled={refreshing} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
+              {refreshing ? "Re-checking…" : "Re-check"}
             </button>
-          );
-        })}
-      </div>
-
-      {/* Every section, stacked */}
-      <div className="space-y-4">
-        {pillars.map((p) => {
-          const qs = qsFor(p);
-          if (!qs.length) return null;
-          const a = qs.filter((q) => isAnswered(answers[q.id])).length;
-          const done = a === qs.length;
-          return (
-            <div key={p.key} ref={(el) => { refs.current[p.key] = el; }}
-              className={cn("rounded-xl border border-l-4 bg-background/30 px-4 pt-3 pb-1", done ? "border-border/50 border-l-emerald-500/70" : "border-border/50 border-l-primary/40")}>
-              <div className="flex items-center justify-between gap-2 pb-1">
-                <p className="text-[15px] font-semibold">{p.label} <span className="text-[13px] font-normal text-muted-foreground">· {p.english}</span></p>
-                <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-xs tabular-nums", done ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? "✓ Done" : `${a}/${qs.length}`}</span>
-              </div>
-              {qs.map((q) => <DalailRow key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />)}
-            </div>
-          );
-        })}
-      </div>
-
-      {view === "key" && allTotal > keyTotal && (
-        <p className="text-[13px] text-muted-foreground">
-          Key signs are enough for the diagnosis. <button type="button" onClick={() => setView("all")} className="text-primary font-medium hover:underline">Show all {allTotal} signs</button> for a finer reading.
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {sel.context.complaints.map((c) => (
+              <span key={c.label} className={cn("rounded-full border px-2.5 py-0.5 text-xs", c.primary ? "border-primary/50 bg-primary/10 font-semibold text-primary" : "border-border/60 bg-background/50")}>{c.label}</span>
+            ))}
+            {sel.context.symptoms.map((x) => <span key={x} className="rounded-full border border-border/60 bg-background/50 px-2.5 py-0.5 text-xs">{x}</span>)}
+            {sel.context.regions.map((x) => <span key={x} className="rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-xs text-muted-foreground">{x}</span>)}
+            {sel.context.complaints.length + sel.context.symptoms.length + sel.context.regions.length === 0 && (
+              <span className="text-xs text-muted-foreground">No complaints or symptoms recorded yet — showing the core examination signs.</span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {sel.questionIds.length} of {sel.eligibleCount} relevant signs from a bank of {sel.bankSize}
+            {" · "}{sel.method === "ranked" ? "ordered by Hakeem Insight" : "chosen by clinical rules"}
+            {sel.method === "rules-fallback" && " (Hakeem Insight unavailable right now)"}
+          </p>
+        </div>
+      )}
+      {selError && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-[13px] text-amber-700 dark:text-amber-400">
+          The focused selection couldn&apos;t be loaded, so every examination sign is shown. <button type="button" onClick={() => load(false)} className="font-medium underline">Try again</button>
         </p>
+      )}
+
+      {/* Jump bar */}
+      {sections.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          {sections.map(({ p, qs }) => {
+            const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+            const done = a === qs.length;
+            return (
+              <button key={p.key} type="button" onClick={() => jump(p.key)}
+                className={cn("rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                  done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border/50 bg-background/40 hover:border-primary/40")}>
+                {p.label} <span className="text-xs tabular-nums opacity-80">{done ? "✓" : `${a}/${qs.length}`}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {!sel && !selError ? <Loading /> : (
+        <div className="space-y-4">
+          {sections.map(({ p, qs }) => {
+            const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+            const done = a === qs.length;
+            return (
+              <div key={p.key} ref={(el) => { refs.current[p.key] = el; }}
+                className={cn("rounded-xl border border-l-4 bg-background/30 px-4 pt-3 pb-1", done ? "border-border/50 border-l-emerald-500/70" : "border-border/50 border-l-primary/40")}>
+                <div className="flex items-center justify-between gap-2 pb-1">
+                  <p className="text-[15px] font-semibold">{p.label} <span className="text-[13px] font-normal text-muted-foreground">· {p.english}</span></p>
+                  <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-xs tabular-nums", done ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? "✓ Done" : `${a}/${qs.length}`}</span>
+                </div>
+                {qs.map((q) => {
+                  const tag = tagFor(q.id);
+                  return (
+                    <DalailRow key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)}
+                      reason={mode === "selected" && sel?.questionIds.includes(q.id) ? sel.reasons[q.id]?.replace(/^Safety check · /, "") : undefined}
+                      tag={tag} onRemove={tag === "added" ? () => changeAdded(q.id, false) : undefined} />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Doctor control: add any approved question */}
+      {mode === "selected" && sel && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <Popover open={addOpen} onOpenChange={setAddOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> Add a question</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-2" align="start">
+              <Input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)} placeholder="Search examination questions…" className="h-9 mb-2" />
+              <div className="max-h-72 overflow-y-auto space-y-0.5">
+                {addable.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">{aq ? "No other question matches." : "Every approved question is already shown."}</p>}
+                {addable.slice(0, 60).map(({ p, q }) => (
+                  <button key={q.id} type="button" onClick={() => { changeAdded(q.id, true); setAddOpen(false); setAddQuery(""); }}
+                    className="w-full text-left rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
+                    {q.label}<span className="block text-xs text-muted-foreground">{p.label}</span>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <button type="button" onClick={() => setView("all")} className="text-[13px] text-primary font-medium hover:underline">Show all {allQs.length} signs</button>
+        </div>
       )}
 
       {hasSigns && drift && (
@@ -646,7 +764,8 @@ const TABS = [
 export function TashkheesDossierPanel({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const d = state.dossier;
   const done: Record<string, boolean> = {
-    dalail: state.dalail.progress.total > 0 && state.dalail.progress.missingRequired === 0 && state.dalail.progress.answered > 0,
+    // Adaptive selection means not every question is shown — any recorded finding counts.
+    dalail: state.dalail.progress.answered > 0,
     tashkhees: !!d.mizajAsli && !!d.suMizajQuality,
     usool: d.usool.length > 0,
     ilaj: d.prescriptions.length + d.tadbeer.length + d.ghizaRecommended.length + d.ghizaAvoid.length > 0,
@@ -752,7 +871,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
         </div></div>
       </Card>
 
-      <section ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} /></section>
+      <section ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} visitId={visitId} /></section>
       <section ref={(el) => { refs.current.tashkhees = el; }}><TashkheesTab state={state} visitId={visitId} /></section>
       <section ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} /></section>
       <section ref={(el) => { refs.current.ilaj = el; }}><IlajTab state={state} patientId={patientId} visitId={visitId} /></section>
