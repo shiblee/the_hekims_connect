@@ -20,7 +20,7 @@ const VIEW_W = 200;
 const VIEW_H = 420;
 
 /** Neutral human silhouette, front or back. Filled shapes in one group so overlaps read as one body. */
-function Silhouette({ view, className }: { view: BodyView; className?: string }) {
+function Silhouette({ view, className, seam = "var(--background)" }: { view: BodyView; className?: string; seam?: string }) {
   return (
     <g className={className}>
       <ellipse cx="100" cy="38" rx="22" ry="26" />
@@ -34,7 +34,7 @@ function Silhouette({ view, className }: { view: BodyView; className?: string })
       <path d={LIMB_PATHS.legR} fill="none" stroke="currentColor" strokeWidth="22" strokeLinecap="round" />
       <ellipse cx="77" cy="408" rx="12" ry="6" />
       <ellipse cx="123" cy="408" rx="12" ry="6" />
-      {view === "back" && <path d="M100 74 L100 236" stroke="var(--background)" strokeOpacity="0.5" strokeWidth="1.5" strokeDasharray="3 4" fill="none" />}
+      {view === "back" && <path d="M100 74 L100 236" stroke={seam} strokeOpacity="0.5" strokeWidth="1.5" strokeDasharray="3 4" fill="none" />}
     </g>
   );
 }
@@ -161,5 +161,79 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
         <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-muted-foreground/50" /> Available</span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Static, print-friendly body figure (one view) with the selected regions
+ * highlighted the same way as the interactive map — fixed colours so it reads
+ * the same on paper in light or dark theme. Used by the assessment report.
+ */
+export function BodyFigure({ view, items, width = 120 }: {
+  view: BodyView;
+  items: { label: string; zone: string | null; icon: string; primary: boolean }[];
+  width?: number;
+}) {
+  const uid = useId().replace(/:/g, "");
+  const onView = items.filter((i) => i.zone && BODY_ZONES[i.zone]?.[view]);
+  const groups = new Map<string, typeof onView>();
+  for (const i of onView) {
+    const m = BODY_ZONES[i.zone!][view]!.marker;
+    const k = `${m.x},${m.y}`;
+    groups.set(k, [...(groups.get(k) || []), i]);
+  }
+  return (
+    <figure className="flex flex-col items-center">
+      <div className="relative" style={{ width, aspectRatio: `${VIEW_W} / ${VIEW_H}` }}>
+        <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="absolute inset-0 h-full w-full" aria-hidden>
+          <defs>
+            <radialGradient id={`pglow-${uid}`}>
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <Silhouette view={view} seam="#ffffff" className="fill-current text-[#e5e7eb]" />
+          {onView.map((i) => {
+            const z = BODY_ZONES[i.zone!][view]!;
+            return (
+              <g key={i.label} opacity={i.primary ? 1 : 0.6}>
+                {z.shapes.map((sh, n) =>
+                  sh.kind === "ellipse" ? (
+                    <g key={n}>
+                      <ellipse cx={sh.cx} cy={sh.cy} rx={sh.rx * 1.7} ry={sh.ry * 1.7} fill={`url(#pglow-${uid})`} />
+                      <ellipse cx={sh.cx} cy={sh.cy} rx={sh.rx} ry={sh.ry} fill="#10b981" fillOpacity="0.35" stroke="#059669" strokeOpacity="0.6" strokeWidth="1.5" />
+                    </g>
+                  ) : sh.kind === "stroke" ? (
+                    <path key={n} d={sh.d} fill="none" stroke="#10b981" strokeOpacity="0.6" strokeWidth={sh.width} strokeLinecap="round" />
+                  ) : (
+                    <Silhouette key={n} view={view} seam="#ffffff" className="fill-current text-[#10b981]/25" />
+                  ),
+                )}
+              </g>
+            );
+          })}
+        </svg>
+        {[...groups.values()].flatMap((group) =>
+          group.map((i, n) => {
+            const m = BODY_ZONES[i.zone!][view]!.marker;
+            const offset = (n - (group.length - 1) / 2) * 16;
+            const Icon = regionIcon(i.icon);
+            return (
+              <span
+                key={i.label}
+                className={cn(
+                  "absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-full border-2 border-white",
+                  i.primary ? "h-6 w-6 bg-[#059669] text-white" : "h-5 w-5 bg-white text-[#059669] ring-1 ring-[#059669]",
+                )}
+                style={{ left: `calc(${(m.x / VIEW_W) * 100}% + ${offset}px)`, top: `${(m.y / VIEW_H) * 100}%`, zIndex: i.primary ? 2 : 1 }}
+              >
+                <Icon className={i.primary ? "h-3 w-3" : "h-2.5 w-2.5"} />
+              </span>
+            );
+          }),
+        )}
+      </div>
+      <figcaption className="mt-1 text-[8.5pt] uppercase tracking-wide text-[#6b7280]">{view === "front" ? "Front · Muqaddam" : "Back · Mu'akhkhar"}</figcaption>
+    </figure>
   );
 }

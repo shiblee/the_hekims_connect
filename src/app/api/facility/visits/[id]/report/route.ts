@@ -47,8 +47,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       clinicalRoutingInsight: { select: { priorityLevel: true, triageStream: true, justification: true, generatedAt: true, updatedAt: true } },
       vitalsInsightRecord: { select: { insight: true, generatedAt: true, updatedAt: true } },
       residentClinicalNote: { select: { points: true, updatedAt: true } },
-      anatomicalRegionSelection: { select: { regions: true } },
-      chronology: { select: { onsetPatterns: true, durationValue: true, durationUnit: true, onsetDate: true, note: true, durationSource: true, sourceComplaint: true, updatedAt: true } },
+      anatomicalRegionSelection: { select: { regions: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
+      chronology: { select: { onsetPatterns: true, durationValue: true, durationUnit: true, onsetDate: true, note: true, durationSource: true, sourceComplaint: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
       asbabAssessments: { where: { framework: "asbab" }, select: { status: true, completedAt: true } },
       tashkheesDossier: { select: { status: true, mizajAsli: true, suMizajType: true, suMizajQuality: true, suMizajGrade: true, diagnosisNote: true, finalizedAt: true, finalizedByName: true } },
     },
@@ -93,6 +93,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }),
   ]);
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+
+  // Body-map details (zone, icon, local terms) for the regions picked at Stage 3.
+  const pickedRegions = parse<string[]>(visit.anatomicalRegionSelection?.regions, []);
+  const regionTags = pickedRegions.length
+    ? await db.anatomicalRegionTag.findMany({ where: { label: { in: pickedRegions } }, select: { label: true, localTerms: true, icon: true, bodyZone: true } })
+    : [];
+  const regionDetails = pickedRegions.map((label, i) => {
+    const t = regionTags.find((r) => r.label === label);
+    return { label, primary: i === 0, localTerms: t?.localTerms ?? null, icon: t?.icon ?? "activity", zone: t?.bodyZone ?? null };
+  });
 
   const priorMeasure = priorVisits.find((v) => v.vitalSigns?.heightCm != null || v.vitalSigns?.weightKg != null);
   const generatedAt = new Date();
@@ -142,6 +152,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     residentNotes: visit.residentClinicalNote ? { points: parse<string[]>(visit.residentClinicalNote.points, []), updatedAt: visit.residentClinicalNote.updatedAt } : null,
     later: {
       regions: parse<string[]>(visit.anatomicalRegionSelection?.regions, []),
+      regionDetails,
+      regionsRecordedBy: visit.anatomicalRegionSelection?.recordedBy ?? null,
+      regionsUpdatedAt: visit.anatomicalRegionSelection?.updatedAt ?? null,
       chronology: visit.chronology && { ...visit.chronology, onsetPatterns: parse<string[]>(visit.chronology.onsetPatterns, []) },
       asbab: visit.asbabAssessments[0] ?? null,
       dossier: visit.tashkheesDossier,

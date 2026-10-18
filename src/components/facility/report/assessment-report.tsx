@@ -9,6 +9,7 @@ import { calculateBmi } from "@/lib/bmi";
 import { courseFor } from "@/lib/chronology";
 import { bpStatus, pulseStatus, spo2Status, temperatureStatus, bmiStatus, type VitalStatus } from "@/lib/vital-status";
 import { LoadFailed } from "@/components/shared/inline-notice";
+import { BodyFigure } from "@/components/facility/views/body-map";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Printer } from "lucide-react";
 
@@ -66,6 +67,9 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   const chron = data.later?.chronology;
   const course = chron?.durationValue != null ? courseFor(String(chron.durationValue), chron.durationUnit || "days") : null;
   const mz = data.later?.mizajAssessment;
+  const regionItems = data.later?.regionDetails || [];
+  const seniorDoctor = [data.later?.regionsRecordedBy, chron?.recordedBy, data.visit.doctor].find((d: R) => d?.name)?.name || null;
+  const stage3UpdatedAt = [data.later?.regionsUpdatedAt, chron?.updatedAt].filter(Boolean).sort().pop() || null;
   const missing = [
     !data.vitals && "Vital signs",
     !(data.complaints?.length) && "Main complaints",
@@ -189,9 +193,12 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                 </div>
               )}
 
+              {/* ================= PART A ================= */}
+              <PartDivider letter="A" emoji="🏥" title="Registration & triage" sub="Stages 1–2 · recorded at the front desk and the triage booth" />
+
               {/* ---------------- Patient & clinician ---------------- */}
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                <Section title="Patient" n={1}>
+              <div className="grid grid-cols-2 gap-5">
+                <Section emoji="👤" title="Patient" n={1}>
                   <Facts rows={[
                     ["Name", `${p.titlePrefix ? `${p.titlePrefix} ` : ""}${p.name}`],
                     ["Patient ID", p.patientCode],
@@ -205,7 +212,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     ["Earlier visits here", String(p.previousVisitCount)],
                   ]} />
                 </Section>
-                <Section title="Clinician & facility" n={2}>
+                <Section emoji="🩺" title="Clinician & facility" n={2}>
                   <Facts rows={[
                     ["Treating doctor", doctor ? doctor.name : "No doctor assigned to this visit"],
                     ["Designation", doctor ? [doctor.designation, doctor.specialization].filter(Boolean).join(" · ") || null : null],
@@ -223,7 +230,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </div>
 
               {/* ---------------- Vitals ---------------- */}
-              <Section title="Vital signs & measurements" n={3} meta={data.vitals ? `Recorded ${fmtDateTime(v.updatedAt)}` : undefined}>
+              <Section emoji="❤️" title="Vital signs & measurements" n={3} meta={data.vitals ? `Recorded ${fmtDateTime(v.updatedAt)}` : undefined}>
                 {!data.vitals && !data.carriedMeasure ? <Empty>Vital signs not recorded for this visit.</Empty> : (
                   <div className="grid grid-cols-4 gap-1.5">
                     {vitalRows.map((r) => (
@@ -246,7 +253,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Reason for visit ---------------- */}
-              <Section title="Reason for visit & main complaints" n={4}>
+              <Section emoji="📝" title="Reason for visit & main complaints" n={4}>
                 {data.complaints?.length ? (
                   <>
                     <div className="rpt-keep rounded bg-[#f0fdfa] border border-[#99f6e4] px-3 py-2 mb-2">
@@ -291,7 +298,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Warning signs ---------------- */}
-              <Section title="Emergency warning signs" n={5} meta={ws?.updatedAt ? `Updated ${fmtDateTime(ws.updatedAt)}` : undefined}>
+              <Section emoji="🚨" title="Emergency warning signs" n={5} meta={ws?.updatedAt ? `Updated ${fmtDateTime(ws.updatedAt)}` : undefined}>
                 {!ws ? <Empty tone="warn">Warning-sign assessment not done — absence of warning signs cannot be assumed.</Empty>
                   : !decided ? (
                     <>
@@ -324,53 +331,95 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Other symptoms ---------------- */}
-              <Section title="Other symptoms (Alamat-e-Izafiya)" n={6}>
+              <Section emoji="🔎" title="Other symptoms (Alamat-e-Izafiya)" n={6}>
                 {!data.otherSymptoms ? <Empty>Not assessed.</Empty>
                   : data.otherSymptoms.symptoms.length ? <p className="text-[10.5pt]">{data.otherSymptoms.symptoms.join(" · ")}</p>
                     : <p className="text-[10.5pt]">None marked at assessment ({fmtDateTime(data.otherSymptoms.updatedAt)}).</p>}
               </Section>
 
-              {/* ---------------- Stage 3: Mizaj & Morphometry ---------------- */}
-              <Section title="Mizaj & Morphometry — doctor's assessment" n={7} meta={chron?.updatedAt ? `Updated ${fmtDateTime(chron.updatedAt)}` : undefined}>
+              {/* ================= PART B — senior doctor ================= */}
+              <PartDivider letter="B" emoji="👨‍⚕️" title="Senior doctor's assessment" sub="Stage 3 · Mizaj & Morphometry — recorded by the senior (main) doctor" tone="senior" />
+
+              <Section emoji="🧍" tone="senior" title="Body regions, onset & course" n={7}
+                meta={stage3UpdatedAt ? `Updated ${fmtDateTime(stage3UpdatedAt)}` : undefined}>
+                <p className="rpt-keep mb-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-[#c4b5fd] bg-white px-3 py-1 text-[9.5pt] text-[#5b21b6]">
+                  🩺 <b>Recorded by the senior doctor</b>
+                  {seniorDoctor && <span>· {seniorDoctor}</span>}
+                </p>
                 {!data.later.regions?.length && !chron && !mz ? <Empty>Stage 3 not yet recorded for this visit.</Empty> : (
                   <>
                     {data.later.regions?.length > 0 && (
-                      <div className="rpt-keep mb-2">
-                        <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold mb-1">Body regions & organ systems involved</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {data.later.regions.map((r: string, i: number) => (
-                            <span key={r} className={`rounded border px-2 py-0.5 text-[10pt] ${i === 0 ? "border-[#0f766e] bg-[#f0fdfa] font-semibold text-[#0f766e]" : "border-[#d1d5db]"}`}>
-                              {r}{i === 0 && <span className="ml-1 text-[8.5pt]">PRIMARY</span>}
-                            </span>
-                          ))}
+                      <div className="rpt-keep grid grid-cols-[auto_1fr] gap-5 items-start">
+                        <div className="flex gap-2 rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
+                          <BodyFigure view="front" items={regionItems} width={118} />
+                          <BodyFigure view="back" items={regionItems} width={118} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold mb-1.5">Body regions & organ systems involved</p>
+                          <ol className="space-y-1.5">
+                            {regionItems.map((r: R, i: number) => (
+                              <li key={r.label} className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 ${r.primary ? "border-[#059669] bg-[#ecfdf5]" : "border-[#e5e7eb] bg-white"}`}>
+                                <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8.5pt] font-bold ${r.primary ? "bg-[#059669] text-white" : "border border-[#059669] text-[#059669]"}`}>{i + 1}</span>
+                                <span className="min-w-0">
+                                  <span className="block text-[10.5pt] font-semibold text-[#111827]">{r.label}{r.primary && <span className="ml-1.5 rounded bg-[#059669] px-1.5 py-px text-[7.5pt] font-bold tracking-wide text-white align-middle">PRIMARY</span>}</span>
+                                  {r.localTerms && <span className="block text-[9pt] text-[#6b7280]">{r.localTerms}</span>}
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
                         </div>
                       </div>
                     )}
-                    <Facts rows={[
-                      ["Onset & rhythm", chron?.onsetPatterns?.length ? chron.onsetPatterns.join(", ") : null],
-                      ["Overall duration", chron?.durationValue != null
-                        ? `${chron.durationValue} ${chron.durationUnit || ""}${course ? ` — ${course.label} (${course.unani}, ${course.range})` : ""}${chron.durationSource === "auto" && chron.sourceComplaint ? ` · from the longest complaint, ${chron.sourceComplaint}` : ""}`
-                        : null],
-                      ["Started around", chron?.onsetDate ? fmtDate(chron.onsetDate) : null],
-                      ["Chronology note", chron?.note],
-                      ["Latest Mizaj assessment", mz ? `${mz.result.split(" — ")[0]} · Damawi ${mz.dam}% · Safrawi ${mz.saffra}% · Balghami ${mz.balgham}% · Saudawi ${mz.sauda}% (${fmtDate(mz.createdAt)})` : null],
-                      ["Nabz (pulse) on Mizaj assessment", mz?.pulse],
-                      ["Mizaj notes", mz?.notes],
-                    ]} />
-                    <p className="mt-1 text-[9pt] text-[#6b7280]">Duration course (acute / subacute / chronic) is a guide from the recorded duration. Main complaints above include the doctor&apos;s Stage 3 edits.</p>
+
+                    <div className="rpt-keep mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">⚡ Onset & rhythm</p>
+                        {chron?.onsetPatterns?.length
+                          ? <div className="flex flex-wrap gap-1">{chron.onsetPatterns.map((o: string) => <span key={o} className="rounded-full border border-[#c4b5fd] bg-[#f5f3ff] px-2 py-0.5 text-[10pt] text-[#4c1d95]">{o}</span>)}</div>
+                          : <Empty>Not recorded.</Empty>}
+                      </div>
+                      <div className="rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">⏳ How long</p>
+                        {chron?.durationValue != null ? (
+                          <>
+                            <p className="text-[12pt] font-bold text-[#111827]">{chron.durationValue} {chron.durationUnit || ""}
+                              {course && <span className="ml-2 rounded px-1.5 py-0.5 text-[9pt] font-semibold" style={{ background: `${course.style.dot}22`, color: course.style.dot }}>{course.label} · {course.unani}</span>}
+                            </p>
+                            <p className="text-[9.5pt] text-[#4b5563]">
+                              {chron.onsetDate && <>Started around <b>{fmtDate(chron.onsetDate)}</b></>}
+                              {chron.durationSource === "auto" && chron.sourceComplaint && <> · from the longest complaint, {chron.sourceComplaint}</>}
+                            </p>
+                            {course && <p className="text-[9pt] text-[#6b7280]">{course.range} — {course.hint}</p>}
+                          </>
+                        ) : <Empty>Not recorded.</Empty>}
+                      </div>
+                    </div>
+
+                    {(chron?.note || mz) && (
+                      <Facts className="rpt-keep mt-3" rows={[
+                        ["📝 Chronology note", chron?.note],
+                        ["🌡️ Latest Mizaj assessment", mz ? `${mz.result.split(" — ")[0]} · Damawi ${mz.dam}% · Safrawi ${mz.saffra}% · Balghami ${mz.balgham}% · Saudawi ${mz.sauda}% (${fmtDate(mz.createdAt)})` : null],
+                        ["💓 Nabz (pulse)", mz?.pulse],
+                        ["Mizaj notes", mz?.notes],
+                      ]} />
+                    )}
+                    <p className="mt-2 text-[9pt] text-[#6b7280]">Acute / subacute / chronic is a guide from the recorded duration. The main complaints in section 04 include the senior doctor&apos;s Stage 3 edits.</p>
                   </>
                 )}
               </Section>
 
+              {/* ================= PART C ================= */}
+              <PartDivider letter="C" emoji="📚" title="History, notes & decision support" sub="Allergies, medicines, background, clinical notes and Hakeem Insight" />
+
               {/* ---------------- Allergies & medicines ---------------- */}
               <div className="grid grid-cols-2 gap-4">
-                <Section title="Allergies & sensitivities" n={8}>
+                <Section emoji="⚠️" title="Allergies & sensitivities" n={8}>
                   {allergies.length ? (
                     <ul className="text-[10.5pt] space-y-0.5">{allergies.map((a) => <li key={a}>• <b>{a}</b> <span className="text-[9pt] text-[#6b7280]">— patient-reported; reaction & severity not recorded</span></li>)}</ul>
                   ) : data.intake ? <Empty>No allergies were reported at registration. This is not a confirmed absence of allergies.</Empty>
                     : <Empty>Allergy information not recorded.</Empty>}
                 </Section>
-                <Section title="Current medicines & herbs" n={9}>
+                <Section emoji="💊" title="Current medicines & herbs" n={9}>
                   {data.intake?.medications?.length || p.currentMedications ? (
                     <>
                       {data.intake?.medications?.length > 0 && (
@@ -384,7 +433,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </div>
 
               {/* ---------------- Background ---------------- */}
-              <Section title="Medical background" n={10}>
+              <Section emoji="📋" title="Medical background" n={10}>
                 {[p.chronicConditions, p.medicalHistory, p.surgicalHistory, p.familyHistory, p.lifestyle, p.occupation].some(Boolean) ? (
                   <Facts rows={[
                     ["Chronic conditions", p.chronicConditions], ["Medical history", p.medicalHistory], ["Surgical history", p.surgicalHistory],
@@ -394,7 +443,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Doctor notes ---------------- */}
-              <Section title="Doctor's observations & clinical notes" n={11} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
+              <Section emoji="🗒️" title="Doctor's observations & clinical notes" n={11} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
                 {data.residentNotes?.points?.length ? (
                   <ul className="text-[10.5pt] space-y-0.5 list-disc pl-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
                 ) : <Empty>No clinical notes recorded.</Empty>}
@@ -402,7 +451,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Unani context ---------------- */}
-              <Section title="Unani assessment context" n={12}>
+              <Section emoji="🌿" title="Unani assessment context" n={12}>
                 <Facts rows={[
                   ["Recorded Mizaj (profile)", p.mizaj],
                   ["Humoral balance (computed)", data.humoral ? `Damawi ${Math.round(data.humoral.damPercent)}% · Safrawi ${Math.round(data.humoral.safraPercent)}% · Balghami ${Math.round(data.humoral.balghamPercent)}% · Saudawi ${Math.round(data.humoral.saudaPercent)}%` : null],
@@ -414,7 +463,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Hakeem Insight ---------------- */}
-              <Section title="Hakeem Insight — automated decision support" n={13}>
+              <Section emoji="✨" title="Hakeem Insight — automated decision support" n={13}>
                 <p className="mb-2 rounded bg-[#f3f4f6] px-2 py-1 text-[9pt] text-[#4b5563]">Generated automatically from this visit&apos;s recorded data. Not verified by a doctor; not a diagnosis or prescription.</p>
                 {!l1 && !data.routing && !data.humoral?.aiClue && !data.vitalsInsight ? <Empty>No Hakeem Insight was generated for this visit.</Empty> : (
                   <div className="space-y-2">
@@ -447,7 +496,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Reports ---------------- */}
-              <Section title="Patient reports on file" n={14}>
+              <Section emoji="📁" title="Patient reports on file" n={14}>
                 {data.reports?.length ? (
                   <table className="w-full text-[10pt] border-collapse">
                     <thead><tr className="text-left text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
@@ -535,15 +584,36 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
 
 // ---------------------------------------------------------------- pieces
 
-function Section({ title, n, meta, children }: { title: string; n: number; meta?: string; children: ReactNode }) {
+function Section({ title, n, meta, emoji, tone, children }: { title: string; n: number; meta?: string; emoji?: string; tone?: "senior"; children: ReactNode }) {
+  const senior = tone === "senior";
   return (
-    <section className="mt-4">
-      <h2 className="flex items-baseline justify-between gap-3 border-b border-[#d1d5db] pb-0.5 mb-1.5">
-        <span className="font-serif text-[12.5pt] font-bold text-[#0f766e]"><span className="text-[#9ca3af] font-sans text-[9.5pt] mr-1.5">{String(n).padStart(2, "0")}</span>{title}</span>
+    <section className={`mt-6 ${senior ? "rounded-xl border-2 border-[#c4b5fd] bg-[#faf5ff] px-4 pb-4 pt-3" : ""}`}>
+      <h2 className={`flex items-center justify-between gap-3 border-b-2 pb-1.5 mb-2.5 ${senior ? "border-[#c4b5fd]" : "border-[#e5e7eb]"}`}>
+        <span className="flex items-center gap-2">
+          {emoji && <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12pt] ${senior ? "bg-[#ede9fe]" : "bg-[#f0fdfa]"}`} aria-hidden>{emoji}</span>}
+          <span className={`font-serif text-[13pt] font-bold ${senior ? "text-[#5b21b6]" : "text-[#0f766e]"}`}>
+            <span className="text-[#9ca3af] font-sans text-[9.5pt] mr-1.5">{String(n).padStart(2, "0")}</span>{title}
+          </span>
+        </span>
         {meta && <span className="text-[9pt] text-[#6b7280] font-normal">{meta}</span>}
       </h2>
       {children}
     </section>
+  );
+}
+
+/** A banner that splits the report into parts (who recorded what). */
+function PartDivider({ letter, emoji, title, sub, tone }: { letter: string; emoji: string; title: string; sub: string; tone?: "senior" }) {
+  const senior = tone === "senior";
+  return (
+    <div className={`rpt-keep mt-8 flex items-center gap-3 rounded-lg px-3.5 py-2.5 ${senior ? "bg-[#5b21b6] text-white" : "bg-[#0f766e] text-white"}`} style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-[15pt]" aria-hidden>{emoji}</span>
+      <div className="min-w-0">
+        <p className="text-[8.5pt] font-semibold uppercase tracking-[0.18em] opacity-80">Part {letter}</p>
+        <p className="font-serif text-[13.5pt] font-bold leading-tight">{title}</p>
+        <p className="text-[9.5pt] opacity-85">{sub}</p>
+      </div>
+    </div>
   );
 }
 
