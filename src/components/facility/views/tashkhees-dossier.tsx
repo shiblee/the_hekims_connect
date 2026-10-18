@@ -860,6 +860,173 @@ function GhizaEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
   );
 }
 
+// ---------------------------------------------------------------- Clinical decision support
+
+interface CdsNote { level: "high" | "caution" | "info"; text: string; verified: boolean }
+interface CdsCand { tagId: string; label: string; unaniName: string | null; herbType: string | null; category: string; reasons: string[]; evidence: { traditional: boolean; clinical: boolean; verified: boolean }; safety: CdsNote[]; completeness: number; mizaj: string | null }
+interface CdsData {
+  enabled: boolean; sessionId?: string; method?: string; changed?: boolean;
+  result?: {
+    urgent: string[]; infoNeeded: string[]; unani: CdsCand[]; supplements: CdsCand[];
+    excluded: { tagId: string; label: string; reason: string; verified: boolean }[];
+    currentMeds: { label: string; matched: boolean }[];
+    basis: { complaints: string[]; conditions: string[]; allergies: string[]; suMizaj: string | null; age: number | null; sex: string | null };
+  };
+  decisions?: { tagId: string; action: string; reason: string | null }[];
+}
+const NOTE_STYLE = { high: "text-destructive", caution: "text-amber-700 dark:text-amber-400", info: "text-muted-foreground" } as const;
+
+/**
+ * "Clinical Decision Support — Medicines & Supplements" (doctors only).
+ * Candidates from the clinic's own database that may be worth evaluating,
+ * after safety checks — each with why it was found, its evidence and
+ * verification status and any precautions. Accepting is NOT prescribing:
+ * adding to the prescription is a separate, deliberate step.
+ */
+function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }) {
+  const { dossier: d, set, herbs } = state;
+  const [data, setData] = useState<CdsData | null>(null);
+  const [tab, setTab] = useState<"unani" | "supplements" | "safety" | "info">("unani");
+  const [running, setRunning] = useState(false);
+  const [rejecting, setRejecting] = useState<{ tagId: string; reason: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const fetchCds = useCallback(() =>
+    api.get<CdsData>(`/api/facility/visits/${visitId}/cds`)
+      .then((r) => { setData(r); setFailed(false); })
+      .catch((e: any) => { if (e?.status === 403 || /doctors only/i.test(e?.message || "")) setData({ enabled: false }); else setFailed(true); }), [visitId]);
+  useEffect(() => { fetchCds(); }, [fetchCds]);
+  if (!data && !failed) return null;
+  if (data && !data.enabled) return null; // pilot off, or not a doctor
+  const rerun = async () => { setRunning(true); try { await state.save(false); await fetchCds(); } finally { setRunning(false); } };
+
+  const r = data?.result;
+  const last = (tagId: string) => [...(data?.decisions || [])].reverse().find((x) => x.tagId === tagId);
+  const act = async (c: CdsCand, action: string, reason?: string) => {
+    if (!data?.sessionId) return;
+    try {
+      await api.post(`/api/facility/visits/${visitId}/cds`, { sessionId: data.sessionId, tagId: c.tagId, label: c.label, action, reason });
+      setData((cur) => (cur ? { ...cur, decisions: [...(cur.decisions || []), { tagId: c.tagId, action, reason: reason ?? null }] } : cur));
+    } catch { /* stays as it was */ }
+  };
+  const addToRx = (c: CdsCand) => {
+    if (d.prescriptions.some((p) => p.tagId === c.tagId)) return;
+    const forms = herbs.find((h) => h.id === c.tagId)?.forms || [];
+    set({ prescriptions: [...d.prescriptions, { tagId: c.tagId, name: c.label, form: forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] });
+    act(c, "added_to_prescription");
+  };
+
+  const renderCard = (c: CdsCand) => {
+    const dec = last(c.tagId);
+    const inRx = d.prescriptions.some((p) => p.tagId === c.tagId);
+    return (
+      <div className={cn("rounded-xl border p-3 space-y-2", dec?.action === "rejected" ? "border-border/40 bg-muted/30 opacity-70" : dec?.action === "accepted" || inRx ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/50 bg-background/50")}>
+        <div className="space-y-1">
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}</p>
+            <p className="text-xs text-muted-foreground">{[c.herbType, c.mizaj].filter(Boolean).join(" · ")}</p>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {c.evidence.traditional && <Badge variant="outline" className="text-[10px]">Traditional use</Badge>}
+            {c.evidence.clinical && <Badge variant="outline" className="text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">Clinical evidence</Badge>}
+            <Badge variant="outline" className={cn("text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? "Verified" : "Unverified"}</Badge>
+          </div>
+        </div>
+        <ul className="space-y-0.5">{c.reasons.map((x) => <li key={x} className="text-xs text-foreground/85">• {x}</li>)}</ul>
+        {c.safety.length > 0 && (
+          <ul className="space-y-0.5 rounded-lg bg-background/60 px-2 py-1.5">
+            {c.safety.map((n, i) => (
+              <li key={i} className={cn("text-xs flex gap-1.5", NOTE_STYLE[n.level])}>
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /><span>{n.text}{!n.verified && <span className="opacity-70"> (unverified)</span>}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span className="text-[11px] text-muted-foreground mr-auto">Profile {c.completeness}% complete{dec ? ` · ${dec.action === "added_to_prescription" ? "added to prescription" : dec.action === "accepted" ? "accepted for evaluation" : dec.action}` : ""}</span>
+          {rejecting?.tagId === c.tagId ? (
+            <span className="flex items-center gap-1.5">
+              <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder="Reason for rejecting" className="h-7 w-48 text-xs" />
+              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!rejecting.reason.trim()} onClick={() => { act(c, "rejected", rejecting.reason); setRejecting(null); }}>Reject</Button>
+              <button type="button" className="text-xs text-muted-foreground" onClick={() => setRejecting(null)}>Cancel</button>
+            </span>
+          ) : (
+            <>
+              {!dec && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => act(c, "considered")}>Considered</Button>}
+              {dec?.action !== "accepted" && dec?.action !== "added_to_prescription" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => act(c, "accepted")}>Accept for evaluation</Button>}
+              {dec?.action !== "rejected" && <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })}>Reject…</Button>}
+              {(dec?.action === "accepted" || dec?.action === "added_to_prescription") && (
+                inRx ? <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Check className="h-3.5 w-3.5" /> In prescription</span>
+                  : <Button size="sm" className="h-7 text-xs" onClick={() => addToRx(c)}><Plus className="h-3 w-3" /> Add to prescription</Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const counts = { unani: r?.unani.length ?? 0, supplements: r?.supplements.length ?? 0, safety: (r?.excluded.length ?? 0), info: r?.infoNeeded.length ?? 0 };
+  return (
+    <Panel icon={ShieldAlert} title="Clinical Decision Support — Medicines & Supplements"
+      aside={
+        <span className="flex items-center gap-2 shrink-0">
+          <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Pilot · data under review</Badge>
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-checking…" : "Re-check"}</button>
+        </span>
+      }>
+      {failed || !r ? (
+        failed ? <p className="text-sm text-muted-foreground">Decision support couldn&apos;t be loaded — the prescription below works as usual. <button type="button" onClick={() => fetchCds()} className="text-primary font-medium hover:underline">Try again</button></p> : <Loading />
+      ) : (
+        <>
+          {r.urgent.map((u) => (
+            <p key={u} className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />{u}</p>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            For <span className="font-medium text-foreground">{r.basis.complaints.join(", ") || "no complaints recorded"}</span>
+            {r.basis.suMizaj && <> · Su-e-Mizaj {r.basis.suMizaj}</>}
+            {r.basis.conditions.length > 0 && <> · history: {r.basis.conditions.join(", ")}</>}
+            {r.basis.allergies.length > 0 && <> · allergies: <span className="text-destructive">{r.basis.allergies.join(", ")}</span></>}
+            {r.basis.age != null && <> · {r.basis.age} yrs{r.basis.sex ? `, ${r.basis.sex}` : ""}</>}
+            {data?.changed && <span className="text-primary"> · updated after new findings</span>}
+          </p>
+          <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
+            {([["unani", `Unani medicines · ${counts.unani}`], ["supplements", `Supplements · ${counts.supplements}`], ["safety", `Safety & exclusions · ${counts.safety}`], ["info", `More information needed · ${counts.info}`]] as const).map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? (k === "safety" ? "bg-destructive text-white" : k === "info" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>{l}</button>
+            ))}
+          </div>
+
+          {tab === "unani" && (r.unani.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.unani.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">No eligible Unani medicine found for the recorded findings.</p>)}
+          {tab === "supplements" && (r.supplements.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.supplements.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">No supplement candidates.</p>)}
+          {tab === "safety" && (
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Current medicines (allopathic shown for safety only)</p>
+                {r.currentMeds.length ? (
+                  <div className="flex flex-wrap gap-1.5">{r.currentMeds.map((m) => <span key={m.label} className={cn("rounded-full border px-2.5 py-0.5 text-xs", m.matched ? "border-border/60" : "border-amber-500/50 text-amber-700 dark:text-amber-400")} title={m.matched ? "Found in the database — interactions checked" : "Not found in the database — interactions not checked"}>{m.label}{!m.matched && " ⚠"}</span>)}</div>
+                ) : <p className="text-xs text-muted-foreground">None recorded.</p>}
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Excluded for safety ({r.excluded.length})</p>
+                {r.excluded.length ? (
+                  <ul className="space-y-1">{r.excluded.map((e) => (
+                    <li key={e.tagId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs"><span className="font-semibold">{e.label}</span> <span className="text-destructive">— {e.reason}</span>{!e.verified && <span className="text-muted-foreground"> (unverified)</span>}</li>
+                  ))}</ul>
+                ) : <p className="text-xs text-muted-foreground">Nothing excluded.</p>}
+              </div>
+            </div>
+          )}
+          {tab === "info" && (r.infoNeeded.length ? <ul className="space-y-1.5">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</ul> : <p className="text-sm text-muted-foreground">Nothing missing for this check.</p>)}
+
+          <p className="text-[11px] text-muted-foreground border-t border-border/40 pt-2">
+            Decision support for the treating doctor — not a prescription. Candidates come only from the clinic&apos;s database; indications and safety data are still being clinically reviewed and are marked &ldquo;Unverified&rdquo; until verified. Safety checks run before anything is shown and can&apos;t be overridden by ranking{data?.method === "ranked" ? " (order assisted by Hakeem Insight)" : ""}. No doses are suggested.
+          </p>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const { dossier: d, set, options, herbs } = state;
   const [warnings, setWarnings] = useState<Record<string, Warn[]>>({});
@@ -942,6 +1109,9 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
         <FloatingTextarea id="ghiza-note" label="Meal timing & hydration guidance" rows={2} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })}
           title="e.g. 4 small meals, no iced water after meals" />
       </Panel>
+
+      {/* Clinical decision support — doctors only, pilot switch in Admin */}
+      <CdsPanel state={state} visitId={visitId} />
 
       {/* Ilaj-bil-Dawa */}
       <Panel icon={Pill} title="Ilaj-bil-Dawa — Medicines" hint="Formulations from Supplements & Herbs. Doses are the Hakim's own entry."

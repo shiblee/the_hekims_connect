@@ -363,6 +363,7 @@ model Visit {
   tashkheesSuggestion       TashkheesSuggestion?
   usoolSuggestion           UsoolSuggestion?
   ghizaSuggestion           GhizaSuggestion?
+  cdsSessions               CdsSession[]
 }
 
 model Payment {
@@ -1917,4 +1918,45 @@ model GhizaSuggestion {
   updatedAt     DateTime @updatedAt
 
   visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+}
+
+// Clinical decision support (medicines & supplements) — one row per run, kept
+// as history (never overwritten): the patient context summary and the data
+// versions used, the candidates with their reasons and safety results, and how
+// the list was produced. Doctor actions are separate rows (CdsDecision).
+model CdsSession {
+  id            String   @id @default(cuid())
+  visitId       String
+  contextHash   String
+  configVersion String
+  method        String   @default("rules") // "rules" | "ranked" | "rules-fallback"
+  context       String   @default("{}") // de-identified clinical summary used
+  result        String   @default("{}") // candidates, exclusions, alerts, info-needed
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+
+  visit     Visit         @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  decisions CdsDecision[]
+
+  @@index([visitId, createdAt])
+}
+
+// A doctor's action on a candidate — considered / accepted for evaluation /
+// rejected (with reason). Accepting is NOT prescribing; prescriptions are only
+// written in Ilaj-bil-Dawa by the doctor.
+model CdsDecision {
+  id        String   @id @default(cuid())
+  sessionId String
+  visitId   String
+  tagId     String
+  label     String
+  action    String // "considered" | "accepted" | "rejected" | "added_to_prescription"
+  reason    String?
+  actorId   String?
+  actorType String?
+  createdAt DateTime @default(now())
+
+  session CdsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
 }
