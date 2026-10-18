@@ -329,6 +329,13 @@ export function VitalsPanel({
   const needAttention = tiles.filter((t) => t.status && t.status.tone !== "ok").length;
   const lastRecordedAt = visitsWithVitals[0]?.visitDate;
 
+  // Tiles: just the time for today's readings, otherwise "Yesterday" / "3 days ago".
+  const whenShort = (iso: string) => {
+    const d = new Date(iso);
+    return d.toDateString() === new Date().toDateString()
+      ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })
+      : daysAgo(iso);
+  };
   const when = (iso: string) => `${daysAgo(iso)}, ${new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })}`;
 
   const renderTile = (t: (typeof tiles)[number]) => {
@@ -389,34 +396,34 @@ export function VitalsPanel({
                 {t.unit && <span className="text-xs text-muted-foreground">{t.unit}</span>}
                 {t.key === "temperatureF" && t.latest!.temperatureC != null && <span className="text-xs text-muted-foreground">· {t.latest!.temperatureC}°C</span>}
               </p>
-              {t.status && tone && (
-                <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap", tone.text, tone.bg, tone.border)}>
-                  {t.status.tone === "urgent" ? <AlertTriangle className="h-3 w-3" /> : t.status.tone === "check" ? <HelpCircle className="h-3 w-3" /> : <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />}
-                  {t.status.label}
+              {t.delta != null && (
+                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground whitespace-nowrap" title="Change since the previous reading">
+                  {t.delta === 0 ? <><Minus className="h-3 w-3" /> same</> : <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{Math.abs(t.delta).toFixed(t.key === "temperatureF" || t.key === "bmi" ? 1 : 0)}</>}
                 </span>
               )}
             </div>
 
             {/* Where the reading sits against normal */}
             {t.key === "bpSystolic" ? (
-              <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-3">
                 <RangeBar label="S" value={t.latest!.bpSystolic} scale={GAUGE_SCALE.bpSystolic} normal={normalRanges.bpSystolic} tone={t.status?.tone} />
                 <RangeBar label="D" value={t.latest!.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={t.status?.tone} />
               </div>
             ) : t.key === "heightCm" ? (
-              <p className="text-xs text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}{t.status ? ` · ${t.status.label}` : ""}</p>
+              <p className="text-xs text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}</p>
             ) : GAUGE_SCALE[t.key] ? (
               <RangeBar value={t.key === "bmi" ? t.bmi : (t.latest![t.key as keyof VisitVitals] as number | null)} scale={GAUGE_SCALE[t.key]} normal={t.key === "bmi" ? [18.5, 24.9] : t.range!} tone={t.status?.tone} />
             ) : null}
 
             {/* Change + when */}
             <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground mt-auto pt-0.5">
-              <span className="flex items-center gap-1 whitespace-nowrap">
-                {t.delta == null ? "First reading" : t.delta === 0 ? <><Minus className="h-3 w-3" /> Same as last</> : (
-                  <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{Math.abs(t.delta).toFixed(t.key === "temperatureF" || t.key === "bmi" ? 1 : 0)} vs last</>
-                )}
-              </span>
-              {t.latestVisit && <span className="truncate text-right group-hover:hidden">{when(t.latestVisit.visitDate)}</span>}
+              {t.status && tone ? (
+                <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap", tone.text, tone.bg, tone.border)}>
+                  {t.status.tone === "urgent" ? <AlertTriangle className="h-3 w-3" /> : t.status.tone === "check" ? <HelpCircle className="h-3 w-3" /> : <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />}
+                  {t.status.label}
+                </span>
+              ) : <span />}
+              {t.latestVisit && <span className="truncate text-right group-hover:hidden" title={when(t.latestVisit.visitDate)}>{whenShort(t.latestVisit.visitDate)}</span>}
               <span className="hidden group-hover:flex items-center gap-0.5 text-primary font-medium whitespace-nowrap">View details <ChevronRight className="h-3 w-3" /></span>
             </div>
           </>
