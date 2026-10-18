@@ -8,7 +8,6 @@ import { type VisitVitals } from "@/lib/vitals-trend";
 import { cn } from "@/lib/utils";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { VitalsPanel } from "@/components/facility/views/vitals-panel";
-import { VitalsAiInsightCard } from "@/components/facility/views/vitals-ai-insight-card";
 import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 import { ChiefComplaintMatrix, type ChiefComplaintMatrixHandle } from "@/components/facility/views/chief-complaint-matrix";
@@ -365,7 +364,6 @@ export function PatientDetail({ patientId }: { patientId: string }) {
           )}
           {latestVisit && <RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} />}
           {latestVisit && <AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} />}
-          <VitalsAiInsightCard patientId={patientId} visitId={latestVisit?.id} />
         </div>
         <div ref={rightRailSpacerRef} className="relative">
         <div ref={rightRailContentRef} className="space-y-5" style={rightRailStyle || undefined}>
