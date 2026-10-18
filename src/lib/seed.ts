@@ -430,7 +430,7 @@ export async function seedMedicationTags() {
   }
 }
 
-// Starter Acute Red Flag / Emergency Exclusion checklist — standard western
+// Starter Emergency Warning Signs checklist — standard western
 // clinical red flags that must be ruled out before continuing Unani
 // constitutional triage. A clinical starting point for admin/practitioner
 // review, not a finished or exhaustive emergency-medicine protocol.

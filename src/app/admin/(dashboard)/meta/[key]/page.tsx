@@ -94,7 +94,7 @@ const SCREENING_TAB_LABELS: Record<string, string> = {
   complaints: "Chief Complaints", asbab: "Asbab-e-Sittah", tashkhees: "Tashkhees & Ilaj", allergies: "Allergies",
   supplements: "Supplements & Herbs", medications: "Medications",
   aggravating: "Aggravating Factors (Muharrikat)", relieving: "Relieving Factors (Musakkinat)",
-  redflags: "Acute Red Flag / Emergency Exclusion", symptoms: "Accompanying Acute Symptoms (Alamat-e-Izafiya)",
+  redflags: "Emergency Warning Signs", symptoms: "Accompanying Acute Symptoms (Alamat-e-Izafiya)",
   regions: "Anatomical Region & Organ System",
   onset: "Onset Nature & Rhythm",
 };
@@ -1741,7 +1741,7 @@ export default function MetaSectionPage() {
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-                      <span className="leading-snug">Acute Red Flag / Emergency Exclusion</span>
+                      <span className="leading-snug">Emergency Warning Signs</span>
                     </span>
                     <Badge
                       variant={activeCategory === "redflags" ? "outline" : "secondary"}
@@ -1818,7 +1818,7 @@ export default function MetaSectionPage() {
           <Card className="p-6 border-border/50 bg-card/60">
             {activeCategory === "redflags" ? (
               <>
-                <h2 className="font-serif text-lg font-semibold">Acute Red Flag / Emergency Exclusion</h2>
+                <h2 className="font-serif text-lg font-semibold">Emergency Warning Signs</h2>
                 <div className="space-y-1.5">
                 {redFlags.map((r, idx) => (
                   <div key={r.id} className="flex items-start gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
