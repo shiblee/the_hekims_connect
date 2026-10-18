@@ -82,7 +82,7 @@ function AsbabStage({ patientId }: { patientId: string }) {
       <div className="mb-6 grid lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
-            ? <AsbabAssessmentPanel state={asbab} />
+            ? <AsbabAssessmentPanel state={asbab} visitId={latestVisit.id} />
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete the earlier stages first.</Card>}
         </div>
 
