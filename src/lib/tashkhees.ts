@@ -11,6 +11,8 @@ export const TASHKHEES_LISTS = [
   { key: "prognosis", label: "Prognosis", hint: "Expected course." },
 ] as const;
 export type TashkheesListKey = (typeof TASHKHEES_LISTS)[number]["key"];
+/** Temperaments the Tashkhees engine suggests by name — they can't be renamed or switched off. */
+export const ENGINE_MIZAJ = ["Mu'tadil", "Damawi", "Safrawi", "Balghami", "Saudawi", "Haar", "Barid", "Ratab", "Yabis"];
 export const isTashkheesList = (v: unknown): v is TashkheesListKey => TASHKHEES_LISTS.some((l) => l.key === v);
 
 export const SU_MIZAJ_TYPES = [

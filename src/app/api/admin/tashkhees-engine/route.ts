@@ -8,7 +8,7 @@ import { DEFAULT_ENGINE_CONFIG, getEngineConfig, type EngineConfig } from "@/lib
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const [config, pillars, organs] = await Promise.all([
+  const [config, pillars, organs, mizaj] = await Promise.all([
     getEngineConfig(),
     db.asbabPillar.findMany({
       orderBy: [{ framework: "asc" }, { sortOrder: "asc" }],
@@ -16,12 +16,13 @@ export async function GET(req: NextRequest) {
         questions: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, reviewStatus: true, options: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, maddi: true } } } } },
     }),
     db.tashkheesOption.findMany({ where: { list: "organ" }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, localName: true, description: true, appliesTo: true, priority: true, active: true } }),
+    db.tashkheesOption.findMany({ where: { list: "mizaj" }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true, localName: true, description: true, sortOrder: true, active: true } }),
   ]);
   return NextResponse.json({
     config, defaults: DEFAULT_ENGINE_CONFIG,
     sections: pillars.map((p) => ({ key: p.key, label: p.label, english: p.english, framework: p.framework })),
     maddi: pillars.filter((p) => p.framework === "dalail" && p.active).map((p) => ({ section: p.key, sectionLabel: p.label, questions: p.questions.filter((q) => q.options.length) })),
-    organs,
+    organs, mizaj,
   });
 }
 

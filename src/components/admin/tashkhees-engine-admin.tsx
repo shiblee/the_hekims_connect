@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ENGINE_MIZAJ } from "@/lib/tashkhees";
 import { FloatingField, FloatingMultiSelect, FloatingSelect } from "@/components/shared/floating-field";
-import { ChevronDown, ChevronRight, Loader2, Pencil, Plus, Save, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Lock, Loader2, Pencil, Plus, Save, Sparkles } from "lucide-react";
 
 interface Config {
   weights: { complaints: number; asbab: number; dalail: number };
@@ -23,6 +24,7 @@ interface Config {
 interface Section { key: string; label: string; english: string; framework: string }
 interface MaddiSection { section: string; sectionLabel: string; questions: { id: string; label: string; reviewStatus: string; options: { id: string; label: string; maddi: number }[] }[] }
 interface Organ { id: string; label: string; localName: string | null; description: string | null; appliesTo: string; priority: number; active: boolean }
+interface Mizaj { id: string; label: string; localName: string | null; description: string | null; sortOrder: number; active: boolean }
 interface Applies { categories?: string[]; complaints?: string[]; symptoms?: string[]; regions?: string[]; sex?: "male" | "female" }
 interface Masters { categories: string[]; complaints: { key: string; label: string; category: string }[]; symptoms: string[]; regions: string[] }
 const parseApplies = (raw: string): Applies => { try { return JSON.parse(raw || "{}") || {}; } catch { return {}; } };
@@ -72,10 +74,12 @@ export function TashkheesEngineAdmin() {
   const [saving, setSaving] = useState(false);
   // id null = a new organ. Name, meaning and on/off live here too (moved from Option Lists).
   const [organDraft, setOrganDraft] = useState<{ organ: Organ; label: string; localName: string; description: string; applies: Applies; priority: number } | null>(null);
+  const [mizaj, setMizaj] = useState<Mizaj[]>([]);
+  const [mizajDraft, setMizajDraft] = useState<{ id: string; label: string; localName: string; description: string; active: boolean } | null>(null);
   const [q, setQ] = useState({ complaints: "", symptoms: "", regions: "" });
 
-  const load = () => adminApi.get<{ config: Config; defaults: Config; sections: Section[]; maddi: MaddiSection[]; organs: Organ[] }>("/api/admin/tashkhees-engine")
-    .then((r) => { setCfg(r.config); setDefaults(r.defaults); setSections(r.sections); setMaddi(r.maddi); setOrgans(r.organs); setMaddiEdits({}); })
+  const load = () => adminApi.get<{ config: Config; defaults: Config; sections: Section[]; maddi: MaddiSection[]; organs: Organ[]; mizaj: Mizaj[] }>("/api/admin/tashkhees-engine")
+    .then((r) => { setCfg(r.config); setDefaults(r.defaults); setSections(r.sections); setMaddi(r.maddi); setOrgans(r.organs); setMizaj(r.mizaj); setMaddiEdits({}); })
     .catch((e) => toast.error(e.message || "Could not load the engine settings"));
   useEffect(() => {
     load();
@@ -121,6 +125,30 @@ export function TashkheesEngineAdmin() {
     const organ = o ?? { id: "", label: "", description: null, appliesTo: "{}", priority: 3, active: true, localName: null };
     setOrganDraft({ organ, label: organ.label, localName: organ.localName || "", description: organ.description || "", applies: parseApplies(organ.appliesTo), priority: organ.priority });
   };
+  const saveMizaj = async () => {
+    if (!mizajDraft) return;
+    const body = { label: mizajDraft.label.trim(), localName: mizajDraft.localName.trim(), description: mizajDraft.description.trim() };
+    if (!body.label) { toast.error("Enter the temperament's name"); return; }
+    try {
+      if (mizajDraft.id) await adminApi.patch(`/api/admin/tashkhees-options/${mizajDraft.id}`, body);
+      else await adminApi.post("/api/admin/tashkhees-options", { ...body, list: "mizaj" });
+      toast.success(mizajDraft.id ? "Temperament saved" : "Temperament added");
+      setMizajDraft(null);
+      load();
+    } catch (e: any) { toast.error(e.message || "Could not save"); }
+  };
+  const toggleMizaj = async (m: Mizaj) => {
+    try { await adminApi.patch(`/api/admin/tashkhees-options/${m.id}`, { active: !m.active }); load(); }
+    catch (e: any) { toast.error(e.message || "Could not update"); }
+  };
+  const moveMizaj = async (i: number, d: -1 | 1) => {
+    if (!mizaj[i + d]) return;
+    const order = [...mizaj];
+    [order[i], order[i + d]] = [order[i + d], order[i]];
+    try { await Promise.all(order.map((m, n) => (m.sortOrder === n ? null : adminApi.patch(`/api/admin/tashkhees-options/${m.id}`, { sortOrder: n })))); }
+    catch (e: any) { toast.error(e.message || "Could not reorder"); }
+    load();
+  };
   const summary = (raw: string) => {
     const a = parseApplies(raw);
     const parts = [...(a.categories || []), ...(a.complaints || []).map((k) => masters?.complaints.find((c) => c.key === k)?.label ?? k), ...(a.symptoms || []), ...(a.regions || [])];
@@ -165,6 +193,31 @@ export function TashkheesEngineAdmin() {
           </div>
         </Block>
       </div>
+
+      <Block title="Mizaj — temperaments" hint="The temperaments the doctor chooses from for Mizaj-e-Asli and Su-e-Mizaj, in this order."
+        right={<Button size="sm" onClick={() => setMizajDraft({ id: "", label: "", localName: "", description: "", active: true })}><Plus className="h-3.5 w-3.5" /> Add temperament</Button>}>
+        <div className="grid md:grid-cols-2 gap-2">
+          {mizaj.map((m, i) => {
+            const engine = ENGINE_MIZAJ.includes(m.label);
+            return (
+              <div key={m.id} className={cn("flex items-center gap-2 rounded-lg border border-border/50 bg-background/40 px-3 py-2", !m.active && "opacity-50")}>
+                <div className="flex flex-col -my-1">
+                  <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveMizaj(i, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground"><ChevronUp className="h-3.5 w-3.5" /></button>
+                  <button type="button" aria-label="Move down" disabled={i === mizaj.length - 1} onClick={() => moveMizaj(i, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground"><ChevronDown className="h-3.5 w-3.5" /></button>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{m.label}{m.localName && <span className="ml-1 text-xs font-normal text-muted-foreground">{m.localName}</span>}</p>
+                  {m.description && <p className="text-xs text-muted-foreground truncate">{m.description}</p>}
+                </div>
+                {engine && <Badge variant="secondary" className="shrink-0 gap-1 text-[10px]" title="Suggested by the engine — the name is fixed and it stays on"><Lock className="h-3 w-3" /> Engine</Badge>}
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setMizajDraft({ id: m.id, label: m.label, localName: m.localName || "", description: m.description || "", active: m.active })}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Switch checked={m.active} disabled={engine} onCheckedChange={() => toggleMizaj(m)} aria-label={m.active ? "Switch off" : "Switch on"} />
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">Temperaments marked Engine are the ones the engine suggests, so their names are fixed and they stay on; you can still edit their Urdu name and meaning. Switching another temperament off hides it from new diagnoses; visits already recorded keep it.</p>
+      </Block>
 
       <Block title="Mizaj-e-Asli — constitutional sections" hint="Only answers in these sections are used to suggest the baseline temperament.">
         {(["dalail", "asbab"] as const).map((fw) => (
@@ -250,6 +303,27 @@ export function TashkheesEngineAdmin() {
         {defaults && <Button variant="outline" onClick={() => setCfg(defaults)}>Restore default settings</Button>}
         <Button onClick={saveConfig} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save engine settings</Button>
       </div>
+
+      <Dialog open={mizajDraft !== null} onOpenChange={(o) => { if (!o) setMizajDraft(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{mizajDraft?.id ? `Temperament · ${mizajDraft.label}` : "Add temperament"}</DialogTitle></DialogHeader>
+          {mizajDraft && (() => {
+            const locked = !!mizajDraft.id && ENGINE_MIZAJ.includes(mizaj.find((m) => m.id === mizajDraft.id)?.label ?? "");
+            return (
+              <div className="space-y-3 pt-2">
+                <FloatingField id="mzLabel" label="Temperament (Unani name)" required disabled={locked} value={mizajDraft.label} onChange={(e) => setMizajDraft((d) => d && { ...d, label: e.target.value })} />
+                {locked && <p className="-mt-1 text-xs text-muted-foreground">The engine suggests this temperament by name, so the name can&apos;t be changed.</p>}
+                <FloatingField id="mzLocal" label="Qualities / Urdu (optional)" value={mizajDraft.localName} onChange={(e) => setMizajDraft((d) => d && { ...d, localName: e.target.value })} />
+                <FloatingField id="mzDesc" label="English meaning" value={mizajDraft.description} onChange={(e) => setMizajDraft((d) => d && { ...d, description: e.target.value })} />
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMizajDraft(null)}>Cancel</Button>
+            <Button onClick={saveMizaj}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={organDraft !== null} onOpenChange={(o) => { if (!o) setOrganDraft(null); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">

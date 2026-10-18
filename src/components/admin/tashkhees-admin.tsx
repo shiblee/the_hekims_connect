@@ -47,9 +47,9 @@ export function TashkheesAdmin() {
 
 function OptionLists() {
   const [rows, setRows] = useState<Row[] | null>(null);
-  // Organs (Tashkhees Engine), Usool-e-Ilaj and Ghiza have their own tabs, so they aren't plain option lists here.
-  const LISTS = TASHKHEES_LISTS.filter((l) => l.key !== "usool" && l.key !== "ghiza" && l.key !== "organ");
-  const [list, setList] = useUrlParam<TashkheesListKey>("list", "mizaj", LISTS.map((l) => l.key));
+  // Temperaments and organs (Tashkhees Engine), Usool-e-Ilaj and Ghiza have their own tabs, so they aren't plain option lists here.
+  const LISTS = TASHKHEES_LISTS.filter((l) => l.key !== "usool" && l.key !== "ghiza" && l.key !== "organ" && l.key !== "mizaj");
+  const [list, setList] = useUrlParam<TashkheesListKey>("list", "tadbeer", LISTS.map((l) => l.key));
   const [dialog, setDialog] = useState<{ id: string | null; label: string; localName: string; description: string; active: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
 
