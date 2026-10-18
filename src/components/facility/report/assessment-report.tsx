@@ -100,8 +100,8 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   const l1 = parseInsight(data.l1Screening?.insight);
   const pageCss = `
     @page { size: A4; margin: 15mm 13mm 17mm 13mm;
-      @bottom-left { content: "${data.report.id.replace(/"/g, "")} · Confidential"; font: 7.5pt system-ui, sans-serif; color: #6b7280; }
-      @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 7.5pt system-ui, sans-serif; color: #6b7280; }
+      @bottom-left { content: "${data.report.id.replace(/"/g, "")} · Confidential"; font: 8.5pt system-ui, sans-serif; color: #6b7280; }
+      @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8.5pt system-ui, sans-serif; color: #6b7280; }
     }
     /* Printing uses a copy mounted straight on <body>, so the app's own
        scrolling layout can't clip the report to a single page. */
@@ -118,12 +118,12 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   `;
 
   const doc = (
-        <article className="report-doc w-[210mm] max-w-full bg-white text-[#1f2937] shadow-xl ring-1 ring-black/5 px-[13mm] py-[12mm] text-[10pt] leading-snug" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Noto Nastaliq Urdu', sans-serif" }}>
+        <article className="report-doc w-[210mm] max-w-full bg-white text-[#1f2937] shadow-xl ring-1 ring-black/5 px-[13mm] py-[12mm] text-[11.5pt] leading-snug" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Noto Nastaliq Urdu', sans-serif" }}>
           <table className="w-full border-collapse">
             {/* Repeats at the top of every printed page */}
             <thead>
               <tr><td>
-                <div className="flex items-center justify-between gap-3 border-b border-[#0f766e]/40 pb-1.5 mb-4 text-[7.5pt] text-[#4b5563]">
+                <div className="flex items-center justify-between gap-3 border-b border-[#0f766e]/40 pb-1.5 mb-4 text-[9pt] text-[#4b5563]">
                   <span className="flex items-center gap-1.5 font-semibold text-[#0f766e]">
                     <img src="/brand/hekim-globe-icon.png" alt="" className="h-4 w-4" />
                     {b.portal_name}
@@ -139,17 +139,17 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               <header className="rpt-keep flex items-start justify-between gap-6 pb-4 border-b-2 border-[#0f766e]">
                 <div>
                   <img src="/brand/hekim-connect-logo-full.png" alt={b.portal_name} className="h-11 w-auto" />
-                  <p className="mt-1.5 text-[8.5pt] italic text-[#4b5563]">{b.slogan}</p>
-                  <p className="text-[8pt] text-[#0f766e]">{b.website_url.replace(/^https?:\/\//, "")}</p>
+                  <p className="mt-1.5 text-[10pt] italic text-[#4b5563]">{b.slogan}</p>
+                  <p className="text-[9.5pt] text-[#0f766e]">{b.website_url.replace(/^https?:\/\//, "")}</p>
                 </div>
                 <div className="text-right">
-                  <h1 className="font-serif text-[17pt] font-bold leading-tight text-[#111827]">{b.report_title}</h1>
-                  <p className="text-[9pt] text-[#4b5563]">{b.report_subtitle}</p>
+                  <h1 className="font-serif text-[19pt] font-bold leading-tight text-[#111827]">{b.report_title}</h1>
+                  <p className="text-[10.5pt] text-[#4b5563]">{b.report_subtitle}</p>
                 </div>
               </header>
 
               {/* Identification */}
-              <div className="rpt-keep mt-3 grid grid-cols-4 gap-x-4 gap-y-1.5 text-[8.5pt]">
+              <div className="rpt-keep mt-3 grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-x-4 gap-y-1.5 text-[10pt]">
                 <IdField label="Report ID" value={data.report.id} mono />
                 <IdField label="Patient ID" value={p.patientCode || "—"} mono />
                 <IdField label="Visit" value={data.visit.visitCode} mono />
@@ -163,24 +163,24 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               {/* Status banner */}
               {!complete && !data.referral ? (
                 <div className="rpt-keep mt-3 rounded border-2 border-dashed border-[#b45309] bg-[#fffbeb] px-3 py-2">
-                  <p className="text-[10pt] font-bold tracking-wide text-[#92400e]">DRAFT — INCOMPLETE ASSESSMENT</p>
-                  <p className="text-[8.5pt] text-[#78350f]">Not a finalized clinical assessment. Not yet recorded: {missing.join(", ")}.</p>
+                  <p className="text-[11.5pt] font-bold tracking-wide text-[#92400e]">DRAFT — INCOMPLETE ASSESSMENT</p>
+                  <p className="text-[10pt] text-[#78350f]">Not a finalized clinical assessment. Not yet recorded: {missing.join(", ")}.</p>
                 </div>
               ) : null}
 
               {/* Emergency banner */}
               {(data.referral || ws?.present?.length > 0) && (
                 <div className="rpt-keep mt-3 rounded border-2 border-[#b91c1c] bg-[#fef2f2] px-3 py-2">
-                  <p className="text-[10pt] font-bold text-[#991b1b]">⚠ EMERGENCY WARNING{data.referral ? ` — PATIENT REFERRED (${String(data.referral.urgency).toUpperCase()})` : ""}</p>
-                  {ws?.present?.length > 0 && <p className="text-[9pt] text-[#7f1d1d]">Signs present: {ws.present.map((s: R) => s.label).join("; ")}.</p>}
-                  {data.referral && <p className="text-[9pt] text-[#7f1d1d]">Referred to <b>{data.referral.referredTo}</b> on {fmtDateTime(data.referral.createdAt)}.</p>}
+                  <p className="text-[11.5pt] font-bold text-[#991b1b]">⚠ EMERGENCY WARNING{data.referral ? ` — PATIENT REFERRED (${String(data.referral.urgency).toUpperCase()})` : ""}</p>
+                  {ws?.present?.length > 0 && <p className="text-[10.5pt] text-[#7f1d1d]">Signs present: {ws.present.map((s: R) => s.label).join("; ")}.</p>}
+                  {data.referral && <p className="text-[10.5pt] text-[#7f1d1d]">Referred to <b>{data.referral.referredTo}</b> on {fmtDateTime(data.referral.createdAt)}.</p>}
                 </div>
               )}
 
               {/* Allergy alert */}
               {allergies.length > 0 && (
-                <div className="rpt-keep mt-3 rounded border-2 border-[#b91c1c] px-3 py-1.5 text-[9.5pt]">
-                  <b className="text-[#991b1b]">⚠ ALLERGY ALERT:</b> {allergies.join(", ")} <span className="text-[8pt] text-[#6b7280]">(as reported; see Allergies)</span>
+                <div className="rpt-keep mt-3 rounded border-2 border-[#b91c1c] px-3 py-1.5 text-[11pt]">
+                  <b className="text-[#991b1b]">⚠ ALLERGY ALERT:</b> {allergies.join(", ")} <span className="text-[9.5pt] text-[#6b7280]">(as reported; see Allergies)</span>
                 </div>
               )}
 
@@ -223,15 +223,15 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                   <div className="grid grid-cols-4 gap-1.5">
                     {vitalRows.map((r) => (
                       <div key={r.label} className={`rpt-keep rounded border px-2 py-1.5 ${r.status && r.status.tone !== "ok" ? "border-[#b91c1c] bg-[#fef2f2]" : "border-[#d1d5db]"}`}>
-                        <p className="text-[7.5pt] uppercase tracking-wide text-[#6b7280]">{r.label}</p>
-                        <p className="text-[12pt] font-bold leading-tight">{r.value ? <>{r.value} <span className="text-[8pt] font-normal text-[#6b7280]">{r.unit}</span></> : <span className="text-[9pt] font-normal text-[#9ca3af]">Not recorded</span>}</p>
-                        {r.status && <p className={`text-[7.5pt] font-semibold ${r.status.tone === "ok" ? "text-[#047857]" : "text-[#b91c1c]"}`}>{r.status.tone === "ok" ? "✓" : "▲"} {r.status.label}</p>}
-                        {r.note && <p className="text-[7pt] text-[#6b7280]">{r.note}</p>}
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6b7280]">{r.label}</p>
+                        <p className="text-[13.5pt] font-bold leading-tight">{r.value ? <>{r.value} <span className="text-[9.5pt] font-normal text-[#6b7280]">{r.unit}</span></> : <span className="text-[10.5pt] font-normal text-[#9ca3af]">Not recorded</span>}</p>
+                        {r.status && <p className={`text-[9pt] font-semibold ${r.status.tone === "ok" ? "text-[#047857]" : "text-[#b91c1c]"}`}>{r.status.tone === "ok" ? "✓" : "▲"} {r.status.label}</p>}
+                        {r.note && <p className="text-[8.5pt] text-[#6b7280]">{r.note}</p>}
                       </div>
                     ))}
                   </div>
                 )}
-                <p className="mt-1 text-[7.5pt] text-[#6b7280]">Status words compare each value with the normal ranges configured for this platform; they are not a diagnosis. Respiratory rate is not captured by this platform.</p>
+                <p className="mt-1 text-[9pt] text-[#6b7280]">Status words compare each value with the normal ranges configured for this platform; they are not a diagnosis. Respiratory rate is not captured by this platform.</p>
                 {(v.painNotes || v.primaryFocusArea || v.triageRemarks || v.consciousnessLevel || v.mood) && (
                   <Facts className="mt-2" rows={[
                     ["Consciousness", v.consciousnessLevel], ["Mood", v.mood],
@@ -245,21 +245,21 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                 {data.complaints?.length ? (
                   <>
                     <div className="rpt-keep rounded bg-[#f0fdfa] border border-[#99f6e4] px-3 py-2 mb-2">
-                      <p className="text-[7.5pt] uppercase tracking-wide text-[#0f766e] font-semibold">Primary complaint</p>
-                      <p className="text-[12pt] font-bold">{data.complaints[0].chiefComplaintLabel}</p>
-                      <p className="text-[8.5pt] text-[#374151]">
+                      <p className="text-[9pt] uppercase tracking-wide text-[#0f766e] font-semibold">Primary complaint</p>
+                      <p className="text-[13.5pt] font-bold">{data.complaints[0].chiefComplaintLabel}</p>
+                      <p className="text-[10pt] text-[#374151]">
                         {data.complaints[0].onsetValue != null ? `For ${data.complaints[0].onsetValue} ${data.complaints[0].onsetUnit || ""}` : "Duration not recorded"}
                         {" · "}{data.complaints[0].severityScore != null ? `Severity ${data.complaints[0].severityScore}/10${sev(data.complaints[0].severityScore) ? ` (${sev(data.complaints[0].severityScore)})` : ""}` : "Severity not recorded"}
                       </p>
                     </div>
-                    <table className="w-full text-[8.5pt] border-collapse">
-                      <thead><tr className="text-left text-[7.5pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
+                    <table className="w-full text-[10pt] border-collapse">
+                      <thead><tr className="text-left text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
                         <th className="py-1 pr-2 font-semibold">Complaint</th><th className="py-1 pr-2 font-semibold">Duration</th><th className="py-1 pr-2 font-semibold">Severity</th><th className="py-1 pr-2 font-semibold">Worse with (Muharrikat)</th><th className="py-1 font-semibold">Better with (Musakkinat)</th>
                       </tr></thead>
                       <tbody>
                         {data.complaints.map((c: R, i: number) => (
                           <tr key={i} className="align-top border-b border-[#f3f4f6]">
-                            <td className="py-1 pr-2 font-medium">{c.chiefComplaintLabel}{i === 0 && <span className="ml-1 text-[7pt] text-[#0f766e]">PRIMARY</span>}{c.clinicalNotes && <div className="text-[7.5pt] text-[#6b7280] font-normal">{c.clinicalNotes}</div>}</td>
+                            <td className="py-1 pr-2 font-medium">{c.chiefComplaintLabel}{i === 0 && <span className="ml-1 text-[8.5pt] text-[#0f766e]">PRIMARY</span>}{c.clinicalNotes && <div className="text-[9pt] text-[#6b7280] font-normal">{c.clinicalNotes}</div>}</td>
                             <td className="py-1 pr-2">{c.onsetValue != null ? `${c.onsetValue} ${c.onsetUnit || ""}` : <Dim>Not recorded</Dim>}</td>
                             <td className="py-1 pr-2">{c.severityScore != null ? `${c.severityScore}/10${sev(c.severityScore) ? ` · ${sev(c.severityScore)}` : ""}` : <Dim>Not recorded</Dim>}</td>
                             <td className="py-1 pr-2">{c.aggravatingFactors.length ? c.aggravatingFactors.join(", ") : <Dim>None recorded</Dim>}</td>
@@ -278,8 +278,8 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                   ]} />
                 )}
                 {data.intake?.narrative && (
-                  <blockquote className="rpt-keep mt-2 border-l-4 border-[#d1d5db] pl-3 text-[9pt] italic text-[#374151]">
-                    <span className="not-italic text-[7.5pt] uppercase tracking-wide text-[#6b7280] block">In the patient&apos;s own words</span>
+                  <blockquote className="rpt-keep mt-2 border-l-4 border-[#d1d5db] pl-3 text-[10.5pt] italic text-[#374151]">
+                    <span className="not-italic text-[9pt] uppercase tracking-wide text-[#6b7280] block">In the patient&apos;s own words</span>
                     “{data.intake.narrative}”
                   </blockquote>
                 )}
@@ -304,15 +304,15 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     </>
                   ) : ws.present.length > 0 ? (
                     <>
-                      <p className="text-[9pt] font-semibold text-[#991b1b]">Warning signs recorded — clinical review required.</p>
+                      <p className="text-[10.5pt] font-semibold text-[#991b1b]">Warning signs recorded — clinical review required.</p>
                       <SignList items={ws.present} />
                     </>
                   ) : (
-                    <p className="text-[9pt]">No warning signs marked. {ws.reviewed} of {ws.criteriaCount} listed signs were reviewed on {fmtDateTime(ws.updatedAt)}.</p>
+                    <p className="text-[10.5pt]">No warning signs marked. {ws.reviewed} of {ws.criteriaCount} listed signs were reviewed on {fmtDateTime(ws.updatedAt)}.</p>
                   )}
                 {data.referral && (
                   <div className="rpt-keep mt-2 rounded border border-[#fca5a5] px-3 py-2">
-                    <p className="text-[8pt] uppercase tracking-wide font-semibold text-[#991b1b]">Referral</p>
+                    <p className="text-[9.5pt] uppercase tracking-wide font-semibold text-[#991b1b]">Referral</p>
                     <Facts rows={[
                       ["Referred to", data.referral.referredTo], ["Urgency", data.referral.urgency], ["Reason", data.referral.reason],
                       ["Notes for receiving doctor", data.referral.notes], ["Referred on", fmtDateTime(data.referral.createdAt)], ["Referred by", data.referral.referredBy?.name],
@@ -321,7 +321,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                 )}
                 {data.amaDecline && (
                   <div className="rpt-keep mt-2 rounded border border-[#fcd34d] px-3 py-2">
-                    <p className="text-[8pt] uppercase tracking-wide font-semibold text-[#92400e]">Referral declined — continuing against medical advice</p>
+                    <p className="text-[9.5pt] uppercase tracking-wide font-semibold text-[#92400e]">Referral declined — continuing against medical advice</p>
                     <Facts rows={[["Referral recommended for", data.amaDecline.reason], ["Patient's reason", data.amaDecline.patientReason], ["Recorded", fmtDateTime(data.amaDecline.createdAt)]]} />
                   </div>
                 )}
@@ -330,15 +330,15 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               {/* ---------------- Other symptoms ---------------- */}
               <Section title="Other symptoms (Alamat-e-Izafiya)" n={6}>
                 {!data.otherSymptoms ? <Empty>Not assessed.</Empty>
-                  : data.otherSymptoms.symptoms.length ? <p className="text-[9pt]">{data.otherSymptoms.symptoms.join(" · ")}</p>
-                    : <p className="text-[9pt]">None marked at assessment ({fmtDateTime(data.otherSymptoms.updatedAt)}).</p>}
+                  : data.otherSymptoms.symptoms.length ? <p className="text-[10.5pt]">{data.otherSymptoms.symptoms.join(" · ")}</p>
+                    : <p className="text-[10.5pt]">None marked at assessment ({fmtDateTime(data.otherSymptoms.updatedAt)}).</p>}
               </Section>
 
               {/* ---------------- Allergies & medicines ---------------- */}
               <div className="grid grid-cols-2 gap-4">
                 <Section title="Allergies & sensitivities" n={7}>
                   {allergies.length ? (
-                    <ul className="text-[9pt] space-y-0.5">{allergies.map((a) => <li key={a}>• <b>{a}</b> <span className="text-[7.5pt] text-[#6b7280]">— patient-reported; reaction & severity not recorded</span></li>)}</ul>
+                    <ul className="text-[10.5pt] space-y-0.5">{allergies.map((a) => <li key={a}>• <b>{a}</b> <span className="text-[9pt] text-[#6b7280]">— patient-reported; reaction & severity not recorded</span></li>)}</ul>
                   ) : data.intake ? <Empty>No allergies were reported at registration. This is not a confirmed absence of allergies.</Empty>
                     : <Empty>Allergy information not recorded.</Empty>}
                 </Section>
@@ -346,10 +346,10 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                   {data.intake?.medications?.length || p.currentMedications ? (
                     <>
                       {data.intake?.medications?.length > 0 && (
-                        <ul className="text-[9pt] space-y-0.5">{data.intake.medications.map((m: R) => <li key={`${m.kind}${m.label}`}>• <b>{m.label}</b> <span className="text-[7.5pt] text-[#6b7280]">— {m.kind === "medication" ? "allopathic medication" : "supplement / herb"}, reported by patient</span></li>)}</ul>
+                        <ul className="text-[10.5pt] space-y-0.5">{data.intake.medications.map((m: R) => <li key={`${m.kind}${m.label}`}>• <b>{m.label}</b> <span className="text-[9pt] text-[#6b7280]">— {m.kind === "medication" ? "allopathic medication" : "supplement / herb"}, reported by patient</span></li>)}</ul>
                       )}
-                      {p.currentMedications && <p className="text-[8.5pt] mt-1"><Dim>Profile note:</Dim> {p.currentMedications}</p>}
-                      <p className="mt-1 text-[7.5pt] text-[#6b7280]">Dose, frequency and start date were not recorded.</p>
+                      {p.currentMedications && <p className="text-[10pt] mt-1"><Dim>Profile note:</Dim> {p.currentMedications}</p>}
+                      <p className="mt-1 text-[9pt] text-[#6b7280]">Dose, frequency and start date were not recorded.</p>
                     </>
                   ) : data.intake ? <Empty>None reported at registration.</Empty> : <Empty>Medication information not recorded.</Empty>}
                 </Section>
@@ -368,9 +368,9 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               {/* ---------------- Doctor notes ---------------- */}
               <Section title="Doctor's observations & clinical notes" n={10} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
                 {data.residentNotes?.points?.length ? (
-                  <ul className="text-[9pt] space-y-0.5 list-disc pl-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
+                  <ul className="text-[10.5pt] space-y-0.5 list-disc pl-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
                 ) : <Empty>No clinical notes recorded.</Empty>}
-                <p className="mt-1 text-[7.5pt] text-[#6b7280]">Recorded by the clinical team, reproduced unchanged.</p>
+                <p className="mt-1 text-[9pt] text-[#6b7280]">Recorded by the clinical team, reproduced unchanged.</p>
               </Section>
 
               {/* ---------------- Unani context ---------------- */}
@@ -387,7 +387,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
 
               {/* ---------------- Hakeem Insight ---------------- */}
               <Section title="Hakeem Insight — automated decision support" n={12}>
-                <p className="mb-2 rounded bg-[#f3f4f6] px-2 py-1 text-[7.5pt] text-[#4b5563]">Generated automatically from this visit&apos;s recorded data. Not verified by a doctor; not a diagnosis or prescription.</p>
+                <p className="mb-2 rounded bg-[#f3f4f6] px-2 py-1 text-[9pt] text-[#4b5563]">Generated automatically from this visit&apos;s recorded data. Not verified by a doctor; not a diagnosis or prescription.</p>
                 {!l1 && !data.routing && !data.humoral?.aiClue && !data.vitalsInsight ? <Empty>No Hakeem Insight was generated for this visit.</Empty> : (
                   <div className="space-y-2">
                     {data.routing && (
@@ -421,13 +421,13 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               {/* ---------------- Reports ---------------- */}
               <Section title="Patient reports on file" n={13}>
                 {data.reports?.length ? (
-                  <table className="w-full text-[8.5pt] border-collapse">
-                    <thead><tr className="text-left text-[7.5pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
+                  <table className="w-full text-[10pt] border-collapse">
+                    <thead><tr className="text-left text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
                       <th className="py-1 pr-2 font-semibold">Report</th><th className="py-1 pr-2 font-semibold">Date</th><th className="py-1 pr-2 font-semibold">Result</th><th className="py-1 font-semibold">Review</th>
                     </tr></thead>
                     <tbody>{data.reports.map((r: R, i: number) => (
                       <tr key={i} className="align-top border-b border-[#f3f4f6]">
-                        <td className="py-1 pr-2"><b>{r.title}</b>{r.source && <span className="text-[#6b7280]"> · {r.source}</span>}{r.findings && <div className="text-[7.5pt] text-[#4b5563]">{r.findings}</div>}</td>
+                        <td className="py-1 pr-2"><b>{r.title}</b>{r.source && <span className="text-[#6b7280]"> · {r.source}</span>}{r.findings && <div className="text-[9pt] text-[#4b5563]">{r.findings}</div>}</td>
                         <td className="py-1 pr-2">{fmtDate(r.reportDate || r.createdAt)}</td>
                         <td className={`py-1 pr-2 ${r.resultFlag === "critical" || r.resultFlag === "abnormal" ? "font-semibold text-[#b91c1c]" : ""}`}>{r.resultFlag === "unknown" ? "Not stated" : r.resultFlag}</td>
                         <td className="py-1">{r.status === "reviewed" ? `Reviewed${r.reviewedByName ? ` by ${r.reviewedByName}` : ""}` : "Awaiting doctor review"}</td>
@@ -435,21 +435,21 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     ))}</tbody>
                   </table>
                 ) : <Empty>No reports uploaded for this patient.</Empty>}
-                <p className="mt-1 text-[7.5pt] text-[#6b7280]">Report files are kept in the patient&apos;s record and are not reproduced here.</p>
+                <p className="mt-1 text-[9pt] text-[#6b7280]">Report files are kept in the patient&apos;s record and are not reproduced here.</p>
               </Section>
 
               {/* ---------------- Authorization ---------------- */}
               <section className="rpt-keep mt-5 grid grid-cols-2 gap-6 border-t-2 border-[#0f766e] pt-4">
                 <div>
-                  <p className="text-[7.5pt] uppercase tracking-wide text-[#6b7280] font-semibold">Treating doctor</p>
+                  <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold">Treating doctor</p>
                   <div className="mt-8 border-b border-[#9ca3af]" />
-                  <p className="mt-1 text-[9pt] font-semibold">{doctor?.name || "Doctor not assigned"}</p>
-                  <p className="text-[8pt] text-[#4b5563]">{[doctor?.designation, doctor?.qualification].filter(Boolean).join(" · ") || " "}</p>
-                  {doctor?.registrationNumber && <p className="text-[8pt] text-[#4b5563]">Reg. no. {doctor.registrationNumber}</p>}
-                  <p className="mt-1 text-[8pt] font-semibold text-[#92400e]">Signature pending — no digital signature on record.</p>
+                  <p className="mt-1 text-[10.5pt] font-semibold">{doctor?.name || "Doctor not assigned"}</p>
+                  <p className="text-[9.5pt] text-[#4b5563]">{[doctor?.designation, doctor?.qualification].filter(Boolean).join(" · ") || " "}</p>
+                  {doctor?.registrationNumber && <p className="text-[9.5pt] text-[#4b5563]">Reg. no. {doctor.registrationNumber}</p>}
+                  <p className="mt-1 text-[9.5pt] font-semibold text-[#92400e]">Signature pending — no digital signature on record.</p>
                 </div>
-                <div className="text-[8pt] text-[#4b5563]">
-                  <p className="text-[7.5pt] uppercase tracking-wide text-[#6b7280] font-semibold">Report details</p>
+                <div className="text-[9.5pt] text-[#4b5563]">
+                  <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold">Report details</p>
                   <p className="mt-1">Report ID: <span className="font-mono text-[#111827]">{data.report.id}</span></p>
                   <p>Generated {fmtDateTime(data.report.generatedAt)}{data.report.generatedBy ? ` by ${data.report.generatedBy}` : ""}.</p>
                   <p>Built from the live record at that moment; a later edit to the assessment produces a different report.</p>
@@ -458,7 +458,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </section>
 
               {/* ---------------- Footer ---------------- */}
-              <footer className="rpt-keep mt-5 border-t border-[#d1d5db] pt-2 text-[7.5pt] text-[#6b7280] space-y-1">
+              <footer className="rpt-keep mt-5 border-t border-[#d1d5db] pt-2 text-[9pt] text-[#6b7280] space-y-1">
                 <p><b className="text-[#374151]">Confidential.</b> {b.confidentiality}</p>
                 <p>{b.insight_disclaimer}</p>
                 <p className="flex justify-between gap-3 flex-wrap">
@@ -511,8 +511,8 @@ function Section({ title, n, meta, children }: { title: string; n: number; meta?
   return (
     <section className="mt-4">
       <h2 className="flex items-baseline justify-between gap-3 border-b border-[#d1d5db] pb-0.5 mb-1.5">
-        <span className="font-serif text-[11pt] font-bold text-[#0f766e]"><span className="text-[#9ca3af] font-sans text-[8pt] mr-1.5">{String(n).padStart(2, "0")}</span>{title}</span>
-        {meta && <span className="text-[7.5pt] text-[#6b7280] font-normal">{meta}</span>}
+        <span className="font-serif text-[12.5pt] font-bold text-[#0f766e]"><span className="text-[#9ca3af] font-sans text-[9.5pt] mr-1.5">{String(n).padStart(2, "0")}</span>{title}</span>
+        {meta && <span className="text-[9pt] text-[#6b7280] font-normal">{meta}</span>}
       </h2>
       {children}
     </section>
@@ -523,7 +523,7 @@ function Facts({ rows, className, empty }: { rows: [string, string | null | unde
   const shown = rows.filter(([, val]) => val != null && String(val).trim() !== "");
   if (!shown.length) return empty ? <Empty>{empty}</Empty> : null;
   return (
-    <dl className={`grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-3 gap-y-0.5 text-[9pt] ${className || ""}`}>
+    <dl className={`grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-3 gap-y-0.5 text-[10.5pt] ${className || ""}`}>
       {shown.map(([k, val]) => (
         <div key={k} className="contents">
           <dt className="text-[#6b7280]">{k}</dt>
@@ -537,14 +537,14 @@ function Facts({ rows, className, empty }: { rows: [string, string | null | unde
 function IdField({ label, value, mono, strong }: { label: string; value: string; mono?: boolean; strong?: boolean }) {
   return (
     <div>
-      <p className="text-[7pt] uppercase tracking-wide text-[#6b7280]">{label}</p>
+      <p className="text-[8.5pt] uppercase tracking-wide text-[#6b7280]">{label}</p>
       <p className={`${mono ? "font-mono" : ""} ${strong ? "font-bold" : "font-medium"} text-[#111827]`}>{value}</p>
     </div>
   );
 }
 
 function Empty({ children, tone }: { children: ReactNode; tone?: "warn" }) {
-  return <p className={`text-[9pt] italic ${tone === "warn" ? "text-[#92400e]" : "text-[#6b7280]"}`}>{children}</p>;
+  return <p className={`text-[10.5pt] italic ${tone === "warn" ? "text-[#92400e]" : "text-[#6b7280]"}`}>{children}</p>;
 }
 
 function Dim({ children }: { children: ReactNode }) {
@@ -553,16 +553,16 @@ function Dim({ children }: { children: ReactNode }) {
 
 function SignList({ items }: { items: { label: string; custom: boolean }[] }) {
   return (
-    <ul className="mt-1 text-[9pt] space-y-0.5">
-      {items.map((s) => <li key={s.label} className="font-semibold text-[#991b1b]">▲ {s.label}{s.custom && <span className="font-normal text-[7.5pt] text-[#6b7280]"> — added by staff</span>}</li>)}
+    <ul className="mt-1 text-[10.5pt] space-y-0.5">
+      {items.map((s) => <li key={s.label} className="font-semibold text-[#991b1b]">▲ {s.label}{s.custom && <span className="font-normal text-[9pt] text-[#6b7280]"> — added by staff</span>}</li>)}
     </ul>
   );
 }
 
 function Insight({ title, when, children }: { title: string; when?: string | null; children: ReactNode }) {
   return (
-    <div className="rpt-keep rounded border border-[#c7d2fe] px-3 py-1.5 text-[9pt]">
-      <p className="flex justify-between gap-2 text-[7.5pt] uppercase tracking-wide font-semibold text-[#4338ca]">
+    <div className="rpt-keep rounded border border-[#c7d2fe] px-3 py-1.5 text-[10.5pt]">
+      <p className="flex justify-between gap-2 text-[9pt] uppercase tracking-wide font-semibold text-[#4338ca]">
         <span>✦ {title}</span>
         <span className="font-normal normal-case tracking-normal text-[#6b7280]">Hakeem Insight · {when ? fmtDateTime(when) : "time not recorded"}</span>
       </p>
