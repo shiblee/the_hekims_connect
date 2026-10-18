@@ -5,7 +5,7 @@ import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-no
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CheckCircle2, Circle, Loader2, ListChecks } from "lucide-react";
 
 interface SymptomTag { id: string; label: string; description: string | null }
@@ -75,52 +75,57 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
   }
 
   return (
-    <Card className="p-5 border-border/50 bg-card/60">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
-            <ListChecks className="h-4.5 w-4.5" />
+    <Card className="p-4 gap-3 border-border/50 bg-card">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
+            <ListChecks className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="font-serif text-lg font-semibold">Other Symptoms</h2>
+            <h2 className="font-serif text-base font-semibold leading-tight">Other Symptoms</h2>
+            <p className="text-[11px] text-muted-foreground leading-tight">Alamat-e-Izafiya · tap all that apply</p>
           </div>
         </div>
-        <Badge variant="outline" className="shrink-0">{selected.length} selected</Badge>
+        <span className={cn(
+          "rounded-full border px-2.5 py-1 text-xs font-semibold",
+          selected.length ? "border-primary/30 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground",
+        )}>
+          {selected.length ? `${selected.length} noted` : "None noted"}
+        </span>
       </div>
 
       {tags.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No acute symptoms configured yet.</p>
+        <p className="text-sm text-muted-foreground">No symptoms configured yet.</p>
       ) : (
-        <>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {tags.map((t) => {
-              const checked = selected.includes(t.label);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => toggle(t.label)}
-                  className={cn(
-                    "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
-                    checked ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30"
-                  )}
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold">{t.label}</span>
-                    {t.description && <span className="block text-xs text-muted-foreground mt-0.5">{t.description}</span>}
-                  </span>
-                  {checked ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </>
+        <div className="flex flex-wrap gap-1.5">
+          {tags.map((t) => {
+            const checked = selected.includes(t.label);
+            const chip = (
+              <button
+                type="button"
+                aria-pressed={checked}
+                onClick={() => toggle(t.label)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border pl-1.5 pr-3 py-1 text-sm transition-all",
+                  checked
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/30"
+                    : "border-border/60 bg-background/60 text-foreground hover:border-primary/50 hover:bg-primary/5",
+                )}
+              >
+                {checked ? <CheckCircle2 className="h-4.5 w-4.5" /> : <Circle className="h-4.5 w-4.5 text-muted-foreground/50" />}
+                {t.label}
+              </button>
+            );
+            return t.description ? (
+              <Tooltip key={t.id}>
+                <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                <TooltipContent side="top" className="max-w-60 text-xs">{t.description}</TooltipContent>
+              </Tooltip>
+            ) : <span key={t.id}>{chip}</span>;
+          })}
+        </div>
       )}
-      <NoticeSlot state={msg} className="mt-4" />
+      <NoticeSlot state={msg} />
     </Card>
   );
 });

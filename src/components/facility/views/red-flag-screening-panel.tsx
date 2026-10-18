@@ -15,7 +15,8 @@ import { FloatingField, FloatingSelect } from "@/components/shared/floating-fiel
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, Check } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, Check, TriangleAlert } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Criterion { id: string; label: string; description: string | null }
 interface Answer { id: string; criterionId: string | null; criterionLabel: string; present: boolean }
@@ -191,70 +192,88 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     );
   }
 
+  const presentCount = criteria.filter((c) => present[c.id]).length;
+
   return (
-    <Card className="p-5 border-border/50 bg-card/60">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", anyPresent ? "bg-destructive/15 text-destructive" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
-            {anyPresent ? <ShieldAlert className="h-4.5 w-4.5" /> : <ShieldCheck className="h-4.5 w-4.5" />}
+    <Card className={cn("p-4 gap-3 border-border/50 bg-card transition-colors", anyPresent && "border-destructive/40")}>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", anyPresent ? "bg-destructive/15 text-destructive" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
+            {anyPresent ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
           </div>
-          <h2 className="font-serif text-lg font-semibold">Emergency Warning Signs</h2>
+          <div>
+            <h2 className="font-serif text-base font-semibold leading-tight">Emergency Warning Signs</h2>
+            <p className="text-[11px] text-muted-foreground leading-tight">Tap any sign the patient has · hover for details</p>
+          </div>
         </div>
-        <Badge
-          variant="outline"
-          className={cn("shrink-0", anyPresent ? "border-destructive/40 text-destructive" : "border-emerald-500/40 text-emerald-600 dark:text-emerald-400")}
-        >
-          {anyPresent ? "Positive Findings — Referral Recommended" : "Negative / Cleared for Unani Triage"}
-        </Badge>
+        <span className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+          anyPresent ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+        )}>
+          <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
+          {anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
+        </span>
       </div>
 
-      {screening?.outcome === "continued_ama" && screening.amaDecline && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 flex items-start gap-3">
-          <ShieldQuestion className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-semibold text-amber-700 dark:text-amber-400">Continuing Against Medical Advice</p>
-            <p className="text-muted-foreground mt-0.5">
-              Referral was recommended ({screening.amaDecline.reason}) but the patient chose to continue treatment on {new Date(screening.amaDecline.createdAt).toLocaleString()}.
-            </p>
-            {screening.amaDecline.patientReason && (
-              <p className="text-muted-foreground mt-0.5">Patient&apos;s reason: {screening.amaDecline.patientReason}</p>
-            )}
+      {criteria.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No warning signs configured yet.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {criteria.map((c) => {
+            const checked = !!present[c.id];
+            const chip = (
+              <button
+                type="button"
+                aria-pressed={checked}
+                onClick={() => setPresent((p) => ({ ...p, [c.id]: !p[c.id] }))}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border pl-1.5 pr-3 py-1 text-sm transition-all",
+                  checked
+                    ? "border-destructive bg-destructive text-white shadow-sm shadow-destructive/30"
+                    : "border-border/60 bg-background/60 text-foreground hover:border-destructive/50 hover:bg-destructive/5",
+                )}
+              >
+                <span className={cn("h-4.5 w-4.5 rounded-full flex items-center justify-center shrink-0", checked ? "bg-white/20" : "border border-border")}>
+                  {checked ? <TriangleAlert className="h-3 w-3" /> : null}
+                </span>
+                {c.label}
+              </button>
+            );
+            return c.description ? (
+              <Tooltip key={c.id}>
+                <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                <TooltipContent side="top" className="max-w-60 text-xs">{c.description}</TooltipContent>
+              </Tooltip>
+            ) : <span key={c.id}>{chip}</span>;
+          })}
+        </div>
+      )}
+
+      {/* A positive sign needs a decision — offered right here */}
+      {anyPresent && screening?.outcome !== "continued_ama" && (
+        <div className="flex items-center gap-3 flex-wrap rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 animate-in fade-in slide-in-from-top-1 duration-200">
+          <p className="text-xs text-destructive font-medium flex-1 min-w-48">
+            Referral is recommended — decide before moving on.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="destructive" className="h-8" onClick={openReferDialog}>
+              <ShieldAlert className="h-3.5 w-3.5" /> Refer patient
+            </Button>
+            <Button size="sm" variant="outline" className="h-8" onClick={openAmaDialog}>Continue against advice</Button>
           </div>
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-3">
-        {criteria.map((c) => {
-          const checked = !!present[c.id];
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setPresent((p) => ({ ...p, [c.id]: !p[c.id] }))}
-              className={cn(
-                "flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
-                checked ? "border-destructive/50 bg-destructive/10" : "border-border/50 bg-background/40 hover:border-primary/30"
-              )}
-            >
-              <span className={cn(
-                "h-5 w-5 rounded border flex items-center justify-center shrink-0 mt-0.5",
-                checked ? "bg-destructive border-destructive text-white" : "border-border/60"
-              )}>
-                {checked && <Check className="h-3.5 w-3.5" />}
-              </span>
-              <span className="min-w-0">
-                <span className={cn("block text-sm font-semibold", checked && "text-destructive")}>{c.label}</span>
-                {c.description && <span className="block text-xs text-muted-foreground mt-0.5">{c.description}</span>}
-              </span>
-            </button>
-          );
-        })}
-        {criteria.length === 0 && <p className="text-sm text-muted-foreground">No red flag criteria configured yet.</p>}
-      </div>
-      {anyPresent && (
-        <p className="text-xs text-muted-foreground">
-          Positive findings require a referral decision — use the bottom-of-page <span className="font-medium text-foreground">Refer Patient</span> action, or <button type="button" onClick={openAmaDialog} className="text-primary hover:underline font-medium">continue against medical advice</button>.
-        </p>
+      {screening?.outcome === "continued_ama" && screening.amaDecline && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+          <ShieldQuestion className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <p className="text-muted-foreground">
+            <span className="font-semibold text-amber-700 dark:text-amber-400">Continuing against medical advice</span>
+            {" · "}{screening.amaDecline.reason}
+            {screening.amaDecline.patientReason && <> · Patient: “{screening.amaDecline.patientReason}”</>}
+            {" · "}{new Date(screening.amaDecline.createdAt).toLocaleDateString()}
+          </p>
+        </div>
       )}
       <NoticeSlot state={msg} />
 
