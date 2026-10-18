@@ -90,10 +90,10 @@ function LastUpdated({ rows }: { rows: { updatedAt?: string }[] }) {
   const days = Math.floor((Date.now() - last.getTime()) / 86400000);
   const ago = days <= 0 ? "today" : days === 1 ? "yesterday" : days < 30 ? `${days} days ago` : days < 365 ? `${Math.floor(days / 30)} month${days < 60 ? "" : "s"} ago` : `${Math.floor(days / 365)} year${days < 730 ? "" : "s"} ago`;
   return (
-    <p className="mb-3 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+    <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground" title={`${sameDay} item${sameDay === 1 ? "" : "s"} changed on that day`}>
       <CalendarClock className="h-3.5 w-3.5" />
       Last updated <span className="font-medium text-foreground">{last.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}, {last.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
-      {" "}· {ago} · {sameDay} item{sameDay === 1 ? "" : "s"} changed that day · {rows.length} in total
+      {" "}· {ago} · {rows.length} items
     </p>
   );
 }
@@ -1836,8 +1836,10 @@ export default function MetaSectionPage() {
           <Card className="p-6 border-border/50 bg-card/60">
             {activeCategory === "redflags" ? (
               <>
-                <h2 className="font-serif text-lg font-semibold">Emergency Warning Signs</h2>
-                <LastUpdated rows={redFlags} />
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <h2 className="font-serif text-lg font-semibold">Emergency Warning Signs</h2>
+                  <LastUpdated rows={redFlags} />
+                </div>
                 <div className="space-y-1.5">
                 {redFlags.map((r, idx) => (
                   <div key={r.id} className="flex items-start gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
@@ -1868,8 +1870,10 @@ export default function MetaSectionPage() {
               </>
             ) : activeCategory === "aggravating" || activeCategory === "relieving" ? (
               <>
-                <h2 className="font-serif text-lg font-semibold">{FACTOR_META[activeCategory].title}</h2>
-                <LastUpdated rows={factorTags.filter((f) => f.kind === activeCategory)} />
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <h2 className="font-serif text-lg font-semibold">{FACTOR_META[activeCategory].title}</h2>
+                  <LastUpdated rows={factorTags.filter((f) => f.kind === activeCategory)} />
+                </div>
                 {renderFactorRows(activeCategory)}
               </>
             ) : activeCategory === "onset" ? (
@@ -1949,8 +1953,10 @@ export default function MetaSectionPage() {
               </>
             ) : activeCategory === "symptoms" ? (
               <>
-                <h2 className="font-serif text-lg font-semibold">Accompanying Acute Symptoms (Alamat-e-Izafiya)</h2>
-                <LastUpdated rows={acuteSymptoms} />
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <h2 className="font-serif text-lg font-semibold">Accompanying Acute Symptoms (Alamat-e-Izafiya)</h2>
+                  <LastUpdated rows={acuteSymptoms} />
+                </div>
         <div className="space-y-1.5">
           {acuteSymptoms.map((s, idx) => (
             <div key={s.id} className="flex items-start gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
