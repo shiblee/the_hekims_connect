@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Loader2, Save, Settings as SettingsIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, Loader2, Save, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
@@ -64,7 +65,7 @@ const ASSISTANTS: Record<string, CatalogAssistantConfig> = {
 };
 
 const CATEGORY_META: Record<string, { label: string; description: string }> = {
-  general: { label: "General", description: "Portal identity and support contact information." },
+  general: { label: "General", description: "Portal identity, report wording, registration, verification, subscription, patient defaults, vitals and an overview of the engines." },
   report: { label: "Clinical Report", description: "Branding and wording printed on the patient assessment report." },
   vitals_validation: { label: "Vitals Validation", description: "" },
   registration: { label: "Registration", description: "Control who can register on the portal." },
@@ -74,6 +75,17 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   vitals: { label: "Vitals", description: "Rules for how long a recorded vitals assessment stays editable." },
   ...Object.fromEntries(Object.entries(ASSISTANTS).map(([k, a]) => [k, { label: a.label, description: a.description }])),
 };
+
+// One "General" tab holds these sections (each keeps its own heading).
+const GENERAL_GROUP = ["general", "report", "registration", "verification", "subscription", "patient_defaults", "vitals"];
+// Engine settings saved by other Admin tabs — summarised read-only under General, edited where they live.
+const SYSTEM: Record<string, { label: string; href?: string; summary: (v: Record<string, string>) => string }> = {
+  dalail: { label: "Dala'il question engine", href: "/admin/meta/tashkhees?tab=dalail", summary: (v) => `Up to ${v.max_questions ?? "—"} questions · ordering with Hakeem Insight ${v.ranking === "off" ? "off" : "on"}` },
+  tashkhees_engine: { label: "Tashkhees engine", href: "/admin/meta/tashkhees?tab=engine", summary: (v) => { try { const c = JSON.parse(v.config || "{}"); return `Up to ${c.maxOrgans ?? "—"} organs · Maddi threshold ${c.maddiThreshold ?? "—"} · ordering with Hakeem Insight ${c.ranking === false ? "off" : "on"}`; } catch { return "Custom settings"; } } },
+  cds: { label: "Medicines decision support", href: "/admin/meta/tashkhees?tab=cds", summary: (v) => { try { const c = JSON.parse(v.config || "{}"); return `Pilot ${c.enabled ? "on" : "off"} · up to ${c.maxPerCategory ?? "—"} per group`; } catch { return "Custom settings"; } } },
+  i18n: { label: "Translations", href: "/admin/languages", summary: (v) => `Translation version ${v.messages_version ?? "—"} — updates by itself when translations change` },
+};
+const tabOf = (c: string) => (GENERAL_GROUP.includes(c) || c in SYSTEM ? "general" : c);
 
 // Explicit order for the sidebar (the settings themselves load alphabetically
 // by category) so Vitals Validation sits right after General rather than
@@ -144,17 +156,20 @@ export default function SettingsPage() {
       .then((res) => {
         setSettings(res.settings);
         setDraft(Object.fromEntries(res.settings.map((s) => [`${s.category}.${s.key}`, s.value])));
-        const cats = sortCategories(Array.from(new Set(res.settings.map((s) => s.category))));
-        // Bare /admin/settings, or an unknown tab → the first tab, without
-        // adding a history entry.
-        if (cats.length && (!urlCategory || !cats.includes(urlCategory))) {
+        const cats = sortCategories(Array.from(new Set(res.settings.map((s) => tabOf(s.category)))));
+        // Old links to a merged section (e.g. /admin/settings/registration) open General at that section.
+        if (urlCategory && tabOf(urlCategory) === "general" && urlCategory !== "general") {
+          window.history.replaceState(null, "", `/admin/settings/general#${urlCategory}`);
+          setTimeout(() => document.getElementById(`section-${urlCategory}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+        } else if (cats.length && (!urlCategory || !cats.includes(urlCategory))) {
+          // Bare /admin/settings, or an unknown tab → the first tab, without adding a history entry.
           window.history.replaceState(null, "", `/admin/settings/${cats[0]}`);
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const categories = sortCategories(Array.from(new Set(settings.map((s) => s.category))));
+  const categories = sortCategories(Array.from(new Set(settings.map((s) => tabOf(s.category)))));
   const selected = urlCategory && categories.includes(urlCategory) ? urlCategory : null;
   // pushState (synced by Next.js into usePathname) switches tabs without
   // remounting the page, so unsaved edits on other tabs aren't lost.
@@ -163,10 +178,12 @@ export default function SettingsPage() {
   };
 
   const saveCategory = async (category: string) => {
+    // General saves all of its sections at once.
+    const cats = category === "general" ? GENERAL_GROUP : [category];
     const updates = settings
-      .filter((s) => s.category === category)
-      .map((s) => ({ category, key: s.key, value: draft[`${category}.${s.key}`] ?? s.value }))
-      .filter((u) => u.value !== settings.find((s) => s.category === category && s.key === u.key)?.value);
+      .filter((s) => cats.includes(s.category))
+      .map((s) => ({ category: s.category, key: s.key, value: draft[`${s.category}.${s.key}`] ?? s.value }))
+      .filter((u) => u.value !== settings.find((s) => s.category === u.category && s.key === u.key)?.value);
 
     if (updates.length === 0) {
       toast.info("No changes to save");
@@ -187,6 +204,30 @@ export default function SettingsPage() {
   const assistant = selected ? ASSISTANTS[selected] : undefined;
   const settingValue = (draftKey: string, fallback: string) =>
     draft[draftKey] ?? settings.find((s) => `${s.category}.${s.key}` === draftKey)?.value ?? fallback;
+
+  const renderField = (s: SettingRow) => {
+    const draftKey = `${s.category}.${s.key}`;
+    if (BOOLEAN_KEYS.has(s.key)) {
+      return (
+        <div key={s.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-background/60 px-4 py-3.5">
+          <p className="text-sm font-medium">{KEY_LABELS[s.key] || s.key}</p>
+          <Switch
+            checked={draft[draftKey] === "true"}
+            onCheckedChange={(checked) => setDraft((d) => ({ ...d, [draftKey]: checked ? "true" : "false" }))}
+          />
+        </div>
+      );
+    }
+    return (
+      <FloatingField
+        key={s.id}
+        id={draftKey}
+        label={KEY_LABELS[s.key] || s.key}
+        value={draft[draftKey] ?? s.value}
+        onChange={(e) => setDraft((d) => ({ ...d, [draftKey]: e.target.value }))}
+      />
+    );
+  };
 
   if (loading) {
     return (
@@ -268,30 +309,43 @@ export default function SettingsPage() {
                       </div>
                     );
                   })
-                ) : settings.filter((s) => s.category === selected).map((s) => {
-                  const draftKey = `${s.category}.${s.key}`;
-                  const isBoolean = BOOLEAN_KEYS.has(s.key);
-                  if (isBoolean) {
-                    return (
-                      <div key={s.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-background/60 px-4 py-3.5">
-                        <p className="text-sm font-medium">{KEY_LABELS[s.key] || s.key}</p>
-                        <Switch
-                          checked={draft[draftKey] === "true"}
-                          onCheckedChange={(checked) => setDraft((d) => ({ ...d, [draftKey]: checked ? "true" : "false" }))}
-                        />
-                      </div>
-                    );
-                  }
-                  return (
-                    <FloatingField
-                      key={s.id}
-                      id={draftKey}
-                      label={KEY_LABELS[s.key] || s.key}
-                      value={draft[draftKey] ?? s.value}
-                      onChange={(e) => setDraft((d) => ({ ...d, [draftKey]: e.target.value }))}
-                    />
-                  );
-                })}
+                ) : selected === "general" ? (
+                  <div className="space-y-8">
+                    {GENERAL_GROUP.filter((c) => settings.some((s) => s.category === c)).map((c) => (
+                      <section key={c} id={`section-${c}`} className="scroll-mt-24 space-y-3">
+                        {c !== "general" && (
+                          <div className="border-t border-border/50 pt-5 pb-2">
+                            <h3 className="font-serif text-base font-semibold">{CATEGORY_META[c]?.label || c}</h3>
+                            {CATEGORY_META[c]?.description && <p className="text-xs text-muted-foreground mt-0.5">{CATEGORY_META[c].description}</p>}
+                          </div>
+                        )}
+                        {settings.filter((s) => s.category === c).map(renderField)}
+                      </section>
+                    ))}
+                    {Object.keys(SYSTEM).some((c) => settings.some((s) => s.category === c)) && (
+                      <section id="section-engines" className="scroll-mt-24 space-y-3">
+                        <div className="border-t border-border/50 pt-5 pb-2">
+                          <h3 className="font-serif text-base font-semibold">Engines & system</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">Set on their own Admin tabs — shown here for reference.</p>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-2">
+                          {Object.entries(SYSTEM).filter(([c]) => settings.some((s) => s.category === c)).map(([c, m]) => {
+                            const values = Object.fromEntries(settings.filter((s) => s.category === c).map((s) => [s.key, s.value]));
+                            return (
+                              <div key={c} id={`section-${c}`} className="scroll-mt-24 flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-4 py-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium">{m.label}</p>
+                                  <p className="text-xs text-muted-foreground">{m.summary(values)}</p>
+                                </div>
+                                {m.href && <Link href={m.href} className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">Manage <ArrowUpRight className="h-3 w-3" /></Link>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    )}
+                  </div>
+                ) : settings.filter((s) => s.category === selected).map(renderField)}
               </div>
               <Button
                 className="self-end h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
