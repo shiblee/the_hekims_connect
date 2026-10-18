@@ -213,12 +213,12 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card className="p-6 border-border/50 bg-card/60">
+        <Card className="p-6 gap-4 border-border/50 bg-card/60">
           {!selected ? (
             <p className="text-muted-foreground text-sm">Select a section to manage its settings.</p>
           ) : (
             <>
-              <div className="flex items-center gap-3 mb-5">
+              <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                   <SettingsIcon className="h-5 w-5" />
                 </div>
@@ -229,7 +229,7 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className={selected === "vitals_validation" ? "divide-y divide-border/50" : "space-y-4 pt-2"}>
                 {assistant ? (
                   <CatalogAssistantControls
                     config={assistant}
@@ -251,14 +251,12 @@ export default function SettingsPage() {
                       return draft[draftKey] ?? row?.value ?? "";
                     };
                     return (
-                      <div key={field} className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
-                        <p className="text-sm font-semibold">{VITALS_FIELD_LABELS[field]}</p>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div key={field} className="grid grid-cols-2 lg:grid-cols-[150px_repeat(4,minmax(0,1fr))] items-center gap-x-3 gap-y-4 py-4 first:pt-2">
+                        <p className="col-span-2 lg:col-span-1 text-sm font-semibold">{VITALS_FIELD_LABELS[field]}</p>
                           <FloatingField id={keys.normalMin} type="number" step="any" label="Normal min" value={valueFor(keys.normalMin)} onChange={(e) => setDraft((d) => ({ ...d, [keys.normalMin]: e.target.value }))} />
                           <FloatingField id={keys.normalMax} type="number" step="any" label="Normal max" value={valueFor(keys.normalMax)} onChange={(e) => setDraft((d) => ({ ...d, [keys.normalMax]: e.target.value }))} />
                           <FloatingField id={keys.entryMin} type="number" step="any" label="Entry limit min" value={valueFor(keys.entryMin)} onChange={(e) => setDraft((d) => ({ ...d, [keys.entryMin]: e.target.value }))} />
                           <FloatingField id={keys.entryMax} type="number" step="any" label="Entry limit max" value={valueFor(keys.entryMax)} onChange={(e) => setDraft((d) => ({ ...d, [keys.entryMax]: e.target.value }))} />
-                        </div>
                       </div>
                     );
                   })
