@@ -12,7 +12,13 @@ import { bpStatus, pulseStatus, spo2Status, temperatureStatus, bmiStatus, refere
 import { type VisitWithVitals, type VisitVitals, findLatestVitalSignsFor, findLatestVisitFor } from "@/lib/vitals-trend";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FloatingField } from "@/components/shared/floating-field";
+import { FloatingField, FloatingSplitField } from "@/components/shared/floating-field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  TEMP_UNITS, HEIGHT_UNITS, WEIGHT_UNITS, useVitalUnits, setVitalUnit, fToTemp, tempToF, formatTemp,
+  formatHeight, heightInput, parseHeight, cmToHeightNumber, formatWeight, weightInput, weightToKg, kgToWeight,
+  type VitalUnits,
+} from "@/lib/vital-units";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   HeartPulse, Gauge, Droplets, Thermometer, Plus, Lightbulb,
@@ -82,6 +88,55 @@ function unitAdornment(unit: string) {
   return <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground pointer-events-none">{unit}</span>;
 }
 
+/** Compact unit dropdown; doesn't open the card it sits on. */
+function UnitSelect({ value, options, onChange, label }: { value: string; options: readonly string[]; onChange: (v: string) => void; label: string }) {
+  return (
+    <span onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} className="inline-flex">
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger aria-label={label} className="!h-6 gap-1 rounded-md border-border/70 bg-background/60 px-1.5 py-0 text-xs font-medium text-muted-foreground shadow-none [&_svg]:!size-3">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>{options.map((o) => <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>)}</SelectContent>
+      </Select>
+    </span>
+  );
+}
+
+/** Stored value (°F / cm / kg) → the text shown in the chosen unit, unit included. */
+function showIn(key: string, v: number, u: VitalUnits): string {
+  if (key === "temperatureF") return `${formatTemp(v, u.temp)} ${u.temp}`;
+  if (key === "heightCm") return formatHeight(v, u.height);
+  if (key === "weightKg") return formatWeight(v, u.weight);
+  return String(v);
+}
+/** Stored value → plain number in the chosen unit (for charts). */
+function numIn(key: string, v: number | null, u: VitalUnits): number | null {
+  if (v == null) return null;
+  if (key === "temperatureF") return Number(fToTemp(v, u.temp).toFixed(1));
+  if (key === "heightCm") return Number(cmToHeightNumber(v, u.height).toFixed(2));
+  if (key === "weightKg") return Number(kgToWeight(v, u.weight).toFixed(2));
+  return v;
+}
+/** Entry text in the chosen unit → stored value; null = not a valid entry. */
+function toStored(key: string, raw: string, u: VitalUnits): number | null {
+  if (key === "heightCm") { const cm = parseHeight(raw, u.height); return cm === "invalid" ? null : cm; }
+  const n = parseFloat(raw);
+  if (raw.trim() === "" || Number.isNaN(n)) return null;
+  if (key === "temperatureF") return tempToF(n, u.temp);
+  if (key === "weightKg") return weightToKg(n, u.weight);
+  return n;
+}
+/** Stored value → entry text in the chosen unit. */
+function toEntry(key: string, v: number, u: VitalUnits): string {
+  if (key === "temperatureF") return formatTemp(v, u.temp);
+  if (key === "heightCm") return heightInput(v, u.height);
+  if (key === "weightKg") return weightInput(v, u.weight);
+  return String(v);
+}
+const UNIT_FIELD: Record<string, { k: keyof VitalUnits; options: readonly string[] }> = {
+  temperatureF: { k: "temp", options: TEMP_UNITS }, heightCm: { k: "height", options: HEIGHT_UNITS }, weightKg: { k: "weight", options: WEIGHT_UNITS },
+};
+
 function ColorDot(range: [number, number] | undefined, color: string) {
   return (props: any) => {
     const { cx, cy, value, key } = props;
@@ -139,6 +194,17 @@ export function VitalsPanel({
     setEditingVitals(null);
   };
 
+  const units = useVitalUnits();
+  // Switching a unit while typing converts what's already entered, so the reading stays the same.
+  const changeUnit = (field: string, next: string) => {
+    const meta = UNIT_FIELD[field];
+    const raw = quickValues[field];
+    if (raw) {
+      const stored = toStored(field, raw, units);
+      if (stored != null) setQuickValues((v) => ({ ...v, [field]: toEntry(field, stored, { ...units, [meta.k]: next } as VitalUnits) }));
+    }
+    setVitalUnit(meta.k, next as never);
+  };
   const setQuickValue = (key: string, value: string) => {
     setQuickValues((v) => ({ ...v, [key]: value }));
     setQuickErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
@@ -186,7 +252,7 @@ export function VitalsPanel({
       const prefill: Record<string, string> = {};
       for (const f of QUICK_FIELDS[metric.key]) {
         const v = res.vitals[f.key as keyof VisitVitals];
-        if (v != null) prefill[f.key] = String(v);
+        if (v != null) prefill[f.key] = toEntry(f.key, v as number, units);
       }
       setQuickValues(prefill);
     } catch (e: any) {
@@ -207,16 +273,17 @@ export function VitalsPanel({
         errors[f.key] = "Required";
         continue;
       }
-      const num = parseFloat(raw);
-      if (Number.isNaN(num)) {
-        errors[f.key] = "Must be a number";
+      const num = toStored(f.key, raw, units);
+      if (num == null || num <= 0 && f.key !== "temperatureF") {
+        errors[f.key] = f.key === "heightCm" && units.height === "ft + in" ? "Write feet and inches with a space, e.g. 5 7" : "Must be a number";
         continue;
       }
       if (f.bound && (num < f.bound[0] || num > f.bound[1])) {
-        errors[f.key] = `Must be between ${f.bound[0]} and ${f.bound[1]}`;
+        errors[f.key] = `Must be between ${showIn(f.key, f.bound[0], units)} and ${showIn(f.key, f.bound[1], units)}`;
         continue;
       }
-      body[f.key] = raw;
+      // Always stored in °F / cm / kg.
+      body[f.key] = UNIT_FIELD[f.key] ? String(Number(num.toFixed(f.key === "weightKg" ? 2 : 1))) : raw;
     }
     // The lower number can never be above the upper one — almost always a swapped entry.
     if (metric.key === "bpSystolic" && !errors.bpSystolic && !errors.bpDiastolic && parseFloat(body.bpDiastolic) >= parseFloat(body.bpSystolic)) {
@@ -292,7 +359,7 @@ export function VitalsPanel({
     { key: "bpSystolic", secondaryKey: "bpDiastolic", label: "Blood Pressure", unani: "Dabao-e-Khoon", primaryLabel: "Systolic", secondaryLabel: "Diastolic", icon: Gauge, unit: "mmHg", color: "#f97316", secondaryColor: "#8b5cf6", range: normalRanges.bpSystolic, secondaryRange: normalRanges.bpDiastolic },
     { key: "pulse", label: "Pulse", unani: "Nabz", icon: HeartPulse, unit: "bpm", color: "#ef4444", range: normalRanges.pulse },
     { key: "spo2", label: "Oxygen", unani: "SpO₂ saturation", icon: Droplets, unit: "%", color: "#3b82f6", range: normalRanges.spo2 },
-    { key: "temperatureF", label: "Temperature", unani: "Hararat", icon: Thermometer, unit: "°F", color: "#f59e0b", range: normalRanges.temperatureF },
+    { key: "temperatureF", label: "Temperature", unani: "Hararat", icon: Thermometer, unit: units.temp, color: "#f59e0b", range: normalRanges.temperatureF },
     { key: "heightCm", secondaryKey: "weightKg", label: "Height & Weight", unani: "Qad / Wazan", primaryLabel: "Height (cm)", secondaryLabel: "Weight (kg)", icon: Ruler, unit: "", color: "#0ea5e9", secondaryColor: "#14b8a6" },
     { key: "bmi", lookupKey: "heightCm", label: "BMI", unani: "Body mass index", icon: Scale, unit: "kg/m²", color: "#14b8a6", isComputed: true, formula: "Weight (kg) ÷ height (m)², from the latest height and weight." },
   ];
@@ -307,7 +374,8 @@ export function VitalsPanel({
 
   const formatValue = (key: keyof TrendPoint, p: TrendPoint | VisitVitals) => {
     if (key === "bpSystolic") return p.bpSystolic != null || p.bpDiastolic != null ? `${p.bpSystolic ?? "—"}/${p.bpDiastolic ?? "—"}` : "—";
-    if (key === "heightCm") return p.heightCm != null || p.weightKg != null ? `${p.heightCm ?? "—"} cm · ${p.weightKg ?? "—"} kg` : "—";
+    if (key === "heightCm") return p.heightCm != null || p.weightKg != null ? `${p.heightCm != null ? formatHeight(p.heightCm, units.height) : "—"} · ${p.weightKg != null ? formatWeight(p.weightKg, units.weight) : "—"}` : "—";
+    if (key === "temperatureF") return p.temperatureF != null ? formatTemp(p.temperatureF, units.temp) : "—";
     if (key === "bmi") { const b = calculateBmi(p.heightCm, p.weightKg); return b != null ? b.toFixed(1) : "—"; }
     const v = p[key as keyof typeof p] as number | null;
     return v != null ? String(v) : "—";
@@ -394,12 +462,16 @@ export function VitalsPanel({
                 <span className={cn("font-bold leading-none tracking-tight", t.key === "heightCm" ? "text-xl" : "text-3xl", tone && t.status!.tone !== "ok" && tone.text)}>
                   {formatValue(t.key, t.latest!)}
                 </span>
-                {t.unit && <span className="text-[13px] text-muted-foreground">{t.unit}</span>}
-                {t.key === "temperatureF" && t.latest!.temperatureC != null && <span className="text-[13px] text-muted-foreground">· {t.latest!.temperatureC}°C</span>}
+                {t.key === "temperatureF" ? (
+                  <>
+                    <UnitSelect label="Temperature unit" value={units.temp} options={TEMP_UNITS} onChange={(v) => setVitalUnit("temp", v as VitalUnits["temp"])} />
+                    {t.latest!.temperatureF != null && <span className="text-[13px] text-muted-foreground">· {showIn("temperatureF", t.latest!.temperatureF, { ...units, temp: units.temp === "°F" ? "°C" : "°F" })}</span>}
+                  </>
+                ) : t.unit && <span className="text-[13px] text-muted-foreground">{t.unit}</span>}
               </p>
               {t.delta != null && (
                 <span className="flex items-center gap-0.5 text-xs text-muted-foreground whitespace-nowrap" title="Change since the previous reading">
-                  {t.delta === 0 ? <><Minus className="h-3 w-3" /> same</> : <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{Math.abs(t.delta).toFixed(t.key === "temperatureF" || t.key === "bmi" ? 1 : 0)}</>}
+                  {t.delta === 0 ? <><Minus className="h-3 w-3" /> same</> : <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{t.key === "temperatureF" ? (Math.abs(t.delta) * (units.temp === "°C" ? 5 / 9 : 1)).toFixed(1) : t.key === "heightCm" ? `${Number(cmToHeightNumber(Math.abs(t.delta), units.height).toFixed(1))} ${units.height === "ft + in" ? "in" : units.height}` : Math.abs(t.delta).toFixed(t.key === "bmi" ? 1 : 0)}</>}
                 </span>
               )}
             </div>
@@ -411,9 +483,15 @@ export function VitalsPanel({
                 <RangeBar label="D" value={t.latest!.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={t.status?.tone} />
               </div>
             ) : t.key === "heightCm" ? (
-              <p className="text-[13px] text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[13px] text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}</p>
+                <span className="flex items-center gap-1">
+                  <UnitSelect label="Height unit" value={units.height} options={HEIGHT_UNITS} onChange={(v) => setVitalUnit("height", v as VitalUnits["height"])} />
+                  <UnitSelect label="Weight unit" value={units.weight} options={WEIGHT_UNITS} onChange={(v) => setVitalUnit("weight", v as VitalUnits["weight"])} />
+                </span>
+              </div>
             ) : GAUGE_SCALE[t.key] ? (
-              <RangeBar value={t.key === "bmi" ? t.bmi : (t.latest![t.key as keyof VisitVitals] as number | null)} scale={GAUGE_SCALE[t.key]} normal={t.key === "bmi" ? [18.5, 24.9] : t.range!} tone={t.status?.tone} />
+              <RangeBar value={t.key === "bmi" ? t.bmi : (t.latest![t.key as keyof VisitVitals] as number | null)} scale={GAUGE_SCALE[t.key]} normal={t.key === "bmi" ? [18.5, 24.9] : t.range!} tone={t.status?.tone} fmt={t.key === "temperatureF" ? (n) => formatTemp(n, units.temp) : undefined} />
             ) : null}
 
             {/* Change + when */}
@@ -475,11 +553,17 @@ export function VitalsPanel({
         };
         const p1 = stat(metric.key); const p2 = metric.secondaryKey ? stat(metric.secondaryKey) : null;
         const dp = (k: keyof TrendPoint) => (k === "temperatureF" || k === "bmi" || k === "weightKg" ? 1 : 0);
+        const one = (v: number, k: keyof TrendPoint) => (UNIT_FIELD[k as string] ? showIn(k as string, v, units) : v.toFixed(dp(k)));
         const pair = (a: number | undefined, b: number | undefined, k1: keyof TrendPoint, k2?: keyof TrendPoint) =>
-          a == null ? "—" : b != null && k2 ? `${a.toFixed(dp(k1))}/${b.toFixed(dp(k2))}` : a.toFixed(dp(k1));
+          a == null ? "—" : b != null && k2 ? `${one(a, k1)}${metric.key === "heightCm" ? " · " : "/"}${one(b, k2)}` : one(a, k1);
         const status = tile.status; const tone = status ? TONE_STYLES[status.tone] : null;
         const bands = referenceBands(metric.key, normalRanges);
-        const deltaText = tile.delta == null ? "First reading" : tile.delta === 0 ? "No change" : `${tile.delta > 0 ? "+" : "−"}${Math.abs(tile.delta).toFixed(dp(metric.key))}`;
+        const deltaAbs = tile.delta == null ? 0 : metric.key === "temperatureF" ? `${(Math.abs(tile.delta) * (units.temp === "°C" ? 5 / 9 : 1)).toFixed(1)} ${units.temp}`
+          : metric.key === "heightCm" ? `${Number(cmToHeightNumber(Math.abs(tile.delta), units.height).toFixed(1))} ${units.height === "ft + in" ? "in" : units.height}` : Math.abs(tile.delta).toFixed(dp(metric.key));
+        const deltaText = tile.delta == null ? "First reading" : tile.delta === 0 ? "No change" : `${tile.delta > 0 ? "+" : "−"}${deltaAbs}`;
+        // The chart plots in the chosen unit.
+        const shownChart = chartData.map((r) => ({ ...r, temperatureF: numIn("temperatureF", r.temperatureF, units), heightCm: numIn("heightCm", r.heightCm, units), weightKg: numIn("weightKg", r.weightKg, units) }));
+        const shownRange = metric.range && metric.key === "temperatureF" ? metric.range.map((x) => numIn("temperatureF", x, units)!) as [number, number] : metric.range;
 
         return (
           <Dialog open onOpenChange={(o) => { if (!o) { setDetailKey(null); msg.clear(); } }}>
@@ -508,8 +592,16 @@ export function VitalsPanel({
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest reading</p>
                     <p className="flex items-baseline gap-1.5 mt-1">
                       <span className={cn("text-4xl font-bold leading-none tracking-tight", tone && status!.tone !== "ok" && tone.text)}>{formatValue(metric.key, tile.latest)}</span>
-                      {metric.unit && <span className="text-sm text-muted-foreground">{metric.unit}</span>}
+                      {metric.key === "temperatureF" ? (
+                        <UnitSelect label="Temperature unit" value={units.temp} options={TEMP_UNITS} onChange={(v) => setVitalUnit("temp", v as VitalUnits["temp"])} />
+                      ) : metric.unit && <span className="text-sm text-muted-foreground">{metric.unit}</span>}
                     </p>
+                    {metric.key === "heightCm" && (
+                      <span className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">Show in
+                        <UnitSelect label="Height unit" value={units.height} options={HEIGHT_UNITS} onChange={(v) => setVitalUnit("height", v as VitalUnits["height"])} />
+                        <UnitSelect label="Weight unit" value={units.weight} options={WEIGHT_UNITS} onChange={(v) => setVitalUnit("weight", v as VitalUnits["weight"])} />
+                      </span>
+                    )}
                     {tile.latestVisit && <p className="text-[13px] text-muted-foreground mt-1.5">{when(tile.latestVisit.visitDate)}</p>}
                   </div>
                   <div className="space-y-3 min-w-0">
@@ -526,6 +618,7 @@ export function VitalsPanel({
                         scale={GAUGE_SCALE[metric.key === "heightCm" ? "bmi" : metric.key]}
                         normal={metric.key === "bmi" || metric.key === "heightCm" ? [18.5, 24.9] : metric.range!}
                         tone={status?.tone}
+                        fmt={metric.key === "temperatureF" ? (n) => formatTemp(n, units.temp) : undefined}
                         large
                       />
                     ) : null}
@@ -572,8 +665,8 @@ export function VitalsPanel({
                   {(() => {
                     const fields = QUICK_FIELDS[metric.key].map((f) => {
                       const raw = quickValues[f.key] ?? "";
-                      const num = parseFloat(raw);
-                      const outOfBounds = f.bound != null && raw !== "" && !Number.isNaN(num) && (num < f.bound[0] || num > f.bound[1]);
+                      const num = raw === "" ? null : toStored(f.key, raw, units);
+                      const outOfBounds = f.bound != null && num != null && (num < f.bound[0] || num > f.bound[1]);
                       return { ...f, raw, outOfBounds };
                     });
                     return (
@@ -583,6 +676,27 @@ export function VitalsPanel({
                             const fieldError = quickErrors[f.key];
                             return (
                               <div key={f.key}>
+                                {UNIT_FIELD[f.key] ? (
+                                  <FloatingSplitField
+                                    inputId={`quick-${f.key}`}
+                                    label={f.label}
+                                    type={f.key === "heightCm" && units.height === "ft + in" ? "text" : "number"}
+                                    inputMode="decimal"
+                                    step="any"
+                                    placeholder={f.key === "heightCm" && units.height === "ft + in" ? "e.g. 5 7" : undefined}
+                                    value={f.raw}
+                                    autoFocus={f === fields[0]}
+                                    onChange={(e) => setQuickValue(f.key, e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveQuickReading(metric); } }}
+                                    selectPosition="right"
+                                    selectWidthClassName={f.key === "heightCm" ? "w-[6.5rem]" : "w-[4.5rem]"}
+                                    selectValue={units[UNIT_FIELD[f.key].k]}
+                                    onSelectChange={(v) => changeUnit(f.key, v)}
+                                    selectOptions={[...UNIT_FIELD[f.key].options]}
+                                    error={f.outOfBounds || !!fieldError}
+                                    className="h-11"
+                                  />
+                                ) : (
                                 <FloatingField
                                   id={`quick-${f.key}`}
                                   label={f.label}
@@ -596,12 +710,15 @@ export function VitalsPanel({
                                   error={f.outOfBounds || !!fieldError}
                                   className="h-11"
                                 />
+                                )}
                                 {fieldError ? (
                                   <div className="flex items-center gap-0.5 mt-1 px-0.5 text-xs text-destructive font-medium">
                                     <AlertTriangle className="h-3 w-3" /> {fieldError}
                                   </div>
                                 ) : f.bound ? (
-                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">Accepted {f.bound[0]}–{f.bound[1]} {f.unit}</p>
+                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">Accepted {UNIT_FIELD[f.key] ? `${showIn(f.key, f.bound[0], units)} – ${showIn(f.key, f.bound[1], units)}` : `${f.bound[0]}–${f.bound[1]} ${f.unit}`}</p>
+                                ) : f.key === "heightCm" && units.height === "ft + in" ? (
+                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">Feet, space, inches — e.g. 5 7</p>
                                 ) : null}
                               </div>
                             );
@@ -634,14 +751,14 @@ export function VitalsPanel({
                 <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-sm font-semibold mb-2">Trend</p>
                   <ResponsiveContainer width="100%" height={240}>
-                    <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                    <AreaChart data={shownChart} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id={`fill-${String(metric.key)}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={metric.color} stopOpacity={0.25} />
                           <stop offset="95%" stopColor={metric.color} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      {metric.range && <ReferenceArea y1={metric.range[0]} y2={metric.range[1]} fill="#10b981" fillOpacity={0.1} ifOverflow="extendDomain" />}
+                      {shownRange && <ReferenceArea y1={shownRange[0]} y2={shownRange[1]} fill="#10b981" fillOpacity={0.1} ifOverflow="extendDomain" />}
                       {metric.secondaryRange && <ReferenceArea y1={metric.secondaryRange[0]} y2={metric.secondaryRange[1]} fill="#8b5cf6" fillOpacity={0.07} ifOverflow="extendDomain" />}
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
@@ -651,7 +768,7 @@ export function VitalsPanel({
                         labelFormatter={(_, payload) => { const p = payload?.[0]?.payload as TrendPoint | undefined; return p ? `${p.fullDate}, ${p.time}` : ""; }}
                       />
                       {metric.secondaryKey && <Legend wrapperStyle={{ fontSize: 12 }} />}
-                      <Area type="monotone" dataKey={metric.key} stroke={metric.color} strokeWidth={2.5} fill={`url(#fill-${String(metric.key)})`} dot={ColorDot(metric.range, metric.color)} connectNulls name={metric.primaryLabel || metric.label} />
+                      <Area type="monotone" dataKey={metric.key} stroke={metric.color} strokeWidth={2.5} fill={`url(#fill-${String(metric.key)})`} dot={ColorDot(shownRange, metric.color)} connectNulls name={metric.primaryLabel || metric.label} />
                       {metric.secondaryKey && (
                         <Area type="monotone" dataKey={metric.secondaryKey} stroke={metric.secondaryColor} strokeWidth={2.5} fill="transparent" dot={ColorDot(metric.secondaryRange, metric.secondaryColor || metric.color)} connectNulls name={metric.secondaryLabel} />
                       )}
@@ -723,14 +840,16 @@ export function VitalsPanel({
  * Horizontal scale with the normal zone shaded and a marker at the reading. A reading beyond the
  * visible window shows as an arrow at that edge; the large bar also labels its scale.
  */
-function RangeBar({ value, scale, normal, tone, label, large }: {
+function RangeBar({ value, scale, normal, tone, label, large, fmt }: {
   value: number | null | undefined; scale: [number, number]; normal: [number, number]; tone?: VitalTone; label?: string; large?: boolean;
+  /** Labels in the display unit (the bar itself works in the stored unit). */
+  fmt?: (n: number) => string;
 }) {
   const pct = (v: number) => Math.min(100, Math.max(0, ((v - scale[0]) / (scale[1] - scale[0])) * 100));
   const marker = value != null ? pct(value) : null;
   const off = value == null ? null : value < scale[0] ? "below" : value > scale[1] ? "above" : null;
   const color = TONE_STYLES[tone ?? "ok"].bar;
-  const fmtN = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  const fmtN = fmt ?? ((n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1)));
   // Scale ends in grey, normal bounds in green; a bound that coincides with (or crowds) an end replaces it.
   const ticks = large ? (() => {
     const t: { v: number; at: number; normal: boolean; text: string }[] = [];
@@ -746,7 +865,7 @@ function RangeBar({ value, scale, normal, tone, label, large }: {
   })() : [];
   const Arrow = off === "below" ? ChevronsLeft : ChevronsRight;
   return (
-    <div className={cn("flex items-center gap-2", large && "pb-4")} title={`Normal ${normal[0]}–${normal[1]} · scale ${scale[0]}–${scale[1]}`}>
+    <div className={cn("flex items-center gap-2", large && "pb-4")} title={`Normal ${fmtN(normal[0])}–${fmtN(normal[1])} · scale ${fmtN(scale[0])}–${fmtN(scale[1])}`}>
       {label && <span className={cn("shrink-0 text-muted-foreground", large ? "w-16 text-[13px]" : "w-3 text-[11px] font-semibold")}>{label}</span>}
       <div className={cn("relative flex-1 rounded-full bg-muted", large ? "h-2.5" : "h-1.5")}>
         <div className="absolute inset-y-0 rounded-full bg-emerald-500/30" style={{ left: `${pct(normal[0])}%`, width: `${pct(normal[1]) - pct(normal[0])}%` }} />
@@ -770,7 +889,7 @@ function RangeBar({ value, scale, normal, tone, label, large }: {
             style={{ left: `${t.at}%` }}>{t.text}</span>
         ))}
       </div>
-      {large && value != null && <span className="w-12 shrink-0 text-right text-[13px] font-semibold tabular-nums">{value}</span>}
+      {large && value != null && <span className="w-12 shrink-0 text-right text-[13px] font-semibold tabular-nums">{fmtN(value)}</span>}
     </div>
   );
 }
