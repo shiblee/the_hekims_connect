@@ -68,13 +68,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   const criterionById = new Map(criteria.map((c) => [c.id, c]));
 
-  const answerRows = answersIn
+  const answerRows: { criterionId: string | null; criterionLabel: string; present: boolean }[] = answersIn
     .map((a) => {
       const criterion = criterionById.get(a.criterionId);
       if (!criterion) return null;
       return { criterionId: criterion.id, criterionLabel: criterion.label, present: !!a.present };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
+  // "Other" warning signs typed in by staff — not in the admin list, so no
+  // criterion link; saved by label as present findings.
+  const knownLabels = new Set(answerRows.map((r) => r.criterionLabel.toLowerCase()));
+  const customLabels: string[] = Array.isArray(body.custom) ? body.custom : [];
+  for (const raw of customLabels) {
+    const label = String(raw ?? "").trim().slice(0, 200);
+    if (!label || knownLabels.has(label.toLowerCase())) continue;
+    knownLabels.add(label.toLowerCase());
+    answerRows.push({ criterionId: null, criterionLabel: label, present: true });
+  }
 
   if (outcome === "referred") {
     const referral = body.referral || {};

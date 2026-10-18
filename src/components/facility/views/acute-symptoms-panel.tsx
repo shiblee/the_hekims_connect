@@ -6,8 +6,8 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CheckCircle2, Circle, Loader2, ListChecks } from "lucide-react";
+import { FloatingMultiSelect } from "@/components/shared/floating-field";
+import { Loader2, ListChecks } from "lucide-react";
 
 interface SymptomTag { id: string; label: string; description: string | null }
 
@@ -19,6 +19,7 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
   const [loading, setLoading] = useState(true);
   const [tags, setTags] = useState<SymptomTag[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const msg = useNotice();
@@ -75,6 +76,18 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
     );
   }
 
+  const q = query.trim().toLowerCase();
+  // Search the admin list by name or description; with nothing typed, offer the first few.
+  const suggestions = tags
+    .filter((t) => !selected.includes(t.label) && (!q || t.label.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q)))
+    .slice(0, q ? 12 : 6)
+    .map((t) => ({ id: t.label, label: t.label, description: t.description }));
+  const addOther = (text: string) => {
+    const match = tags.find((t) => t.label.toLowerCase() === text.toLowerCase());
+    const label = match ? match.label : text;
+    setSelected((cur) => (cur.some((x) => x.toLowerCase() === label.toLowerCase()) ? cur : [...cur, label]));
+  };
+
   return (
     <Card className="p-4 gap-3 border-border/50 bg-card">
       <SectionHeading
@@ -90,37 +103,25 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
         }
       />
 
-      {tags.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No symptoms configured yet.</p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {tags.map((t) => {
-            const checked = selected.includes(t.label);
-            const chip = (
-              <button
-                type="button"
-                aria-pressed={checked}
-                onClick={() => toggle(t.label)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border pl-1.5 pr-3 py-1 text-sm transition-all",
-                  checked
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/30"
-                    : "border-border/60 bg-background/60 text-foreground hover:border-primary/50 hover:bg-primary/5",
-                )}
-              >
-                {checked ? <CheckCircle2 className="h-4.5 w-4.5" /> : <Circle className="h-4.5 w-4.5 text-muted-foreground/50" />}
-                {t.label}
-              </button>
-            );
-            return t.description ? (
-              <Tooltip key={t.id}>
-                <TooltipTrigger asChild>{chip}</TooltipTrigger>
-                <TooltipContent side="top" className="max-w-60 text-xs">{t.description}</TooltipContent>
-              </Tooltip>
-            ) : <span key={t.id}>{chip}</span>;
-          })}
-        </div>
-      )}
+      <FloatingMultiSelect
+        id="otherSymptomSearch"
+        label="Search other symptoms"
+        placeholder="Type a symptom — e.g. thirst, nausea, insomnia…"
+        openOnFocus
+        emptyHint={tags.length > 6 ? `Common symptoms · type to search all ${tags.length}` : "Symptoms"}
+        selected={selected.map((label) => {
+          const t = tags.find((x) => x.label === label);
+          return { id: label, label, description: t ? t.description : "Added by staff" };
+        })}
+        onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))}
+        query={query}
+        onQueryChange={setQuery}
+        results={suggestions}
+        describe={(t) => t.description}
+        onPick={(label) => toggle(label)}
+        onCreate={addOther}
+        createLabel={(q) => `Add "${q}" as another symptom`}
+      />
       <NoticeSlot state={msg} />
     </Card>
   );

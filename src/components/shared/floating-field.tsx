@@ -230,7 +230,7 @@ const TONES = {
 export function FloatingMultiSelect<T extends { id: string; label: string }>({
   id, label, required, error, selected, onRemove, query, onQueryChange, results, onPick,
   onCreate, createLabel = (q) => `Add "${q}"`, createOptions, tone = "primary", labelIcon: LabelIcon, itemIcon: ItemIcon,
-  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache",
+  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache", openOnFocus, describe, emptyHint,
 }: {
   id: string;
   label: string;
@@ -251,6 +251,12 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
   /** Per-item icon for chips and suggestions (e.g. by kind); overrides itemIcon. */
   renderIcon?: (item: T) => ReactNode;
   chipClassName?: (item: T) => string | undefined;
+  /** Show suggestions as soon as the box is focused (caller passes them for an empty query). */
+  openOnFocus?: boolean;
+  /** Secondary line under a suggestion, e.g. its description. */
+  describe?: (item: T) => string | null | undefined;
+  /** Line at the top of the list while nothing is typed yet. */
+  emptyHint?: ReactNode;
   labelIcon?: ComponentType<{ className?: string }>;
   itemIcon?: ComponentType<{ className?: string }>;
   placeholder?: string;
@@ -300,6 +306,7 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
+              if (!q) return;
               if (results[0]) pick(results[0].id);
               else if (canCreate) create();
             }
@@ -323,8 +330,9 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
         {label}{required && <span className="text-destructive"> *</span>}
       </label>
 
-      {q && (results.length > 0 || canCreate || !allowsCreate) && (
+      {(q || (openOnFocus && focused)) && (results.length > 0 || canCreate || (!allowsCreate && !!q)) && (
         <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-border/60 bg-card shadow-lg max-h-56 overflow-y-auto py-1">
+          {!q && emptyHint && <p className="px-3 pt-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{emptyHint}</p>}
           {results.length === 0 && !canCreate ? (
             <p className="px-3 py-2 text-sm text-muted-foreground">No matches for &quot;{query}&quot;.</p>
           ) : results.map((r, i) => (
@@ -333,10 +341,14 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
               type="button"
               onMouseDown={(e) => e.preventDefault() /* keep focus in the box */}
               onClick={() => pick(r.id)}
-              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && "bg-muted/40")}
+              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && q && "bg-muted/40")}
             >
-              {renderIcon ? renderIcon(r) : <ItemGlyph className={cn("h-3 w-3 shrink-0", tone === "primary" ? "text-muted-foreground" : t.label)} />} {r.label}
-              {i === 0 && <span className="ml-auto text-[10px] text-muted-foreground">Enter</span>}
+              {renderIcon ? renderIcon(r) : <ItemGlyph className={cn("h-3 w-3 shrink-0", tone === "primary" ? "text-muted-foreground" : t.label)} />}
+              <span className="min-w-0">
+                <span className="block">{r.label}</span>
+                {describe?.(r) && <span className="block text-[11px] text-muted-foreground leading-snug">{describe(r)}</span>}
+              </span>
+              {i === 0 && q && <span className="ml-auto text-[10px] text-muted-foreground shrink-0">Enter</span>}
             </button>
           ))}
           {creates.map((c, i) => (

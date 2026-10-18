@@ -12,12 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
+import { FloatingField, FloatingSelect, FloatingMultiSelect } from "@/components/shared/floating-field";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, Check, TriangleAlert } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Criterion { id: string; label: string; description: string | null }
 interface Answer { id: string; criterionId: string | null; criterionLabel: string; present: boolean }
@@ -37,6 +36,9 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [screening, setScreening] = useState<Screening | null>(null);
   const [present, setPresent] = useState<Record<string, boolean>>({});
+  // "Other" warning signs typed in by staff (not in the admin list).
+  const [custom, setCustom] = useState<string[]>([]);
+  const [signQuery, setSignQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -66,20 +68,23 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
         setCriteria(critRes.criteria || []);
         setScreening(screenRes.screening);
         const initial: Record<string, boolean> = {};
+        const others: string[] = [];
         for (const a of screenRes.screening?.answers || []) {
           if (a.criterionId) initial[a.criterionId] = a.present;
+          else if (a.present) others.push(a.criterionLabel);
         }
         setPresent(initial);
+        setCustom(others);
       })
       .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
   }, [visitId, reloadTick]);
 
-  const anyPresent = Object.values(present).some(Boolean);
+  const anyPresent = Object.values(present).some(Boolean) || custom.length > 0;
   const alreadyReferred = screening?.outcome === "referred";
 
   const flaggedSummary = () => {
-    const flaggedLabels = criteria.filter((c) => present[c.id]).map((c) => c.label);
+    const flaggedLabels = [...criteria.filter((c) => present[c.id]).map((c) => c.label), ...custom];
     return flaggedLabels.length ? `Positive findings: ${flaggedLabels.join(", ")}` : "";
   };
 
@@ -108,6 +113,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     try {
       const res = await api.post<{ screening: Screening }>(`/api/facility/visits/${visitId}/red-flag-screening`, {
         answers: criteria.map((c) => ({ criterionId: c.id, present: !!present[c.id] })),
+        custom,
         outcome,
         ...extra,
       });
@@ -159,7 +165,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     return false;
   };
 
-  useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog }), [anyPresent, screening, present, criteria]);
+  useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog }), [anyPresent, screening, present, criteria, custom]);
 
   if (loadError) return <LoadFailed what="the emergency warning signs" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
@@ -193,7 +199,17 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     );
   }
 
-  const presentCount = criteria.filter((c) => present[c.id]).length;
+  const presentCount = criteria.filter((c) => present[c.id]).length + custom.length;
+  const sq = signQuery.trim().toLowerCase();
+  // Search the admin list by name or description; with nothing typed, offer the first few.
+  const signSuggestions = criteria
+    .filter((c) => !present[c.id] && (!sq || c.label.toLowerCase().includes(sq) || (c.description || "").toLowerCase().includes(sq)))
+    .slice(0, sq ? 12 : 6);
+  const addCustomSign = (text: string) => {
+    const match = criteria.find((c) => c.label.toLowerCase() === text.toLowerCase());
+    if (match) { setPresent((p) => ({ ...p, [match.id]: true })); return; }
+    setCustom((cur) => (cur.some((x) => x.toLowerCase() === text.toLowerCase()) ? cur : [...cur, text]));
+  };
 
   return (
     <Card className={cn("p-4 gap-3 border-border/50 bg-card transition-colors", anyPresent && "border-destructive/40")}>
@@ -212,39 +228,31 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
         }
       />
 
-      {criteria.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No warning signs configured yet.</p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {criteria.map((c) => {
-            const checked = !!present[c.id];
-            const chip = (
-              <button
-                type="button"
-                aria-pressed={checked}
-                onClick={() => setPresent((p) => ({ ...p, [c.id]: !p[c.id] }))}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border pl-1.5 pr-3 py-1 text-sm transition-all",
-                  checked
-                    ? "border-destructive bg-destructive text-white shadow-sm shadow-destructive/30"
-                    : "border-border/60 bg-background/60 text-foreground hover:border-destructive/50 hover:bg-destructive/5",
-                )}
-              >
-                <span className={cn("h-4.5 w-4.5 rounded-full flex items-center justify-center shrink-0", checked ? "bg-white/20" : "border border-border")}>
-                  {checked ? <TriangleAlert className="h-3 w-3" /> : null}
-                </span>
-                {c.label}
-              </button>
-            );
-            return c.description ? (
-              <Tooltip key={c.id}>
-                <TooltipTrigger asChild>{chip}</TooltipTrigger>
-                <TooltipContent side="top" className="max-w-60 text-xs">{c.description}</TooltipContent>
-              </Tooltip>
-            ) : <span key={c.id}>{chip}</span>;
-          })}
-        </div>
-      )}
+      <FloatingMultiSelect
+        id="warningSignSearch"
+        label="Search emergency warning signs"
+        tone="destructive"
+        labelIcon={TriangleAlert}
+        itemIcon={TriangleAlert}
+        placeholder="Type a sign — e.g. chest pain, bleeding, breathless…"
+        openOnFocus
+        emptyHint={criteria.length > 6 ? `Common signs · type to search all ${criteria.length}` : "Warning signs"}
+        selected={[
+          ...criteria.filter((c) => present[c.id]).map((c) => ({ id: c.id, label: c.label, description: c.description })),
+          ...custom.map((label) => ({ id: `other:${label}`, label, description: "Added by staff" })),
+        ]}
+        onRemove={(sid) => {
+          if (sid.startsWith("other:")) setCustom((cur) => cur.filter((x) => `other:${x}` !== sid));
+          else setPresent((p) => ({ ...p, [sid]: false }));
+        }}
+        query={signQuery}
+        onQueryChange={setSignQuery}
+        results={signSuggestions}
+        describe={(c) => c.description}
+        onPick={(cid) => setPresent((p) => ({ ...p, [cid]: true }))}
+        onCreate={addCustomSign}
+        createLabel={(q) => `Add "${q}" as another warning sign`}
+      />
 
       {anyPresent && screening?.outcome !== "continued_ama" && (
         <p className="text-xs text-destructive">
