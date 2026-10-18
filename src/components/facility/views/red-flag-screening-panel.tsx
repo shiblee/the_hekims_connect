@@ -10,13 +10,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FloatingField, FloatingSelect, FloatingMultiSelect } from "@/components/shared/floating-field";
+import { FloatingField, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, Check, TriangleAlert } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, Check, TriangleAlert, Sparkles, Info } from "lucide-react";
 
 interface Criterion { id: string; label: string; description: string | null }
 interface Answer { id: string; criterionId: string | null; criterionLabel: string; present: boolean }
@@ -31,6 +30,24 @@ export interface RedFlagScreeningPanelHandle {
   attemptResolve: () => Promise<boolean>;
   openReferDialog: () => void;
 }
+
+// Where a patient is usually sent for a given warning sign — offered as one-tap suggestions.
+const DESTINATION_HINTS: [RegExp, string][] = [
+  [/chest|angina|palpit|cardiac|heart/i, "Cardiology"],
+  [/dyspn|breath|respirat|asthma|copd/i, "Pulmonology"],
+  [/neuro|stroke|tia|conscious|gcs|seizure|fast screen/i, "Neurology"],
+  [/abdom|peritoni|surgical|appendic/i, "General Surgery"],
+  [/pregnan|obstet|bleeding per vagin/i, "Obstetrics & Gynaecology"],
+];
+const COMMON_DESTINATIONS = [
+  "Emergency Department", "General Physician (Allopathic)", "Cardiology", "Neurology", "Pulmonology",
+  "General Surgery", "Obstetrics & Gynaecology", "Paediatrics", "Orthopaedics",
+];
+const URGENCY = [
+  { value: "Emergency", label: "Emergency", when: "Send immediately", tone: "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400", dot: "bg-red-500", button: "bg-red-600 hover:bg-red-700 text-white" },
+  { value: "Urgent", label: "Urgent", when: "Within 24 hours", tone: "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400", dot: "bg-amber-500", button: "bg-amber-600 hover:bg-amber-700 text-white" },
+  { value: "Routine", label: "Routine", when: "Planned appointment", tone: "border-sky-500 bg-sky-500/10 text-sky-700 dark:text-sky-400", dot: "bg-sky-500", button: "bg-sky-600 hover:bg-sky-700 text-white" },
+] as const;
 
 export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { visitId: string }>(function RedFlagScreeningPanel({ visitId }, ref) {
   const [criteria, setCriteria] = useState<Criterion[]>([]);
@@ -88,10 +105,11 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     return flaggedLabels.length ? `Positive findings: ${flaggedLabels.join(", ")}` : "";
   };
 
+  const anyPresentRef = () => Object.values(present).some(Boolean) || custom.length > 0;
   const openReferDialog = () => {
     setReferReason(flaggedSummary());
     setReferredTo("");
-    setUrgency("Emergency");
+    setUrgency(anyPresentRef() ? "Emergency" : "Urgent");
     setReferNotes("");
     dialogMsg.clear();
     setReferDialogOpen(true);
@@ -200,6 +218,13 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
   }
 
   const presentCount = criteria.filter((c) => present[c.id]).length + custom.length;
+  const flaggedLabels = [...criteria.filter((c) => present[c.id]).map((c) => c.label), ...custom];
+  const suggestedDestinations = new Set<string>(flaggedLabels.length ? ["Emergency Department"] : []);
+  for (const l of flaggedLabels) for (const [re, dest] of DESTINATION_HINTS) if (re.test(l)) suggestedDestinations.add(dest);
+  const destinationOptions = [
+    ...[...suggestedDestinations].map((name) => ({ name, suggested: true })),
+    ...COMMON_DESTINATIONS.filter((d) => !suggestedDestinations.has(d)).map((name) => ({ name, suggested: false })),
+  ];
   const sq = signQuery.trim().toLowerCase();
   // Search the admin list by name or description; with nothing typed, offer the first few.
   const signSuggestions = criteria
@@ -275,25 +300,91 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
       <NoticeSlot state={msg} />
 
       <Dialog open={referDialogOpen} onOpenChange={setReferDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto gap-4 bg-card">
           <DialogHeader>
-            <DialogTitle>Refer Patient</DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              <span className="h-10 w-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0"><ShieldAlert className="h-5 w-5" /></span>
+              <span>
+                <span className="block text-lg font-semibold leading-tight">Refer patient</span>
+                <span className="block text-xs font-normal text-muted-foreground">Hand this patient over to the right service</span>
+              </span>
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <FloatingField id="referReason" label="Reason for referral" value={referReason} onChange={(e) => setReferReason(e.target.value)} />
-            <FloatingField id="referredTo" label="Referred to (e.g. Emergency Department, Cardiology)" value={referredTo} onChange={(e) => setReferredTo(e.target.value)} />
-            <FloatingSelect id="urgency" label="Urgency" value={urgency} onValueChange={setUrgency}>
-              <SelectItem value="Emergency">Emergency</SelectItem>
-              <SelectItem value="Urgent">Urgent</SelectItem>
-              <SelectItem value="Routine">Routine</SelectItem>
-            </FloatingSelect>
-            <Textarea placeholder="Additional notes (optional)" value={referNotes} onChange={(e) => setReferNotes(e.target.value)} className="bg-background/60" rows={3} />
+
+          {/* What triggered it */}
+          {flaggedLabels.length > 0 ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-destructive mb-1.5 flex items-center gap-1"><TriangleAlert className="h-3 w-3" /> Warning signs present</p>
+              <div className="flex flex-wrap gap-1.5">
+                {flaggedLabels.map((l) => <span key={l} className="rounded-full bg-destructive/10 border border-destructive/30 text-destructive px-2.5 py-0.5 text-xs font-medium">{l}</span>)}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-2">No emergency warning signs are marked — describe why the patient is being referred.</p>
+          )}
+
+          <FloatingTextarea id="referReason" label="Reason for referral" required value={referReason} onChange={(e) => setReferReason(e.target.value)} rows={2} />
+
+          {/* Destination with one-tap suggestions */}
+          <div className="space-y-2">
+            <FloatingField id="referredTo" label="Refer to" required value={referredTo} onChange={(e) => setReferredTo(e.target.value)} />
+            <div className="flex flex-wrap gap-1.5">
+              {destinationOptions.map((d) => (
+                <button
+                  key={d.name}
+                  type="button"
+                  onClick={() => setReferredTo(d.name)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                    referredTo === d.name ? "border-primary bg-primary text-primary-foreground" : d.suggested ? "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10" : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border",
+                  )}
+                >
+                  {d.suggested && referredTo !== d.name && <Sparkles className="h-3 w-3" />}{d.name}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Urgency as clear choices */}
+          <div>
+            <p className="text-sm font-medium mb-2">How urgent?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {URGENCY.map((u) => (
+                <button
+                  key={u.value}
+                  type="button"
+                  onClick={() => setUrgency(u.value)}
+                  aria-pressed={urgency === u.value}
+                  className={cn(
+                    "rounded-lg border-2 px-2.5 py-2 text-left transition-colors",
+                    urgency === u.value ? u.tone : "border-border/60 hover:border-border",
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 text-sm font-semibold"><span className={cn("h-2 w-2 rounded-full", u.dot)} />{u.label}</span>
+                  <span className="block text-[11px] text-muted-foreground mt-0.5">{u.when}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <FloatingTextarea id="referNotes" label="Notes for the receiving doctor (optional)" value={referNotes} onChange={(e) => setReferNotes(e.target.value)} rows={2} />
+
+          {/* What happens next */}
+          <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground flex items-start gap-2">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              {referredTo.trim()
+                ? <>Refer to <span className="font-semibold text-foreground">{referredTo.trim()}</span> · <span className="font-semibold text-foreground">{urgency}</span>. </>
+                : null}
+              Confirming saves the referral to this visit and closes today&apos;s Unani consultation for it.
+            </span>
+          </div>
+
           <NoticeSlot state={dialogMsg} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setReferDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={submitReferral} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Confirm Referral &amp; Close Case
+            <Button onClick={submitReferral} disabled={saving} className={URGENCY.find((u) => u.value === urgency)?.button}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />} Confirm referral &amp; close case
             </Button>
           </DialogFooter>
         </DialogContent>
