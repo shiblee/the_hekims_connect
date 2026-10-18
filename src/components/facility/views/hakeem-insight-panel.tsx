@@ -186,7 +186,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       {/* Before anything is generated: what you'll get, and whether the data is there */}
       {!running && !hasAny && loaded && (
         <div className="rounded-lg border border-dashed border-border/70 p-3 space-y-2.5">
-          <p className="text-xs font-medium">One click gives you:</p>
+          <p className="text-sm font-semibold">One click gives you:</p>
           <ul className="space-y-1.5 text-xs text-muted-foreground">
             <li className="flex items-center gap-2"><Milestone className="h-3.5 w-3.5 text-primary" /> Triage priority and the next step</li>
             <li className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-primary" /> The four-humour balance (Akhlat)</li>
@@ -227,7 +227,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       {humoral && (
         <section className="rounded-xl border border-border/50 bg-card p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Scale className="h-3 w-3" /> Humoral balance</p>
+            <p className="text-sm font-semibold text-foreground flex items-center gap-1.5"><Scale className="h-4 w-4 text-primary" /> Humoral balance</p>
             {humoral.dominantOverride && <span className="text-[10px] text-muted-foreground">Doctor&apos;s pick · engine said {humoral.dominant}</span>}
           </div>
           <div className="space-y-1.5">

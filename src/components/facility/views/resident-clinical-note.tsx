@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { Input } from "@/components/ui/input";
 import { NotebookPen, X, Loader2 } from "lucide-react";
 
@@ -68,9 +69,7 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
 
   return (
     <Card className="p-4 border-border/50 bg-card/60 gap-2.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-        <NotebookPen className="h-3.5 w-3.5 text-primary" /> Resident Clinical Note
-      </p>
+      <SectionHeading icon={NotebookPen} title="Resident Clinical Note" />
 
       {points.length > 0 && (
         <ul className="space-y-1.5">
