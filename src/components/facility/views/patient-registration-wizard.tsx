@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SelectItem } from "@/components/ui/select";
-import { FloatingField, FloatingSelect, FloatingSplitField, FieldError } from "@/components/shared/floating-field";
+import { FloatingField, FloatingSelect, FloatingSplitField, FieldError, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
 import { InlineNotice, type Notice } from "@/components/shared/inline-notice";
@@ -1102,62 +1102,26 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       </div>
 
                       <div id="reg-complaints" className="scroll-mt-24">
-                        <p className="text-sm font-medium text-muted-foreground mb-2">Fast Symptom Selector (Multi-select) <span className="text-destructive">*</span></p>
-                        {chiefComplaintIds.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {chiefComplaintIds.map((id) => {
-                              const c = complaintOptions.find((o) => o.id === id);
-                              if (!c) return null;
-                              return (
-                                <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 border border-primary/40 text-primary px-3 py-1.5 text-sm">
-                                  {c.label}
-                                  <button type="button" onClick={() => toggleComplaint(id)} className="hover:text-primary/70">
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                          <input
-                            value={complaintSearch}
-                            onChange={(e) => setComplaintSearch(e.target.value)}
-                            placeholder="Search symptoms…"
-                            className="w-full rounded-md border border-border/60 bg-background pl-8 pr-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          />
-                        </div>
-                        {complaintSearch.trim() && (
-                          <div className="mt-1.5 rounded-lg border border-border/50 bg-card/90 max-h-48 overflow-y-auto divide-y divide-border/40">
-                            {complaintSearchResults.length === 0 ? (
-                              <p className="px-3 py-2 text-sm text-muted-foreground">No matches for &quot;{complaintSearch}&quot;.</p>
-                            ) : (
-                              complaintSearchResults.map((c) => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => { toggleComplaint(c.id); setComplaintSearch(""); }}
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5"
-                                >
-                                  <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {c.label}
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground mb-2">Patient Stated Narrative</p>
-                        <textarea
-                          value={narrative}
-                          onChange={(e) => setNarrative(e.target.value)}
-                          rows={3}
-                          placeholder="What the patient reports in their own words…"
-                          className="w-full rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        <FloatingMultiSelect
+                          id="complaintSearch"
+                          label="Fast Symptom Selector"
+                          required
+                          selected={chiefComplaintIds.flatMap((cid) => complaintOptions.filter((o) => o.id === cid))}
+                          onRemove={toggleComplaint}
+                          query={complaintSearch}
+                          onQueryChange={setComplaintSearch}
+                          results={complaintSearchResults}
+                          onPick={toggleComplaint}
                         />
                       </div>
+
+                      <FloatingTextarea
+                        id="narrative"
+                        label="Patient Stated Narrative"
+                        value={narrative}
+                        onChange={(e) => setNarrative(e.target.value)}
+                        rows={3}
+                      />
 
                       <div id="reg-onset" className="scroll-mt-24">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Symptom Onset Timeline <span className="text-destructive">*</span></p>

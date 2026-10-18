@@ -1,7 +1,7 @@
 "use client";
 
-import type { ComponentType, InputHTMLAttributes, ReactNode } from "react";
-import { AlertCircle } from "lucide-react";
+import { useRef, useState, type ComponentType, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { AlertCircle, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -201,6 +201,128 @@ export function FloatingSplitField({
           error ? "text-destructive" : "text-primary"
         )}
       >
+        {label}{required && <span className="text-destructive"> *</span>}
+      </label>
+    </div>
+  );
+}
+
+// Shared label look for the floating fields below — inside the box at rest,
+// up on the border (smaller, primary) once focused or filled.
+const floatLabel = (floated: boolean, error?: boolean, focused?: boolean) => cn(
+  "pointer-events-none absolute left-3 z-10 whitespace-nowrap bg-card px-1.5 transition-all duration-150",
+  floated ? "top-0 -translate-y-1/2 text-sm font-semibold" : "text-base font-medium",
+  error ? "text-destructive" : floated && focused ? "text-primary" : "text-muted-foreground",
+);
+
+/**
+ * Multi-select with the same floating label as FloatingField: chosen items
+ * sit as chips inside the box, and typing filters the options shown in a
+ * list right under it. Enter adds the top match; Backspace on an empty box
+ * removes the last chip.
+ */
+export function FloatingMultiSelect<T extends { id: string; label: string }>({
+  id, label, required, error, selected, onRemove, query, onQueryChange, results, onPick,
+}: {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: boolean;
+  selected: T[];
+  onRemove: (id: string) => void;
+  query: string;
+  onQueryChange: (q: string) => void;
+  results: T[];
+  onPick: (id: string) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const floated = focused || !!query || selected.length > 0;
+  const pick = (itemId: string) => { onPick(itemId); onQueryChange(""); inputRef.current?.focus(); };
+
+  return (
+    <div className="relative">
+      <div
+        onClick={() => inputRef.current?.focus()}
+        className={cn(
+          "min-h-14 w-full rounded-lg border bg-transparent px-3 py-2.5 flex flex-wrap items-center gap-1.5 cursor-text transition-colors",
+          error ? "border-destructive" : focused ? "border-primary" : "border-input",
+        )}
+      >
+        {selected.map((s) => (
+          <span key={s.id} className="inline-flex items-center gap-1 rounded-full bg-primary/15 border border-primary/40 text-primary pl-2.5 pr-1.5 py-0.5 text-sm">
+            {s.label}
+            <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(s.id); }} aria-label={`Remove ${s.label}`} className="rounded-full p-0.5 hover:bg-primary/15">
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+        <input
+          id={id}
+          ref={inputRef}
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && results[0]) { e.preventDefault(); pick(results[0].id); }
+            if (e.key === "Backspace" && !query && selected.length) onRemove(selected[selected.length - 1].id);
+            if (e.key === "Escape") onQueryChange("");
+          }}
+          placeholder={floated && !selected.length ? "Type a symptom to search…" : ""}
+          autoComplete="off"
+          className="flex-1 min-w-24 bg-transparent text-base font-medium text-foreground outline-none placeholder:text-muted-foreground/60 placeholder:font-normal"
+        />
+      </div>
+      <label htmlFor={id} className={cn(floatLabel(floated, error, focused), !floated && "top-1/2 -translate-y-1/2")}>
+        {label}{required && <span className="text-destructive"> *</span>}
+      </label>
+
+      {query.trim() && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-border/60 bg-card shadow-lg max-h-56 overflow-y-auto py-1">
+          {results.length === 0 ? (
+            <p className="px-3 py-2 text-sm text-muted-foreground">No matches for &quot;{query}&quot;.</p>
+          ) : results.map((r, i) => (
+            <button
+              key={r.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault() /* keep focus in the box */}
+              onClick={() => pick(r.id)}
+              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && "bg-muted/40")}
+            >
+              <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {r.label}
+              {i === 0 && <span className="ml-auto text-[10px] text-muted-foreground">Enter</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A textarea with the same floating label as FloatingField. */
+export function FloatingTextarea({ id, label, required, error, className, ...props }: {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: boolean;
+} & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const [focused, setFocused] = useState(false);
+  const floated = focused || !!props.value;
+  return (
+    <div className="relative">
+      <textarea
+        id={id}
+        {...props}
+        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+        className={cn(
+          "w-full min-h-24 rounded-lg border bg-transparent px-3.5 pt-4 pb-2 text-base font-medium text-foreground outline-none transition-colors resize-y",
+          error ? "border-destructive" : "border-input focus:border-primary",
+          className,
+        )}
+      />
+      <label htmlFor={id} className={cn(floatLabel(floated, error, focused), !floated && "top-4")}>
         {label}{required && <span className="text-destructive"> *</span>}
       </label>
     </div>
