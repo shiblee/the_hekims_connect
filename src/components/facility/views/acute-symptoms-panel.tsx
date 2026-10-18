@@ -83,7 +83,6 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
           </div>
           <div>
             <h2 className="font-serif text-lg font-semibold">Other Symptoms</h2>
-            <p className="text-sm text-muted-foreground">Anything else the patient has noticed today · Alamat-e-Izafiya</p>
           </div>
         </div>
         <Badge variant="outline" className="shrink-0">{selected.length} selected</Badge>

@@ -207,9 +207,6 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
           {anyPresent ? "Positive Findings — Referral Recommended" : "Negative / Cleared for Unani Triage"}
         </Badge>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Mandatory western clinical gatekeeper safety screen prior to constitution-level humoral categorization.
-      </p>
 
       {screening?.outcome === "continued_ama" && screening.amaDecline && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 flex items-start gap-3">
