@@ -100,7 +100,7 @@ function MizajStage({ patientId }: { patientId: string }) {
 
   /** Saves the anatomical regions, the senior doctor's chief-complaint edits and the clinical note. */
   const saveEdits = async () => {
-    const sections = ["Anatomical Region", "Chief Complaint Matrix", "Onset & Chronology", "Resident Clinical Note"];
+    const sections = ["Anatomical Region", "Main Complaints", "Onset & Chronology", "Resident Clinical Note"];
     const results = await Promise.allSettled([
       regionRef.current?.save(), chiefComplaintRef.current?.save(), chronologyRef.current?.save(), residentNoteRef.current?.save(),
     ]);

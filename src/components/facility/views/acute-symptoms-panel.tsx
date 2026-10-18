@@ -55,14 +55,14 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
       await api.post(`/api/facility/visits/${visitId}/acute-symptoms`, { symptoms: selected });
       msg.clear();
     } catch (e: any) {
-      msg.error("The acute symptoms weren't saved", `${e.message || "Network error"}. Your selection is still shown above.`, { retry: () => { save().catch(() => {}); } });
+      msg.error("The other symptoms weren't saved", `${e.message || "Network error"}. Your selection is still shown above.`, { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
 
   useImperativeHandle(ref, () => ({ save }), [selected, loading, loadError, msg]);
 
-  if (loadError) return <LoadFailed what="the acute symptoms checklist" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+  if (loadError) return <LoadFailed what="the other symptoms checklist" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
 
   if (loading) {
     return (
@@ -82,8 +82,8 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
             <ListChecks className="h-4.5 w-4.5" />
           </div>
           <div>
-            <h2 className="font-serif text-lg font-semibold">Accompanying Acute Symptoms (Alamat-e-Izafiya)</h2>
-            <p className="text-sm text-muted-foreground">Admin-curated checklist of general acute symptoms for this visit.</p>
+            <h2 className="font-serif text-lg font-semibold">Other Symptoms</h2>
+            <p className="text-sm text-muted-foreground">Anything else the patient has noticed today · Alamat-e-Izafiya</p>
           </div>
         </div>
         <Badge variant="outline" className="shrink-0">{selected.length} selected</Badge>

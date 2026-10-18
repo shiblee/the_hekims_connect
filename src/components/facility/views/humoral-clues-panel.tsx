@@ -94,7 +94,7 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
         await onBeforeGenerate();
       } catch {
         // The Chief Complaint Matrix shows the specific failure in place.
-        msg.warning("Clues need the Chief Complaint Matrix saved first", "It couldn't be saved — see the message in the matrix, then press Generate again.");
+        msg.warning("Clues need the main complaints saved first", "They couldn't be saved — see the message in Main Complaints, then press Generate again.");
         setClueState("idle");
         return;
       }
@@ -147,7 +147,7 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
       <div>
         <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Probable Primary Constitutional Tendency</p>
         {!assessment ? (
-          <p className="text-xs text-muted-foreground">Not enough data yet — click Generate, or fill in the Chief Complaint Matrix, to compute this.</p>
+          <p className="text-xs text-muted-foreground">Not enough data yet — click Generate, or fill in Main Complaints, to compute this.</p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {HUMOR_KEYS.map((key) => {

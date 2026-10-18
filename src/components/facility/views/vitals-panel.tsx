@@ -462,7 +462,7 @@ export function VitalsPanel({
     <Card className="p-5 border-border/50 bg-card/60">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" /> Vitals &amp; Nabz Parameters
+          <Activity className="h-5 w-5 text-primary" /> Vital Signs &amp; Pulse (Nabz)
         </p>
       </div>
 

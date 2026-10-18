@@ -244,7 +244,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
       });
       msg.clear();
     } catch (e: any) {
-      msg.error("The chief complaint matrix wasn't saved", `${e.message || "Network error"}. Your entries are still shown above.`, { retry: () => { save().catch(() => {}); } });
+      msg.error("The main complaints weren't saved", `${e.message || "Network error"}. Your entries are still shown above.`, { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
@@ -260,7 +260,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
     }));
   }, [drafts, complaintLabels, loading, onDurationsChange]);
 
-  if (loadError) return <LoadFailed what="the chief complaint matrix" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+  if (loadError) return <LoadFailed what="the main complaints" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
     return (
       <Card className="p-5 border-border/50 bg-card/60">
@@ -278,7 +278,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
           <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
             <BriefcaseMedical className="h-4.5 w-4.5" />
           </div>
-          <h2 className="font-serif text-lg font-semibold">Primary Chief Complaint Matrix</h2>
+          <h2 className="font-serif text-lg font-semibold">Main Complaints</h2>
         </div>
         <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center gap-1">
           <Flag className="h-3 w-3" /> Unani Triage Stage 1

@@ -159,7 +159,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
 
   useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog }), [anyPresent, screening, present, criteria]);
 
-  if (loadError) return <LoadFailed what="the red flag checklist" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+  if (loadError) return <LoadFailed what="the emergency warning signs" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
     return (
       <Card className="p-5 border-border/50 bg-card/60 flex items-center gap-2 text-muted-foreground text-sm">
@@ -198,7 +198,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
           <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", anyPresent ? "bg-destructive/15 text-destructive" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
             {anyPresent ? <ShieldAlert className="h-4.5 w-4.5" /> : <ShieldCheck className="h-4.5 w-4.5" />}
           </div>
-          <h2 className="font-serif text-lg font-semibold">Acute Red Flag / Emergency Exclusion</h2>
+          <h2 className="font-serif text-lg font-semibold">Emergency Warning Signs</h2>
         </div>
         <Badge
           variant="outline"

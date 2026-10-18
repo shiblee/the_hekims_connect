@@ -255,7 +255,7 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
           : <Chips items={s.redFlags.present} tone="red" />}
       </Block>
 
-      <Block icon={Activity} title="Accompanying Acute Symptoms">
+      <Block icon={Activity} title="Other Symptoms">
         {s.acuteSymptoms.length === 0 ? <Empty>None selected</Empty> : <Chips items={s.acuteSymptoms} />}
       </Block>
 
