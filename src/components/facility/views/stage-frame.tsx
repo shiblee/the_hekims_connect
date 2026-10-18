@@ -113,7 +113,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
           vitals={latest?.vitalSigns ?? null}
           visits={sortedVisits}
           action={
-            <button onClick={() => router.push(recordUrl)} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+            <button onClick={() => router.push(recordUrl)} className="inline-flex items-center gap-1 text-[13px] text-primary hover:underline">
               <Pencil className="h-3 w-3" /> Edit in Clinical Record
             </button>
           }

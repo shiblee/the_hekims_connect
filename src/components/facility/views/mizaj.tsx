@@ -17,7 +17,7 @@ import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { savedAt } from "@/lib/flash";
-import { ArrowRight, Loader2, History, Stethoscope } from "lucide-react";
+import { ArrowRight, Loader2, History } from "lucide-react";
 
 // Colours for the Mizaj History balance bar.
 const AKHLAT = [
@@ -58,7 +58,7 @@ function PatientPicker({ onPick }: { onPick: (id: string) => void }) {
         <p className="text-sm text-muted-foreground">Choose a patient to open their Stage 3 assessment.</p>
       </div>
       <Card className="p-5 border-border/50 bg-card/60">
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Select Patient</Label>
+        <Label className="text-[13px] uppercase tracking-wide text-muted-foreground">Select Patient</Label>
         <Select value="" onValueChange={onPick}>
           <SelectTrigger className="mt-1.5 bg-background/60"><SelectValue placeholder="Choose a patient…" /></SelectTrigger>
           <SelectContent>
@@ -180,15 +180,15 @@ function MizajStage({ patientId }: { patientId: string }) {
                   {history.map((a) => (
                     <div key={a.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
                       <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-xs font-semibold text-primary">{a.result.split(" — ")[0]}</p>
-                        <span className="text-[10px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
+                        <p className="text-[13px] font-semibold text-primary">{a.result.split(" — ")[0]}</p>
+                        <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
                       </div>
                       <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mb-2">
                         {AKHLAT.map((k) => (
                           <div key={k.key} style={{ width: `${a[k.key]}%`, background: k.color }} />
                         ))}
                       </div>
-                      {a.pulse && <p className="text-[11px] text-muted-foreground">Pulse: {a.pulse}</p>}
+                      {a.pulse && <p className="text-xs text-muted-foreground">Pulse: {a.pulse}</p>}
                     </div>
                   ))}
                 </div>
@@ -201,17 +201,6 @@ function MizajStage({ patientId }: { patientId: string }) {
       {/* Same action bar as Stage 2 (Clinical Record), so every stage ends the same way; its messages sit right above it. */}
       <NoticeSlot state={msg} className="mb-3" />
       <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-            <Stethoscope className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Mizaj &amp; Morphometry — Doctor Assessment</p>
-            <p className="text-xs text-muted-foreground">
-              Regions, complaints &amp; chronology recorded · Next phase: Asbab-e-Sittah Review
-            </p>
-          </div>
-        </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
           <Button size="sm" variant="outline" onClick={saveDraft} disabled={saving !== null}>
             {saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft

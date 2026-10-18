@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { DURATION_UNITS, longestDuration, onsetDateFor, durationFromDate, toDateInput } from "@/lib/chronology";
 import type { ComplaintDuration } from "@/components/facility/views/chief-complaint-matrix";
 import { Card } from "@/components/ui/card";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -134,17 +135,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
 
     return (
       <Card className="p-5 border-border/50 bg-card/60">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
-              <Hourglass className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <h2 className="font-serif text-lg font-semibold">Onset &amp; Chronology</h2>
-              <p className="text-sm text-muted-foreground">How the complaints began and how long they have lasted.</p>
-            </div>
-          </div>
-        </div>
+        <SectionHeading icon={Hourglass} title="Onset & Chronology" />
 
         <div className="grid md:grid-cols-2 gap-6">
           <div>
@@ -168,7 +159,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                     >
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold">{p.label}</span>
-                        {p.description && <span className="block text-xs text-muted-foreground mt-0.5">{p.description}</span>}
+                        {p.description && <span className="block text-[13px] text-muted-foreground mt-0.5">{p.description}</span>}
                       </span>
                       {checked ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /> : <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />}
                     </button>
@@ -182,7 +173,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <p className="text-sm font-medium">Chronology &amp; Duration</p>
               {shown.value && (
-                <Badge variant="outline" className={cn("text-[10px] font-normal", source === "auto" ? "border-primary/40 text-primary" : "text-muted-foreground")}>
+                <Badge variant="outline" className={cn("text-[11px] font-normal", source === "auto" ? "border-primary/40 text-primary" : "text-muted-foreground")}>
                   {source === "auto" ? "Auto" : "Edited"}
                 </Badge>
               )}
@@ -212,7 +203,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
               </label>
             </div>
 
-            <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+            <div className="mt-2 space-y-1.5 text-[13px] text-muted-foreground">
               {source === "auto" && longest ? (
                 <p>Auto-filled from the longest chief-complaint duration — <span className="font-medium text-foreground/80">{longest.label}</span>.</p>
               ) : source === "manual" && longest ? (

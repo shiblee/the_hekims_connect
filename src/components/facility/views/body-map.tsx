@@ -67,16 +67,16 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
       <Tabs value={view} onValueChange={(v) => onViewChange(v as BodyView)}>
         <TabsList className="w-full">
           {(["front", "back"] as const).map((v) => (
-            <TabsTrigger key={v} value={v} className="flex-1 min-w-0 px-1.5 text-xs gap-1">
+            <TabsTrigger key={v} value={v} className="flex-1 min-w-0 px-1.5 text-[13px] gap-1">
               {v === "front" ? "Anterior" : "Posterior"}
               {selectedIn(v) > 0 && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/20 px-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">{selectedIn(v)}</span>
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/20 px-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{selectedIn(v)}</span>
               )}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
-      <p className="text-[11px] text-muted-foreground text-center -mt-1">{view === "front" ? "Muqaddam" : "Mu'akhkhar"}</p>
+      <p className="text-xs text-muted-foreground text-center -mt-1">{view === "front" ? "Muqaddam" : "Mu'akhkhar"}</p>
 
       <div className="relative mx-auto w-full max-w-[170px]" style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}>
         <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="absolute inset-0 h-full w-full" aria-hidden>
@@ -146,8 +146,8 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
                 </TooltipTrigger>
                 <TooltipContent side="right">
                   <p className="font-medium">{i.label}</p>
-                  {i.localTerms && <p className="text-[11px] opacity-80">{i.localTerms}</p>}
-                  <p className="text-[11px] opacity-80">{i.primary ? "Primary region" : i.selected ? "Selected — click to remove" : "Click to select"}</p>
+                  {i.localTerms && <p className="text-xs opacity-80">{i.localTerms}</p>}
+                  <p className="text-xs opacity-80">{i.primary ? "Primary region" : i.selected ? "Selected — click to remove" : "Click to select"}</p>
                 </TooltipContent>
               </Tooltip>
             );
@@ -155,7 +155,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Primary</span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border border-emerald-500/60 bg-card" /> Selected</span>
         <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-muted-foreground/50" /> Available</span>
