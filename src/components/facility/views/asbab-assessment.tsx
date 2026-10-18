@@ -10,8 +10,8 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FloatingField, FloatingTextarea } from "@/components/shared/floating-field";
+import { SectionHeading } from "@/components/shared/section-heading";
 import { LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Loader2, Square, SquareCheck, Activity, Wind } from "lucide-react";
 
@@ -119,24 +119,24 @@ export function QuestionCard({ q, index, count, pillarLabel, value, onChange }: 
   const answered = isAnswered(value);
 
   return (
-    <Card className={cn("p-5 border-border/50 bg-card/60 gap-3", q.required && !answered && "border-l-2 border-l-amber-500/60")}>
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-          {pillarLabel} · Question {index + 1} of {count}
-        </p>
-        <div className="flex items-center gap-1.5">
-          {q.required && <Badge variant="outline" className="text-[10px] font-normal">Required</Badge>}
-          {q.weight > 0 && <span className="text-[11px] text-muted-foreground">Weight {q.weight}×</span>}
+    <Card className={cn("p-4 border-border/50 bg-card/60 gap-3", answered ? "border-l-2 border-l-emerald-500/60" : q.required && "border-l-2 border-l-amber-500/60")}>
+      <div className="flex items-start gap-3">
+        <span className={cn(
+          "h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold",
+          answered ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground",
+        )} aria-label={`Question ${index + 1} of ${count}${answered ? ", answered" : ""}`}>{answered ? <Check className="h-3.5 w-3.5" /> : index + 1}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold leading-snug">
+            {q.label}{q.required && <span className="text-destructive"> *</span>}
+            {q.labelLocal && <span className="ml-1.5 text-[13px] font-normal text-muted-foreground">· {q.labelLocal}</span>}
+          </p>
+          {q.helpText && <p className="text-[13px] text-muted-foreground mt-0.5">{q.helpText}</p>}
         </div>
-      </div>
-      <div>
-        <p className="text-base font-semibold leading-snug">{q.label}{q.required && <span className="text-destructive"> *</span>}</p>
-        {q.labelLocal && <p className="text-xs text-muted-foreground mt-0.5">{q.labelLocal}</p>}
-        {q.helpText && <p className="text-xs text-muted-foreground mt-0.5">{q.helpText}</p>}
+        {q.required && !answered && <Badge variant="outline" className="shrink-0 text-[11px] font-normal border-amber-500/40 text-amber-700 dark:text-amber-400">Required</Badge>}
       </div>
 
       {choice ? (
-        <div className="grid gap-2">
+        <div className="grid sm:grid-cols-2 gap-2">
           {q.options.map((o, i) => {
             const on = selected.includes(o.label);
             return (
@@ -146,17 +146,17 @@ export function QuestionCard({ q, index, count, pillarLabel, value, onChange }: 
                 onClick={() => toggle(o.label)}
                 aria-pressed={on}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors",
+                  "flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors",
                   on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30",
                 )}
               >
                 <span className={cn(
-                  "h-7 w-7 shrink-0 rounded-md flex items-center justify-center text-xs font-semibold",
+                  "h-6 w-6 shrink-0 rounded-md flex items-center justify-center text-xs font-semibold",
                   on ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground",
                 )}>{LETTERS[i]}</span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium">{o.label}</span>
-                  {o.description && <span className="block text-xs text-muted-foreground mt-0.5">{o.description}</span>}
+                  {o.description && <span className="block text-[13px] text-muted-foreground leading-snug">{o.description}</span>}
                 </span>
                 {q.type === "single_select"
                   ? (on ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /> : <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />)
@@ -166,9 +166,11 @@ export function QuestionCard({ q, index, count, pillarLabel, value, onChange }: 
           })}
         </div>
       ) : q.type === "numeric" ? (
-        <Input type="number" min={0} step="any" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="h-11 w-48 bg-background/60" placeholder="Enter a number" />
+        <div className="max-w-xs">
+          <FloatingField id={`asbab-${q.id}`} label="Answer (number)" type="number" min={0} step="any" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
+        </div>
       ) : (
-        <Textarea maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="min-h-[80px] bg-background/60" placeholder="Type the answer" />
+        <FloatingTextarea id={`asbab-${q.id}`} label="Answer" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} rows={2} />
       )}
     </Card>
   );
@@ -195,23 +197,24 @@ export function AsbabAssessmentPanel({ state }: { state: AsbabState }) {
 
   return (
     <div className="space-y-5">
-      <Card className="p-5 border-border/50 bg-card/60">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><Wind className="h-4.5 w-4.5" /></div>
-            <div className="min-w-0">
-              <h2 className="font-serif text-lg font-semibold">Asbab-e-Sittah Zarooriya</h2>
-              <p className="text-sm text-muted-foreground">The six essential factors of life — answer each pillar; humoral weighting updates live.</p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <Badge variant="outline" className="mt-1">{progress.answered} of {progress.total} answered</Badge>
-            {status === "completed" && <Badge variant="outline" className="text-[10px] text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Completed</Badge>}
-          </div>
+      <Card className="p-5 border-border/50 bg-card/60 gap-0">
+        <SectionHeading
+          icon={Wind}
+          title="Asbab-e-Sittah Zarooriya"
+          right={
+            <span className="flex items-center gap-1.5 shrink-0">
+              {status === "completed" && <Badge variant="outline" className="text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Completed</Badge>}
+              <Badge variant="outline">{progress.answered} of {progress.total} answered</Badge>
+            </span>
+          }
+        />
+        {/* Overall progress */}
+        <div className="mb-4 h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
+          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${progress.total ? (progress.answered / progress.total) * 100 : 0}%` }} />
         </div>
 
         {/* Pillar tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {pillars.map((p, i) => {
             const pr = progress.per[p.key];
             const done = pr && pr.total > 0 && pr.answered === pr.total;
@@ -232,9 +235,12 @@ export function AsbabAssessmentPanel({ state }: { state: AsbabState }) {
                     ? <span className="h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center"><Check className="h-3 w-3" /></span>
                     : pr?.missingRequired ? <span className="h-2 w-2 rounded-full bg-amber-500" aria-label="Required questions remaining" /> : null}
                 </span>
-                <span className={cn("block text-xs font-semibold mt-1.5 leading-tight", on && "text-primary")}>{i + 1}. {p.label}</span>
-                <span className="block text-[11px] text-muted-foreground leading-tight mt-0.5">{p.english}</span>
-                <span className="block text-[10px] text-muted-foreground mt-1 tabular-nums">{pr?.answered ?? 0}/{pr?.total ?? 0} answered</span>
+                <span className={cn("block text-sm font-semibold mt-1.5 leading-tight", on && "text-primary")}>{i + 1}. {p.label}</span>
+                <span className="block text-[13px] text-muted-foreground leading-tight mt-0.5">{p.english}</span>
+                <span className="mt-1.5 flex items-center gap-1.5">
+                  <span className="h-1 flex-1 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full", done ? "bg-emerald-500" : "bg-primary/60")} style={{ width: `${pr?.total ? (pr.answered / pr.total) * 100 : 0}%` }} /></span>
+                  <span className="text-[11px] text-muted-foreground tabular-nums">{pr?.answered ?? 0}/{pr?.total ?? 0}</span>
+                </span>
               </button>
             );
           })}
@@ -245,7 +251,7 @@ export function AsbabAssessmentPanel({ state }: { state: AsbabState }) {
       <div className="flex items-start gap-3 px-1">
         <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><PillarIcon pillarKey={active.key} className="h-4.5 w-4.5" /></div>
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Pillar {idx + 1} of {pillars.length}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Pillar {idx + 1} of {pillars.length}</p>
           <h3 className="font-serif text-lg font-semibold leading-tight">{active.label} <span className="text-sm font-sans font-normal text-muted-foreground">· {active.english}</span></h3>
           {active.description && <p className="text-sm text-muted-foreground mt-0.5">{active.description}</p>}
         </div>
@@ -284,8 +290,8 @@ export function AsbabDriftCard({ state }: { state: AsbabState }) {
   return (
     <Card className="p-4 border-border/50 bg-card/60 gap-2.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-          <Activity className="h-3.5 w-3.5 text-primary" /> Humoral Drift
+        <p className="font-serif text-base font-semibold flex items-center gap-2">
+          <span className="h-7 w-7 rounded-lg flex items-center justify-center bg-primary/10 text-primary"><Activity className="h-4 w-4" /></span> Humoral Drift
         </p>
         <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Live</Badge>
       </div>
@@ -298,7 +304,7 @@ export function AsbabDriftCard({ state }: { state: AsbabState }) {
           )}
           <div className="space-y-2">
             {AKHLAT.map((h) => (
-              <div key={h.key} className="grid grid-cols-[70px_1fr_36px] items-center gap-2 text-xs">
+              <div key={h.key} className="grid grid-cols-[70px_1fr_40px] items-center gap-2 text-[13px]">
                 <span className={cn(drift.dominant === h.key ? cn("font-semibold", h.text) : "text-muted-foreground")}>{h.label}</span>
                 <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full transition-all", h.bar)} style={{ width: `${drift.percent[h.key]}%` }} /></span>
                 <span className="text-right tabular-nums">{drift.percent[h.key]}%</span>
@@ -311,14 +317,14 @@ export function AsbabDriftCard({ state }: { state: AsbabState }) {
               const h = d ? AKHLAT.find((x) => x.key === d)! : null;
               const pct = d ? toPercent(drift.perPillar[p.key])[d] : 0;
               return (
-                <div key={p.key} className="flex items-center justify-between gap-2 text-xs">
+                <div key={p.key} className="flex items-center justify-between gap-2 text-[13px]">
                   <span className="text-muted-foreground truncate">{p.label}</span>
                   {h ? <span className={cn("font-medium shrink-0", h.text)}>{h.label} {pct}%</span> : <span className="text-muted-foreground/60 shrink-0">—</span>}
                 </div>
               );
             })}
           </div>
-          <p className="text-[11px] text-muted-foreground">Weighted from each answer&apos;s humoral points (set in Admin). A guide for the Hakim, not a diagnosis.</p>
+          <p className="text-xs text-muted-foreground">Weighted from each answer&apos;s humoral points (set in Admin). A guide for the Hakim, not a diagnosis.</p>
         </>
       )}
     </Card>

@@ -49,13 +49,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       residentClinicalNote: { select: { points: true, updatedAt: true } },
       anatomicalRegionSelection: { select: { regions: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
       chronology: { select: { onsetPatterns: true, durationValue: true, durationUnit: true, onsetDate: true, note: true, durationSource: true, sourceComplaint: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
-      asbabAssessments: { where: { framework: "asbab" }, select: { status: true, completedAt: true } },
+      asbabAssessments: { where: { framework: "asbab" }, select: { status: true, completedAt: true, updatedAt: true, humoral: true, recordedBy: { select: { name: true } }, responses: { select: { pillarKey: true, questionLabel: true, value: true } } } },
       tashkheesDossier: { select: { status: true, mizajAsli: true, suMizajType: true, suMizajQuality: true, suMizajGrade: true, diagnosisNote: true, finalizedAt: true, finalizedByName: true } },
     },
   });
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
-  const [patient, facility, priorVisits, reports, criteriaCount, branding, ranges, severityLabels, mizajAssessment] = await Promise.all([
+  const [patient, facility, priorVisits, reports, criteriaCount, branding, ranges, severityLabels, mizajAssessment, asbabPillars] = await Promise.all([
     db.patient.findUnique({
       where: { id: visit.patientId },
       select: {
@@ -91,6 +91,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       orderBy: { createdAt: "desc" },
       select: { result: true, pulse: true, notes: true, dam: true, saffra: true, balgham: true, sauda: true, createdAt: true },
     }),
+    db.asbabPillar.findMany({ where: { framework: "asbab" }, orderBy: { sortOrder: "asc" }, select: { key: true, label: true, english: true } }),
   ]);
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
@@ -156,7 +157,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       regionsRecordedBy: visit.anatomicalRegionSelection?.recordedBy ?? null,
       regionsUpdatedAt: visit.anatomicalRegionSelection?.updatedAt ?? null,
       chronology: visit.chronology && { ...visit.chronology, onsetPatterns: parse<string[]>(visit.chronology.onsetPatterns, []) },
-      asbab: visit.asbabAssessments[0] ?? null,
+      asbab: visit.asbabAssessments[0] ? (() => {
+        const a = visit.asbabAssessments[0];
+        // Answers grouped by pillar, in the admin's pillar order (labels are the snapshots saved with each answer).
+        const pillars = asbabPillars.map((p) => ({
+          ...p,
+          answers: a.responses.filter((r) => r.pillarKey === p.key).map((r) => {
+            const v = parse<string | string[]>(r.value, "");
+            return { question: r.questionLabel, answer: Array.isArray(v) ? v.join(", ") : String(v) };
+          }).filter((x) => x.answer.trim()),
+        }));
+        return { status: a.status, completedAt: a.completedAt, updatedAt: a.updatedAt, recordedBy: a.recordedBy, humoral: parse<Record<string, unknown> | null>(a.humoral, null), pillars };
+      })() : null,
       dossier: visit.tashkheesDossier,
       mizajAssessment,
     },

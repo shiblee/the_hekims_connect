@@ -14,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Printer } from "lucide-react";
 
 type R = any;
+const HUMOURS = [
+  { key: "dam", label: "Dam", color: "#dc2626" },
+  { key: "safra", label: "Safra", color: "#d97706" },
+  { key: "balgham", label: "Balgham", color: "#0284c7" },
+  { key: "sauda", label: "Sauda", color: "#7c3aed" },
+];
+const PILLAR_EMOJI: Record<string, string> = { hawa: "🌬️", makool: "🍽️", harkat_badani: "🏃", harkat_nafsani: "🧠", naum: "😴", ihtibas: "💧" };
 
 const ONSET: Record<string, string> = { "<24h": "Under 24 hours", "1-7d": "1–7 days", ">1m": "Over 1 month" };
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—");
@@ -68,6 +75,10 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   const course = chron?.durationValue != null ? courseFor(String(chron.durationValue), chron.durationUnit || "days") : null;
   const mz = data.later?.mizajAssessment;
   const regionItems = data.later?.regionDetails || [];
+  const asbab = data.later?.asbab;
+  const asbabAnswered = asbab?.pillars?.some((pl: R) => pl.answers.length > 0);
+  const drift: Record<string, number> | null = asbab?.humoral?.percent || null;
+  const driftLead = asbab?.humoral?.dominant ? HUMOURS.find((h) => h.key === asbab.humoral.dominant)?.label : null;
   const seniorDoctor = [data.later?.regionsRecordedBy, chron?.recordedBy, data.visit.doctor].find((d: R) => d?.name)?.name || null;
   const stage3UpdatedAt = [data.later?.regionsUpdatedAt, chron?.updatedAt].filter(Boolean).sort().pop() || null;
   const missing = [
@@ -78,7 +89,8 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   ].filter(Boolean) as string[];
   const complete = missing.length === 0;
   const stage3 = data.later?.regions?.length > 0 || !!chron;
-  const statusLabel = data.referral ? "Referred" : complete ? (stage3 ? "Stage 3 assessment recorded" : "Stage 2 assessment complete") : "DRAFT — INCOMPLETE ASSESSMENT";
+  const stage4 = data.later?.asbab?.status === "completed";
+  const statusLabel = data.referral ? "Referred" : complete ? (stage4 ? "Stage 4 assessment recorded" : stage3 ? "Stage 3 assessment recorded" : "Stage 2 assessment complete") : "DRAFT — INCOMPLETE ASSESSMENT";
 
   const p = data.patient;
   const v = data.vitals || {};
@@ -338,7 +350,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ================= PART B — senior doctor ================= */}
-              <PartDivider letter="B" emoji="👨‍⚕️" title="Senior doctor's assessment" sub="Stage 3 · Mizaj & Morphometry — recorded by the senior (main) doctor" tone="senior" />
+              <PartDivider letter="B" emoji="👨‍⚕️" title="Senior doctor's assessment" sub="Stages 3–4 · Mizaj & Morphometry and Asbab-e-Sittah — recorded by the senior (main) doctor" tone="senior" />
 
               <Section emoji="🧍" tone="senior" title="Body regions, onset & course" n={7}
                 meta={stage3UpdatedAt ? `Updated ${fmtDateTime(stage3UpdatedAt)}` : undefined}>
@@ -408,18 +420,62 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                 )}
               </Section>
 
+              {/* ---------------- Stage 4: Asbab-e-Sittah ---------------- */}
+              <Section emoji="🌬️" tone="senior" title="Asbab-e-Sittah Zarooriya — lifestyle factors" n={8}
+                meta={asbab ? (asbab.status === "completed" ? `Completed ${fmtDateTime(asbab.completedAt)}` : `Draft · updated ${fmtDateTime(asbab.updatedAt)}`) : undefined}>
+                <p className="rpt-keep mb-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-[#c4b5fd] bg-white px-3 py-1 text-[9.5pt] text-[#5b21b6]">
+                  🩺 <b>Recorded by the senior doctor</b>
+                  {(asbab?.recordedBy?.name || seniorDoctor) && <span>· {asbab?.recordedBy?.name || seniorDoctor}</span>}
+                </p>
+                {!asbab || !asbabAnswered ? <Empty>Asbab-e-Sittah review not yet recorded for this visit.</Empty> : (
+                  <>
+                    {drift && (
+                      <div className="rpt-keep mb-3 rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1.5">⚖️ Humoral drift from lifestyle{driftLead && <span className="ml-1 normal-case tracking-normal text-[#111827]">— leaning towards <b>{driftLead}</b></span>}</p>
+                        <div className="grid grid-cols-4 gap-3">
+                          {HUMOURS.map((h) => (
+                            <div key={h.key}>
+                              <div className="flex items-baseline justify-between text-[9.5pt]"><span className="font-semibold" style={{ color: h.color }}>{h.label}</span><span className="tabular-nums">{drift[h.key] ?? 0}%</span></div>
+                              <div className="mt-0.5 h-1.5 rounded-full bg-[#f3f4f6] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${drift[h.key] ?? 0}%`, background: h.color }} /></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      {asbab.pillars.map((pl: R, i: number) => (
+                        <div key={pl.key} className="rpt-keep rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
+                          <p className="text-[10.5pt] font-semibold text-[#4c1d95]">{PILLAR_EMOJI[pl.key] || "•"} {i + 1}. {pl.label} <span className="text-[9pt] font-normal text-[#6b7280]">· {pl.english}</span></p>
+                          {pl.answers.length ? (
+                            <dl className="mt-1 space-y-1">
+                              {pl.answers.map((a: R, j: number) => (
+                                <div key={j} className="text-[9.5pt] leading-snug">
+                                  <dt className="text-[#6b7280]">{a.question}</dt>
+                                  <dd className="font-medium text-[#111827]">{a.answer}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : <p className="mt-1 text-[9.5pt] italic text-[#6b7280]">Not answered.</p>}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[9pt] text-[#6b7280]">Humoral drift is weighted from each answer&apos;s humoral points set in Admin — a guide for the Hakim, not a diagnosis.</p>
+                  </>
+                )}
+              </Section>
+
               {/* ================= PART C ================= */}
               <PartDivider letter="C" emoji="📚" title="History, notes & decision support" sub="Allergies, medicines, background, clinical notes and Hakeem Insight" />
 
               {/* ---------------- Allergies & medicines ---------------- */}
               <div className="grid grid-cols-2 gap-4">
-                <Section emoji="⚠️" title="Allergies & sensitivities" n={8}>
+                <Section emoji="⚠️" title="Allergies & sensitivities" n={9}>
                   {allergies.length ? (
                     <ul className="text-[10.5pt] space-y-0.5">{allergies.map((a) => <li key={a}>• <b>{a}</b> <span className="text-[9pt] text-[#6b7280]">— patient-reported; reaction & severity not recorded</span></li>)}</ul>
                   ) : data.intake ? <Empty>No allergies were reported at registration. This is not a confirmed absence of allergies.</Empty>
                     : <Empty>Allergy information not recorded.</Empty>}
                 </Section>
-                <Section emoji="💊" title="Current medicines & herbs" n={9}>
+                <Section emoji="💊" title="Current medicines & herbs" n={10}>
                   {data.intake?.medications?.length || p.currentMedications ? (
                     <>
                       {data.intake?.medications?.length > 0 && (
@@ -433,7 +489,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </div>
 
               {/* ---------------- Background ---------------- */}
-              <Section emoji="📋" title="Medical background" n={10}>
+              <Section emoji="📋" title="Medical background" n={11}>
                 {[p.chronicConditions, p.medicalHistory, p.surgicalHistory, p.familyHistory, p.lifestyle, p.occupation].some(Boolean) ? (
                   <Facts rows={[
                     ["Chronic conditions", p.chronicConditions], ["Medical history", p.medicalHistory], ["Surgical history", p.surgicalHistory],
@@ -443,7 +499,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Doctor notes ---------------- */}
-              <Section emoji="🗒️" title="Doctor's observations & clinical notes" n={11} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
+              <Section emoji="🗒️" title="Doctor's observations & clinical notes" n={12} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
                 {data.residentNotes?.points?.length ? (
                   <ul className="text-[10.5pt] space-y-0.5 list-disc pl-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
                 ) : <Empty>No clinical notes recorded.</Empty>}
@@ -451,7 +507,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Unani context ---------------- */}
-              <Section emoji="🌿" title="Unani assessment context" n={12}>
+              <Section emoji="🌿" title="Unani assessment context" n={13}>
                 <Facts rows={[
                   ["Recorded Mizaj (profile)", p.mizaj],
                   ["Humoral balance (computed)", data.humoral ? `Damawi ${Math.round(data.humoral.damPercent)}% · Safrawi ${Math.round(data.humoral.safraPercent)}% · Balghami ${Math.round(data.humoral.balghamPercent)}% · Saudawi ${Math.round(data.humoral.saudaPercent)}%` : null],
@@ -463,7 +519,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Hakeem Insight ---------------- */}
-              <Section emoji="✨" title="Hakeem Insight — automated decision support" n={13}>
+              <Section emoji="✨" title="Hakeem Insight — automated decision support" n={14}>
                 <p className="mb-2 rounded bg-[#f3f4f6] px-2 py-1 text-[9pt] text-[#4b5563]">Generated automatically from this visit&apos;s recorded data. Not verified by a doctor; not a diagnosis or prescription.</p>
                 {!l1 && !data.routing && !data.humoral?.aiClue && !data.vitalsInsight ? <Empty>No Hakeem Insight was generated for this visit.</Empty> : (
                   <div className="space-y-2">
@@ -496,7 +552,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Reports ---------------- */}
-              <Section emoji="📁" title="Patient reports on file" n={14}>
+              <Section emoji="📁" title="Patient reports on file" n={15}>
                 {data.reports?.length ? (
                   <table className="w-full text-[10pt] border-collapse">
                     <thead><tr className="text-left text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
