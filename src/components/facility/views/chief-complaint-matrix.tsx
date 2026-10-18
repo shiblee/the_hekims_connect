@@ -13,21 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BriefcaseMedical, CalendarDays, Flag, Loader2, Plus, X } from "lucide-react";
 
-interface ScreeningOptionCfg { id: string; label: string }
 interface ChiefComplaintCfg { id: string; label: string }
-interface ScreeningQuestionCfg { id: string; label: string; type: string; active: boolean; options: ScreeningOptionCfg[] }
-interface ScreeningModuleCfg { id: string; active: boolean; triggerComplaintIds: string[]; questions: ScreeningQuestionCfg[] }
-interface L1Answer { questionId: string | null; questionLabel: string; value: string }
 interface FactorTagCfg { id: string; kind: string; label: string; active: boolean }
 interface SeverityLabelCfg { level: number; label: string }
 interface SavedComplaintRow {
   chiefComplaintId: string | null; chiefComplaintLabel: string;
   onsetValue: number | null; onsetUnit: string | null;
   severityScore: number | null; aggravatingFactors: string; relievingFactors: string;
-  screeningAnswers: string;
 }
-
-type AnswerValue = string | string[] | number;
 
 interface Draft {
   chiefComplaintId: string | null;
@@ -37,38 +30,12 @@ interface Draft {
   severityScore: number;
   aggravatingFactors: string[];
   relievingFactors: string[];
-  screeningAnswers: Record<string, AnswerValue>;
 }
 
 const ONSET_UNITS = ["hours", "days", "weeks", "months", "years"];
 
-function emptyDraft(id: string | null, label: string, screeningAnswers: Record<string, AnswerValue> = {}): Draft {
-  return { chiefComplaintId: id, chiefComplaintLabel: label, onsetValue: "", onsetUnit: "days", severityScore: 1, aggravatingFactors: [], relievingFactors: [], screeningAnswers };
-}
-
-function parseAnswerValue(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.join(", ") : String(parsed);
-  } catch {
-    return raw;
-  }
-}
-
-// Shared by the live active-complaint memo and the initial-load pre-seed —
-// the admin-configured questions whose module triggers on this complaint.
-function relevantQuestionsFor(modules: ScreeningModuleCfg[], complaintId: string | null): ScreeningQuestionCfg[] {
-  if (!complaintId) return [];
-  const qs: ScreeningQuestionCfg[] = [];
-  for (const m of modules) {
-    // Respect the admin's on/off switches for both modules and questions.
-    if (!m.active || !m.triggerComplaintIds.includes(complaintId)) continue;
-    for (const q of m.questions) {
-      if (!q.active || q.type === "instruction") continue;
-      qs.push(q);
-    }
-  }
-  return qs;
+function emptyDraft(id: string | null, label: string): Draft {
+  return { chiefComplaintId: id, chiefComplaintLabel: label, onsetValue: "", onsetUnit: "days", severityScore: 1, aggravatingFactors: [], relievingFactors: [] };
 }
 
 export interface ChiefComplaintMatrixHandle {
@@ -87,8 +54,6 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
   function ChiefComplaintMatrix({ visitId, intakeComplaints, onDurationsChange }, ref) {
   const [loading, setLoading] = useState(true);
   const [complaintOptions, setComplaintOptions] = useState<ChiefComplaintCfg[]>([]);
-  const [modules, setModules] = useState<ScreeningModuleCfg[]>([]);
-  const [l1Answers, setL1Answers] = useState<L1Answer[]>([]);
   const [factorTags, setFactorTags] = useState<FactorTagCfg[]>([]);
   const [severityLabels, setSeverityLabels] = useState<SeverityLabelCfg[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -107,20 +72,16 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
 
   useEffect(() => {
     Promise.all([
-      api.get<{ complaints: ChiefComplaintCfg[]; modules: ScreeningModuleCfg[] }>("/api/facility/screening/config"),
-      api.get<{ screening: { answers: L1Answer[] } | null }>(`/api/facility/visits/${visitId}/screening`),
+      api.get<{ complaints: ChiefComplaintCfg[] }>("/api/facility/screening/config"),
       api.get<{ factorTags: FactorTagCfg[]; severityLabels: SeverityLabelCfg[] }>("/api/facility/humor/config"),
       api.get<{ complaints: SavedComplaintRow[] }>(`/api/facility/visits/${visitId}/complaint-assessments`),
     ])
-      .then(([screeningCfg, l1, humorCfg, saved]) => {
+      .then(([screeningCfg, humorCfg, saved]) => {
         setComplaintOptions(screeningCfg.complaints || []);
-        setModules(screeningCfg.modules || []);
-        setL1Answers(l1.screening?.answers || []);
         setFactorTags(humorCfg.factorTags || []);
         setSeverityLabels(humorCfg.severityLabels || []);
 
         const byLabel = new Map(saved.complaints.map((c) => [c.chiefComplaintLabel, c]));
-        const l1Answers = l1.screening?.answers || [];
         // Once the doctor has saved at least once, their current complaint
         // set (additions/removals included) is authoritative — falling back
         // to reception's original intake list on every reload would silently
@@ -143,19 +104,9 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
               severityScore: row.severityScore ?? 1,
               aggravatingFactors: JSON.parse(row.aggravatingFactors || "[]"),
               relievingFactors: JSON.parse(row.relievingFactors || "[]"),
-              screeningAnswers: row.screeningAnswers ? JSON.parse(row.screeningAnswers) : {},
             };
           } else {
-            // No doctor capture yet for this complaint — give the questions a
-            // starting point from what the nurse already found at L1
-            // Screening, so the doctor confirms/edits rather than retypes.
-            const seeded: Record<string, AnswerValue> = {};
-            for (const q of relevantQuestionsFor(screeningCfg.modules || [], match?.id ?? null)) {
-              const a = l1Answers.find((ans) => ans.questionId === q.id);
-              if (!a) continue;
-              try { seeded[q.id] = JSON.parse(a.value); } catch { seeded[q.id] = a.value; }
-            }
-            next[label] = emptyDraft(match?.id ?? null, label, seeded);
+            next[label] = emptyDraft(match?.id ?? null, label);
           }
         }
         setLoadError(null);
@@ -215,20 +166,6 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
 
   const severityLabelFor = (level: number) => severityLabels.find((s) => s.level === level)?.label || "";
   const severityAnchor = (level: number) => severityLabels.find((s) => s.level === level)?.label;
-
-  const relevantQuestions = useMemo(
-    () => relevantQuestionsFor(modules, active?.chiefComplaintId ?? null),
-    [modules, active?.chiefComplaintId]
-  );
-
-  const l1AnswerFor = (questionId: string) => {
-    const a = l1Answers.find((a) => a.questionId === questionId);
-    return a ? parseAnswerValue(a.value) : null;
-  };
-
-  const updateAnswer = (questionId: string, value: AnswerValue) => {
-    updateActive({ screeningAnswers: { ...(active?.screeningAnswers || {}), [questionId]: value } });
-  };
 
   const save = async () => {
     // Guard against the unified Save Draft/Proceed button firing before this
@@ -479,87 +416,6 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
               );
             })}
           </div>
-
-          {relevantQuestions.length > 0 && (
-            <div>
-              <p className="text-sm font-semibold mb-1">Questions about {activeLabel}</p>
-              <div className="divide-y divide-border/40">
-                {relevantQuestions.map((q, i) => {
-                  const l1Hint = l1AnswerFor(q.id);
-                  const value = active.screeningAnswers[q.id];
-                  return (
-                    <div key={q.id} className="flex items-center justify-between gap-4 py-2.5 flex-wrap">
-                      <div className="flex items-start gap-2 min-w-0">
-                        <span className="text-xs font-semibold text-muted-foreground shrink-0 mt-0.5">{i + 1}.</span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">{q.label}</p>
-                          {l1Hint && <p className="text-[11px] text-muted-foreground mt-0.5">L1 Screening: {l1Hint}</p>}
-                        </div>
-                      </div>
-
-                      {q.type === "single_select" && (
-                        <div className="flex flex-wrap gap-2 justify-end shrink-0">
-                          {q.options.map((o) => {
-                            const selected = value === o.label;
-                            return (
-                              <button
-                                key={o.id} type="button" onClick={() => updateAnswer(q.id, o.label)}
-                                className={cn(
-                                  "px-3 py-1.5 rounded-full text-xs border transition-colors",
-                                  selected ? "bg-primary text-primary-foreground border-primary" : "bg-background/60 border-border/50 hover:border-primary/40"
-                                )}
-                              >
-                                {o.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {q.type === "multi_select" && (
-                        <div className="flex flex-wrap gap-2 justify-end shrink-0">
-                          {q.options.map((o) => {
-                            const arr = Array.isArray(value) ? value : [];
-                            const selected = arr.includes(o.label);
-                            return (
-                              <button
-                                key={o.id} type="button"
-                                onClick={() => updateAnswer(q.id, selected ? arr.filter((v) => v !== o.label) : [...arr, o.label])}
-                                className={cn(
-                                  "px-3 py-1.5 rounded-full text-xs border transition-colors",
-                                  selected ? "bg-primary text-primary-foreground border-primary" : "bg-background/60 border-border/50 hover:border-primary/40"
-                                )}
-                              >
-                                {o.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {q.type === "numeric" && (
-                        <Input
-                          type="number" value={value != null && !Array.isArray(value) ? String(value) : ""}
-                          onChange={(e) => updateAnswer(q.id, e.target.value === "" ? "" : parseFloat(e.target.value))}
-                          placeholder="Enter value"
-                          className="bg-background/60 w-32 h-9 shrink-0"
-                        />
-                      )}
-
-                      {q.type === "text" && (
-                        <Input
-                          value={typeof value === "string" ? value : ""}
-                          onChange={(e) => updateAnswer(q.id, e.target.value)}
-                          placeholder="Type answer"
-                          className="bg-background/60 w-56 h-9 shrink-0"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </>
         )}
       </div>

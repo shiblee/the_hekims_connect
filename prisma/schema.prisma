@@ -903,10 +903,8 @@ model TranslationValue {
   @@index([languageCode, status])
 }
 
-// L1 Screening — configurable chief-complaint triage questionnaire. Two layers:
-// config (ChiefComplaint/ScreeningModule/ScreeningQuestion/ScreeningOption, all
-// admin-authored) and instance (L1Screening/L1ScreeningAnswer, one per Visit,
-// same convention as VitalSigns). See the L1 Screening plan for the full design.
+// L1 Screening — the chief complaints selected at triage (ChiefComplaint is the
+// admin-managed list; L1Screening is one per Visit, same convention as VitalSigns).
 
 model ChiefComplaint {
   id         String   @id @default(cuid())
@@ -919,7 +917,6 @@ model ChiefComplaint {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  modules ScreeningModuleComplaint[]
   manifestations ComplaintManifestation[]
   supplementLinks SupplementComplaintLink[]
 }
@@ -964,82 +961,14 @@ model ChiefComplaintSuggestion {
   reviewedBy Admin?               @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
 }
 
-model ScreeningModule {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  label     String
-  sortOrder Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  // OR logic: this module is triggered if ANY linked chief complaint is selected.
-  triggers  ScreeningModuleComplaint[]
-  questions ScreeningQuestion[]
-}
 
-model ScreeningModuleComplaint {
-  id               String @id @default(cuid())
-  moduleId         String
-  chiefComplaintId String
 
-  module         ScreeningModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  chiefComplaint ChiefComplaint  @relation(fields: [chiefComplaintId], references: [id], onDelete: Cascade)
-
-  @@unique([moduleId, chiefComplaintId])
-}
-
-model ScreeningQuestion {
-  id         String  @id @default(cuid())
-  moduleId   String
-  label      String
-  labelLocal String?
-  // For type="instruction" — read verbatim to the caregiver/patient, no answer stored.
-  instructionText String?
-  type       String  // "single_select" | "multi_select" | "numeric" | "text" | "instruction"
-  sortOrder  Int     @default(0)
-  active     Boolean @default(true)
-
-  // Eligibility gating — null means "applies to everyone" on that axis.
-  applicableGender String? // "male" | "female"
-  minAgeDays       Int?
-  maxAgeDays       Int?
-
-  // Numeric-type flag rules — up to two independent threshold checks, enough to
-  // cover dual-direction cases (e.g. fever AND hypothermia) without a general
-  // expression engine.
-  numericOperator      String?
-  numericThreshold     Float?
-  numericFlagSeverity  String? // "red" | "yellow" | "green"
-  numericOperator2     String?
-  numericThreshold2    Float?
-  numericFlagSeverity2 String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  module  ScreeningModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  options ScreeningOption[]
-  answers L1ScreeningAnswer[]
-}
-
-model ScreeningOption {
-  id           String  @id @default(cuid())
-  questionId   String
-  label        String
-  labelLocal   String?
-  sortOrder    Int     @default(0)
-  // Selecting this option triggers this flag severity — null means no flag.
-  flagSeverity String? // "red" | "yellow" | "green"
-
-  question ScreeningQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-}
 
 model L1Screening {
   id              String   @id @default(cuid())
   visitId         String   @unique
   chiefComplaints String   // JSON array of ChiefComplaint keys selected
-  overallFlag     String?  // "red" | "yellow" | "green" — max severity across all answers
   aiSummary       String?
   recordedById    String?
   createdAt       DateTime @default(now())
@@ -1047,22 +976,8 @@ model L1Screening {
 
   visit      Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
   recordedBy Staff? @relation(fields: [recordedById], references: [id], onDelete: SetNull)
-  answers    L1ScreeningAnswer[]
 }
 
-model L1ScreeningAnswer {
-  id            String  @id @default(cuid())
-  screeningId   String
-  questionId    String?
-  // Snapshot of the question text at answer time, so history stays readable
-  // even if an admin later edits or deletes the question.
-  questionLabel String
-  value         String  // JSON-encoded string | string[] | number
-  flagTriggered String? // "red" | "yellow" | "green"
-
-  screening L1Screening       @relation(fields: [screeningId], references: [id], onDelete: Cascade)
-  question  ScreeningQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
-}
 
 // Front-desk quick-intake snapshot, captured during registration (Section 4
 // of the registration wizard) — distinct from L1Screening (the nurse's fuller
@@ -1123,7 +1038,7 @@ model RedFlagAnswer {
   screeningId    String
   criterionId    String?
   // Snapshot of the criterion text at answer time, same reasoning as
-  // L1ScreeningAnswer.questionLabel — stays readable even if later edited.
+  // the L1 complaint labels — stays readable even if later edited.
   criterionLabel String
   present        Boolean @default(false)
 
@@ -1236,11 +1151,6 @@ model ComplaintAssessment {
   aggravatingFactors       String   @default("[]")
   relievingFactors         String   @default("[]")
   clinicalNotes            String?
-  // JSON object { [ScreeningQuestion.id]: string | string[] | number } — the
-  // doctor's own answers to this complaint's admin-configured relevant
-  // questions, asked directly in the Chief Complaint Matrix (separate from,
-  // but pre-seedable from, the nurse's L1ScreeningAnswer rows).
-  screeningAnswers         String   @default("{}")
   sortOrder                Int      @default(0)
   recordedById             String?
   createdAt                DateTime @default(now())

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 // L1 Screening configuration now lives inside the Meta section (Chief
-// Complaints / Modules & Questions / Allergies / Medications & Herbs tabs),
+// Complaints / Allergies / Medications & Herbs tabs),
 // so this standalone page just redirects there for anyone with the old link.
 export default function ScreeningRedirectPage() {
   const router = useRouter();

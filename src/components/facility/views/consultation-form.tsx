@@ -19,7 +19,7 @@ import { FloatingField } from "@/components/shared/floating-field";
 import { IntakeStepper, type IntakeStep } from "@/components/facility/views/intake-stepper";
 import {
   ChevronLeft, Loader2, Save, IdCard, Stethoscope, ClipboardList,
-  ShieldAlert, Activity, HeartPulse, User, Contact, CreditCard, BriefcaseMedical, Pencil,
+  Activity, HeartPulse, User, Contact, CreditCard, BriefcaseMedical, Pencil,
 } from "lucide-react";
 
 interface Patient {
@@ -38,7 +38,7 @@ interface VitalsSummary {
   pulse: number | null; bpSystolic: number | null; bpDiastolic: number | null;
   spo2: number | null; temperatureF: number | null;
 }
-interface ScreeningSummary { chiefComplaints: string; overallFlag: string | null; aiSummary: string | null }
+interface ScreeningSummary { chiefComplaints: string; aiSummary: string | null }
 
 interface ClinicalAssessment {
   clinicalFindings: string | null; workingDiagnosis: string | null; treatmentRationale: string | null;
@@ -50,12 +50,6 @@ interface TreatmentPlanT {
   referralRequired: boolean; referralNotes: string | null; reviewDate: string | null; clinicalNotes: string | null;
 }
 
-const FLAG_STYLE: Record<string, string> = {
-  red: "bg-destructive/15 text-destructive border-destructive/30",
-  yellow: "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30",
-  green: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-};
-const FLAG_LABEL: Record<string, string> = { red: "High Risk", yellow: "Needs Review", green: "Low Risk" };
 
 export function ConsultationForm({ visitId }: { visitId: string }) {
   const router = useRouter();
@@ -252,11 +246,6 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
                   {vitals.temperatureF != null ? ` · Temp ${vitals.temperatureF}°F` : null}
                   {!vitals.pulse && !vitals.bpSystolic && !vitals.spo2 && !vitals.temperatureF && "No vitals recorded"}
                 </p>
-              )}
-              {screening?.overallFlag && (
-                <Badge variant="outline" className={cn("border text-xs w-fit", FLAG_STYLE[screening.overallFlag])}>
-                  <ShieldAlert className="h-3 w-3" /> {FLAG_LABEL[screening.overallFlag] || screening.overallFlag}
-                </Badge>
               )}
               {!vitals && !screening && <p className="text-sm text-muted-foreground">No vitals or screening recorded yet for this visit.</p>}
             </Card>

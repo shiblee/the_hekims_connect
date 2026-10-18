@@ -8,50 +8,24 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { formatAge } from "@/lib/age";
-import { questionApplies } from "@/lib/screening-eligibility";
-import { flagForAnswer, computeOverallFlag, type FlagQuestion, type FlagSeverity } from "@/lib/screening-flags";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { FloatingField } from "@/components/shared/floating-field";
 import { InsightBody } from "@/components/shared/screening-insight-body";
 import {
-  ChevronLeft, Loader2, Save, IdCard, Sparkles, ShieldAlert, Info,
-  ArrowRight, ArrowLeft, RotateCcw, Search, Mic, X,
-  CheckCircle2, CircleDot,
+  ChevronLeft, Loader2, Save, IdCard, Sparkles, RotateCcw, Search, Mic, X,
 } from "lucide-react";
 
-interface ScreeningOption { id: string; label: string; labelLocal: string | null; flagSeverity: string | null }
-interface ScreeningQuestion {
-  id: string; label: string; labelLocal: string | null; instructionText: string | null; type: string;
-  active: boolean; applicableGender: string | null; minAgeDays: number | null; maxAgeDays: number | null;
-  numericOperator: string | null; numericThreshold: number | null; numericFlagSeverity: string | null;
-  numericOperator2: string | null; numericThreshold2: number | null; numericFlagSeverity2: string | null;
-  options: ScreeningOption[];
-}
-interface ScreeningModuleT { id: string; key: string; label: string; active: boolean; triggerComplaintIds: string[]; questions: ScreeningQuestion[] }
 interface ChiefComplaintT { id: string; key: string; label: string; labelLocal: string | null; category: string; active: boolean }
-interface ScreeningConfig { complaints: ChiefComplaintT[]; modules: ScreeningModuleT[] }
+interface ScreeningConfig { complaints: ChiefComplaintT[] }
 
 interface Patient {
   id: string; patientCode: string | null; name: string; gender: string | null; dob: string | null;
   bloodGroup: string | null; phone: string | null; avatarColor: string;
 }
 interface VisitInfo { id: string; visitCode: string; visitDate: string }
-interface AnswerRow { id: string; questionId: string | null; questionLabel: string; value: string; flagTriggered: string | null }
-interface ScreeningResult { id: string; chiefComplaints: string; overallFlag: string | null; aiSummary: string | null; answers: AnswerRow[] }
-
-const FLAG_STYLE: Record<string, string> = {
-  red: "bg-destructive/15 text-destructive border-destructive/30",
-  yellow: "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30",
-  green: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-};
-const FLAG_LABEL: Record<string, string> = { red: "High Risk", yellow: "Needs Review", green: "Low Risk" };
-const FLAG_DOT: Record<string, string> = { red: "bg-destructive", yellow: "bg-amber-400", green: "bg-emerald-500" };
+interface ScreeningResult { id: string; chiefComplaints: string; aiSummary: string | null }
 
 export function ScreeningForm({ visitId }: { visitId: string }) {
   const router = useRouter();
@@ -59,9 +33,8 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
   const [config, setConfig] = useState<ScreeningConfig | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [visit, setVisit] = useState<VisitInfo | null>(null);
-  const [step, setStep] = useState<"complaints" | "questions" | "results">("complaints");
+  const [step, setStep] = useState<"complaints" | "results">("complaints");
   const [selectedComplaintIds, setSelectedComplaintIds] = useState<string[]>([]);
-  const [answerValues, setAnswerValues] = useState<Record<string, string | string[] | number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const msg = useNotice();        // beside the Complete Screening button
@@ -70,7 +43,6 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
   const [complaintSearch, setComplaintSearch] = useState("");
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [listening, setListening] = useState(false);
-  const [activeComplaintId, setActiveComplaintId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
@@ -116,15 +88,6 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           // from the config so editing can pre-select the same chips.
           const labels: string[] = JSON.parse(data.screening.chiefComplaints || "[]");
           setSelectedComplaintIds(cfg.complaints.filter((c) => labels.includes(c.label)).map((c) => c.id));
-          // Answers are stored JSON-stringified (so a multi-select stays an
-          // array) — parse each one back so editing starts from what was
-          // actually last recorded, not a blank form.
-          const prevAnswers: Record<string, string | string[] | number> = {};
-          for (const a of data.screening.answers) {
-            if (!a.questionId) continue;
-            try { prevAnswers[a.questionId] = JSON.parse(a.value); } catch { /* skip malformed */ }
-          }
-          setAnswerValues(prevAnswers);
           setStep("results");
         }
       })
@@ -151,75 +114,6 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
     return Array.from(byCategory.entries());
   }, [config, complaintSearch, selectedComplaintIds]);
 
-  const triggeredModules = useMemo(() => {
-    if (!config) return [];
-    return config.modules.filter((m) => m.active && m.triggerComplaintIds.some((id) => selectedComplaintIds.includes(id)));
-  }, [config, selectedComplaintIds]);
-
-  const applicableQuestions = useMemo(() => {
-    if (!patient) return [];
-    const list: { module: ScreeningModuleT; question: ScreeningQuestion }[] = [];
-    for (const m of triggeredModules) {
-      for (const q of m.questions) {
-        if (q.active && questionApplies(q, patient)) list.push({ module: m, question: q });
-      }
-    }
-    return list;
-  }, [triggeredModules, patient]);
-
-  // Live, client-side flag preview as the doctor fills the form — reuses the
-  // exact same pure function the server uses to compute the final flags, so
-  // what's shown here always matches what submit() will actually save.
-  const liveFlags = useMemo(() => {
-    const map: Record<string, FlagSeverity | null> = {};
-    for (const { question: q } of applicableQuestions) {
-      const value = answerValues[q.id];
-      if (value === undefined || value === "") continue;
-      map[q.id] = flagForAnswer(q as FlagQuestion, value);
-    }
-    return map;
-  }, [applicableQuestions, answerValues]);
-
-  const liveOverallFlag = useMemo(() => computeOverallFlag(Object.values(liveFlags)), [liveFlags]);
-
-  const answerableQuestions = useMemo(() => applicableQuestions.filter(({ question: q }) => q.type !== "instruction"), [applicableQuestions]);
-  const answeredCount = useMemo(
-    () => answerableQuestions.filter(({ question: q }) => answerValues[q.id] !== undefined && answerValues[q.id] !== "").length,
-    [answerableQuestions, answerValues]
-  );
-
-  // Questions bucketed per selected complaint, so the left nav can route to
-  // each complaint's own question set and show its own completion state.
-  const questionsByComplaint = useMemo(() => {
-    const map: Record<string, { module: ScreeningModuleT; question: ScreeningQuestion }[]> = {};
-    for (const id of selectedComplaintIds) {
-      map[id] = applicableQuestions.filter(({ module: m }) => m.triggerComplaintIds.includes(id));
-    }
-    return map;
-  }, [selectedComplaintIds, applicableQuestions]);
-
-  const complaintProgress = useMemo(() => {
-    const map: Record<string, { answered: number; total: number; flag: FlagSeverity | null }> = {};
-    for (const id of selectedComplaintIds) {
-      const qs = (questionsByComplaint[id] || []).filter(({ question: q }) => q.type !== "instruction");
-      const answered = qs.filter(({ question: q }) => answerValues[q.id] !== undefined && answerValues[q.id] !== "").length;
-      const flags = qs.map(({ question: q }) => liveFlags[q.id]).filter((f): f is FlagSeverity => !!f);
-      map[id] = { answered, total: qs.length, flag: computeOverallFlag(flags) };
-    }
-    return map;
-  }, [selectedComplaintIds, questionsByComplaint, answerValues, liveFlags]);
-
-  const activeComplaint = activeComplaintId && selectedComplaintIds.includes(activeComplaintId) ? activeComplaintId : selectedComplaintIds[0];
-  const activeQuestions = questionsByComplaint[activeComplaint] || [];
-  const activeModules = useMemo(() => {
-    const seen = new Set<string>();
-    const list: ScreeningModuleT[] = [];
-    for (const { module: m } of activeQuestions) {
-      if (!seen.has(m.id)) { seen.add(m.id); list.push(m); }
-    }
-    return list;
-  }, [activeQuestions]);
-
   const toggleComplaint = (id: string) => {
     const isSelecting = !selectedComplaintIds.includes(id);
     setSelectedComplaintIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
@@ -234,28 +128,23 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
       msg.warning("Select at least one chief complaint", "Go Back to the complaint list and pick what the patient came in with.");
       return;
     }
-    const answers = applicableQuestions
-      .filter(({ question }) => question.type !== "instruction")
-      .map(({ question }) => ({ questionId: question.id, value: answerValues[question.id] }))
-      .filter((a) => a.value !== undefined && a.value !== "");
-
     setSubmitting(true);
     try {
       const res = await api.post<{ screening: ScreeningResult }>(`/api/facility/visits/${visitId}/screening`, {
-        chiefComplaintIds: selectedComplaintIds, answers,
+        chiefComplaintIds: selectedComplaintIds,
       });
       setResult(res.screening);
       setStep("results"); // the results screen itself confirms completion
       msg.clear();
     } catch (e: any) {
-      msg.error("The screening wasn't saved", `${e.message || "Network error"}. Your answers are still filled in — try again.`, { retry: submit, retryLabel: "Try again" });
+      msg.error("The screening wasn't saved", `${e.message || "Network error"}. Your selection is still here — try again.`, { retry: submit, retryLabel: "Try again" });
     } finally {
       setSubmitting(false);
     }
   };
 
   const editScreening = () => {
-    // Previously-recorded complaints and answers are already loaded into
+    // Previously-recorded complaints are already loaded into
     // state (see the load effect above) — this just reopens the wizard on
     // top of them, so editing starts from what was actually last recorded
     // rather than a blank form.
@@ -308,7 +197,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
         <motion.div key="complaints" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
         <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-5">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 — Chief Complaint(s)</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chief Complaint(s)</p>
 
           {selectedComplaintIds.length > 0 && (
             <div>
@@ -379,189 +268,9 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
             )}
           </div>
 
-          <div className="flex items-center justify-end pt-2">
-            <Button size="lg" onClick={() => setStep("questions")} disabled={selectedComplaintIds.length === 0}>
-              Continue <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </Card>
-        </motion.div>
-      )}
-
-      {step === "questions" && (
-        <motion.div key="questions" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
-        <Card className="relative overflow-hidden p-5 sm:p-7 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-4">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assessment</p>
-              {liveOverallFlag && (
-                <Badge variant="outline" className={cn("border flex items-center gap-1 animate-in fade-in", FLAG_STYLE[liveOverallFlag])}>
-                  <ShieldAlert className="h-3 w-3" /> {FLAG_LABEL[liveOverallFlag] || liveOverallFlag}
-                </Badge>
-              )}
-            </div>
-
-            {answerableQuestions.length > 0 && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Progress</span>
-                  <span>{answeredCount} of {answerableQuestions.length} answered</span>
-                </div>
-                <Progress value={(answeredCount / answerableQuestions.length) * 100} className="h-1.5" />
-              </div>
-            )}
-          </div>
-
-          {applicableQuestions.length === 0 && (
-            <p className="text-sm text-muted-foreground">No follow-up questions are configured for this complaint yet.</p>
-          )}
-
-          {applicableQuestions.length > 0 && (
-            <div className="flex gap-8 items-start">
-              {/* Left nav — fixed in place (sticky), does not scroll with the
-                  question list on the right; one entry per selected complaint. */}
-              <div className="w-60 shrink-0 sticky top-4 self-start space-y-1.5">
-                {selectedComplaintIds.map((id) => {
-                  const c = config.complaints.find((cc) => cc.id === id);
-                  if (!c) return null;
-                  const prog = complaintProgress[id];
-                  const isActive = id === activeComplaint;
-                  const done = prog && prog.total > 0 && prog.answered === prog.total;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setActiveComplaintId(id)}
-                      className={cn(
-                        "w-full flex items-start gap-1.5 px-3 py-2.5 rounded-lg text-left text-sm transition-colors",
-                        isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted/60"
-                      )}
-                    >
-                      <span className="flex-1 leading-snug">{c.label}</span>
-                      <span className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                        {prog?.flag && <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", FLAG_DOT[prog.flag])} />}
-                        {done ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        ) : prog && prog.total > 0 ? (
-                          <span className="text-[10px] text-muted-foreground shrink-0">{prog.answered}/{prog.total}</span>
-                        ) : null}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Right panel — all of the active complaint's questions at once,
-                  no per-question cards/borders; just relaxed vertical rhythm. */}
-              <div className="flex-1 min-w-0 space-y-5">
-                {activeQuestions.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No follow-up questions are configured for this complaint yet.</p>
-                )}
-                {activeModules.map((m) => (
-                  <div key={m.id} className="space-y-4">
-                    {activeModules.length > 1 && (
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground pt-1">{m.label}</p>
-                    )}
-                    {activeQuestions.filter(({ module: qm }) => qm.id === m.id).map(({ question: q }) => {
-                      const flag = liveFlags[q.id];
-                      return (
-                        <div key={q.id} className={cn("py-1", flag && "border-l-2 pl-3 -ml-3", flag && FLAG_DOT[flag].replace("bg-", "border-"))}>
-                          {q.type === "instruction" ? (
-                            <div className="flex items-start gap-1.5 text-sm text-muted-foreground italic">
-                              <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                              <span>{q.instructionText || q.label}</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-1.5 mb-2">
-                                <Label className="text-sm font-medium">{q.label}{q.labelLocal ? ` (${q.labelLocal})` : ""}</Label>
-                                {flag && <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", FLAG_DOT[flag])} title={FLAG_LABEL[flag]} />}
-                              </div>
-                              {q.type === "single_select" && (
-                                <div className="flex flex-wrap gap-2">
-                                  {q.options.map((o) => {
-                                    const selected = (answerValues[q.id] as string) === o.label;
-                                    return (
-                                      <button
-                                        key={o.id}
-                                        type="button"
-                                        onClick={() => setAnswerValues((p) => ({ ...p, [q.id]: o.label }))}
-                                        className={cn(
-                                          "px-3 py-1.5 rounded-full text-sm border transition-colors flex items-center gap-1.5",
-                                          selected
-                                            ? o.flagSeverity ? cn(FLAG_STYLE[o.flagSeverity], "border-2") : "bg-primary text-primary-foreground border-primary"
-                                            : "bg-background/60 border-border/50 hover:border-primary/40"
-                                        )}
-                                      >
-                                        {selected ? <CircleDot className="h-3 w-3" /> : null}
-                                        {o.label}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {q.type === "multi_select" && (
-                                <div className="flex flex-wrap gap-2">
-                                  {q.options.map((o) => {
-                                    const arr = (answerValues[q.id] as string[]) || [];
-                                    const checked = arr.includes(o.label);
-                                    return (
-                                      <button
-                                        key={o.id}
-                                        type="button"
-                                        onClick={() => setAnswerValues((p) => ({
-                                          ...p,
-                                          [q.id]: checked ? arr.filter((v) => v !== o.label) : [...arr, o.label],
-                                        }))}
-                                        className={cn(
-                                          "px-3 py-1.5 rounded-full text-sm border transition-colors flex items-center gap-1.5",
-                                          checked
-                                            ? o.flagSeverity ? cn(FLAG_STYLE[o.flagSeverity], "border-2") : "bg-primary text-primary-foreground border-primary"
-                                            : "bg-background/60 border-border/50 hover:border-primary/40"
-                                        )}
-                                      >
-                                        {checked ? <CheckCircle2 className="h-3 w-3" /> : null}
-                                        {o.label}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {q.type === "numeric" && (
-                                <div className="max-w-xs">
-                                  <FloatingField
-                                    id={q.id} label="Value" type="number" inputMode="decimal"
-                                    value={answerValues[q.id] != null ? String(answerValues[q.id]) : ""}
-                                    onChange={(e) => setAnswerValues((p) => ({ ...p, [q.id]: e.target.value === "" ? "" : parseFloat(e.target.value) }))}
-                                  />
-                                </div>
-                              )}
-                              {q.type === "text" && (
-                                <Textarea
-                                  value={(answerValues[q.id] as string) || ""}
-                                  onChange={(e) => setAnswerValues((p) => ({ ...p, [q.id]: e.target.value }))}
-                                  className="bg-background/60"
-                                  rows={2}
-                                />
-                              )}
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <NoticeSlot state={msg} />
-          <div className="flex items-center justify-between pt-2">
-            <Button variant="outline" onClick={() => setStep("complaints")}>
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
-            <Button size="lg" onClick={submit} disabled={submitting}>
+          <div className="flex items-center justify-end pt-2">
+            <Button size="lg" onClick={submit} disabled={submitting || selectedComplaintIds.length === 0}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Complete Screening
             </Button>
           </div>
@@ -575,11 +284,6 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Screening Result</p>
-            {result.overallFlag && (
-              <Badge variant="outline" className={cn("border flex items-center gap-1", FLAG_STYLE[result.overallFlag])}>
-                <ShieldAlert className="h-3 w-3" /> {FLAG_LABEL[result.overallFlag] || result.overallFlag}
-              </Badge>
-            )}
           </div>
 
           <div className="flex flex-wrap gap-1.5">
@@ -590,7 +294,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           </div>
 
           {result.aiSummary ? (
-            <InsightBody aiSummary={result.aiSummary} flag={result.overallFlag} />
+            <InsightBody aiSummary={result.aiSummary} flag={null} />
           ) : (
             <Card className="p-4 border-primary/20 bg-primary/5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
@@ -599,18 +303,6 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
               <p className="text-sm text-muted-foreground">Hakeem Insight isn&apos;t configured for this portal yet.</p>
             </Card>
           )}
-
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Answers</p>
-            <div className="space-y-1.5">
-              {result.answers.map((a) => (
-                <div key={a.id} className={cn("flex items-center justify-between text-sm px-3 py-2 rounded-lg", a.flagTriggered ? FLAG_STYLE[a.flagTriggered] : "bg-background/40")}>
-                  <span>{a.questionLabel}</span>
-                  <span className="font-medium">{(() => { try { const v = JSON.parse(a.value); return Array.isArray(v) ? v.join(", ") : String(v); } catch { return a.value; } })()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div className="flex items-center justify-between pt-2">
             <Button variant="outline" onClick={editScreening}>

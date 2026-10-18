@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { formatAge } from "@/lib/age";
-import { flagForAnswer, computeOverallFlag, type FlagQuestion } from "@/lib/screening-flags";
-import { questionApplies } from "@/lib/screening-eligibility";
 import { generateScreeningSummary } from "@/lib/gemini";
 
 async function resolveFacilityId(auth: { id: string; type: "facility" | "patient" | "staff" }): Promise<string | null> {
@@ -25,7 +23,7 @@ async function assertOwnedVisit(id: string, facilityId: string) {
   });
 }
 
-const ANSWER_SELECT = { id: true, questionId: true, questionLabel: true, value: true, flagTriggered: true };
+const SCREENING_SELECT = { id: true, chiefComplaints: true, aiSummary: true, createdAt: true, updatedAt: true };
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser(req);
@@ -39,13 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const visit = await assertOwnedVisit(id, facilityId);
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
-  const screening = await db.l1Screening.findUnique({
-    where: { visitId: id },
-    select: {
-      id: true, chiefComplaints: true, overallFlag: true, aiSummary: true, createdAt: true, updatedAt: true,
-      answers: { select: ANSWER_SELECT },
-    },
-  });
+  const screening = await db.l1Screening.findUnique({ where: { visitId: id }, select: SCREENING_SELECT });
 
   return NextResponse.json({
     visit: { id: visit.id, visitCode: visit.visitCode, visitDate: visit.visitDate },
@@ -54,6 +46,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 }
 
+// L1 Screening records which chief complaints the patient presents with, then
+// asks Hakeem Insight for a short triage note on them.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser(req);
   if (!auth || (auth.type !== "facility" && auth.type !== "staff")) {
@@ -68,87 +62,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const body = await req.json();
   const chiefComplaintIds: string[] = Array.isArray(body.chiefComplaintIds) ? body.chiefComplaintIds : [];
-  const submittedAnswers: { questionId: string; value: string | string[] | number }[] = Array.isArray(body.answers) ? body.answers : [];
-
   if (chiefComplaintIds.length === 0) {
     return NextResponse.json({ error: "Select at least one chief complaint" }, { status: 400 });
   }
 
-  const [complaints, questions] = await Promise.all([
-    db.chiefComplaint.findMany({ where: { id: { in: chiefComplaintIds } }, select: { id: true, label: true } }),
-    db.screeningQuestion.findMany({
-      where: { id: { in: submittedAnswers.map((a) => a.questionId) } },
-      select: {
-        id: true, label: true, type: true, applicableGender: true, minAgeDays: true, maxAgeDays: true,
-        numericOperator: true, numericThreshold: true, numericFlagSeverity: true,
-        numericOperator2: true, numericThreshold2: true, numericFlagSeverity2: true,
-        options: { select: { label: true, flagSeverity: true } },
-      },
-    }),
-  ]);
-  const questionById = new Map(questions.map((q) => [q.id, q]));
-
-  // Re-validate gender/age eligibility server-side — the client already
-  // filters these, but a stale client or a direct API call must not be able
-  // to smuggle in an answer (and its flag) for a question that doesn't apply
-  // to this patient.
-  const answerRows = submittedAnswers
-    .map((a) => {
-      const question = questionById.get(a.questionId);
-      if (!question) return null;
-      if (!questionApplies(question, visit.patient)) return null;
-      const flag = flagForAnswer(question as FlagQuestion, a.value);
-      return {
-        questionId: question.id,
-        questionLabel: question.label,
-        value: JSON.stringify(a.value),
-        flagTriggered: flag,
-      };
-    })
-    .filter((r): r is NonNullable<typeof r> => r !== null);
-
-  const overallFlag = computeOverallFlag(answerRows.map((r) => r.flagTriggered));
-
-  // Store complaint labels (not ids) — same reasoning as answer values: the
-  // record stays human-readable everywhere it's displayed without a join back
-  // to the (possibly later-edited) config.
+  const complaints = await db.chiefComplaint.findMany({ where: { id: { in: chiefComplaintIds } }, select: { id: true, label: true } });
+  // Stored as labels (not ids) so the record stays readable without a join
+  // back to the (possibly later-edited) complaint list.
   const chiefComplaintLabels = complaints.map((c) => c.label);
 
-  const screening = await db.l1Screening.upsert({
+  await db.l1Screening.upsert({
     where: { visitId: id },
-    update: {
-      chiefComplaints: JSON.stringify(chiefComplaintLabels),
-      overallFlag,
-      recordedById: auth.type === "staff" ? auth.id : null,
-      answers: { deleteMany: {}, create: answerRows },
-    },
-    create: {
-      visitId: id,
-      chiefComplaints: JSON.stringify(chiefComplaintLabels),
-      overallFlag,
-      recordedById: auth.type === "staff" ? auth.id : null,
-      answers: { create: answerRows },
-    },
-    select: { id: true, chiefComplaints: true, overallFlag: true, aiSummary: true, createdAt: true, updatedAt: true, answers: { select: ANSWER_SELECT } },
+    update: { chiefComplaints: JSON.stringify(chiefComplaintLabels), recordedById: auth.type === "staff" ? auth.id : null },
+    create: { visitId: id, chiefComplaints: JSON.stringify(chiefComplaintLabels), recordedById: auth.type === "staff" ? auth.id : null },
   });
-
-  const formatAnswerValue = (raw: string): string => {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.join(", ") : String(parsed);
-  };
 
   const aiSummary = await generateScreeningSummary(
     { name: visit.patient.name, gender: visit.patient.gender, ageLabel: formatAge(visit.patient.dob), mizaj: visit.patient.mizaj },
-    complaints.map((c) => c.label),
-    answerRows.map((r) => ({ questionLabel: r.questionLabel, value: formatAnswerValue(r.value), flagTriggered: r.flagTriggered })),
-    overallFlag
+    chiefComplaintLabels,
   );
 
-  const updated = await db.l1Screening.update({
-    where: { visitId: id },
-    data: { aiSummary },
-    select: { id: true, chiefComplaints: true, overallFlag: true, aiSummary: true, createdAt: true, updatedAt: true, answers: { select: ANSWER_SELECT } },
-  });
-
+  const updated = await db.l1Screening.update({ where: { visitId: id }, data: { aiSummary }, select: SCREENING_SELECT });
   return NextResponse.json({ screening: updated });
 }

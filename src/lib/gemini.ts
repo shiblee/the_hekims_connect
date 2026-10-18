@@ -80,12 +80,6 @@ In 2-4 short sentences, summarize the overall trend and flag anything outside a 
   return callGemini(prompt);
 }
 
-export interface ScreeningAnswerSummary {
-  questionLabel: string;
-  value: string;
-  flagTriggered: string | null;
-}
-
 export interface ScreeningInsight {
   headline: string;
   findings: { text: string; severity: "red" | "yellow" | "green" | "neutral" }[];
@@ -121,21 +115,11 @@ function isValidScreeningInsight(v: any): v is ScreeningInsight {
 export async function generateScreeningSummary(
   patientContext: { name: string; gender: string | null; ageLabel: string; mizaj?: string | null },
   chiefComplaints: string[],
-  answers: ScreeningAnswerSummary[],
-  overallFlag: string | null
 ): Promise<string | null> {
-  const answerLines = answers
-    .map((a) => `${a.questionLabel}: ${a.value}${a.flagTriggered ? ` [${a.flagTriggered.toUpperCase()} FLAG]` : ""}`)
-    .join("\n");
-
   const prompt = `You are a senior Unani clinical assistant helping a Hakim (Unani physician) quickly triage a patient's Level-1 screening, taken by front-desk/support staff before the doctor sees the patient. This is decision support only — never state or imply a diagnosis.
 
 Patient: ${patientContext.name}, ${patientContext.gender || "gender not recorded"}, ${patientContext.ageLabel}${patientContext.mizaj ? `, previously assessed Mizaj: ${patientContext.mizaj}` : ""}.
 Chief complaint(s): ${chiefComplaints.join(", ") || "none recorded"}.
-Overall triage flag computed from the answers: ${overallFlag ? overallFlag.toUpperCase() : "none"}.
-
-Screening answers (flagged ones are the danger signs to prioritize):
-${answerLines || "No answers recorded."}
 
 Respond with ONLY a single valid JSON object — no markdown code fences, no commentary before or after — matching exactly this shape:
 {
@@ -145,7 +129,7 @@ Respond with ONLY a single valid JSON object — no markdown code fences, no com
   "priority": "one short sentence, max ~20 words: the single most important thing the doctor should verify or examine first"
 }
 
-Rules for findings: include 3 to 6, ordered by clinical importance (most important first). Every flagged answer must appear as its own finding with "severity" matching its flag exactly (red stays red, yellow stays yellow). Include at most one "green" or "neutral" finding summarizing what is reassuring or unremarkable, if relevant. Each finding's "text" must be scannable in under a second.
+Rules for findings: include 2 to 5, ordered by clinical importance (most important first) — what the doctor should ask about or examine for these complaints, given the patient's age and gender. Use "red" only for a danger sign that must be ruled out first, "yellow" for points needing attention, "neutral" otherwise. Each finding's "text" must be scannable in under a second.
 
 Never state or imply a definitive diagnosis, and never recommend a specific treatment or formulation.`;
 

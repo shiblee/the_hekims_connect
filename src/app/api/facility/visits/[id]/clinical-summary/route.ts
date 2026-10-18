@@ -33,18 +33,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
-  // Question text and severity wording for the doctor's complaint answers.
-  const questionIds = [...new Set(visit.complaintAssessments.flatMap((c) => Object.keys(parse<Record<string, unknown>>(c.screeningAnswers, {}))))];
-  const [questions, severityLabels, asbabPillars] = await Promise.all([
-    db.screeningQuestion.findMany({ where: { id: { in: questionIds } }, select: { id: true, label: true } }),
+  const [severityLabels, asbabPillars] = await Promise.all([
     db.severityScaleLabel.findMany({ select: { level: true, label: true } }),
     db.asbabPillar.findMany({ where: { framework: "asbab" }, orderBy: { sortOrder: "asc" }, select: { key: true, label: true, english: true } }),
   ]);
   const asbabA = visit.asbabAssessments[0] ?? null;
-  const qLabel = new Map<string, string>(questions.map((q) => [q.id, q.label] as const));
   const sevLabel = (n: number | null) => (n == null ? null : severityLabels.find((s) => s.level === n)?.label ?? null);
-
-  const answerText = (v: unknown) => (Array.isArray(v) ? v.join(", ") : v == null ? "" : String(v));
 
   return NextResponse.json({
     summary: {
@@ -55,9 +49,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         severity: c.severityScore, severityLabel: sevLabel(c.severityScore),
         aggravating: parse<string[]>(c.aggravatingFactors, []),
         relieving: parse<string[]>(c.relievingFactors, []),
-        answers: Object.entries(parse<Record<string, unknown>>(c.screeningAnswers, {}))
-          .map(([qid, v]) => ({ question: qLabel.get(qid) ?? null, answer: answerText(v) }))
-          .filter((a) => a.question && a.answer),
         notes: c.clinicalNotes,
       })),
       regions: parse<string[]>(visit.anatomicalRegionSelection?.regions, []),

@@ -45,8 +45,7 @@ interface VisitRow {
   id: string; visitCode?: string; visitDate: string;
   vitalSigns: VisitVitals | null;
   l1Screening: {
-    id: string; chiefComplaints: string; overallFlag: string | null; aiSummary: string | null; updatedAt: string;
-    answers?: { flagTriggered: string | null }[];
+    id: string; chiefComplaints: string; aiSummary: string | null; updatedAt: string;
   } | null;
   clinicalAssessment: { id: string; workingDiagnosis: string | null; requiresUrgentReferral: boolean; updatedAt: string } | null;
   treatmentPlan: { id: string; referralRequired: boolean; updatedAt: string } | null;

@@ -26,8 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       l1Screening: {
         select: {
-          id: true, chiefComplaints: true, overallFlag: true, aiSummary: true, updatedAt: true,
-          answers: { select: { flagTriggered: true } },
+          id: true, chiefComplaints: true, aiSummary: true, updatedAt: true,
         },
       },
       clinicalAssessment: { select: { id: true, workingDiagnosis: true, requiresUrgentReferral: true, updatedAt: true } },

@@ -62,18 +62,9 @@ function countNoun(scope: CountScope, n: number): string {
   return n === 1 ? singular : plural;
 }
 
-// ---------- L1 Screening types (Chief Complaints / Modules & Questions / Allergies / Medications & Herbs) ----------
+// ---------- L1 Screening types (Chief Complaints / Allergies / Medications & Herbs) ----------
 interface ChiefComplaintRow { id: string; key: string; label: string; labelLocal: string | null; category: string; active: boolean }
-interface QuestionOptionRow { id?: string; label: string; labelLocal?: string; flagSeverity: string }
-interface QuestionRow {
-  id: string; label: string; labelLocal: string | null; instructionText: string | null; type: string; active: boolean;
-  applicableGender: string | null; minAgeDays: number | null; maxAgeDays: number | null;
-  numericOperator: string | null; numericThreshold: number | null; numericFlagSeverity: string | null;
-  numericOperator2: string | null; numericThreshold2: number | null; numericFlagSeverity2: string | null;
-  options: QuestionOptionRow[];
-}
-interface ModuleRow { id: string; key: string; label: string; active: boolean; triggerComplaintIds: string[]; questions: QuestionRow[] }
-interface ScreeningConfig { complaints: ChiefComplaintRow[]; modules: ModuleRow[] }
+interface ScreeningConfig { complaints: ChiefComplaintRow[] }
 interface FactorTagRow { id: string; kind: "aggravating" | "relieving"; label: string; sortOrder: number; active: boolean }
 type FactorKind = FactorTagRow["kind"];
 // Aggravating / Relieving factor chips offered to the doctor in the Chief
@@ -89,7 +80,7 @@ interface MedicationRow { id: string; kind: string; label: string; sortOrder: nu
 interface RedFlagRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
 interface AcuteSymptomRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
 
-const SCREENING_TABS = ["complaints", "modules", "asbab", "tashkhees", "allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions", "onset"] as const;
+const SCREENING_TABS = ["complaints", "asbab", "tashkhees", "allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions", "onset"] as const;
 // Allergies, Supplements & Herbs, Medications and Red Flags are reachable from
 // the Patient category's sidebar instead of their own top-bar tabs, so they're
 // excluded here.
@@ -100,7 +91,7 @@ const TOP_BAR_SCREENING_TABS = SCREENING_TABS.filter((t) => !PATIENT_SIDEBAR_TAB
 // enough to show — payment_mode counts transactions not patients.
 const HIDE_STATS_KEYS = ["payment_mode"];
 const SCREENING_TAB_LABELS: Record<string, string> = {
-  complaints: "Chief Complaints", modules: "Modules & Questions", asbab: "Asbab-e-Sittah", tashkhees: "Tashkhees & Ilaj", allergies: "Allergies",
+  complaints: "Chief Complaints", asbab: "Asbab-e-Sittah", tashkhees: "Tashkhees & Ilaj", allergies: "Allergies",
   supplements: "Supplements & Herbs", medications: "Medications",
   aggravating: "Aggravating Factors (Muharrikat)", relieving: "Relieving Factors (Musakkinat)",
   redflags: "Acute Red Flag / Emergency Exclusion", symptoms: "Accompanying Acute Symptoms (Alamat-e-Izafiya)",
@@ -115,14 +106,6 @@ const FLAG_COLORS: Record<string, string> = {
   yellow: "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30",
   green: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
 };
-
-const emptyQuestionDraft = () => ({
-  label: "", labelLocal: "", instructionText: "", type: "single_select",
-  applicableGender: "", minAgeDays: "", maxAgeDays: "",
-  numericOperator: "", numericThreshold: "", numericFlagSeverity: "",
-  numericOperator2: "", numericThreshold2: "", numericFlagSeverity2: "",
-  options: [{ label: "", flagSeverity: "" }] as QuestionOptionRow[],
-});
 
 export default function MetaSectionPage() {
   const router = useRouter();
@@ -146,7 +129,7 @@ export default function MetaSectionPage() {
   const [editingActive, setEditingActive] = useState(true);
   const [savingOptionEdit, setSavingOptionEdit] = useState(false);
 
-  // Screening tabs are real URLs (/admin/meta/complaints, /admin/meta/modules, …),
+  // Screening tabs are real URLs (/admin/meta/complaints, /admin/meta/allergies, …),
   // same as any other section — derived straight from the URL so it's correct on
   // first paint, not just after section data loads.
   const isScreeningTab = (SCREENING_TABS as readonly string[]).includes(key || "");
@@ -999,118 +982,13 @@ export default function MetaSectionPage() {
     }
   };
 
-  // ---------- Modules & Questions tab ----------
-  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
-  const [newModuleLabel, setNewModuleLabel] = useState("");
-  const [newModuleTriggers, setNewModuleTriggers] = useState<string[]>([]);
-  const [addModuleDialogOpen, setAddModuleDialogOpen] = useState(false);
-  const [moduleTriggerSearch, setModuleTriggerSearch] = useState("");
-  const [savingModule, setSavingModule] = useState(false);
-
-  const selectedModule = screeningConfig?.modules.find((m) => m.id === selectedModuleId) || null;
-
-  const addModule = async () => {
-    if (!newModuleLabel.trim()) { toast.error("Enter a label"); return; }
-    if (newModuleTriggers.length === 0) { toast.error("Select at least one trigger complaint"); return; }
-    setSavingModule(true);
-    try {
-      const res = await adminApi.post<{ module: { id: string } }>("/api/admin/screening/modules", { label: newModuleLabel, triggerComplaintIds: newModuleTriggers });
-      setNewModuleLabel(""); setNewModuleTriggers([]); setModuleTriggerSearch("");
-      setAddModuleDialogOpen(false);
-      await loadScreening();
-      setSelectedModuleId(res.module.id);
-    } catch (e: any) {
-      toast.error(e.message || "Could not add the module");
-    } finally {
-      setSavingModule(false);
-    }
-  };
-
-  const toggleModuleActive = async (m: ModuleRow) => {
-    try {
-      await adminApi.patch(`/api/admin/screening/modules/${m.id}`, { active: !m.active });
-      loadScreening();
-    } catch (e: any) {
-      toast.error(e.message || "Could not update");
-    }
-  };
-
-  // ---------- Question editor (shared create/edit dialog) ----------
-  const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
-  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-  const [draft, setDraft] = useState(emptyQuestionDraft());
-  const [savingQuestion, setSavingQuestion] = useState(false);
-
-  const openNewQuestion = () => { setEditingQuestionId(null); setDraft(emptyQuestionDraft()); setQuestionDialogOpen(true); };
-  const openEditQuestion = (q: QuestionRow) => {
-    setEditingQuestionId(q.id);
-    setDraft({
-      label: q.label, labelLocal: q.labelLocal || "", instructionText: q.instructionText || "", type: q.type,
-      applicableGender: q.applicableGender || "", minAgeDays: q.minAgeDays?.toString() || "", maxAgeDays: q.maxAgeDays?.toString() || "",
-      numericOperator: q.numericOperator || "", numericThreshold: q.numericThreshold?.toString() || "", numericFlagSeverity: q.numericFlagSeverity || "",
-      numericOperator2: q.numericOperator2 || "", numericThreshold2: q.numericThreshold2?.toString() || "", numericFlagSeverity2: q.numericFlagSeverity2 || "",
-      options: q.options.length ? q.options.map((o) => ({ label: o.label, flagSeverity: o.flagSeverity || "" })) : [{ label: "", flagSeverity: "" }],
-    });
-    setQuestionDialogOpen(true);
-  };
-
-  const toggleQuestionActive = async (q: QuestionRow) => {
-    try {
-      await adminApi.patch(`/api/admin/screening/questions/${q.id}`, { active: !q.active });
-      loadScreening();
-    } catch (e: any) {
-      toast.error(e.message || "Could not update");
-    }
-  };
-
-  const saveQuestion = async () => {
-    if (!selectedModule) return;
-    if (!draft.label.trim()) { toast.error("Enter a question label"); return; }
-    const needsOptions = draft.type === "single_select" || draft.type === "multi_select";
-    const cleanOptions = draft.options.filter((o) => o.label.trim());
-    if (needsOptions && cleanOptions.length === 0) { toast.error("Add at least one option"); return; }
-
-    const payload = {
-      label: draft.label, labelLocal: draft.labelLocal || undefined, instructionText: draft.instructionText || undefined, type: draft.type,
-      applicableGender: draft.applicableGender || undefined, minAgeDays: draft.minAgeDays || undefined, maxAgeDays: draft.maxAgeDays || undefined,
-      numericOperator: draft.numericOperator || undefined, numericThreshold: draft.numericThreshold || undefined, numericFlagSeverity: draft.numericFlagSeverity || undefined,
-      numericOperator2: draft.numericOperator2 || undefined, numericThreshold2: draft.numericThreshold2 || undefined, numericFlagSeverity2: draft.numericFlagSeverity2 || undefined,
-      options: needsOptions ? cleanOptions.map((o) => ({ label: o.label, flagSeverity: o.flagSeverity || undefined })) : [],
-    };
-
-    setSavingQuestion(true);
-    try {
-      if (editingQuestionId) {
-        await adminApi.patch(`/api/admin/screening/questions/${editingQuestionId}`, payload);
-      } else {
-        await adminApi.post(`/api/admin/screening/modules/${selectedModule.id}/questions`, payload);
-      }
-      setQuestionDialogOpen(false);
-      loadScreening();
-    } catch (e: any) {
-      toast.error(e.message || "Could not save the question");
-    } finally {
-      setSavingQuestion(false);
-    }
-  };
-
-  const updateDraftOption = (idx: number, patch: Partial<QuestionOptionRow>) => {
-    setDraft((d) => ({ ...d, options: d.options.map((o, i) => (i === idx ? { ...o, ...patch } : o)) }));
-  };
-  const addDraftOption = () => setDraft((d) => ({ ...d, options: [...d.options, { label: "", flagSeverity: "" }] }));
-  const removeDraftOption = (idx: number) => setDraft((d) => ({ ...d, options: d.options.filter((_, i) => i !== idx) }));
-
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Meta ({sections.length})</h1>
         </div>
-        {activeCategory === "modules" ? (
-          <Button size="sm" onClick={() => setAddModuleDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" /> Add Module
-          </Button>
-        ) : activeCategory === "complaints" ? (
+        {activeCategory === "complaints" ? (
           <div className="flex items-center gap-2">
             <Button
               size="sm" variant="outline"
@@ -1334,164 +1212,6 @@ export default function MetaSectionPage() {
 
       {activeCategory === "asbab" && <AsbabAdmin />}
       {activeCategory === "tashkhees" && <TashkheesAdmin />}
-
-      {activeCategory === "modules" && (
-        loadingScreening ? (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
-        ) : screeningConfig && (
-          <div className="grid md:grid-cols-[280px_1fr] gap-6">
-            <Card className="p-3 border-border/50 bg-card/60 h-fit">
-              <div className="space-y-1">
-                {screeningConfig.modules.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedModuleId(m.id)}
-                    className={cn(
-                      "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors",
-                      selectedModuleId === m.id ? "bg-primary text-primary-foreground" : "hover:bg-background/60",
-                      !m.active && selectedModuleId !== m.id && "opacity-50"
-                    )}
-                  >
-                    <span className="truncate flex-1">{m.label}</span>
-                    <span className={cn(
-                      "text-[10px] font-medium shrink-0",
-                      m.active ? (selectedModuleId === m.id ? "text-primary-foreground/80" : "text-emerald-500") : "text-muted-foreground"
-                    )}>
-                      {m.active ? "Active" : "Inactive"}
-                    </span>
-                    <Badge variant="outline" className="text-xs shrink-0">{m.questions.length}</Badge>
-                  </button>
-                ))}
-                {screeningConfig.modules.length === 0 && <p className="text-sm text-muted-foreground px-1">No modules yet.</p>}
-              </div>
-            </Card>
-
-            {selectedModule ? (
-              <Card className="p-5 border-border/50 bg-card/60 gap-5">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div>
-                    <h2 className="font-serif text-lg font-semibold">{selectedModule.label}</h2>
-                    <p className="text-sm text-muted-foreground mt-1">{selectedModule.questions.length} question{selectedModule.questions.length === 1 ? "" : "s"} in this module</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Switch checked={selectedModule.active} onCheckedChange={() => toggleModuleActive(selectedModule)} /> Active</div>
-                    <Button size="sm" variant="outline" onClick={openNewQuestion}><Plus className="h-3.5 w-3.5" /> Add Question</Button>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="space-y-2">
-                    {selectedModule.questions.map((q) => {
-                      const Icon = TYPE_ICON[q.type] || Info;
-                      return (
-                        <div key={q.id} className={cn("rounded-lg border p-3", q.active ? "border-border/30 bg-background/40" : "border-border/20 bg-background/20 opacity-60")}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-start gap-2 min-w-0">
-                              <Icon className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">{q.label}</p>
-                                <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                                  <Badge variant="outline" className="text-xs">{TYPE_LABEL[q.type]}</Badge>
-                                  {q.applicableGender && <Badge variant="outline" className="text-xs capitalize">{q.applicableGender} only</Badge>}
-                                  {(q.minAgeDays != null || q.maxAgeDays != null) && <Badge variant="outline" className="text-xs">Age gated</Badge>}
-                                  {q.options.filter((o) => o.flagSeverity).map((o) => (
-                                    <Badge key={o.label} variant="outline" className={cn("text-xs border", FLAG_COLORS[o.flagSeverity])}>{o.label} → {o.flagSeverity}</Badge>
-                                  ))}
-                                  {q.numericFlagSeverity && <Badge variant="outline" className={cn("text-xs border", FLAG_COLORS[q.numericFlagSeverity])}>{q.numericOperator} {q.numericThreshold} → {q.numericFlagSeverity}</Badge>}
-                                  {q.numericFlagSeverity2 && <Badge variant="outline" className={cn("text-xs border", FLAG_COLORS[q.numericFlagSeverity2])}>{q.numericOperator2} {q.numericThreshold2} → {q.numericFlagSeverity2}</Badge>}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2.5 shrink-0">
-                              <button onClick={() => openEditQuestion(q)} className="text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                              <span className={cn("text-xs font-medium w-14 text-right", q.active ? "text-emerald-500" : "text-muted-foreground")}>
-                                {q.active ? "Active" : "Inactive"}
-                              </span>
-                              <Switch checked={q.active} onCheckedChange={() => toggleQuestionActive(q)} />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {selectedModule.questions.length === 0 && <p className="text-sm text-muted-foreground">No questions in this module yet.</p>}
-                  </div>
-                </div>
-              </Card>
-            ) : (
-              <Card className="p-8 border-border/50 bg-card/60 text-center">
-                <p className="text-sm text-muted-foreground">Select a module on the left, or add a new one.</p>
-              </Card>
-            )}
-          </div>
-        )
-      )}
-
-      {/* ---------- Add Module dialog ---------- */}
-      <Dialog open={addModuleDialogOpen} onOpenChange={setAddModuleDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Module</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <FloatingField
-              id="newModuleLabel"
-              label="Module label"
-              value={newModuleLabel}
-              onChange={(e) => setNewModuleLabel(e.target.value)}
-            />
-            <div>
-              <p className="text-xs text-muted-foreground mb-2">Triggers on:</p>
-              {newModuleTriggers.length > 0 && screeningConfig && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {screeningConfig.complaints.filter((c) => newModuleTriggers.includes(c.id)).map((c) => (
-                    <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-primary text-primary-foreground px-2 py-1 text-xs">
-                      {c.label}
-                      <button type="button" onClick={() => setNewModuleTriggers((p) => p.filter((id) => id !== c.id))} className="hover:opacity-70">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Search complaints to trigger on…"
-                  value={moduleTriggerSearch}
-                  onChange={(e) => setModuleTriggerSearch(e.target.value)}
-                  className="bg-background/60 h-9 pl-8"
-                />
-              </div>
-              {moduleTriggerSearch.trim() && screeningConfig && (
-                <div className="mt-1.5 rounded-lg border border-border/50 bg-card max-h-48 overflow-y-auto divide-y divide-border/40">
-                  {screeningConfig.complaints
-                    .filter((c) => c.active && !newModuleTriggers.includes(c.id) && c.label.toLowerCase().includes(moduleTriggerSearch.trim().toLowerCase()))
-                    .slice(0, 8)
-                    .map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => { setNewModuleTriggers((p) => [...p, c.id]); setModuleTriggerSearch(""); }}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-muted/60 transition-colors"
-                      >
-                        {c.label}
-                      </button>
-                    ))}
-                  {screeningConfig.complaints.filter((c) => c.active && !newModuleTriggers.includes(c.id) && c.label.toLowerCase().includes(moduleTriggerSearch.trim().toLowerCase())).length === 0 && (
-                    <p className="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddModuleDialogOpen(false)}>Cancel</Button>
-            <Button onClick={addModule} disabled={savingModule}>
-              {savingModule ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Add
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ---------- Add / Edit Onset option dialog ---------- */}
       <Dialog open={onsetDialog !== null} onOpenChange={(open) => { if (!open) setOnsetDialog(null); }}>
@@ -2393,135 +2113,6 @@ export default function MetaSectionPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ---------- Question create/edit dialog (Modules & Questions tab) ---------- */}
-      <Dialog open={questionDialogOpen} onOpenChange={setQuestionDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingQuestionId ? "Edit Question" : "Add Question"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <FloatingField
-                id="questionLabel"
-                label="Label"
-                value={draft.label}
-                onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))}
-              />
-              <FloatingField
-                id="questionLabelLocal"
-                label="Local translation (optional)"
-                value={draft.labelLocal}
-                onChange={(e) => setDraft((d) => ({ ...d, labelLocal: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <FloatingSelect id="questionType" label="Type" value={draft.type} onValueChange={(v) => setDraft((d) => ({ ...d, type: v }))}>
-                {Object.entries(TYPE_LABEL).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-              </FloatingSelect>
-              <FloatingSelect
-                id="questionGender"
-                label="Applies to gender"
-                value={draft.applicableGender || "any"}
-                onValueChange={(v) => setDraft((d) => ({ ...d, applicableGender: v === "any" ? "" : v }))}
-              >
-                <SelectItem value="any">Any</SelectItem>
-                <SelectItem value="male">Male only</SelectItem>
-                <SelectItem value="female">Female only</SelectItem>
-              </FloatingSelect>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FloatingField
-                id="questionMinAge"
-                label="Min age (days)"
-                type="number"
-                value={draft.minAgeDays}
-                onChange={(e) => setDraft((d) => ({ ...d, minAgeDays: e.target.value }))}
-              />
-              <FloatingField
-                id="questionMaxAge"
-                label="Max age (days)"
-                type="number"
-                value={draft.maxAgeDays}
-                onChange={(e) => setDraft((d) => ({ ...d, maxAgeDays: e.target.value }))}
-              />
-            </div>
-
-            {draft.type === "instruction" && (
-              <div>
-                <Label className="text-xs mb-1 block">Instruction text (read verbatim)</Label>
-                <Textarea value={draft.instructionText} onChange={(e) => setDraft((d) => ({ ...d, instructionText: e.target.value }))} className="bg-background/60" rows={2} />
-              </div>
-            )}
-
-            {(draft.type === "single_select" || draft.type === "multi_select") && (
-              <div>
-                <Label className="text-xs mb-2 block">Options</Label>
-                <div className="space-y-2">
-                  {draft.options.map((o, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <Input placeholder="Option label" value={o.label} onChange={(e) => updateDraftOption(idx, { label: e.target.value })} className="bg-background/60" />
-                      <Select value={o.flagSeverity || "none"} onValueChange={(v) => updateDraftOption(idx, { flagSeverity: v === "none" ? "" : v })}>
-                        <SelectTrigger className="bg-background/60 w-36"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No flag</SelectItem>
-                          <SelectItem value="green">Green</SelectItem>
-                          <SelectItem value="yellow">Yellow</SelectItem>
-                          <SelectItem value="red">Red</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <button onClick={() => removeDraftOption(idx)} className="text-muted-foreground hover:text-destructive transition-colors"><X className="h-4 w-4" /></button>
-                    </div>
-                  ))}
-                  <Button size="sm" variant="outline" onClick={addDraftOption}><Plus className="h-3.5 w-3.5" /> Add Option</Button>
-                </div>
-              </div>
-            )}
-
-            {draft.type === "numeric" && (
-              <div className="space-y-3">
-                <Label className="text-xs block">Flag rules (up to two independent threshold checks)</Label>
-                {[1, 2].map((n) => {
-                  const opKey = n === 1 ? "numericOperator" : "numericOperator2";
-                  const thKey = n === 1 ? "numericThreshold" : "numericThreshold2";
-                  const sevKey = n === 1 ? "numericFlagSeverity" : "numericFlagSeverity2";
-                  return (
-                    <div key={n} className="grid grid-cols-3 gap-2">
-                      <Select value={(draft as any)[opKey] || "none"} onValueChange={(v) => setDraft((d) => ({ ...d, [opKey]: v === "none" ? "" : v }))}>
-                        <SelectTrigger className="bg-background/60"><SelectValue placeholder="Operator" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value=">">{"> greater than"}</SelectItem>
-                          <SelectItem value="<">{"< less than"}</SelectItem>
-                          <SelectItem value=">=">{">= at least"}</SelectItem>
-                          <SelectItem value="<=">{"<= at most"}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input type="number" placeholder="Threshold" value={(draft as any)[thKey]} onChange={(e) => setDraft((d) => ({ ...d, [thKey]: e.target.value }))} className="bg-background/60" />
-                      <Select value={(draft as any)[sevKey] || "none"} onValueChange={(v) => setDraft((d) => ({ ...d, [sevKey]: v === "none" ? "" : v }))}>
-                        <SelectTrigger className="bg-background/60"><SelectValue placeholder="Flag" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No flag</SelectItem>
-                          <SelectItem value="green">Green</SelectItem>
-                          <SelectItem value="yellow">Yellow</SelectItem>
-                          <SelectItem value="red">Red</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQuestionDialogOpen(false)}>Cancel</Button>
-            <Button onClick={saveQuestion} disabled={savingQuestion}>
-              {savingQuestion ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

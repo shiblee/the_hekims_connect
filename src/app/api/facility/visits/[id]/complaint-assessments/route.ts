@@ -19,7 +19,7 @@ async function assertOwnedVisit(id: string, facilityId: string) {
 const COMPLAINT_SELECT = {
   id: true, chiefComplaintId: true, chiefComplaintLabel: true, onsetValue: true, onsetUnit: true, onsetPattern: true,
   severityScore: true, character: true, associatedManifestations: true, aggravatingFactors: true, relievingFactors: true,
-  clinicalNotes: true, screeningAnswers: true, sortOrder: true, createdAt: true, updatedAt: true,
+  clinicalNotes: true, sortOrder: true, createdAt: true, updatedAt: true,
 };
 
 const HUMORAL_SELECT = {
@@ -80,13 +80,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     aggravatingFactors: JSON.stringify(Array.isArray(c.aggravatingFactors) ? c.aggravatingFactors : []),
     relievingFactors: JSON.stringify(Array.isArray(c.relievingFactors) ? c.relievingFactors : []),
     clinicalNotes: c.clinicalNotes || null,
-    screeningAnswers: JSON.stringify(c.screeningAnswers && typeof c.screeningAnswers === "object" ? c.screeningAnswers : {}),
     sortOrder: i,
     recordedById,
   })).filter((r) => r.chiefComplaintLabel);
 
-  // Full replace-by-visit — same delete+recreate convention L1Screening.answers
-  // uses, since complaints can be added/removed between saves, not just edited.
+  // Full replace-by-visit, since complaints can be added/removed between saves, not just edited.
   await db.$transaction([
     db.complaintAssessment.deleteMany({ where: { visitId: id } }),
     ...(rows.length ? [db.complaintAssessment.createMany({ data: rows })] : []),

@@ -17,8 +17,7 @@ const SELECT = {
   },
   l1Screening: {
     select: {
-      id: true, chiefComplaints: true, overallFlag: true, aiSummary: true, updatedAt: true,
-      answers: { select: { flagTriggered: true } },
+      id: true, chiefComplaints: true, aiSummary: true, updatedAt: true,
     },
   },
   intake: {

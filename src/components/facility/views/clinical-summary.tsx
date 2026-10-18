@@ -16,7 +16,7 @@ interface Summary {
   triage: { painNotes: string | null; primaryFocusArea: string | null; triageRemarks: string | null } | null;
   complaints: {
     label: string; durationValue: number | null; durationUnit: string | null; severity: number | null; severityLabel: string | null;
-    aggravating: string[]; relieving: string[]; answers: { question: string; answer: string }[]; notes: string | null;
+    aggravating: string[]; relieving: string[]; notes: string | null;
   }[];
   regions: string[];
   chronology: {
@@ -198,16 +198,6 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
                 </div>
                 {c.aggravating.length > 0 && <div className="space-y-1"><p className="text-[11px] text-muted-foreground">Aggravated by (Muharrikat)</p><Chips items={c.aggravating} tone="red" /></div>}
                 {c.relieving.length > 0 && <div className="space-y-1"><p className="text-[11px] text-muted-foreground">Relieved by (Musakkinat)</p><Chips items={c.relieving} tone="green" /></div>}
-                {c.answers.length > 0 && (
-                  <dl className="space-y-1 border-t border-border/40 pt-2">
-                    {c.answers.map((a) => (
-                      <div key={a.question} className="grid grid-cols-[1fr_auto] gap-3 text-xs">
-                        <dt className="text-muted-foreground">{a.question}</dt>
-                        <dd className="font-medium text-right">{a.answer}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
                 {c.notes && <p className="text-xs text-muted-foreground italic">{c.notes}</p>}
               </div>
             ))}
