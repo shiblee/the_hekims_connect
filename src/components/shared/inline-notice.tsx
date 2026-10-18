@@ -29,11 +29,14 @@ export function InlineNotice({ tone, title, detail, action, onDismiss, className
     <div role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"}
       className={cn("flex items-start gap-3 rounded-xl border px-4 py-3", s.box, className)}>
       <s.icon className="h-4.5 w-4.5 shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold">{title}</p>
-        {detail && <div className="text-sm text-foreground/80 mt-0.5">{detail}</div>}
+      {/* The action sits beside the text when there's room, and wraps under it in narrow spaces. */}
+      <div className="flex-1 min-w-0 flex flex-wrap items-start gap-x-3 gap-y-2">
+        <div className="flex-1 min-w-[13rem]">
+          <p className="text-sm font-semibold">{title}</p>
+          {detail && <div className="text-sm text-foreground/80 mt-0.5">{detail}</div>}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
       {onDismiss && (
         <button type="button" onClick={onDismiss} aria-label="Dismiss" className="shrink-0 rounded-md p-0.5 opacity-70 hover:opacity-100">
           <X className="h-4 w-4" />

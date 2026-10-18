@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { formatAge } from "@/lib/age";
-import { generateHumoralClues } from "@/lib/gemini";
+import { generateHumoralClues, geminiQuotaRecentlyHit } from "@/lib/gemini";
 
 async function resolveFacilityId(auth: { id: string; type: "facility" | "patient" | "staff" }): Promise<string | null> {
   if (auth.type === "facility") return auth.id;
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
-  if (!visit.humoralAssessment) return NextResponse.json({ clue: null, unavailable: true });
+  if (!visit.humoralAssessment) return NextResponse.json({ clue: null, unavailable: true, reason: "no_data" });
 
   let breakdown: { source: string; safra: number; dam: number; sauda: number; balgham: number }[] = [];
   try { breakdown = JSON.parse(visit.humoralAssessment.breakdown || "[]"); } catch { breakdown = []; }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     { ...visit.humoralAssessment, breakdown }
   );
 
-  if (!clue) return NextResponse.json({ clue: null, unavailable: true });
+  if (!clue) return NextResponse.json({ clue: null, unavailable: true, reason: geminiQuotaRecentlyHit() ? "quota" : "unavailable" });
 
   await db.humoralAssessment.update({
     where: { visitId: id },

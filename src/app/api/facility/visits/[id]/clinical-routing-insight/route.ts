@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { formatAge } from "@/lib/age";
-import { generateClinicalRouting } from "@/lib/gemini";
+import { generateClinicalRouting, geminiQuotaRecentlyHit } from "@/lib/gemini";
 
 async function resolveFacilityId(auth: { id: string; type: "facility" | "patient" | "staff" }): Promise<string | null> {
   if (auth.type === "facility") return auth.id;
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   );
 
-  if (!routing) return NextResponse.json({ routing: null, unavailable: true });
+  if (!routing) return NextResponse.json({ routing: null, unavailable: true, reason: geminiQuotaRecentlyHit() ? "quota" : "unavailable" });
 
   const saved = await db.clinicalRoutingInsight.upsert({
     where: { visitId: id },

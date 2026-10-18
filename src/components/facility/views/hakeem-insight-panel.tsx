@@ -98,16 +98,28 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
         }
       }
       setStep(1);
-      const routingCall = api.post<{ routing: Routing | null }>(`/api/facility/visits/${visitId}/clinical-routing-insight`, {});
+      const routingCall = api.post<{ routing: Routing | null; reason?: string }>(`/api/facility/visits/${visitId}/clinical-routing-insight`, {});
       await loadHumoral();
       setStep(2);
-      const clueCall = api.post<{ clue: string | null }>(`/api/facility/visits/${visitId}/humoral-clues-insight`, {});
+      const clueCall = api.post<{ clue: string | null; reason?: string }>(`/api/facility/visits/${visitId}/humoral-clues-insight`, {});
       const [r, c] = await Promise.allSettled([routingCall, clueCall]);
       if (r.status === "fulfilled" && r.value.routing) setRouting(r.value.routing);
       if (c.status === "fulfilled" && c.value.clue) setHumoral((h) => (h ? { ...h, aiClue: c.value.clue, aiClueGeneratedAt: new Date().toISOString() } : h));
-      const failed = [r.status === "rejected" || !r.value.routing ? "triage priority" : null, c.status === "rejected" ? "humoral explanation" : null].filter(Boolean);
-      if (failed.length === 2) msg.error("Hakeem Insight isn't available right now", "Nothing was changed — try again in a moment.", { retry: generate, retryLabel: "Try again" });
-      else if (failed.length) msg.warning(`The ${failed[0]} couldn't be generated`, "The rest is shown below — try again to fill it in.", { retry: generate, retryLabel: "Try again" });
+      // Work out what didn't come back, and why.
+      const rReason = r.status === "rejected" ? "error" : r.value.routing ? null : (r.value.reason || "unavailable");
+      const cReason = c.status === "rejected" ? "error" : c.value.clue ? null : (c.value.reason || "unavailable");
+      if (rReason === "quota" || cReason === "quota") {
+        msg.warning(
+          "Hakeem Insight is paused — its AI credits have run out",
+          "The Google Gemini account behind Hakeem Insight has used up its prepaid credits. An administrator can top it up in Google AI Studio; everything else on this page keeps working.",
+          { retry: generate, retryLabel: "Try again" },
+        );
+      } else {
+        const failed = [rReason && "triage priority", cReason && cReason !== "no_data" && "humoral explanation"].filter(Boolean) as string[];
+        if (failed.length === 2) msg.error("Hakeem Insight isn't available right now", "Nothing was changed — try again in a moment.", { retry: generate, retryLabel: "Try again" });
+        else if (failed.length) msg.warning(`The ${failed[0]} couldn't be generated`, "The rest is shown below — try again to fill it in.", { retry: generate, retryLabel: "Try again" });
+        if (cReason === "no_data" && !rReason) msg.info("Fill in Main Complaints for the humoral reading", "The triage priority is ready; the humoral balance needs at least one assessed complaint.");
+      }
     } catch (e: any) {
       msg.error("Hakeem Insight couldn't run", `${e.message || "Network error"}.`, { retry: generate, retryLabel: "Try again" });
     } finally {

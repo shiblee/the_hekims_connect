@@ -23,6 +23,11 @@ export interface VitalsInsightVisit {
 }
 
 /** Shared Gemini call — server-side only, returns null (and logs) on any failure or missing key. */
+// When Gemini last refused for credits/quota — lets an API route that got a
+// null back tell the page *why* ("credits ran out") instead of a vague failure.
+let quotaHitAt = 0;
+export function geminiQuotaRecentlyHit() { return Date.now() - quotaHitAt < 120_000; }
+
 async function callGemini(prompt: string): Promise<string | null> {
   const apiKey = await getGeminiApiKey();
   if (!apiKey) return null;
@@ -37,6 +42,7 @@ async function callGemini(prompt: string): Promise<string | null> {
   );
 
   if (!res.ok) {
+    if (res.status === 402 || res.status === 429) quotaHitAt = Date.now();
     console.error("Gemini call error:", res.status, await res.text().catch(() => ""));
     return null;
   }
