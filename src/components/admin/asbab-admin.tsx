@@ -3,6 +3,7 @@
 import { createElement, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
+import { useUrlParam } from "@/hooks/use-url-param";
 import { cn } from "@/lib/utils";
 import { AKHLAT, QUESTION_TYPES, pillarIcon, type AsbabAnswer, type AsbabQuestionCfg } from "@/lib/asbab";
 import { QuestionCard } from "@/components/facility/views/asbab-assessment";
@@ -59,7 +60,8 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
     ? { sections: "Examination Sections", section: "Section", fixedNote: "Sections can be renamed, reordered or disabled, but not removed." }
     : { sections: "Six Pillars", section: "Pillar", fixedNote: "The six pillars are fixed by the classical framework — they can be renamed, reordered or disabled, but not removed." };
   const [pillars, setPillars] = useState<Pillar[] | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  // The open section lives in the URL (?section=<key>) so each has its own link.
+  const [sectionKey, setSectionKey] = useUrlParam<string>("section", "");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [pillarDraft, setPillarDraft] = useState<{ id: string; label: string; english: string; description: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -98,7 +100,7 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
     .catch((e) => toast.error(e.message || "Could not load Asbab-e-Sittah"));
   useEffect(() => { load(); }, []);
 
-  const active = pillars?.find((p) => p.id === activeId) ?? pillars?.[0] ?? null;
+  const active = pillars?.find((p) => p.key === sectionKey) ?? pillars?.[0] ?? null;
 
   const patchPillar = async (id: string, body: Record<string, unknown>) => {
     try { await adminApi.patch(`/api/admin/asbab/pillars/${id}`, body); await load(); }
@@ -222,7 +224,7 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
                 <button disabled={i === 0} onClick={() => movePillar(i, -1)} className="disabled:opacity-20 opacity-70 hover:opacity-100"><ChevronUp className="h-3 w-3" /></button>
                 <button disabled={i === pillars.length - 1} onClick={() => movePillar(i, 1)} className="disabled:opacity-20 opacity-70 hover:opacity-100"><ChevronDown className="h-3 w-3" /></button>
               </div>
-              <button onClick={() => setActiveId(p.id)} className="flex-1 min-w-0 flex items-center gap-2 px-2 py-2 text-left">
+              <button onClick={() => setSectionKey(i === 0 ? "" : p.key)} className="flex-1 min-w-0 flex items-center gap-2 px-2 py-2 text-left">
                 <PillarIcon pillarKey={p.key} className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1">
                   <span className={cn("block text-sm font-medium leading-snug", !p.active && "line-through opacity-60")}>{i + 1}. {p.label}</span>

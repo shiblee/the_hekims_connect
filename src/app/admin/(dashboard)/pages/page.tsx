@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUrlParam } from "@/hooks/use-url-param";
 import { Loader2, Save, CheckCircle2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
@@ -55,7 +56,10 @@ const STATUS_VARIANT: Record<string, string> = {
 
 export default function AdminPagesPage() {
   const [pages, setPages] = useState<PageRow[]>([]);
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  // The open page and editing language live in the URL (?page=<slug>&lang=<code>).
+  const [pageParam, setPageParam] = useUrlParam<string>("page", "");
+  const [lang, setLang] = useUrlParam<string>("lang", "en");
+  const selectedSlug = pages.some((p) => p.slug === pageParam) ? pageParam : pages[0]?.slug ?? null;
   const [detail, setDetail] = useState<PageDetail | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftValue>>({});
   const [loadingList, setLoadingList] = useState(true);
@@ -66,7 +70,6 @@ export default function AdminPagesPage() {
     adminApi.get<{ pages: PageRow[] }>("/api/admin/pages")
       .then((res) => {
         setPages(res.pages);
-        setSelectedSlug((current) => current ?? (res.pages.length ? res.pages[0].slug : null));
       })
       .finally(() => setLoadingList(false));
   };
@@ -144,7 +147,7 @@ export default function AdminPagesPage() {
                 {pages.map((p) => (
                   <button
                     key={p.slug}
-                    onClick={() => setSelectedSlug(p.slug)}
+                    onClick={() => setPageParam(p.slug)}
                     className={cn(
                       "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0 lg:shrink lg:whitespace-normal text-left",
                       selectedSlug === p.slug ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -165,7 +168,7 @@ export default function AdminPagesPage() {
             <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
           ) : (
             <Card className="p-6 border-border/50 bg-card/60">
-              <Tabs defaultValue="en">
+              <Tabs value={lang} onValueChange={setLang}>
                 <TabsList className="grid grid-cols-5 mb-6">
                   {LANGUAGES.map((l) => (
                     <TabsTrigger key={l.code} value={l.code}>{l.label}</TabsTrigger>

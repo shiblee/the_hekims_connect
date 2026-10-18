@@ -6,6 +6,7 @@ import { adminApi } from "@/lib/admin-api";
 import { cn } from "@/lib/utils";
 import { TASHKHEES_LISTS, type TashkheesListKey } from "@/lib/tashkhees";
 import { AsbabAdmin } from "@/components/admin/asbab-admin";
+import { useUrlParam } from "@/hooks/use-url-param";
 import { TashkheesEngineAdmin } from "@/components/admin/tashkhees-engine-admin";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,15 @@ interface Row { id: string; list: string; label: string; localName: string | nul
 
 /** Admin → Meta → Tashkhees & Ilaj: the Dala'il examination questions and the Stage 5 option lists. */
 export function TashkheesAdmin() {
-  const [part, setPart] = useState<"dalail" | "engine" | "lists">("dalail");
+  // Each sub-tab has its own URL: ?tab=dalail | engine | lists
+  const [part, setPartRaw] = useUrlParam("tab", "dalail", ["dalail", "engine", "lists"] as const);
+  // Switching sub-tab drops the previous tab's own params (section / list).
+  const setPart = (v: "dalail" | "engine" | "lists") => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("section"); url.searchParams.delete("list");
+    window.history.replaceState(window.history.state, "", url);
+    setPartRaw(v);
+  };
   return (
     <div className="space-y-5">
       <div className="inline-flex rounded-lg border border-border/60 bg-card/60 p-1">
@@ -35,7 +44,7 @@ export function TashkheesAdmin() {
 
 function OptionLists() {
   const [rows, setRows] = useState<Row[] | null>(null);
-  const [list, setList] = useState<TashkheesListKey>("mizaj");
+  const [list, setList] = useUrlParam<TashkheesListKey>("list", "mizaj", TASHKHEES_LISTS.map((l) => l.key));
   const [dialog, setDialog] = useState<{ id: string | null; label: string; localName: string; description: string; active: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
 

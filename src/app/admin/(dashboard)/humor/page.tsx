@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
+import { useUrlParam } from "@/hooks/use-url-param";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +41,8 @@ const ONSET_PATTERNS = ["Acute", "Gradual", "Chronic", "Episodic/Recurrent"];
 export default function HumorAdminPage() {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("manifestations");
+  // Each tab has its own URL: ?tab=manifestations | rules | severity | tendency
+  const [tab, setTab] = useUrlParam("tab", "manifestations", ["manifestations", "rules", "severity", "tendency"] as const);
 
   const load = () => {
     setLoading(true);
@@ -208,7 +210,7 @@ export default function HumorAdminPage() {
         </p>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
           <TabsTrigger value="manifestations">Manifestations</TabsTrigger>
           <TabsTrigger value="rules">Weight Rules</TabsTrigger>

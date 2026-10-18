@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, Sparkles, Save, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
+import { useUrlParam } from "@/hooks/use-url-param";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +44,8 @@ const STATUS_VARIANT: Record<string, string> = {
 };
 
 export default function TranslationKeyEditorPage() {
+  // The language being edited lives in the URL (?lang=<code>).
+  const [lang, setLang] = useUrlParam<string>("lang", "hi");
   const { key: rawKey } = useParams<{ key: string }>();
   const key = decodeURIComponent(rawKey);
 
@@ -119,7 +122,7 @@ export default function TranslationKeyEditorPage() {
       </div>
 
       <Card className="p-6 border-border/50 bg-card/60 max-w-3xl">
-        <Tabs defaultValue="hi">
+        <Tabs value={lang} onValueChange={setLang}>
           <TabsList className="grid grid-cols-4 mb-6">
             {LANGUAGES.filter((l) => l.code !== "en").map((l) => (
               <TabsTrigger key={l.code} value={l.code}>{l.label}</TabsTrigger>
