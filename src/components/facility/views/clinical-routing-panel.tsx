@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ interface Routing { priorityLevel: string; triageStream: string; justification: 
 export function ClinicalRoutingPanel({ visitId }: { visitId: string }) {
   const [routing, setRouting] = useState<Routing | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "unavailable">("idle");
+  const msg = useNotice();
 
   // The last "Generate" is persisted server-side — load it so a reload
   // shows what was actually generated for this visit instead of going
@@ -24,6 +25,7 @@ export function ClinicalRoutingPanel({ visitId }: { visitId: string }) {
 
   const generate = async () => {
     setState("loading");
+    msg.clear();
     try {
       const res = await api.post<{ routing: Routing | null; unavailable?: boolean }>(`/api/facility/visits/${visitId}/clinical-routing-insight`, {});
       if (res.routing) {
@@ -33,7 +35,7 @@ export function ClinicalRoutingPanel({ visitId }: { visitId: string }) {
         setState("unavailable");
       }
     } catch (e: any) {
-      toast.error(e.message || "Could not generate a routing suggestion");
+      msg.error("Hakeem Insight couldn't suggest a routing just now", `${e.message || "Network error"}.`, { retry: generate, retryLabel: "Try again" });
       setState("idle");
     }
   };
@@ -61,6 +63,7 @@ export function ClinicalRoutingPanel({ visitId }: { visitId: string }) {
       )}
       {state === "unavailable" && <p className="text-xs text-muted-foreground">Hakeem Insight isn&apos;t available right now.</p>}
       {!routing && state === "idle" && <p className="text-xs text-muted-foreground">Generate a suggested priority level and triage stream from this visit's recorded data.</p>}
+      <NoticeSlot state={msg} />
     </Card>
   );
 }

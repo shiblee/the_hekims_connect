@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Mic } from "lucide-react";
 
@@ -26,6 +25,13 @@ export function VoiceInputButton({
   const [supported] = useState(() => typeof window !== "undefined" && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  // A short note under the mic when dictation fails — no pop-up.
+  const [hint, setHint] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hint) return;
+    const t = setTimeout(() => setHint(null), 6000);
+    return () => clearTimeout(t);
+  }, [hint]);
 
   // Stop any in-progress recognition on unmount — a pure side-effect cleanup,
   // no setState in the effect body itself.
@@ -40,9 +46,10 @@ export function VoiceInputButton({
     }
     const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!Ctor) {
-      toast.error("Voice input isn't supported in this browser");
+      setHint("Voice input isn't available in this browser — type instead.");
       return;
     }
+    setHint(null);
     const recognition = new Ctor();
     recognition.lang = "en-IN";
     recognition.continuous = true;
@@ -60,7 +67,7 @@ export function VoiceInputButton({
     recognition.onerror = (ev: any) => {
       setListening(false);
       if (ev.error !== "no-speech" && ev.error !== "aborted") {
-        toast.error("Could not capture voice input");
+        setHint(ev.error === "not-allowed" ? "Microphone is blocked — allow it for this site, then try again." : "Didn't catch that — tap the mic and speak again.");
       }
     };
     recognition.onend = () => setListening(false);
@@ -72,6 +79,7 @@ export function VoiceInputButton({
   if (!supported) return null;
 
   return (
+    <span className="relative inline-flex shrink-0">
     <button
       type="button"
       onClick={toggle}
@@ -92,5 +100,11 @@ export function VoiceInputButton({
       )}
       <Mic className={cn("relative z-10", size === "sm" ? "h-4 w-4" : "h-5 w-5")} />
     </button>
+    {hint && (
+      <span role="status" className="absolute right-0 top-full mt-1 z-30 w-56 rounded-md border border-amber-500/40 bg-card px-2.5 py-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400 shadow-md">
+        {hint}
+      </span>
+    )}
+    </span>
   );
 }

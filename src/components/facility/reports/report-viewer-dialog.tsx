@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { InlineNotice, LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { reportCategory, resultFlag, type ReportExtraction } from "@/lib/reports";
@@ -41,6 +41,11 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
   const [zoom, setZoom] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  // Delete asks for confirmation in place, not in a browser pop-up.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const msg = useNotice();
 
   useEffect(() => { if (openId) setCurrentId(openId); }, [openId]);
 
@@ -49,7 +54,7 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
     if (!currentId || !openId) return;
     let cancelled = false;
     const urls: string[] = [];
-    setReport(null); setFileUrls({}); setPage(0); setZoom(false); setNote("");
+    setReport(null); setFileUrls({}); setPage(0); setZoom(false); setNote(""); setLoadError(null); setConfirmDelete(false);
     api.get<{ report: ReportDetail }>(`/api/facility/reports/${currentId}`)
       .then(async ({ report: r }) => {
         if (cancelled) return;
@@ -62,9 +67,9 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
           setFileUrls((m) => ({ ...m, [f.id]: url }));
         }
       })
-      .catch((e) => toast.error(e.message || "Could not load the report"));
+      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); });
     return () => { cancelled = true; urls.forEach((u) => URL.revokeObjectURL(u)); };
-  }, [currentId, openId]);
+  }, [currentId, openId, reloadTick]);
 
   const idx = currentId ? reportIds.indexOf(currentId) : -1;
   const go = (d: -1 | 1) => { const next = reportIds[idx + d]; if (next) setCurrentId(next); };
@@ -91,29 +96,32 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
       setReport(r);
       onChanged();
       if (status === "reviewed") {
-        toast.success("Marked as reviewed");
         // "Mark as reviewed & next" — move straight on to the next report.
         const next = reportIds[idx + 1];
+        msg.success(`"${r.title}" marked as reviewed`, next ? "Showing the next report." : "That was the last report in the list.");
         if (next) setCurrentId(next);
+      } else {
+        msg.info("Review reopened", "The report is back in the pending-review list.");
       }
     } catch (e: any) {
-      toast.error(e.message || "Could not update the report");
+      msg.error(status === "reviewed" ? "The report wasn't marked as reviewed" : "The review wasn't reopened", `${e.message || "Network error"}. Try again.`, { retry: () => setStatus(status) });
     } finally {
       setBusy(false);
     }
   };
 
   const remove = async () => {
-    if (!report || !confirm(`Delete "${report.title}" and its files? This can't be undone.`)) return;
+    if (!report) return;
     setBusy(true);
     try {
       await api.delete(`/api/facility/reports/${report.id}`);
-      toast.success("Report deleted");
+      setConfirmDelete(false);
+      msg.success(`"${report.title}" deleted`);
       onChanged();
       const next = reportIds[idx + 1] || reportIds[idx - 1];
       if (next && next !== report.id) setCurrentId(next); else onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message || "Could not delete the report");
+      msg.error("The report wasn't deleted", `${e.message || "Network error"}. Try again.`, { retry: remove });
     } finally {
       setBusy(false);
     }
@@ -145,7 +153,9 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
         </DialogHeader>
 
         {!report ? (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm p-8"><Loader2 className="h-4 w-4 animate-spin" /> Loading report…</div>
+          loadError
+            ? <div className="p-4"><LoadFailed what="this report" detail={loadError} onRetry={() => setReloadTick((t) => t + 1)} /></div>
+            : <div className="flex items-center gap-2 text-muted-foreground text-sm p-8"><Loader2 className="h-4 w-4 animate-spin" /> Loading report…</div>
         ) : (
           <div className="grid lg:grid-cols-[1fr_380px]">
             {/* Document */}
@@ -236,9 +246,26 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
                 )}
               </div>
 
-              <button type="button" onClick={remove} disabled={busy} className="text-xs text-muted-foreground hover:text-destructive inline-flex items-center gap-1">
-                <Trash2 className="h-3 w-3" /> Delete report
-              </button>
+              <NoticeSlot state={msg} />
+              {confirmDelete ? (
+                <InlineNotice
+                  tone="error"
+                  title={`Delete "${report.title}"?`}
+                  detail="The report and all its files are removed for everyone. This can't be undone."
+                  action={
+                    <div className="flex flex-col gap-1.5">
+                      <Button size="sm" variant="destructive" onClick={remove} disabled={busy}>
+                        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Delete
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={busy}>Keep</Button>
+                    </div>
+                  }
+                />
+              ) : (
+                <button type="button" onClick={() => setConfirmDelete(true)} disabled={busy} className="text-xs text-muted-foreground hover:text-destructive inline-flex items-center gap-1">
+                  <Trash2 className="h-3 w-3" /> Delete report
+                </button>
+              )}
             </div>
           </div>
         )}

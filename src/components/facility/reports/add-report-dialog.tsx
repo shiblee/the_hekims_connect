@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -58,6 +58,11 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
   const freePreviews = (list: Picked[]) => list.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
   useEffect(() => () => freePreviews(previewsRef.current), []);
 
+  // `fileMsg` sits under the file picker, `readMsg` under the Read button, `msg` above Save.
+  const fileMsg = useNotice();
+  const readMsg = useNotice(10000);
+  const msg = useNotice();
+
   // Fresh form each time the dialog opens.
   useEffect(() => {
     if (!open) return;
@@ -65,6 +70,7 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
     setForm({ ...EMPTY, reportDate: today() });
     setExtraction(null);
     setFiles([]);
+    fileMsg.clear(); readMsg.clear(); msg.clear();
   }, [open]);
 
   const set = (patch: Partial<typeof EMPTY>) => setForm((f) => ({ ...f, ...patch }));
@@ -72,15 +78,27 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
   const addFiles = async (list: FileList | File[]) => {
     const incoming = [...list];
     const rejected = incoming.filter((f) => !REPORT_FILE_TYPES.includes(f.type));
-    if (rejected.length) toast.error(`Only photos (JPG, PNG, WEBP) or PDF files — skipped ${rejected.map((f) => f.name).join(", ")}`);
     const ok = await Promise.all(incoming.filter((f) => REPORT_FILE_TYPES.includes(f.type)).map(compressImage));
     const tooBig = ok.filter((f) => f.size > REPORT_MAX_FILE_BYTES);
-    if (tooBig.length) toast.error(`Larger than 8 MB: ${tooBig.map((f) => f.name).join(", ")}`);
     const accepted = ok.filter((f) => f.size <= REPORT_MAX_FILE_BYTES);
+    const room = REPORT_MAX_FILES - files.length;
+    // One message listing everything that was left out, and why.
+    const skipped = [
+      rejected.length && `Not a photo or PDF: ${rejected.map((f) => f.name).join(", ")}`,
+      tooBig.length && `Larger than 8 MB: ${tooBig.map((f) => f.name).join(", ")}`,
+      accepted.length > room && `Over the ${REPORT_MAX_FILES}-file limit: ${accepted.slice(Math.max(0, room)).map((f) => f.name).join(", ")}`,
+    ].filter(Boolean) as string[];
+    if (skipped.length) {
+      fileMsg.warning(
+        "Some files weren't added",
+        <ul className="list-disc pl-4 space-y-0.5">{skipped.map((s) => <li key={s}>{s}</li>)}</ul>,
+      );
+    } else {
+      fileMsg.clear();
+    }
     setFiles((cur) => {
-      const room = REPORT_MAX_FILES - cur.length;
-      if (accepted.length > room) toast.error(`A report can have up to ${REPORT_MAX_FILES} files`);
-      return [...cur, ...accepted.slice(0, Math.max(0, room)).map((file) => ({
+      const space = REPORT_MAX_FILES - cur.length;
+      return [...cur, ...accepted.slice(0, Math.max(0, space)).map((file) => ({
         id: `${file.name}-${file.size}-${Math.random()}`, file,
         preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
       }))];
@@ -94,6 +112,7 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
 
   const read = async () => {
     if (!files.length) return;
+    readMsg.clear();
     setReading(true);
     try {
       const fd = new FormData();
@@ -109,18 +128,28 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
         findings: f.findings,
       }));
       setExtraction({ summary: r.summary || undefined, values: r.values || [] });
-      toast.success(r.values?.length ? `Read ${r.values.length} values — please check them against the report` : "Report read — please check the details");
+      readMsg.success(
+        r.values?.length ? `Read ${r.values.length} values from the report` : "Report read",
+        "The details below were filled in — check them against the report before saving.",
+      );
     } catch (e: any) {
-      toast.error(e.message || "Couldn't read this report");
+      readMsg.error("Hakeem Insight couldn't read this report", `${e.message || "Network error"}. You can still fill in the details yourself and save.`, { retry: read, retryLabel: "Read again" });
     } finally {
       setReading(false);
     }
   };
 
   const save = async () => {
-    if (!form.category) { toast.error("Choose the report type"); return; }
-    if (!form.title.trim()) { toast.error("Enter the report name"); return; }
-    if (!files.length) { toast.error("Attach at least one photo or PDF of the report"); return; }
+    const missing = [
+      !files.length && "a photo or PDF of the report",
+      !form.category && "the report type",
+      !form.title.trim() && "the report name",
+    ].filter(Boolean) as string[];
+    if (missing.length) {
+      msg.warning(`Add ${missing.join(", ").replace(/, ([^,]*)$/, " and $1")} before saving`, "These are required so the report can be found and reviewed later.");
+      return;
+    }
+    msg.clear();
     setSaving(true);
     try {
       const fd = new FormData();
@@ -128,11 +157,10 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
       if (extraction) fd.append("extraction", JSON.stringify(extraction));
       files.forEach((f) => fd.append("files", f.file));
       await api.upload(`/api/facility/patients/${patientId}/reports`, fd);
-      toast.success("Report added");
       onSaved();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message || "Could not save the report");
+      msg.error("The report wasn't saved", `${e.message || "Network error"}. Everything is still here — try again.`, { retry: save, retryLabel: "Save again" });
     } finally {
       setSaving(false);
     }
@@ -168,6 +196,7 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
                 onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }}
               />
             </div>
+            <NoticeSlot state={fileMsg} className="mt-3" />
 
             {files.length > 0 && (
               <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -195,6 +224,7 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
                 </Button>
               </div>
             )}
+            <NoticeSlot state={readMsg} className="mt-3" />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
@@ -228,6 +258,7 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
           )}
         </div>
 
+        <NoticeSlot state={msg} />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving || reading}>

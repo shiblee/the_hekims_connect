@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AKHLAT, isAnswered, questionVisible, toPercent, zeroPoints, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints, type Humour } from "@/lib/asbab";
 import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerLine, type TashkheesOptionRow } from "@/lib/tashkhees";
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
+import { LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,9 @@ export function useTashkhees(visitId: string | undefined) {
   const [dossier, setDossier] = useState<Dossier>(EMPTY);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState<"draft" | "finalize" | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const msg = useNotice();
 
   useEffect(() => {
     if (!visitId) return;
@@ -56,12 +59,14 @@ export function useTashkhees(visitId: string | undefined) {
     ])
       .then(([o, d]) => {
         if (cancelled) return;
+        setLoadError(null);
         setOptions(o.options); setHerbs(o.herbs);
         if (d.dossier) setDossier({ ...EMPTY, ...d.dossier, followUpDate: d.dossier.followUpDate ? d.dossier.followUpDate.slice(0, 10) : null });
       })
-      .catch((e) => toast.error(e.message || "Could not load the dossier"));
+      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); });
     return () => { cancelled = true; };
-  }, [visitId]);
+  }, [visitId, reloadTick]);
+  const reload = () => { setLoadError(null); setReloadTick((t) => t + 1); if (dalail.loadError) dalail.reload(); };
 
   const set = useCallback((patch: Partial<Dossier>) => { setDossier((d) => ({ ...d, ...patch })); setDirty(true); }, []);
 
@@ -69,22 +74,32 @@ export function useTashkhees(visitId: string | undefined) {
     if (!visitId) return false;
     setSaving(finalize ? "finalize" : "draft");
     try {
-      const [res] = await Promise.all([
+      const [res, dalailOk] = await Promise.all([
         api.post<{ dossier: Dossier }>(`/api/facility/visits/${visitId}/dossier`, { ...dossier, finalize }),
         dalail.save(false),
       ]);
       setDossier({ ...EMPTY, ...res.dossier, followUpDate: res.dossier.followUpDate ? res.dossier.followUpDate.slice(0, 10) : null });
       setDirty(false);
+      dalail.msg.clear();
+      if (!dalailOk) {
+        msg.error("The dossier was saved, but the Dala'il examination answers weren't", "They're still on screen in the Dala'il tab — save again to keep them.", { retry: () => save(finalize), retryLabel: "Save again" });
+        return false;
+      }
+      msg.clear();
       return true;
     } catch (e: any) {
-      toast.error(e.message || "Could not save the dossier");
+      msg.error(
+        finalize ? "The dossier wasn't finalised" : "The draft wasn't saved",
+        `${e.message || "Network error"}. Everything you entered is still on screen — nothing was lost.`,
+        { retry: () => save(finalize), retryLabel: "Try again" },
+      );
       return false;
     } finally {
       setSaving(null);
     }
   };
 
-  return { dalail, options, herbs, dossier, set, dirty: dirty || dalail.dirty, saving, save };
+  return { dalail, options, herbs, dossier, set, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload };
 }
 type TashkheesState = ReturnType<typeof useTashkhees>;
 
@@ -558,7 +573,10 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
     ilaj: d.prescriptions.length + d.tadbeer.length + d.ghizaRecommended.length + d.ghizaAvoid.length > 0,
     handover: !!d.prognosis || !!d.handoverNote,
   };
-  if (!state.options) return <Card className="p-5 border-border/50 bg-card/60"><Loading /></Card>;
+  if (!state.options) {
+    if (state.loadError) return <LoadFailed what="the dossier" detail={state.loadError} onRetry={state.reload} />;
+    return <Card className="p-5 border-border/50 bg-card/60"><Loading /></Card>;
+  }
 
   return (
     <div className="space-y-5">
@@ -607,10 +625,10 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 
 /** Opens a print-ready dossier (same approach as the triage slip on Stage 2). */
-export function printDossier(state: TashkheesState, patient: { name: string; patientCode: string | null; gender: string | null; dob: string | null }) {
+export function printDossier(state: TashkheesState, patient: { name: string; patientCode: string | null; gender: string | null; dob: string | null }): boolean {
   const d = state.dossier;
   const win = window.open("", "_blank");
-  if (!win) { toast.error("Allow pop-ups to print the dossier"); return; }
+  if (!win) return false; // blocked — the caller explains how to allow it
   const dalail = (state.dalail.pillars || []).map((p) => {
     const rows = p.questions.filter((q) => isAnswered(state.dalail.answers[q.id])).map((q) => {
       const v = state.dalail.answers[q.id];
@@ -656,4 +674,5 @@ export function printDossier(state: TashkheesState, patient: { name: string; pat
   </body></html>`);
   win.document.close();
   win.print();
+  return true;
 }

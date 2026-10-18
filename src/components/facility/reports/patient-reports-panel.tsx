@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { reportCategory } from "@/lib/reports";
 import { Button } from "@/components/ui/button";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { AddReportDialog } from "@/components/facility/reports/add-report-dialog";
 import { ReportViewerDialog } from "@/components/facility/reports/report-viewer-dialog";
 import { FolderOpen, Loader2, Paperclip, Plus } from "lucide-react";
@@ -35,8 +36,11 @@ export function PatientReportsPanel() {
   const patientId = useCurrentPatientId();
   // Tagged with the patient it belongs to, so switching patients never shows
   // the previous patient's list while the new one loads.
-  const [loaded, setLoaded] = useState<{ patientId: string; reports: ReportRow[] } | null>(null);
-  const reports = loaded && loaded.patientId === patientId ? loaded.reports : null;
+  const [loaded, setLoaded] = useState<{ patientId: string; reports: ReportRow[] | null; error?: string } | null>(null);
+  const current = loaded && loaded.patientId === patientId ? loaded : null;
+  const reports = current?.reports ?? null;
+  const loadError = current?.error;
+  const msg = useNotice();
   const [adding, setAdding] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
 
@@ -44,7 +48,8 @@ export function PatientReportsPanel() {
     if (!patientId) return;
     api.get<{ reports: ReportRow[] }>(`/api/facility/patients/${patientId}/reports`)
       .then((r) => setLoaded({ patientId, reports: r.reports }))
-      .catch(() => setLoaded({ patientId, reports: [] }));
+      // A failed load must not look like "no reports" — say so, with a retry.
+      .catch((e) => setLoaded({ patientId, reports: null, error: e.message || "Network error" }));
   }, [patientId]);
 
   useEffect(() => { load(); }, [load]);
@@ -76,7 +81,15 @@ export function PatientReportsPanel() {
         <p className="px-1 mb-2 text-[11px] text-amber-600 dark:text-amber-400">{pending} awaiting doctor review</p>
       )}
 
-      {reports === null ? (
+      <NoticeSlot state={msg} className="mb-2 px-3 py-2" />
+
+      {loadError ? (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-xs">
+          <p className="font-semibold text-destructive">Couldn&apos;t load reports</p>
+          <p className="text-muted-foreground mt-0.5">{loadError}. Existing reports are safe.</p>
+          <button type="button" onClick={load} className="mt-1.5 text-primary hover:underline font-medium">Try again</button>
+        </div>
+      ) : reports === null ? (
         <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</div>
       ) : reports.length === 0 ? (
         <button type="button" onClick={() => setAdding(true)}
@@ -120,7 +133,7 @@ export function PatientReportsPanel() {
         </div>
       )}
 
-      <AddReportDialog patientId={patientId} open={adding} onOpenChange={setAdding} onSaved={load} />
+      <AddReportDialog patientId={patientId} open={adding} onOpenChange={setAdding} onSaved={() => { load(); msg.success("Report added", "It's listed below, awaiting doctor review."); }} />
       <ReportViewerDialog
         reportIds={(reports || []).map((r) => r.id)}
         openId={viewing}

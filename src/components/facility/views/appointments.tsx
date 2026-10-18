@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { CalendarDays, Clock, Check, X, Loader2, Search, Phone, Droplet } from "lucide-react";
 
 interface Appt {
@@ -23,6 +23,8 @@ export function AppointmentsView() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const msg = useNotice();
 
   const load = async () => {
     setLoading(true);
@@ -37,13 +39,21 @@ export function AppointmentsView() {
       if (search) list = list.filter((a) => a.patient.name.toLowerCase().includes(search.toLowerCase()) || a.type.toLowerCase().includes(search.toLowerCase()));
       list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
       setAppts(list);
-    } catch (e: any) { toast.error(e.message); } finally { setLoading(false); }
+      setLoadError(null);
+    } catch (e: any) { setLoadError(e.message || "Network error"); } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [tab, search]);
 
   const update = async (id: string, status: string) => {
-    try { await api.patch(`/api/appointments/${id}`, { status }); toast.success(`Marked as ${status}`); load(); } catch (e: any) { toast.error(e.message); }
+    const name = appts.find((a) => a.id === id)?.patient.name ?? "The appointment";
+    try {
+      await api.patch(`/api/appointments/${id}`, { status });
+      msg.success(`${name}'s appointment marked as ${status}`);
+      load();
+    } catch (e: any) {
+      msg.error(`${name}'s appointment wasn't updated`, `${e.message || "Network error"}.`, { retry: () => update(id, status) });
+    }
   };
 
   return (
@@ -69,8 +79,12 @@ export function AppointmentsView() {
         </div>
       </div>
 
+      <NoticeSlot state={msg} />
+
       {loading ? (
         <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+      ) : loadError ? (
+        <LoadFailed what="appointments" detail={loadError} onRetry={load} />
       ) : appts.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />

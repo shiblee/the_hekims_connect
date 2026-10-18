@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,15 +15,19 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
   const [loading, setLoading] = useState(true);
   const [points, setPoints] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const msg = useNotice();
 
   useEffect(() => {
     api.get<{ note: { points: string } | null }>(`/api/facility/visits/${visitId}/resident-notes`)
       .then((res) => {
+        setLoadError(null);
         try { setPoints(JSON.parse(res.note?.points || "[]")); } catch { setPoints([]); }
       })
-      .catch(() => toast.error("Could not load the resident clinical note"))
+      .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
-  }, [visitId]);
+  }, [visitId, reloadTick]);
 
   const commit = () => {
     const text = draft.trim();
@@ -39,16 +43,20 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
     // panel's own initial fetch has resolved — `points` would still be the
     // empty initial state, and posting it would wipe out whatever was
     // already saved for this visit.
-    if (loading) return;
+    // Same for a note that failed to load.
+    if (loading || loadError) return;
     try {
       await api.post(`/api/facility/visits/${visitId}/resident-notes`, { points });
+      msg.clear();
     } catch (e: any) {
-      toast.error(e.message || "Could not save the resident clinical note");
+      msg.error("The clinical note wasn't saved", `${e.message || "Network error"}. Your points are still listed above.`, { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
 
-  useImperativeHandle(ref, () => ({ save }), [points, loading]);
+  useImperativeHandle(ref, () => ({ save }), [points, loading, loadError, msg]);
+
+  if (loadError) return <LoadFailed what="the resident clinical note" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
 
   if (loading) {
     return (
@@ -85,6 +93,7 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
         placeholder="Type a point and press Enter…"
         className="bg-background/60"
       />
+      <NoticeSlot state={msg} />
     </Card>
   );
 });

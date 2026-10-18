@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatAge, daysAgo } from "@/lib/age";
 import { type VisitVitals } from "@/lib/vitals-trend";
@@ -21,6 +20,8 @@ import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facilit
 import { PatientSignatureCard } from "@/components/facility/views/patient-signature-card";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { Card } from "@/components/ui/card";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { savedAt } from "@/lib/flash";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,8 +76,13 @@ export function PatientDetail({ patientId }: { patientId: string }) {
   // Right rail pinned to the viewport while the center column scrolls.
   const { spacerRef: rightRailSpacerRef, contentRef: rightRailContentRef, style: rightRailStyle } = useStickyRail(!loading);
 
+  // Messages for the bottom action bar (save results, print problems) — shown right above it.
+  const msg = useNotice();
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [p, v] = await Promise.all([
         api.get<{ patient: Patient }>(`/api/facility/patients/${patientId}`),
@@ -85,7 +91,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       setPatient(p.patient);
       setVisits(v.visits || []);
     } catch (e: any) {
-      toast.error(e.message || "Could not load this patient");
+      setLoadError(e.message || "Network error");
     } finally {
       setLoading(false);
     }
@@ -102,7 +108,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       const v = await api.get<{ visits: VisitRow[] }>(`/api/facility/visits?patientId=${patientId}`);
       setVisits(v.visits || []);
     } catch (e: any) {
-      toast.error(e.message || "Could not refresh vitals");
+      msg.warning("The reading was saved, but this page couldn't refresh", `${e.message || "Network error"}. Reload the page to see the latest vitals.`, { retry: () => window.location.reload(), retryLabel: "Reload" });
     }
   };
 
@@ -133,7 +139,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
     );
   }
   if (!patient) {
-    return <p className="text-muted-foreground text-sm">Patient not found.</p>;
+    return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={load} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
   }
 
   // Patient journey step state — each flag is derived from a real record,
@@ -154,7 +160,10 @@ export function PatientDetail({ patientId }: { patientId: string }) {
     const v = latestVisit.vitalSigns;
     const complaints: string[] = (() => { try { return JSON.parse(latestVisit.l1Screening?.chiefComplaints || "[]"); } catch { return []; } })();
     const win = window.open("", "_blank");
-    if (!win) return;
+    if (!win) {
+      msg.warning("The print window was blocked", "Your browser stopped the triage slip from opening. Allow pop-ups for this site (icon at the right of the address bar), then print again.");
+      return;
+    }
     win.document.write(`
       <html><head><title>Triage Slip - ${patient.name}</title>
       <style>
@@ -212,15 +221,25 @@ export function PatientDetail({ patientId }: { patientId: string }) {
     // server-side — the clues panel has no other way to learn its tile
     // percentages just went stale, since it only fetches once on mount.
     humoralCluesRef.current?.refresh();
-    return results.every((r) => r.status === "fulfilled");
+    const sections = ["Chief Complaint Matrix", "Acute Symptoms", "Resident Clinical Note"];
+    const failed = sections.filter((_, i) => results[i].status === "rejected");
+    if (failed.length) {
+      // Each section shows its own error in place; this sums it up by the buttons.
+      msg.error(
+        failed.length === 1 ? `${failed[0]} wasn't saved` : `${failed.length} sections weren't saved`,
+        `${failed.length === 1 ? "See the message in that section above." : `${failed.join(", ")} — see the message in each section above.`} Everything else was saved, and nothing you entered was lost.`,
+      );
+      return false;
+    }
+    msg.clear();
+    return true;
   };
 
   const saveDraft = async () => {
     setSavingStage(true);
     try {
       const allSaved = await saveStageDrafts();
-      if (allSaved) toast.success("Draft saved");
-      // individual panels already toast their own errors when one fails
+      if (allSaved) msg.success("Draft saved", savedAt());
     } finally {
       setSavingStage(false);
     }
@@ -230,7 +249,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
     setSavingStage(true);
     try {
       const allSaved = await saveStageDrafts();
-      if (!allSaved) return; // individual panels already toasted what failed
+      if (!allSaved) return; // the sections and the summary above the bar say what failed
       const clear = await redFlagRef.current?.attemptResolve();
       if (clear) {
         router.push(`/facility/mizaj?patientId=${patientId}`);
@@ -364,6 +383,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         </div>
       </div>
 
+      <NoticeSlot state={msg} className="mb-3" />
       <Card className={cn(
         "p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap",
         checkInComplete ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/50 bg-card/60"

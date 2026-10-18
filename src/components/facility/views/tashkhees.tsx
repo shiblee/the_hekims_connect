@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { toast } from "sonner";
 import { CheckCircle2, FileSignature, Loader2, Printer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StageHeader, useStagePatient } from "@/components/facility/views/stage-frame";
 import { ClinicalSummaryColumn } from "@/components/facility/views/clinical-summary";
+import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
+import { savedAt } from "@/lib/flash";
 import { TashkheesDossierPanel, printDossier, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
 
 /**
@@ -29,22 +30,23 @@ export function TashkheesView({ patientId }: { patientId?: string }) {
 }
 
 function TashkheesStage({ patientId }: { patientId: string }) {
-  const { loading, patient, setPatient, visits, sortedVisits, latestVisit } = useStagePatient(patientId);
+  const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload } = useStagePatient(patientId);
   const t = useTashkhees(latestVisit?.id);
 
   if (loading) {
     return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   }
-  if (!patient) return <p className="text-muted-foreground text-sm">Patient not found.</p>;
+  if (!patient) return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
 
   const finalized = t.dossier.status === "finalized";
-  const saveDraft = async () => { if (await t.save(false)) toast.success("Draft saved"); };
+  const saveDraft = async () => { if (await t.save(false)) t.msg.success("Draft saved", savedAt()); };
   const finalize = async () => {
     if (!t.dossier.mizajAsli || !t.dossier.suMizajQuality) {
-      toast.error("Record the Mizaj-e-Asli and Su-e-Mizaj (Tashkhees tab) before finalising");
+      const missing = [!t.dossier.mizajAsli && "Mizaj-e-Asli", !t.dossier.suMizajQuality && "Su-e-Mizaj"].filter(Boolean).join(" and ");
+      t.msg.warning(`Record the ${missing} before finalising`, "Open the Tashkhees tab above — the diagnosis is needed for the handover.");
       return;
     }
-    if (await t.save(true)) toast.success(finalized ? "Finalised dossier updated" : "Dossier finalised and handed over");
+    if (await t.save(true)) t.msg.success(finalized ? "Finalised dossier updated" : "Dossier finalised and handed over", savedAt());
   };
 
   return (
@@ -64,7 +66,8 @@ function TashkheesStage({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-      {/* Same action bar as the earlier stages. */}
+      {/* Same action bar as the earlier stages; its messages sit right above it. */}
+      <NoticeSlot state={t.msg} className="mb-3" />
       {latestVisit && (
         <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
           <div className="flex items-center gap-3 min-w-0">
@@ -82,7 +85,9 @@ function TashkheesStage({ patientId }: { patientId: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
-            <Button size="sm" variant="ghost" onClick={() => printDossier(t, patient)} title="Print dossier"><Printer className="h-3.5 w-3.5" /> Print</Button>
+            <Button size="sm" variant="ghost" onClick={() => {
+              if (!printDossier(t, patient)) t.msg.warning("The print window was blocked", "Your browser stopped it from opening. Allow pop-ups for this site (icon at the right of the address bar), then press Print again.");
+            }} title="Print dossier"><Printer className="h-3.5 w-3.5" /> Print</Button>
             <Button size="sm" variant="outline" onClick={saveDraft} disabled={t.saving !== null || !t.options}>
               {t.saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft
             </Button>

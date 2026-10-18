@@ -16,7 +16,8 @@ import { HumoralCluesPanel, type HumoralCluesPanelHandle } from "@/components/fa
 import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
 import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { savedAt } from "@/lib/flash";
 import { ArrowRight, Loader2, History, Stethoscope } from "lucide-react";
 
 // Colours for the Mizaj History balance bar.
@@ -74,7 +75,8 @@ function PatientPicker({ onPick }: { onPick: (id: string) => void }) {
 
 function MizajStage({ patientId }: { patientId: string }) {
   const router = useRouter();
-  const { loading, patient, setPatient, visits, sortedVisits, latestVisit } = useStagePatient(patientId);
+  const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload } = useStagePatient(patientId);
+  const msg = useNotice();
   const [history, setHistory] = useState<Assessment[]>([]);
   const [saving, setSaving] = useState<"draft" | "proceed" | null>(null);
   const chiefComplaintRef = useRef<ChiefComplaintMatrixHandle>(null);
@@ -98,18 +100,29 @@ function MizajStage({ patientId }: { patientId: string }) {
 
   /** Saves the anatomical regions, the senior doctor's chief-complaint edits and the clinical note. */
   const saveEdits = async () => {
+    const sections = ["Anatomical Region", "Chief Complaint Matrix", "Onset & Chronology", "Resident Clinical Note"];
     const results = await Promise.allSettled([
       regionRef.current?.save(), chiefComplaintRef.current?.save(), chronologyRef.current?.save(), residentNoteRef.current?.save(),
     ]);
     // The matrix save recomputes the humoral assessment server-side.
     humoralCluesRef.current?.refresh();
-    return results.every((r) => r.status === "fulfilled");
+    const failed = sections.filter((_, i) => results[i].status === "rejected");
+    if (failed.length) {
+      // Each section shows its own error in place; this sums it up by the buttons.
+      msg.error(
+        failed.length === 1 ? `${failed[0]} wasn't saved` : `${failed.length} sections weren't saved`,
+        `${failed.length === 1 ? "See the message in that section above." : `${failed.join(", ")} — see the message in each section above.`} Everything else was saved, and nothing you entered was lost.`,
+      );
+      return false;
+    }
+    msg.clear();
+    return true;
   };
 
   const saveDraft = async () => {
     setSaving("draft");
     try {
-      if (await saveEdits()) toast.success("Draft saved");
+      if (await saveEdits()) msg.success("Draft saved", savedAt());
     } finally {
       setSaving(null);
     }
@@ -121,7 +134,6 @@ function MizajStage({ patientId }: { patientId: string }) {
     setSaving("proceed");
     try {
       if (await saveEdits()) router.push(`/facility/asbab?patientId=${patientId}`);
-      // panels already toasted whatever failed
     } finally {
       setSaving(null);
     }
@@ -130,7 +142,7 @@ function MizajStage({ patientId }: { patientId: string }) {
   if (loading) {
     return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   }
-  if (!patient) return <p className="text-muted-foreground text-sm">Patient not found.</p>;
+  if (!patient) return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
 
   return (
     <div className="w-full">
@@ -187,7 +199,8 @@ function MizajStage({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-      {/* Same action bar as Stage 2 (Clinical Record), so every stage ends the same way. */}
+      {/* Same action bar as Stage 2 (Clinical Record), so every stage ends the same way; its messages sit right above it. */}
+      <NoticeSlot state={msg} className="mb-3" />
       <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">

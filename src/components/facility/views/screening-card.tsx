@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { daysAgo } from "@/lib/age";
@@ -78,6 +78,7 @@ export function ScreeningCard({
   const router = useRouter();
   const [starting, setStarting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const msg = useNotice();
 
   const pastVisits = [...visits]
     .filter((v) => v.l1Screening)
@@ -90,7 +91,7 @@ export function ScreeningCard({
       const res = await apiClient.post<{ visit: { id: string } }>("/api/facility/visits", { patientId });
       router.push(`/facility/visits/${res.visit.id}/screening`);
     } catch (e: any) {
-      toast.error(e.message || "Could not start a screening");
+      msg.error("A new screening couldn't be started", `${e.message || "Network error"}. Nothing was created — try again.`, { retry: startScreening, retryLabel: "Try again" });
       setStarting(false);
     }
   };
@@ -105,6 +106,7 @@ export function ScreeningCard({
             {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Start Screening
           </Button>
         )}
+        <NoticeSlot state={msg} className="mt-3 text-left" />
       </Card>
     );
   }
@@ -179,6 +181,7 @@ export function ScreeningCard({
         </Button>
       )}
 
+      <NoticeSlot state={msg} />
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>

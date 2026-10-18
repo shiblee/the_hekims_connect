@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { daysAgo } from "@/lib/age";
@@ -132,6 +132,8 @@ export function VitalsPanel({
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [editingVitals, setEditingVitals] = useState<VisitVitals | null>(null);
   const [checkingEditable, setCheckingEditable] = useState(false);
+  // Shown inside the metric dialog, under the Add / Edit Last controls.
+  const msg = useNotice();
 
   const openDetail = (key: keyof TrendPoint) => {
     setDetailKey(key);
@@ -152,6 +154,7 @@ export function VitalsPanel({
   // separate, explicit action (openEditLastReading below), never implied
   // by Add.
   const openQuickAdd = () => {
+    msg.clear();
     setShowQuickAdd(true);
     setQuickValues({});
     setQuickErrors({});
@@ -165,8 +168,9 @@ export function VitalsPanel({
   // adding a second, redundant reading on top of the wrong one.
   const openEditLastReading = async (metric: MetricConfig) => {
     const visit = findLatestVisitFor(visitsWithVitals, metric.key as keyof VisitVitals);
+    msg.clear();
     if (!visit) {
-      toast.error(`No ${metric.label} reading recorded yet`);
+      msg.info(`No ${metric.label} reading recorded yet`, "Use Add Reading to record the first one.");
       return;
     }
     setShowQuickAdd(true);
@@ -178,7 +182,7 @@ export function VitalsPanel({
     try {
       const res = await apiClient.get<{ vitals: VisitVitals | null; locked: boolean }>(`/api/facility/visits/${visit.id}/vitals`);
       if (!res.vitals || res.locked) {
-        toast.error("This reading is outside the edit window and can no longer be changed");
+        msg.warning("This reading can no longer be edited", "It's outside the edit window set by the admin. Add a new reading instead — the earlier one stays in the history.");
         setShowQuickAdd(false);
         return;
       }
@@ -191,7 +195,7 @@ export function VitalsPanel({
       }
       setQuickValues(prefill);
     } catch (e: any) {
-      toast.error(e.message || "Could not load the last reading");
+      msg.error("The last reading couldn't be loaded", `${e.message || "Network error"}.`, { retry: () => openEditLastReading(metric), retryLabel: "Try again" });
       setShowQuickAdd(false);
     } finally {
       setCheckingEditable(false);
@@ -246,7 +250,7 @@ export function VitalsPanel({
         visitId = res.visit.id;
       }
       await apiClient.post<{ vitals: VisitVitals }>(`/api/facility/visits/${visitId}/vitals`, postBody);
-      toast.success(`${metric.label} reading ${editingVisitId ? "updated" : "saved"}`);
+      msg.success(`${metric.label} reading ${editingVisitId ? "updated" : "saved"}`, "The chart and latest value above now include it.");
       // Saving (Enter or the Save/Update button) closes the quick-add card
       // back down — the chart/latest value refreshes via onSaved to show
       // what was just recorded.
@@ -257,7 +261,7 @@ export function VitalsPanel({
       setEditingVitals(null);
       await onSaved?.();
     } catch (e: any) {
-      toast.error(e.message || "Could not save this reading");
+      msg.error("This reading wasn't saved", `${e.message || "Network error"}. The values are still in the form — try again.`, { retry: () => saveQuickReading(metric), retryLabel: "Save again" });
     } finally {
       setAddingReading(false);
     }
@@ -497,7 +501,7 @@ export function VitalsPanel({
         const insightText = insightParts.length ? insightParts.join(", ") + "." : null;
 
         return (
-          <Dialog open onOpenChange={(o) => !o && setDetailKey(null)}>
+          <Dialog open onOpenChange={(o) => { if (!o) { setDetailKey(null); msg.clear(); } }}>
             <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl">
@@ -610,6 +614,7 @@ export function VitalsPanel({
                     )}
                   </div>
                 ))}
+                <NoticeSlot state={msg} />
 
                 {insightText && (
                   <p className="text-sm text-muted-foreground flex items-start gap-1.5 px-1">

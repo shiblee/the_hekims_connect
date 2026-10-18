@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Check, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,8 +40,7 @@ export function useInlineContactVerify(client: ApiClient, sendUrl: string, verif
       setDevOtp(res.devOtp ?? "");
       setCode(res.devOtp ?? "");
       setStage("sent");
-      setCooldown(30);
-      toast.success("Verification code sent");
+      setCooldown(30); // the box itself now says the code was sent
     } catch (err: any) {
       setError(err.message || "Could not send code");
     } finally {
@@ -59,8 +57,7 @@ export function useInlineContactVerify(client: ApiClient, sendUrl: string, verif
     setVerifying(true);
     try {
       await client.post(verifyUrl, { contact, code });
-      setStage("verified");
-      toast.success("Verified");
+      setStage("verified"); // shown in place as "✓ Verified"
     } catch (err: any) {
       setError(err.message || "Invalid code");
     } finally {

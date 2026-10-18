@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -99,6 +99,9 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
   const [complaintLabels, setComplaintLabels] = useState<string[]>(intakeComplaints);
   const [addComplaintOpen, setAddComplaintOpen] = useState(false);
   const [complaintSearch, setComplaintSearch] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const msg = useNotice();
 
   useEffect(() => {
     Promise.all([
@@ -153,17 +156,18 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
             next[label] = emptyDraft(match?.id ?? null, label, seeded);
           }
         }
+        setLoadError(null);
         setDrafts(next);
         setComplaintLabels(unionLabels);
         setActiveLabel((cur) => (cur && unionLabels.includes(cur) ? cur : (unionLabels[0] || "")));
       })
-      .catch(() => toast.error("Could not load the chief complaint matrix"))
+      .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
     // Depend on a joined string, not the array itself — intakeComplaints is
     // easy for a caller to pass as a fresh array on every render (e.g. an
     // inline JSON.parse in JSX), which would re-trigger this load on every
     // parent re-render and silently wipe out unsaved edits mid-typing.
-  }, [visitId, intakeComplaints.join("|")]);
+  }, [visitId, intakeComplaints.join("|"), reloadTick]);
 
   const active = drafts[activeLabel];
 
@@ -229,7 +233,8 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
     // panel's own initial fetch has resolved — drafts would still be empty
     // at that point, and posting it would wipe out whatever was already
     // saved for this visit via the full-replace endpoint below.
-    if (loading) return;
+    // A matrix that failed to load is equally empty — never save it over the real one.
+    if (loading || loadError) return;
     try {
       await api.post(`/api/facility/visits/${visitId}/complaint-assessments`, {
         complaints: Object.values(drafts).map((d) => ({
@@ -237,13 +242,14 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
           onsetValue: d.onsetValue === "" ? null : d.onsetValue,
         })),
       });
+      msg.clear();
     } catch (e: any) {
-      toast.error(e.message || "Could not save the chief complaint matrix");
+      msg.error("The chief complaint matrix wasn't saved", `${e.message || "Network error"}. Your entries are still shown above.`, { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
 
-  useImperativeHandle(ref, () => ({ save }), [drafts, loading]);
+  useImperativeHandle(ref, () => ({ save }), [drafts, loading, loadError, msg]);
 
   useEffect(() => {
     if (loading || !onDurationsChange) return;
@@ -254,6 +260,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
     }));
   }, [drafts, complaintLabels, loading, onDurationsChange]);
 
+  if (loadError) return <LoadFailed what="the chief complaint matrix" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
     return (
       <Card className="p-5 border-border/50 bg-card/60">
@@ -524,6 +531,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
         </>
         )}
       </div>
+      <NoticeSlot state={msg} className="mt-4" />
     </Card>
   );
 });

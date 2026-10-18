@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { FilePlus2, Plus, Loader2, Trash2, FileText, Leaf, Activity, Pill, Stethoscope } from "lucide-react";
 
 const THERAPIES = [
@@ -29,6 +29,9 @@ export function PrescriptionsView() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const msg = useNotice();
+  const dialogMsg = useNotice();
   const [form, setForm] = useState({ patientId: "", therapyType: "Ilaj-bil-Dawa", notes: "", items: [{ name: "", dose: "", frequency: "", instructions: "" }] });
 
   const load = async () => {
@@ -40,7 +43,8 @@ export function PrescriptionsView() {
       ]);
       setPrescriptions(pr.prescriptions || []);
       setPatients(pa.patients || []);
-    } catch (e: any) { toast.error(e.message); } finally { setLoading(false); }
+      setLoadError(null);
+    } catch (e: any) { setLoadError(e.message || "Network error"); } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
@@ -54,16 +58,21 @@ export function PrescriptionsView() {
   const removeItem = (i: number) => setForm({ ...form, items: form.items.filter((_, j) => j !== i) });
 
   const save = async () => {
-    if (!form.patientId) { toast.error("Select a patient"); return; }
-    if (!form.items.length || !form.items[0].name) { toast.error("Add at least one remedy"); return; }
+    const missing = [!form.patientId && "choose the patient", !form.items.some((i) => i.name.trim()) && "add at least one remedy"].filter(Boolean) as string[];
+    if (missing.length) {
+      dialogMsg.warning(`Before creating: ${missing.join(" and ")}`, "A prescription needs a patient and at least one named remedy.");
+      return;
+    }
     setSaving(true);
     try {
       await api.post("/api/prescriptions", { ...form, items: form.items.filter((i) => i.name) });
-      toast.success("Prescription created");
+      msg.success("Prescription created", `For ${patients.find((p) => p.id === form.patientId)?.name ?? "the patient"} — listed below.`);
       setOpen(false);
       setForm({ patientId: "", therapyType: "Ilaj-bil-Dawa", notes: "", items: [{ name: "", dose: "", frequency: "", instructions: "" }] });
       load();
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+    } catch (e: any) {
+      dialogMsg.error("The prescription wasn't created", `${e.message || "Network error"}. Everything is still filled in — try again.`, { retry: save });
+    } finally { setSaving(false); }
   };
 
   return (
@@ -73,11 +82,14 @@ export function PrescriptionsView() {
           <h2 className="font-serif text-xl font-bold">Prescriptions</h2>
           <p className="text-sm text-muted-foreground">Classical Unani formulations prescribed to your patients.</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" /> New Prescription</Button>
+        <Button onClick={() => { dialogMsg.clear(); setOpen(true); }} className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" /> New Prescription</Button>
       </div>
+      <NoticeSlot state={msg} />
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+      ) : loadError ? (
+        <LoadFailed what="prescriptions" detail={loadError} onRetry={load} />
       ) : prescriptions.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <FileText className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
@@ -159,6 +171,7 @@ export function PrescriptionsView() {
               </div>
             </div>
           </ScrollArea>
+          <NoticeSlot state={dialogMsg} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
+import { InlineNotice, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { Pill, Plus, Search, Loader2, Package, AlertTriangle, IndianRupee, Edit2, Trash2, FlaskConical, Boxes } from "lucide-react";
 
 interface Item {
@@ -38,6 +38,11 @@ export function PharmacyView() {
     reorderLevel: "10", price: "", expiryDate: "", description: "",
   });
   const [saving, setSaving] = useState(false);
+  const msg = useNotice();
+  const dialogMsg = useNotice();
+  // Removal is confirmed on the page, not in a browser pop-up.
+  const [pendingRemove, setPendingRemove] = useState<Item | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -49,36 +54,51 @@ export function PharmacyView() {
       setItems(r.items || []);
       setLowStock(r.lowStock);
       setTotalValue(r.totalValue);
-    } catch (e: any) { toast.error(e.message); } finally { setLoading(false); }
+    } catch (e: any) {
+      msg.error("Couldn't load the pharmacy", `${e.message || "Network error"}.`, { retry: load });
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [search, category]);
 
-  const openAdd = () => { setForm({ name: "", category: "Formulation", form: "Powder", quantity: "", unit: "g", reorderLevel: "10", price: "", expiryDate: "", description: "" }); setEditItem(null); setAddOpen(true); };
+  const openAdd = () => { setForm({ name: "", category: "Formulation", form: "Powder", quantity: "", unit: "g", reorderLevel: "10", price: "", expiryDate: "", description: "" }); setEditItem(null); dialogMsg.clear(); setAddOpen(true); };
   const openEdit = (it: Item) => {
     setForm({ name: it.name, category: it.category, form: it.form, quantity: String(it.quantity), unit: it.unit, reorderLevel: String(it.reorderLevel), price: String(it.price), expiryDate: it.expiryDate || "", description: it.description || "" });
-    setEditItem(it); setAddOpen(true);
+    setEditItem(it); dialogMsg.clear(); setAddOpen(true);
   };
 
   const save = async () => {
-    if (!form.name) { toast.error("Name is required"); return; }
+    if (!form.name.trim()) { dialogMsg.warning("Enter the item name", "For example Majoon Suranjan."); return; }
     setSaving(true);
     try {
       if (editItem) {
         await api.patch(`/api/pharmacy/${editItem.id}`, form);
-        toast.success("Item updated");
+        msg.success(`${form.name.trim()} updated`);
       } else {
         await api.post("/api/pharmacy", form);
-        toast.success("Item added to pharmacy");
+        msg.success(`${form.name.trim()} added to the pharmacy`);
       }
       setAddOpen(false);
       load();
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+    } catch (e: any) {
+      dialogMsg.error(editItem ? "The changes weren't saved" : "The item wasn't added", `${e.message || "Network error"}. Everything is still filled in — try again.`, { retry: save });
+    } finally { setSaving(false); }
   };
 
-  const remove = async (it: Item) => {
-    if (!confirm(`Remove ${it.name} from pharmacy?`)) return;
-    try { await api.delete(`/api/pharmacy/${it.id}`); toast.success("Removed"); load(); } catch (e: any) { toast.error(e.message); }
+  const remove = (it: Item) => { msg.clear(); setPendingRemove(it); };
+  const confirmRemove = async () => {
+    const it = pendingRemove;
+    if (!it) return;
+    setRemoving(true);
+    try {
+      await api.delete(`/api/pharmacy/${it.id}`);
+      setPendingRemove(null);
+      msg.success(`${it.name} removed from the pharmacy`);
+      load();
+    } catch (e: any) {
+      setPendingRemove(null);
+      msg.error(`${it.name} wasn't removed`, `${e.message || "Network error"}.`, { retry: () => { setPendingRemove(it); } , retryLabel: "Try again" });
+    } finally { setRemoving(false); }
   };
 
   const fmtINR = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -135,6 +155,23 @@ export function PharmacyView() {
           </SelectContent>
         </Select>
       </div>
+
+      {pendingRemove && (
+        <InlineNotice
+          tone="warning"
+          title={`Remove ${pendingRemove.name} from the pharmacy?`}
+          detail="It will no longer appear in stock or when prescribing. This can't be undone."
+          action={
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setPendingRemove(null)} disabled={removing}>Keep</Button>
+              <Button size="sm" variant="destructive" onClick={confirmRemove} disabled={removing}>
+                {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
+              </Button>
+            </div>
+          }
+        />
+      )}
+      <NoticeSlot state={msg} />
 
       {/* Items grid */}
       {loading ? (
@@ -225,6 +262,7 @@ export function PharmacyView() {
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-background/60 min-h-[60px]" />
             </div>
           </div>
+          <NoticeSlot state={dialogMsg} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">

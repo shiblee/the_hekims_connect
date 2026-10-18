@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { LoadFailed } from "@/components/shared/inline-notice";
 import { Search, Users, Loader2, UserPlus, IdCard, ShieldAlert, ShieldQuestion } from "lucide-react";
 
 interface PatientRow {
@@ -27,13 +27,15 @@ export function PatientsView() {
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
       const r = await api.get<{ patients: PatientRow[] }>(`/api/facility/patients${search ? `?search=${encodeURIComponent(search)}` : ""}`);
       setPatients(r.patients || []);
-    } catch (e: any) { toast.error(e.message); } finally { setLoading(false); }
+      setLoadError(null);
+    } catch (e: any) { setLoadError(e.message || "Network error"); } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [search]);
@@ -57,6 +59,8 @@ export function PatientsView() {
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+      ) : loadError ? (
+        <LoadFailed what="patients" detail={loadError} onRetry={load} />
       ) : patients.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <Users className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { regionIcon, regionAppliesTo } from "@/lib/anatomical-region-icons";
@@ -29,6 +29,9 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
     const [selected, setSelected] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<BodyView>("front");
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [reloadTick, setReloadTick] = useState(0);
+    const msg = useNotice();
 
     useEffect(() => {
       let cancelled = false;
@@ -38,24 +41,28 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
       ])
         .then(([r, s]) => {
           if (cancelled) return;
+          setLoadError(null);
           setRegions(r.regions || []);
           try { setSelected(JSON.parse(s.selection?.regions || "[]")); } catch { setSelected([]); }
         })
-        .catch((e) => toast.error(e.message || "Could not load anatomical regions"))
+        .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); })
         .finally(() => { if (!cancelled) setLoading(false); });
       return () => { cancelled = true; };
-    }, [visitId]);
+    }, [visitId, reloadTick]);
 
     useImperativeHandle(ref, () => ({
-      save: async () => {
+      save: async function save() {
+        // Never save over the visit's real selection with an empty one that simply failed to load.
+        if (loading || loadError) return;
         try {
           await api.post(`/api/facility/visits/${visitId}/anatomical-regions`, { regions: selected });
+          msg.clear();
         } catch (e: any) {
-          toast.error(e.message || "Could not save the anatomical regions");
+          msg.error("The anatomical regions weren't saved", `${e.message || "Network error"}. Your selection is still shown above.`, { retry: () => { save().catch(() => {}); } });
           throw e;
         }
       },
-    }), [visitId, selected]);
+    }), [visitId, selected, loading, loadError, msg]);
 
     const toggle = (label: string) => {
       const adding = !selected.includes(label);
@@ -76,6 +83,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
     const hiddenCount = regions.length - visible.length;
     const cards: Region[] = [...visible, ...orphaned.map((l) => ({ id: `orphan:${l}`, label: l, localTerms: null, icon: "activity", gender: "all", bodyZone: null }))];
 
+    if (loadError) return <LoadFailed what="the anatomical regions" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
     if (loading) {
       return (
         <Card className="p-5 border-border/50 bg-card/60">
@@ -161,6 +169,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
           </div>
           </div>
         )}
+        <NoticeSlot state={msg} className="mt-4" />
       </Card>
     );
   },

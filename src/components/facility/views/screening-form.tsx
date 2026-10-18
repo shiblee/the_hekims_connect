@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
@@ -63,6 +63,9 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
   const [selectedComplaintIds, setSelectedComplaintIds] = useState<string[]>([]);
   const [answerValues, setAnswerValues] = useState<Record<string, string | string[] | number>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const msg = useNotice();        // beside the Complete Screening button
+  const voiceMsg = useNotice();   // under the complaint search box
   const [result, setResult] = useState<ScreeningResult | null>(null);
   const [complaintSearch, setComplaintSearch] = useState("");
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -82,7 +85,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
     }
     const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!Ctor) {
-      toast.error("Voice search isn't supported in this browser");
+      voiceMsg.info("Voice search isn't available in this browser", "Type the complaint instead — Chrome and Edge support voice search.");
       return;
     }
     const recognition = new Ctor();
@@ -90,7 +93,8 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     recognition.onresult = (e: any) => setComplaintSearch(e.results[0][0].transcript);
-    recognition.onerror = () => { setListening(false); toast.error("Could not capture voice input"); };
+    voiceMsg.clear();
+    recognition.onerror = () => { setListening(false); voiceMsg.warning("Didn't catch that", "Check the microphone is allowed for this site, then tap the mic and speak again — or type the complaint."); };
     recognition.onend = () => setListening(false);
     recognitionRef.current = recognition;
     recognition.start();
@@ -124,7 +128,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           setStep("results");
         }
       })
-      .catch(() => toast.error("Could not load this screening"))
+      .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
   }, [visitId]);
 
@@ -227,7 +231,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
 
   const submit = async () => {
     if (selectedComplaintIds.length === 0) {
-      toast.error("Select at least one chief complaint");
+      msg.warning("Select at least one chief complaint", "Go Back to the complaint list and pick what the patient came in with.");
       return;
     }
     const answers = applicableQuestions
@@ -241,10 +245,10 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
         chiefComplaintIds: selectedComplaintIds, answers,
       });
       setResult(res.screening);
-      setStep("results");
-      toast.success("Screening complete");
+      setStep("results"); // the results screen itself confirms completion
+      msg.clear();
     } catch (e: any) {
-      toast.error(e.message || "Could not save the screening");
+      msg.error("The screening wasn't saved", `${e.message || "Network error"}. Your answers are still filled in — try again.`, { retry: submit, retryLabel: "Try again" });
     } finally {
       setSubmitting(false);
     }
@@ -266,7 +270,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
     );
   }
   if (!patient || !visit || !config) {
-    return <p className="text-muted-foreground text-sm">Visit not found.</p>;
+    return loadError ? <LoadFailed what="this screening" detail={loadError} /> : <p className="text-muted-foreground text-sm">Visit not found.</p>;
   }
 
   return (
@@ -350,6 +354,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
               </button>
             )}
           </div>
+          <NoticeSlot state={voiceMsg} />
 
           <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
             {groupedComplaints.map(([category, items]) => (
@@ -551,6 +556,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
             </div>
           )}
 
+          <NoticeSlot state={msg} />
           <div className="flex items-center justify-between pt-2">
             <Button variant="outline" onClick={() => setStep("complaints")}>
               <ArrowLeft className="h-4 w-4" /> Back

@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,9 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
   const [loading, setLoading] = useState(true);
   const [tags, setTags] = useState<SymptomTag[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const msg = useNotice();
 
   useEffect(() => {
     Promise.all([
@@ -25,6 +28,7 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
       api.get<{ assessment: { symptoms: string } | null }>(`/api/facility/visits/${visitId}/acute-symptoms`),
     ])
       .then(([tagsRes, assessmentRes]) => {
+        setLoadError(null);
         setTags(tagsRes.symptoms || []);
         try {
           setSelected(JSON.parse(assessmentRes.assessment?.symptoms || "[]"));
@@ -32,9 +36,9 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
           setSelected([]);
         }
       })
-      .catch(() => toast.error("Could not load the acute symptoms checklist"))
+      .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
-  }, [visitId]);
+  }, [visitId, reloadTick]);
 
   const toggle = (label: string) => {
     setSelected((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
@@ -45,16 +49,20 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
     // panel's own initial fetch has resolved — `selected` would still be the
     // empty initial state, and posting it would wipe out whatever was
     // already saved for this visit.
-    if (loading) return;
+    // Same for a checklist that failed to load.
+    if (loading || loadError) return;
     try {
       await api.post(`/api/facility/visits/${visitId}/acute-symptoms`, { symptoms: selected });
+      msg.clear();
     } catch (e: any) {
-      toast.error(e.message || "Could not save the acute symptoms checklist");
+      msg.error("The acute symptoms weren't saved", `${e.message || "Network error"}. Your selection is still shown above.`, { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
 
-  useImperativeHandle(ref, () => ({ save }), [selected, loading]);
+  useImperativeHandle(ref, () => ({ save }), [selected, loading, loadError, msg]);
+
+  if (loadError) return <LoadFailed what="the acute symptoms checklist" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
 
   if (loading) {
     return (
@@ -113,6 +121,7 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
           </div>
         </>
       )}
+      <NoticeSlot state={msg} className="mt-4" />
     </Card>
   );
 });

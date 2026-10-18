@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { toast } from "sonner";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -48,6 +48,7 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
   const [overriding, setOverriding] = useState(false);
   const [clue, setClue] = useState<string | null>(null);
   const [clueState, setClueState] = useState<"idle" | "loading" | "unavailable">("idle");
+  const msg = useNotice();
 
   const load = () => {
     Promise.all([
@@ -63,7 +64,7 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
         setClue(ca.humoralAssessment?.aiClue ?? null);
         setClueState("idle");
       })
-      .catch(() => toast.error("Could not load the humoral assessment"))
+      .catch((e) => msg.error("Couldn't load the humoral assessment", `${e.message || "Network error"}. The figures below may be out of date.`, { retry: load }))
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, [visitId]);
@@ -80,7 +81,7 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
       await api.patch(`/api/facility/visits/${visitId}/humoral-assessment`, { dominantOverride });
       setAssessment((prev) => (prev ? { ...prev, dominantOverride } : prev));
     } catch (e: any) {
-      toast.error(e.message || "Could not update the constitutional tendency");
+      msg.error("The constitutional tendency wasn't changed", `${e.message || "Network error"}. Pick the tile again to retry.`);
     } finally {
       setOverriding(false);
     }
@@ -92,8 +93,8 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
       try {
         await onBeforeGenerate();
       } catch {
-        // The Chief Complaint Matrix's own save() already toasted the
-        // specific failure — nothing more to compute from here.
+        // The Chief Complaint Matrix shows the specific failure in place.
+        msg.warning("Clues need the Chief Complaint Matrix saved first", "It couldn't be saved — see the message in the matrix, then press Generate again.");
         setClueState("idle");
         return;
       }
@@ -114,7 +115,7 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
         setClueState("unavailable");
       }
     } catch (e: any) {
-      toast.error(e.message || "Could not generate humoral clues");
+      msg.error("Hakeem Insight couldn't explain the clues just now", `${e.message || "Network error"}.`, { retry: generateClue, retryLabel: "Generate again" });
       setClueState("idle");
     }
   };
@@ -184,6 +185,7 @@ export const HumoralCluesPanel = forwardRef<HumoralCluesPanelHandle, HumoralClue
       ) : (
         <p className="text-[11px] text-muted-foreground">Generate a plain-language explanation of the computed tendency above, from this visit&apos;s current findings.</p>
       )}
+      <NoticeSlot state={msg} />
     </Card>
   );
 });

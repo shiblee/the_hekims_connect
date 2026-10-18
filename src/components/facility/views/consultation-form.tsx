@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { savedAt } from "@/lib/flash";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
@@ -77,6 +78,9 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
     referralRequired: false, referralNotes: "", reviewDate: "", clinicalNotes: "",
   });
   const [savingPlan, setSavingPlan] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const reviewMsg = useNotice();
+  const planMsg = useNotice();
 
   useEffect(() => {
     Promise.all([
@@ -93,7 +97,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
         if (assessmentRes.assessment) setAssessment({ ...assessmentRes.assessment });
         if (planRes.plan) setPlan({ ...planRes.plan, reviewDate: planRes.plan.reviewDate ? planRes.plan.reviewDate.slice(0, 10) : "" });
       })
-      .catch((e) => { console.error("Consultation load failed:", e); toast.error("Could not load this visit"); })
+      .catch((e) => { console.error("Consultation load failed:", e); setLoadError(e.message || "Network error"); })
       .finally(() => setLoading(false));
   }, [visitId]);
 
@@ -102,9 +106,9 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
     try {
       const res = await api.post<{ assessment: ClinicalAssessment }>(`/api/facility/visits/${visitId}/clinical-assessment`, assessment);
       setAssessment(res.assessment);
-      toast.success("Clinical review saved");
+      reviewMsg.success("Clinical review saved", savedAt());
     } catch (e: any) {
-      toast.error(e.message || "Could not save the clinical review");
+      reviewMsg.error("The clinical review wasn't saved", `${e.message || "Network error"}. Your entries are still here — try again.`, { retry: saveAssessment, retryLabel: "Save again" });
     } finally {
       setSavingAssessment(false);
     }
@@ -115,9 +119,9 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
     try {
       const res = await api.post<{ plan: TreatmentPlanT }>(`/api/facility/visits/${visitId}/treatment-plan`, plan);
       setPlan({ ...res.plan, reviewDate: res.plan.reviewDate ? res.plan.reviewDate.slice(0, 10) : "" });
-      toast.success("Treatment plan saved");
+      planMsg.success("Treatment plan saved", savedAt());
     } catch (e: any) {
-      toast.error(e.message || "Could not save the treatment plan");
+      planMsg.error("The treatment plan wasn't saved", `${e.message || "Network error"}. Your entries are still here — try again.`, { retry: savePlan, retryLabel: "Save again" });
     } finally {
       setSavingPlan(false);
     }
@@ -131,7 +135,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
     );
   }
   if (!patient || !visit) {
-    return <p className="text-muted-foreground text-sm">Visit not found.</p>;
+    return loadError ? <LoadFailed what="this visit" detail={loadError} /> : <p className="text-muted-foreground text-sm">Visit not found.</p>;
   }
 
   const chiefComplaints: string[] = (() => { try { return JSON.parse(screening?.chiefComplaints || "[]"); } catch { return []; } })();
@@ -319,6 +323,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
           className="bg-background/60"
           rows={2}
         />
+        <NoticeSlot state={reviewMsg} />
         <div className="flex justify-end">
           <Button size="sm" onClick={saveAssessment} disabled={savingAssessment}>
             {savingAssessment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save Review
@@ -395,6 +400,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
           rows={2}
         />
 
+        <NoticeSlot state={planMsg} />
         <div className="flex justify-end">
           <Button size="sm" onClick={savePlan} disabled={savingPlan}>
             {savingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save Treatment Plan

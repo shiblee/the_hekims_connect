@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { setFlash } from "@/lib/flash";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
@@ -84,6 +85,8 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
   const [meta, setMeta] = useState<MetaSections>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const msg = useNotice();
   const [visit, setVisit] = useState<VisitInfo | null>(null);
   const [locked, setLocked] = useState(false);
   const [hasVitals, setHasVitals] = useState(false);
@@ -139,7 +142,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         setHeightCm(lastHeight?.toString() ?? "");
         setWeightKg(lastWeight?.toString() ?? "");
       })
-      .catch(() => toast.error("Could not load this visit"))
+      .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
   }, [visitId]);
 
@@ -178,12 +181,18 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
       pulse: pulse === "" ? null : parseFloat(pulse),
       spo2: spo2 === "" ? null : parseFloat(spo2),
     };
-    for (const [field, [min, max]] of Object.entries(entryBounds)) {
+    const outOfBounds = Object.entries(entryBounds).flatMap(([field, [min, max]]) => {
       const value = entryValues[field];
-      if (value != null && (value < min || value > max)) {
-        toast.error(`${FIELD_LABELS[field]} must be between ${min} and ${max}${field === "temperatureF" ? "°F" : ""} — please check the value`);
-        return;
-      }
+      return value != null && (value < min || value > max)
+        ? [`${FIELD_LABELS[field]} must be between ${min} and ${max}${field === "temperatureF" ? "°F" : ""}`]
+        : [];
+    });
+    if (outOfBounds.length) {
+      msg.warning(
+        outOfBounds.length === 1 ? "One value looks like a typo — please check it" : `${outOfBounds.length} values look like typos — please check them`,
+        outOfBounds.join(" · "),
+      );
+      return;
     }
 
     setSaving(true);
@@ -194,10 +203,13 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         heightCm, weightKg,
         painNotes, primaryFocusArea, triageRemarks,
       });
-      toast.success("Vitals saved");
-      if (visit) router.push(`/facility/patients/${visit.patient.id}/record`);
+      msg.clear();
+      if (visit) {
+        setFlash({ tone: "success", title: "Vitals saved", detail: `Recorded for ${visit.patient.name} — shown in the vitals panel below.` });
+        router.push(`/facility/patients/${visit.patient.id}/record`);
+      }
     } catch (e: any) {
-      toast.error(e.message || "Could not save vitals");
+      msg.error("The vitals weren't saved", `${e.message || "Network error"}. Everything you entered is still in the form — try again.`, { retry: save, retryLabel: "Save again" });
     } finally {
       setSaving(false);
     }
@@ -211,7 +223,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
     );
   }
   if (!visit) {
-    return <p className="text-muted-foreground text-sm">Visit not found.</p>;
+    return loadError ? <LoadFailed what="this visit" detail={loadError} /> : <p className="text-muted-foreground text-sm">Visit not found.</p>;
   }
 
   const { patient } = visit;
@@ -363,6 +375,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
           </div>
         </div>
 
+        <NoticeSlot state={msg} />
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button size="lg" onClick={save} disabled={saving || locked}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Vitals

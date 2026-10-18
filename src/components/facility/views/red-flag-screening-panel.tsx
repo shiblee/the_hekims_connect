@@ -1,7 +1,8 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { setFlash } from "@/lib/flash";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -36,6 +37,11 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
   const [present, setPresent] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  // `msg` sits in the panel; `dialogMsg` inside whichever decision dialog is open.
+  const msg = useNotice();
+  const dialogMsg = useNotice();
 
   const [referDialogOpen, setReferDialogOpen] = useState(false);
   const [referReason, setReferReason] = useState("");
@@ -54,6 +60,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
       api.get<{ screening: Screening | null }>(`/api/facility/visits/${visitId}/red-flag-screening`),
     ])
       .then(([critRes, screenRes]) => {
+        setLoadError(null);
         setCriteria(critRes.criteria || []);
         setScreening(screenRes.screening);
         const initial: Record<string, boolean> = {};
@@ -62,9 +69,9 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
         }
         setPresent(initial);
       })
-      .catch(() => toast.error("Could not load the red flag checklist"))
+      .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
-  }, [visitId]);
+  }, [visitId, reloadTick]);
 
   const anyPresent = Object.values(present).some(Boolean);
   const alreadyReferred = screening?.outcome === "referred";
@@ -79,6 +86,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     setReferredTo("");
     setUrgency("Emergency");
     setReferNotes("");
+    dialogMsg.clear();
     setReferDialogOpen(true);
   };
 
@@ -86,6 +94,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
     setAmaReason(flaggedSummary());
     setAmaPatientReason("");
     setAmaAcknowledged(false);
+    dialogMsg.clear();
     setAmaDialogOpen(true);
   };
 
@@ -101,18 +110,25 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
         ...extra,
       });
       setScreening(res.screening);
+      msg.clear();
       if (outcome === "referred") {
+        // The panel itself turns into the "Patient Referred — Case Closed" card.
         setReferDialogOpen(false);
-        toast.success("Patient referred — case closed");
       } else if (outcome === "continued_ama") {
         setAmaDialogOpen(false);
-        toast.success("Recorded — continuing treatment against medical advice");
+        msg.success("Recorded — continuing treatment against medical advice", "The patient's decision and acknowledgement are saved on this visit.");
       } else {
-        toast.success("Cleared for Unani triage");
+        // Clearing happens on "Proceed", which then opens Stage 3 — say it there.
+        setFlash({ tone: "success", title: "Red flag screening cleared for Unani triage", detail: "No red flags were marked, so the visit continues to Mizaj & Morphometry." });
       }
       return true;
     } catch (e: any) {
-      toast.error(e.message || "Could not save the screening");
+      const notice = [
+        outcome === "referred" ? "The referral wasn't saved" : outcome === "continued_ama" ? "The decision wasn't saved" : "The red flag screening wasn't saved",
+        `${e.message || "Network error"}. Nothing you entered was lost — try again.`,
+      ] as const;
+      if (outcome === "cleared") msg.error(...notice);
+      else dialogMsg.error(...notice);
       return false;
     } finally {
       setSaving(false);
@@ -120,14 +136,14 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
   };
 
   const submitReferral = () => {
-    if (!referReason.trim()) { toast.error("Enter a reason for referral"); return; }
-    if (!referredTo.trim()) { toast.error("Enter where the patient is being referred to"); return; }
+    if (!referReason.trim()) { dialogMsg.warning("Enter a reason for referral", "It's recorded on the referral and in the visit history."); document.getElementById("referReason")?.focus(); return; }
+    if (!referredTo.trim()) { dialogMsg.warning("Enter where the patient is being referred to", "For example Emergency Department or Cardiology."); document.getElementById("referredTo")?.focus(); return; }
     submitScreening("referred", { referral: { reason: referReason, referredTo, urgency, notes: referNotes || undefined } });
   };
 
   const submitAma = () => {
-    if (!amaReason.trim()) { toast.error("Enter why referral was recommended"); return; }
-    if (!amaAcknowledged) { toast.error("Confirm the patient was informed of the risks"); return; }
+    if (!amaReason.trim()) { dialogMsg.warning("Enter why referral was recommended", "This documents the advice the patient declined."); return; }
+    if (!amaAcknowledged) { dialogMsg.warning("Confirm the patient was informed of the risks", "Tick the acknowledgement box above to continue."); return; }
     submitScreening("continued_ama", { amaDecline: { reason: amaReason, patientReason: amaPatientReason || undefined, acknowledged: true } });
   };
 
@@ -143,6 +159,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
 
   useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog }), [anyPresent, screening, present, criteria]);
 
+  if (loadError) return <LoadFailed what="the red flag checklist" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
   if (loading) {
     return (
       <Card className="p-5 border-border/50 bg-card/60 flex items-center gap-2 text-muted-foreground text-sm">
@@ -242,6 +259,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
           Positive findings require a referral decision — use the bottom-of-page <span className="font-medium text-foreground">Refer Patient</span> action, or <button type="button" onClick={openAmaDialog} className="text-primary hover:underline font-medium">continue against medical advice</button>.
         </p>
       )}
+      <NoticeSlot state={msg} />
 
       <Dialog open={referDialogOpen} onOpenChange={setReferDialogOpen}>
         <DialogContent>
@@ -258,6 +276,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
             </FloatingSelect>
             <Textarea placeholder="Additional notes (optional)" value={referNotes} onChange={(e) => setReferNotes(e.target.value)} className="bg-background/60" rows={3} />
           </div>
+          <NoticeSlot state={dialogMsg} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setReferDialogOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={submitReferral} disabled={saving}>
@@ -291,6 +310,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, { v
               </span>
             </label>
           </div>
+          <NoticeSlot state={dialogMsg} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAmaDialogOpen(false)}>Cancel</Button>
             <Button onClick={submitAma} disabled={saving || !amaAcknowledged} className="bg-amber-600 hover:bg-amber-700 text-white">

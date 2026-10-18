@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn, formatDateTime } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -73,6 +73,8 @@ export function TeamView() {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const msg = useNotice();        // page: list loading, status changes, saved confirmations
+  const dialogMsg = useNotice();  // inside the add/edit dialog
   const [meta, setMeta] = useState<MetaSections>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export function TeamView() {
       const res = await api.get<{ staff: StaffRow[] }>(`/api/facility/staff${search ? `?search=${encodeURIComponent(search)}` : ""}`);
       setStaff(res.staff || []);
     } catch (e: any) {
-      toast.error(e.message || "Could not load team");
+      msg.error("Couldn't load the team", `${e.message || "Network error"}.`, { retry: load });
     } finally {
       setLoading(false);
     }
@@ -113,6 +115,7 @@ export function TeamView() {
     setEditingId(null);
     setForm(emptyForm);
     iv.reset();
+    dialogMsg.clear();
     setDialogOpen(true);
   };
 
@@ -132,14 +135,14 @@ export function TeamView() {
       active: s.active,
     });
     iv.reset();
+    dialogMsg.clear();
     setDialogOpen(true);
   };
 
   const save = async () => {
-    if (!form.name.trim()) { toast.error("Name is required"); return; }
-    if (!form.contact.trim()) { toast.error("Email or phone is required"); return; }
-    if (!form.employeeType) { toast.error("Employee type is required"); return; }
-    if (!editingId && iv.stage !== "verified") { toast.error("Please verify the email or phone before adding this staff member"); return; }
+    const missing = [!form.name.trim() && "Name", !form.contact.trim() && "Email or phone", !form.employeeType && "Employee type"].filter(Boolean);
+    if (missing.length) { dialogMsg.warning(`Fill in: ${missing.join(", ")}`, "These are required for every staff member."); return; }
+    if (!editingId && iv.stage !== "verified") { dialogMsg.warning("Verify the email or phone first", "Send the code and enter it above — staff can only be added with a verified contact."); return; }
 
     setSaving(true);
     try {
@@ -158,15 +161,15 @@ export function TeamView() {
       };
       if (editingId) {
         await api.patch(`/api/facility/staff/${editingId}`, payload);
-        toast.success("Staff member updated");
+        msg.success(`${form.name.trim()} updated`);
       } else {
         await api.post("/api/facility/staff", payload);
-        toast.success("Staff member added");
+        msg.success(`${form.name.trim()} added to the team`);
       }
       setDialogOpen(false);
       load();
     } catch (e: any) {
-      toast.error(e.message || "Could not save staff member");
+      dialogMsg.error(editingId ? "The changes weren't saved" : "The staff member wasn't added", `${e.message || "Network error"}. Everything is still filled in — try again.`, { retry: save });
     } finally {
       setSaving(false);
     }
@@ -177,7 +180,7 @@ export function TeamView() {
       await api.patch(`/api/facility/staff/${s.id}`, { active: !s.active });
       setStaff((list) => list.map((x) => x.id === s.id ? { ...x, active: !x.active } : x));
     } catch (e: any) {
-      toast.error(e.message || "Could not update status");
+      msg.error(`${s.name} wasn't ${s.active ? "deactivated" : "activated"}`, `${e.message || "Network error"}.`, { retry: () => toggleActive(s) });
     }
   };
 
@@ -202,6 +205,7 @@ export function TeamView() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, staff ID, email or phone…" className="pl-9 bg-background/60 max-w-md" />
       </div>
+      <NoticeSlot state={msg} />
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
@@ -369,6 +373,7 @@ export function TeamView() {
             )}
           </div>
 
+          <NoticeSlot state={dialogMsg} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving || (!editingId && iv.stage !== "verified")}>

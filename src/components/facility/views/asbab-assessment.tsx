@@ -1,7 +1,6 @@
 "use client";
 
 import { createElement, useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Loader2, Square, SquareCheck, Activity, Wind } from "lucide-react";
 
 interface Archived { pillarKey: string; question: string; value: AsbabAnswer }
@@ -25,6 +25,10 @@ export function useAsbabAssessment(visitId: string | undefined, framework: "asba
   const [status, setStatus] = useState<"draft" | "completed" | "new">("new");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState<"draft" | "complete" | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  // Save/validation messages, shown by the page beside its action bar.
+  const msg = useNotice();
 
   useEffect(() => {
     if (!visitId) return;
@@ -35,12 +39,14 @@ export function useAsbabAssessment(visitId: string | undefined, framework: "asba
     ])
       .then(([c, a]) => {
         if (cancelled) return;
+        setLoadError(null);
         setPillars(c.pillars);
         if (a.assessment) { setAnswers(a.assessment.answers); setArchived(a.assessment.archived); setStatus(a.assessment.status); }
       })
-      .catch((e) => toast.error(e.message || "Could not load the Asbab-e-Sittah assessment"));
+      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); });
     return () => { cancelled = true; };
-  }, [visitId, framework]);
+  }, [visitId, framework, reloadTick]);
+  const reload = () => { setLoadError(null); setReloadTick((t) => t + 1); };
 
   const setAnswer = useCallback((qid: string, v: AsbabAnswer) => {
     setAnswers((cur) => ({ ...cur, [qid]: v }));
@@ -75,16 +81,21 @@ export function useAsbabAssessment(visitId: string | undefined, framework: "asba
       const res = await api.post<{ status: "draft" | "completed" }>(`/api/facility/visits/${visitId}/asbab?framework=${framework}`, { answers, complete });
       setStatus(res.status === "completed" || status === "completed" ? "completed" : "draft");
       setDirty(false);
+      msg.clear();
       return true;
     } catch (e: any) {
-      toast.error(e.message || "Could not save the assessment");
+      msg.error(
+        complete ? "The assessment wasn't completed" : "The draft wasn't saved",
+        `${e.message || "Network error"}. Your answers are still on screen — nothing was lost.`,
+        { retry: () => save(complete), retryLabel: "Try again" },
+      );
       return false;
     } finally {
       setSaving(null);
     }
   };
 
-  return { pillars, answers, setAnswer, archived, status, dirty, saving, drift, progress, save };
+  return { pillars, answers, setAnswer, archived, status, dirty, saving, drift, progress, save, msg, loadError, reload };
 }
 
 type AsbabState = ReturnType<typeof useAsbabAssessment>;
@@ -170,6 +181,7 @@ export function AsbabAssessmentPanel({ state }: { state: AsbabState }) {
   const active = pillars?.find((p) => p.key === activeKey) ?? pillars?.[0];
 
   if (!pillars) {
+    if (state.loadError) return <LoadFailed what="the Asbab-e-Sittah assessment" detail={state.loadError} onRetry={state.reload} />;
     return <Card className="p-5 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading Asbab-e-Sittah…</div></Card>;
   }
   if (!pillars.length || !active) {

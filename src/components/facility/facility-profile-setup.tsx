@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { setFlash } from "@/lib/flash";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api";
@@ -289,7 +289,7 @@ export function FacilityProfileSetup() {
         ambulanceAvailable: form.ambulanceAvailable,
       });
       setFacility(res.facility);
-      toast.success("Facility profile completed!");
+      setFlash({ tone: "success", title: "Facility profile completed", detail: "Welcome aboard — your facility is ready. You can update these details any time under Profile." });
       router.push("/facility/dashboard");
     } catch (err: any) {
       setError(err.message || "Could not save your profile");

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { type VisitVitals } from "@/lib/vitals-trend";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
@@ -24,6 +23,8 @@ export function useStagePatient(patientId: string) {
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<StagePatient | null>(null);
   const [visits, setVisits] = useState<StageVisit[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,17 +32,18 @@ export function useStagePatient(patientId: string) {
       api.get<{ patient: StagePatient }>(`/api/facility/patients/${patientId}`),
       api.get<{ visits: StageVisit[] }>(`/api/facility/visits?patientId=${patientId}`),
     ])
-      .then(([p, v]) => { if (!cancelled) { setPatient(p.patient); setVisits(v.visits || []); } })
-      .catch((e) => toast.error(e.message || "Could not load this patient"))
+      .then(([p, v]) => { if (!cancelled) { setLoadError(null); setPatient(p.patient); setVisits(v.visits || []); } })
+      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [patientId]);
+  }, [patientId, reloadTick]);
+  const reload = () => { setLoading(true); setLoadError(null); setReloadTick((t) => t + 1); };
 
   const sortedVisits = useMemo(
     () => [...visits].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()),
     [visits],
   );
-  return { loading, patient, setPatient, visits, sortedVisits, latestVisit: sortedVisits[0] as StageVisit | undefined };
+  return { loading, patient, setPatient, visits, sortedVisits, latestVisit: sortedVisits[0] as StageVisit | undefined, loadError, reload };
 }
 
 type StageKey = "mizaj" | "asbab" | "handover";

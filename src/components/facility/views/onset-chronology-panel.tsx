@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DURATION_UNITS, longestDuration, onsetDateFor, durationFromDate, toDateInput } from "@/lib/chronology";
@@ -41,6 +41,9 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
     const [source, setSource] = useState<"auto" | "manual">("auto");
     const [note, setNote] = useState("");
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [reloadTick, setReloadTick] = useState(0);
+    const msg = useNotice();
 
     useEffect(() => {
       let cancelled = false;
@@ -63,10 +66,10 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
             }
           }
         })
-        .catch((e) => toast.error(e.message || "Could not load onset & chronology"))
+        .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); })
         .finally(() => { if (!cancelled) setLoading(false); });
       return () => { cancelled = true; };
-    }, [visitId]);
+    }, [visitId, reloadTick]);
 
     const longest = useMemo(() => (complaintDurations ? longestDuration(complaintDurations) : null), [complaintDurations]);
 
@@ -79,19 +82,22 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
       : { value, unit, date };
 
     useImperativeHandle(ref, () => ({
-      save: async () => {
+      save: async function save() {
+        // Never save over the visit's real record with blanks that simply failed to load.
+        if (loading || loadError) return;
         try {
           await api.post(`/api/facility/visits/${visitId}/chronology`, {
             onsetPatterns: selected, durationValue: shown.value ? Number(shown.value) : null, durationUnit: shown.unit,
             onsetDate: shown.date || null, durationSource: source,
             sourceComplaint: source === "auto" ? longest?.label ?? null : null, note,
           });
+          msg.clear();
         } catch (e: any) {
-          toast.error(e.message || "Could not save onset & chronology");
+          msg.error("Onset & chronology weren't saved", `${e.message || "Network error"}. Your entries are still shown above.`, { retry: () => { save().catch(() => {}); } });
           throw e;
         }
       },
-    }), [visitId, selected, shown.value, shown.unit, shown.date, source, longest, note]);
+    }), [visitId, selected, shown.value, shown.unit, shown.date, source, longest, note, loading, loadError, msg]);
 
     const toggle = (label: string) =>
       setSelected((cur) => (cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label]));
@@ -115,6 +121,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
     const cards: Pattern[] = [...patterns, ...orphaned.map((l) => ({ id: `orphan:${l}`, label: l, description: null }))];
     const withDurations = (complaintDurations || []).filter((d) => d.value != null);
 
+    if (loadError) return <LoadFailed what="onset & chronology" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
     if (loading) {
       return (
         <Card className="p-5 border-border/50 bg-card/60">
@@ -237,6 +244,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
             />
           </div>
         </div>
+        <NoticeSlot state={msg} className="mt-4" />
       </Card>
     );
   },

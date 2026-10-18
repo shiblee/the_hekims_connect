@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { ImagePlus, Loader2, Check, Trash2, ZoomIn } from "lucide-react";
-import { toast } from "sonner";
+import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -39,6 +39,7 @@ export function PhotoUploadDialog({
   const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<CropArea | null>(null);
   const [saving, setSaving] = useState(false);
+  const msg = useNotice();
 
   const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
     setCroppedArea(areaPixels);
@@ -49,18 +50,20 @@ export function PhotoUploadDialog({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedArea(null);
+    msg.clear();
   };
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file");
+      msg.warning("That file isn't an image", "Choose a PNG, JPEG or WebP photo.");
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      toast.error("Image must be smaller than 8MB");
+      msg.warning("That photo is too large", `It's ${(file.size / 1024 / 1024).toFixed(1)} MB — choose one under 8 MB.`);
       return;
     }
+    msg.clear();
     const reader = new FileReader();
     reader.onload = () => setImageSrc(reader.result as string);
     reader.readAsDataURL(file);
@@ -72,11 +75,10 @@ export function PhotoUploadDialog({
     try {
       const dataUrl = await getCroppedImage(imageSrc, croppedArea, 256);
       await onSave(dataUrl);
-      toast.success("Photo updated");
-      reset();
+      reset(); // the new photo shows in place once the dialog closes
       onOpenChange(false);
     } catch (err: any) {
-      toast.error(err.message || "Could not update photo");
+      msg.error("The photo wasn't saved", `${err.message || "Network error"}. Try again.`, { retry: save });
     } finally {
       setSaving(false);
     }
@@ -87,11 +89,10 @@ export function PhotoUploadDialog({
     setSaving(true);
     try {
       await onRemove();
-      toast.success("Photo removed");
       reset();
       onOpenChange(false);
     } catch (err: any) {
-      toast.error(err.message || "Could not remove photo");
+      msg.error("The photo wasn't removed", `${err.message || "Network error"}. Try again.`, { retry: removePhoto });
     } finally {
       setSaving(false);
     }
@@ -154,6 +155,7 @@ export function PhotoUploadDialog({
           </div>
         )}
 
+        <NoticeSlot state={msg} />
         <DialogFooter className="flex items-center sm:justify-between gap-2">
           {currentPhoto && !imageSrc ? (
             <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={saving} onClick={removePhoto}>

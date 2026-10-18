@@ -23,3 +23,8 @@ export function takeFlash(): Flash | null {
     return null;
   }
 }
+
+/** "Saved at 10:42" — detail line for an in-place save confirmation. */
+export function savedAt(d = new Date()) {
+  return `Saved at ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
+}

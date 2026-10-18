@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { ArrowRight, Loader2, Wind } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AsbabAssessmentPanel, AsbabDriftCard, useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { StageHeader, useStagePatient } from "@/components/facility/views/stage-frame";
 import { ClinicalSummaryColumn } from "@/components/facility/views/clinical-summary";
+import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
+import { savedAt } from "@/lib/flash";
 
 /**
  * Stage 4 — Asbab-e-Sittah Review. Same header as Stage 3 (tracker, patient
@@ -30,16 +31,20 @@ export function AsbabView({ patientId }: { patientId?: string }) {
 }
 
 function AsbabStage({ patientId }: { patientId: string }) {
-  const { loading, patient, setPatient, visits, sortedVisits, latestVisit } = useStagePatient(patientId);
+  const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload } = useStagePatient(patientId);
   const asbab = useAsbabAssessment(latestVisit?.id);
   const router = useRouter();
 
-  const saveDraft = async () => { if (await asbab.save(false)) toast.success("Draft saved"); };
+  const saveDraft = async () => { if (await asbab.save(false)) asbab.msg.success("Draft saved", savedAt()); };
   // Completes the review (required questions enforced here and on the
   // server), then hands over to Stage 5 — same pattern as Stages 2 and 3.
   const proceed = async () => {
     if (asbab.progress.missingRequired > 0) {
-      toast.error(`Answer the ${asbab.progress.missingRequired} required question${asbab.progress.missingRequired === 1 ? "" : "s"} first — pillars with an amber dot still have some`);
+      const n = asbab.progress.missingRequired;
+      asbab.msg.warning(
+        `${n} required question${n === 1 ? " is" : "s are"} still unanswered`,
+        "Pillars with an amber dot in the tabs above still have some. Answer them, then proceed to Stage 5.",
+      );
       return;
     }
     if (await asbab.save(true)) router.push(`/facility/tashkhees?patientId=${patientId}`);
@@ -48,7 +53,7 @@ function AsbabStage({ patientId }: { patientId: string }) {
   if (loading) {
     return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   }
-  if (!patient) return <p className="text-muted-foreground text-sm">Patient not found.</p>;
+  if (!patient) return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
 
   return (
     <div className="w-full">
@@ -72,7 +77,8 @@ function AsbabStage({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-      {/* Same action bar as Stages 2 and 3. */}
+      {/* Same action bar as Stages 2 and 3; its messages sit right above it. */}
+      <NoticeSlot state={asbab.msg} className="mb-3" />
       {latestVisit && (
         <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
           <div className="flex items-center gap-3 min-w-0">

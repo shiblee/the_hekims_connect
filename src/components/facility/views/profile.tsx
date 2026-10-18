@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { savedAt } from "@/lib/flash";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -88,13 +89,16 @@ export function ProfileView({ section }: { section: string }) {
   const [facility, setFacility] = useState<FacilityProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const msg = useNotice(); // shown right above each section's Save button
   const [meta, setMeta] = useState<MetaSections>({});
 
   const load = () => {
     setLoading(true);
+    setLoadError(null);
     api.get<{ facility: FacilityProfile }>("/api/facility/profile")
       .then((res) => setFacility(res.facility))
-      .catch(() => toast.error("Could not load your profile"))
+      .catch((e) => setLoadError(e.message || "Network error"))
       .finally(() => setLoading(false));
   };
 
@@ -187,15 +191,17 @@ export function ProfileView({ section }: { section: string }) {
     try {
       const res = await api.patch<{ facility: FacilityProfile }>("/api/facility/profile", payload);
       setFacility(res.facility);
-      toast.success("Changes saved");
+      msg.success("Changes saved", savedAt());
     } catch (err: any) {
-      toast.error(err.message || "Could not save changes");
+      msg.error("Your changes weren't saved", `${err.message || "Network error"}. They're still filled in — try again.`, { retry: () => save(payload), retryLabel: "Save again" });
     } finally {
       setSaving(false);
     }
   };
 
   const SaveButton = ({ onClick }: { onClick: () => void }) => (
+    <>
+    <NoticeSlot state={msg} />
     <Button
       className="self-start h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
       disabled={saving}
@@ -203,8 +209,10 @@ export function ProfileView({ section }: { section: string }) {
     >
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
     </Button>
+    </>
   );
 
+  if (!loading && loadError) return <LoadFailed what="your facility profile" detail={loadError} onRetry={load} />;
   if (loading || !facility) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-12">
