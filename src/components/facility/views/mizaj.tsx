@@ -11,8 +11,7 @@ import { StageHeader, useStagePatient } from "@/components/facility/views/stage-
 import { ChiefComplaintMatrix, type ChiefComplaintMatrixHandle, type ComplaintDuration } from "@/components/facility/views/chief-complaint-matrix";
 import { OnsetChronologyPanel, type OnsetChronologyPanelHandle } from "@/components/facility/views/onset-chronology-panel";
 import { AnatomicalRegionSelector, type AnatomicalRegionSelectorHandle } from "@/components/facility/views/anatomical-region-selector";
-import { ClinicalRoutingPanel } from "@/components/facility/views/clinical-routing-panel";
-import { HumoralCluesPanel, type HumoralCluesPanelHandle } from "@/components/facility/views/humoral-clues-panel";
+import { HakeemInsightPanel, type HakeemInsightPanelHandle } from "@/components/facility/views/hakeem-insight-panel";
 import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
 import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
@@ -85,7 +84,7 @@ function MizajStage({ patientId }: { patientId: string }) {
   // Live complaint durations from the matrix — drives the chronology auto-fill.
   const [complaintDurations, setComplaintDurations] = useState<ComplaintDuration[] | null>(null);
   const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
-  const humoralCluesRef = useRef<HumoralCluesPanelHandle>(null);
+  const humoralCluesRef = useRef<HakeemInsightPanelHandle>(null);
   const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
 
   const loadHistory = () =>
@@ -161,11 +160,11 @@ function MizajStage({ patientId }: { patientId: string }) {
 
         <div ref={spacerRef} className="relative">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
-            {latestVisit && <ClinicalRoutingPanel visitId={latestVisit.id} />}
             {latestVisit && (
-              <HumoralCluesPanel
+              <HakeemInsightPanel
                 ref={humoralCluesRef}
                 visitId={latestVisit.id}
+                hasVitals={!!latestVisit.vitalSigns}
                 onBeforeGenerate={async () => { await chiefComplaintRef.current?.save(); }}
               />
             )}

@@ -12,8 +12,7 @@ import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 import { ChiefComplaintMatrix, type ChiefComplaintMatrixHandle } from "@/components/facility/views/chief-complaint-matrix";
 import { AcuteSymptomsPanel, type AcuteSymptomsPanelHandle } from "@/components/facility/views/acute-symptoms-panel";
-import { ClinicalRoutingPanel } from "@/components/facility/views/clinical-routing-panel";
-import { HumoralCluesPanel, type HumoralCluesPanelHandle } from "@/components/facility/views/humoral-clues-panel";
+import { HakeemInsightPanel, type HakeemInsightPanelHandle } from "@/components/facility/views/hakeem-insight-panel";
 import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
 import { PatientSignatureCard } from "@/components/facility/views/patient-signature-card";
@@ -69,7 +68,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
   const acuteSymptomsRef = useRef<AcuteSymptomsPanelHandle>(null);
   const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
   const redFlagRef = useRef<RedFlagScreeningPanelHandle>(null);
-  const humoralCluesRef = useRef<HumoralCluesPanelHandle>(null);
+  const humoralCluesRef = useRef<HakeemInsightPanelHandle>(null);
 
   // Right rail pinned to the viewport while the center column scrolls.
   const { spacerRef: rightRailSpacerRef, contentRef: rightRailContentRef, style: rightRailStyle } = useStickyRail(!loading);
@@ -367,11 +366,11 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         </div>
         <div ref={rightRailSpacerRef} className="relative">
         <div ref={rightRailContentRef} className="space-y-5" style={rightRailStyle || undefined}>
-          {latestVisit && <ClinicalRoutingPanel visitId={latestVisit.id} />}
           {latestVisit && (
-            <HumoralCluesPanel
+            <HakeemInsightPanel
               ref={humoralCluesRef}
               visitId={latestVisit.id}
+              hasVitals={!!latestVisit.vitalSigns}
               onBeforeGenerate={async () => { await chiefComplaintRef.current?.save(); }}
             />
           )}
