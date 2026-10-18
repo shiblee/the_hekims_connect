@@ -4,14 +4,14 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "r
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { DURATION_UNITS, longestDuration, onsetDateFor, durationFromDate, toDateInput } from "@/lib/chronology";
+import { DURATION_UNITS, longestDuration, onsetDateFor } from "@/lib/chronology";
 import type { ComplaintDuration } from "@/components/facility/views/chief-complaint-matrix";
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { FloatingField } from "@/components/shared/floating-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, CheckCircle2, Circle, Hourglass, Loader2, RotateCcw } from "lucide-react";
+import { CheckCircle2, Circle, Hourglass, Loader2, RotateCcw } from "lucide-react";
 
 interface Pattern { id: string; label: string; description: string | null }
 interface Saved {
@@ -110,12 +110,6 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
       const n = parseFloat(nextValue);
       setDate(Number.isFinite(n) && n > 0 ? onsetDateFor(n, nextUnit) : "");
     };
-    const editDate = (nextDate: string) => {
-      setSource("manual");
-      setDate(nextDate);
-      const d = nextDate ? durationFromDate(nextDate) : null;
-      if (d) { setValue(String(d.value)); setUnit(d.unit); }
-    };
 
     // Selected options no longer offered by admin still show, so nothing is lost.
     const orphaned = selected.filter((l) => !patterns.some((p) => p.label === l));
@@ -178,7 +172,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                 </Badge>
               )}
             </div>
-            <div className="space-y-4 pt-2">
+            <div className="pt-2">
               <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
                 <input
                   id="chronology-duration"
@@ -204,19 +198,6 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                   <SelectTrigger className="h-full border-0 shadow-none focus-visible:ring-0 w-40 shrink-0 bg-transparent"><SelectValue /></SelectTrigger>
                   <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
                 </Select>
-              </div>
-              <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
-                <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 ml-3.5" />
-                <input
-                  id="chronology-onset-date"
-                  type="date" value={shown.date} max={toDateInput(new Date())}
-                  onChange={(e) => editDate(e.target.value)}
-                  className="peer h-full flex-1 min-w-0 bg-transparent pl-2.5 pr-3.5 text-base font-medium outline-none"
-                />
-                {/* A date box always shows its dd/mm/yyyy mask, so the label sits on the border. */}
-                <label htmlFor="chronology-onset-date" className="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">
-                  When did it start?
-                </label>
               </div>
             </div>
 
