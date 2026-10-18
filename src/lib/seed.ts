@@ -1,4 +1,5 @@
 import { REPORT_DEFAULTS } from "@/lib/report-branding";
+import { WARNING_SIGN_SEED, OTHER_SYMPTOM_SEED } from "@/lib/triage-catalog-seed";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/lib/notifications";
@@ -572,6 +573,7 @@ export async function seedDatabase() {
   await seedPages();
   await seedMetadata();
   await seedScreeningConfig();
+  await seedTriageCatalogs();
   await seedHumorConfig();
   await seedAllergyTags();
   await seedMedicationTags();
@@ -862,3 +864,22 @@ export async function seedDatabase() {
 }
 
 export { AVATAR_COLORS };
+
+/** Emergency Warning Signs and Accompanying Acute Symptoms — add-only by key / label; never edits or reactivates existing rows. */
+export async function seedTriageCatalogs() {
+  const signs = await db.redFlagCriterion.findMany({ select: { key: true, label: true, sortOrder: true } });
+  const haveKey = new Set(signs.map((s) => s.key));
+  const haveLabel = new Set(signs.map((s) => s.label.toLowerCase()));
+  let order = Math.max(-1, ...signs.map((s) => s.sortOrder)) + 1;
+  for (const w of WARNING_SIGN_SEED) {
+    if (haveKey.has(w.key) || haveLabel.has(w.label.toLowerCase())) continue;
+    await db.redFlagCriterion.create({ data: { ...w, sortOrder: order++ } });
+  }
+  const tags = await db.acuteSymptomTag.findMany({ select: { label: true, sortOrder: true } });
+  const haveTag = new Set(tags.map((t) => t.label.toLowerCase()));
+  order = Math.max(-1, ...tags.map((t) => t.sortOrder)) + 1;
+  for (const t of OTHER_SYMPTOM_SEED) {
+    if (haveTag.has(t.label.toLowerCase())) continue;
+    await db.acuteSymptomTag.create({ data: { ...t, sortOrder: order++ } });
+  }
+}
