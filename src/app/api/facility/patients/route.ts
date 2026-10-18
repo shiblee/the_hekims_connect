@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   // shouldn't see another clinic's patients just because they're on the platform.
   const scopeFilter = { OR: [{ visits: { some: { facilityId: auth.id } } }, { appointments: { some: { facilityId: auth.id } } }] };
   const searchFilter = search
-    ? { OR: [{ name: { contains: search } }, { email: { contains: search } }, { phone: { contains: search } }] }
+    ? { OR: [{ name: { contains: search } }, { email: { contains: search } }, { phone: { contains: search } }, { patientCode: { contains: search.toUpperCase() } }] }
     : undefined;
 
   const patients = await db.patient.findMany({
@@ -53,7 +53,18 @@ export async function GET(req: NextRequest) {
         db.appointment.count({ where: { facilityId: auth.id, patientId: p.id } }),
         db.visit.count({ where: { facilityId: auth.id, patientId: p.id } }),
         db.appointment.findFirst({ where: { facilityId: auth.id, patientId: p.id, status: "completed" }, orderBy: { date: "desc" }, select: { date: true, time: true } }),
-        db.visit.findFirst({ where: { facilityId: auth.id, patientId: p.id }, orderBy: { visitDate: "desc" }, select: { visitDate: true } }),
+        db.visit.findFirst({
+          where: { facilityId: auth.id, patientId: p.id },
+          orderBy: { visitDate: "desc" },
+          select: {
+            visitDate: true, status: true,
+            vitalSigns: { select: { id: true } },
+            redFlagScreening: { select: { outcome: true } },
+            referral: { select: { id: true } },
+            asbabAssessments: { where: { framework: "asbab" }, select: { status: true } },
+            tashkheesDossier: { select: { status: true } },
+          },
+        }),
         db.referral.findFirst({ where: { visit: { facilityId: auth.id, patientId: p.id } }, orderBy: { createdAt: "desc" }, select: { urgency: true, createdAt: true } }),
         db.amaDecline.findFirst({ where: { visit: { facilityId: auth.id, patientId: p.id } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
       ]);
@@ -65,7 +76,7 @@ export async function GET(req: NextRequest) {
         ? new Date(`${lastAppointment.date}T${lastAppointment.time || "00:00"}:00`).toISOString()
         : null;
       const latest = [lastAppointmentAt, lastVisitAt].filter(Boolean).sort().pop() || null;
-      return { ...p, appointmentCount: appointmentCount + visitCount, lastVisit: latest, lastReferral, lastAmaDecline };
+      return { ...p, appointmentCount: appointmentCount + visitCount, lastVisit: latest, lastReferral, lastAmaDecline, stage: lastVisit ? visitStage(lastVisit) : null };
     })
   );
 
@@ -137,4 +148,26 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ patient: await fetchPatient(created.id) });
+}
+
+/**
+ * Where the patient's latest visit is in the clinical journey — drives the
+ * stage tag and the "Continue" shortcut on the patient list.
+ */
+function visitStage(v: {
+  status: string;
+  vitalSigns: { id: string } | null;
+  redFlagScreening: { outcome: string | null } | null;
+  referral: { id: string } | null;
+  asbabAssessments: { status: string }[];
+  tashkheesDossier: { status: string } | null;
+}): "waiting" | "vitals" | "mizaj" | "asbab" | "handover" | "done" | "referred" {
+  if (v.referral) return "referred";
+  if (v.tashkheesDossier?.status === "finalized") return "done";
+  const asbab = v.asbabAssessments[0];
+  if (v.tashkheesDossier || asbab?.status === "completed") return "handover";
+  if (asbab) return "asbab";
+  if (v.redFlagScreening?.outcome === "cleared" || v.redFlagScreening?.outcome === "continued_ama") return "mizaj";
+  if (v.vitalSigns) return "vitals";
+  return v.status === "waiting" ? "waiting" : "vitals";
 }
