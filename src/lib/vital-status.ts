@@ -24,7 +24,7 @@ export const TONE_STYLES: Record<VitalTone, { text: string; bg: string; border: 
 
 /** The visible window of each range bar (wider than "normal" so out-of-range readings still land on it). */
 export const GAUGE_SCALE: Record<string, [number, number]> = {
-  pulse: [30, 160], bpSystolic: [70, 200], bpDiastolic: [40, 130], spo2: [80, 100], temperatureF: [94, 105], bmi: [15, 40],
+  pulse: [30, 160], bpSystolic: [70, 200], bpDiastolic: [40, 130], spo2: [70, 100], temperatureF: [94, 105], bmi: [15, 40],
 };
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));

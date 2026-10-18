@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   HeartPulse, Gauge, Droplets, Thermometer, Plus, Lightbulb,
   Loader2, Activity, ArrowUp, ArrowDown, Minus, X, AlertTriangle,
-  Ruler, Pencil, Scale, HelpCircle, ChevronRight,
+  Ruler, Pencil, Scale, HelpCircle, ChevronRight, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceArea, CartesianGrid, Legend,
@@ -719,24 +719,56 @@ export function VitalsPanel({
   );
 }
 
-/** Horizontal scale with the normal zone shaded and a marker at the reading. */
+/**
+ * Horizontal scale with the normal zone shaded and a marker at the reading. A reading beyond the
+ * visible window shows as an arrow at that edge; the large bar also labels its scale.
+ */
 function RangeBar({ value, scale, normal, tone, label, large }: {
   value: number | null | undefined; scale: [number, number]; normal: [number, number]; tone?: VitalTone; label?: string; large?: boolean;
 }) {
   const pct = (v: number) => Math.min(100, Math.max(0, ((v - scale[0]) / (scale[1] - scale[0])) * 100));
   const marker = value != null ? pct(value) : null;
+  const off = value == null ? null : value < scale[0] ? "below" : value > scale[1] ? "above" : null;
   const color = TONE_STYLES[tone ?? "ok"].bar;
+  const fmtN = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  // Scale ends in grey, normal bounds in green; a bound that coincides with (or crowds) an end replaces it.
+  const ticks = large ? (() => {
+    const t: { v: number; at: number; normal: boolean; text: string }[] = [];
+    for (const v of normal) t.push({ v, at: pct(v), normal: true, text: fmtN(v) });
+    for (const [i, v] of scale.entries()) {
+      const edge = i === 0 ? "below" : "above";
+      const text = off === edge ? `${edge} ${fmtN(v)}` : fmtN(v);
+      const near = t.findIndex((x) => Math.abs(x.at - pct(v)) < 9);
+      if (near >= 0) { if (off === edge) t[near] = { ...t[near], text: `${edge} ${fmtN(v)}`, normal: false }; continue; }
+      t.push({ v, at: pct(v), normal: false, text });
+    }
+    return t;
+  })() : [];
+  const Arrow = off === "below" ? ChevronsLeft : ChevronsRight;
   return (
-    <div className="flex items-center gap-2" title={`Normal ${normal[0]}–${normal[1]}`}>
+    <div className={cn("flex items-center gap-2", large && "pb-4")} title={`Normal ${normal[0]}–${normal[1]} · scale ${scale[0]}–${scale[1]}`}>
       {label && <span className={cn("shrink-0 text-muted-foreground", large ? "w-16 text-[13px]" : "w-3 text-[11px] font-semibold")}>{label}</span>}
       <div className={cn("relative flex-1 rounded-full bg-muted", large ? "h-2.5" : "h-1.5")}>
         <div className="absolute inset-y-0 rounded-full bg-emerald-500/30" style={{ left: `${pct(normal[0])}%`, width: `${pct(normal[1]) - pct(normal[0])}%` }} />
-        {marker != null && (
+        {marker != null && (off ? (
+          <span
+            className={cn("absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full ring-2 ring-background text-white", large ? "h-5 w-5" : "h-3.5 w-3.5", off === "below" ? "left-0 -translate-x-1/4" : "right-0 translate-x-1/4")}
+            style={{ background: color }} aria-label={`Reading ${off} the scale`}>
+            <Arrow className={large ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} />
+          </span>
+        ) : (
           <div
             className={cn("absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background", large ? "h-4 w-4" : "h-3 w-3")}
             style={{ left: `${marker}%`, background: color }}
           />
-        )}
+        ))}
+        {ticks.map((t) => (
+          <span key={`${t.v}-${t.text}`}
+            className={cn("absolute top-full mt-1.5 whitespace-nowrap text-[11px] tabular-nums leading-none",
+              t.at <= 2 ? "" : t.at >= 98 ? "-translate-x-full" : "-translate-x-1/2",
+              t.normal ? "text-emerald-700 dark:text-emerald-400 font-medium" : off && t.text.startsWith(off) ? "font-semibold text-red-600 dark:text-red-400" : "text-muted-foreground")}
+            style={{ left: `${t.at}%` }}>{t.text}</span>
+        ))}
       </div>
       {large && value != null && <span className="w-12 shrink-0 text-right text-[13px] font-semibold tabular-nums">{value}</span>}
     </div>
