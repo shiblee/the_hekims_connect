@@ -123,8 +123,8 @@ export function QuestionCard({ q, index, count, pillarLabel, value, onChange }: 
       <div className="flex items-start gap-3">
         <span className={cn(
           "h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold",
-          answered ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground",
-        )} aria-label={`Question ${index + 1} of ${count}${answered ? ", answered" : ""}`}>{answered ? <Check className="h-3.5 w-3.5" /> : index + 1}</span>
+          answered ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground",
+        )} aria-label={`Question ${index + 1} of ${count}${answered ? ", answered" : ""}`}>{index + 1}</span>
         <div className="min-w-0 flex-1">
           <p className="text-base font-semibold leading-snug">
             {q.label}{q.required && <span className="text-destructive"> *</span>}
