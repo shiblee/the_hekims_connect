@@ -858,7 +858,11 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                 <Button onClick={runSearch} disabled={searching} variant="secondary">
                   {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
                 </Button>
-                <Button onClick={openNewPatient}>
+                {/* One Add New Patient button; it's highlighted when the search found nobody. */}
+                <Button
+                  onClick={openNewPatient}
+                  className={cn(candidates?.length === 0 && !formOpen && "ring-2 ring-primary/40 ring-offset-2 ring-offset-card animate-pulse [animation-iteration-count:2]")}
+                >
                   <UserPlus className="h-4 w-4" /> Add New Patient
                 </Button>
               </div>
@@ -881,12 +885,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     <InlineNotice
                       tone="info"
                       title="No existing patient matches this search"
-                      detail="Check the spelling or the number. If this is their first visit here, register them as a new patient — what you searched for is carried into the form."
-                      action={
-                        <Button size="sm" onClick={openNewPatient}>
-                          <UserPlus className="h-3.5 w-3.5" /> Add New Patient
-                        </Button>
-                      }
+                      detail="Check the spelling or the number. If this is their first visit here, use Add New Patient above — what you searched for is carried into the form."
                     />
                   ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
