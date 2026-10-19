@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
+import { sortLabels } from "@/lib/sort-options";
 import {
   User, MapPin, Phone, Heart, Activity, AlertTriangle, Pill, Stethoscope,
   Save, Loader2, CheckCircle2, ClipboardList, Droplet, Ruler, Weight, Briefcase,
@@ -105,7 +106,7 @@ export function ProfileView() {
             <Label>Gender</Label>
             <Select value={form.gender || ""} onValueChange={(v) => set("gender", v)}>
               <SelectTrigger className="bg-background/60"><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{GENDERS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+              <SelectContent>{sortLabels(GENDERS).map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">

@@ -17,6 +17,7 @@ import { FloatingField, FloatingSelect } from "@/components/shared/floating-fiel
 import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inline-contact-verify";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn, formatDate } from "@/lib/utils";
+import { sortLabels } from "@/lib/sort-options";
 
 interface StaffRow {
   id: string; staffCode: string; name: string; photo: string | null; email: string | null; phone: string | null;
@@ -161,7 +162,7 @@ export default function StaffListPage() {
           <SelectTrigger className="h-10 w-full sm:w-48 bg-card/60"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All employee types</SelectItem>
-            {EMPLOYEE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            {sortLabels(EMPLOYEE_TYPES).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={facilityId} onValueChange={(v) => { setFacilityId(v); setPage(1); }}>

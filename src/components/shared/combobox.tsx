@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sortLabels } from "@/lib/sort-options";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
@@ -20,6 +21,7 @@ export function FloatingCombobox({
   placeholder = "Select",
   error,
   emptyText = "No matches.",
+  keepOrder,
 }: {
   id?: string;
   label: string;
@@ -29,6 +31,8 @@ export function FloatingCombobox({
   placeholder?: string;
   error?: boolean;
   emptyText?: string;
+  /** Show options in the given order instead of A–Z (for ordered scales). */
+  keepOrder?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const listId = `${id || label.replace(/\s+/g, "-").toLowerCase()}-listbox`;
@@ -58,7 +62,7 @@ export function FloatingCombobox({
             <CommandList>
               <CommandEmpty>{emptyText}</CommandEmpty>
               <CommandGroup>
-                {options.map((o) => (
+                {(keepOrder ? options : sortLabels(options)).map((o) => (
                   <CommandItem key={o} value={o} onSelect={() => { onValueChange(o); setOpen(false); }}>
                     <Check className={cn("h-4 w-4", value === o ? "opacity-100" : "opacity-0")} />
                     {o}

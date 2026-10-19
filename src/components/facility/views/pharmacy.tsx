@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { InlineNotice, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { Pill, Plus, Search, Loader2, Package, AlertTriangle, IndianRupee, Edit2, Trash2, FlaskConical, Boxes } from "lucide-react";
+import { sortLabels } from "@/lib/sort-options";
 
 interface Item {
   id: string; name: string; category: string; form: string; quantity: number;
@@ -151,7 +152,7 @@ export function PharmacyView() {
           <SelectTrigger className="w-[180px] bg-background/60"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            {sortLabels(CATEGORIES).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -227,14 +228,14 @@ export function PharmacyView() {
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger className="bg-background/60"><SelectValue /></SelectTrigger>
-                <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectContent>{sortLabels(CATEGORIES).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Form</Label>
               <Select value={form.form} onValueChange={(v) => setForm({ ...form, form: v })}>
                 <SelectTrigger className="bg-background/60"><SelectValue /></SelectTrigger>
-                <SelectContent>{FORMS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectContent>{sortLabels(FORMS).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">

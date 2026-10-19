@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { sortLabels } from "@/lib/sort-options";
 
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   const sections: Record<string, { label: string; options: string[] }> = {};
   for (const s of sectionRows) {
-    sections[s.key] = { label: s.label, options: s.options.map((o) => o.label) };
+    sections[s.key] = { label: s.label, options: sortLabels(s.options.map((o) => o.label)) };
   }
 
   return NextResponse.json({ sections });

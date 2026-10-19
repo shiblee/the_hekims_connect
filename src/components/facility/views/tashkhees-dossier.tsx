@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SectionHeading } from "@/components/shared/section-heading";
 import { FloatingField, FloatingSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
   Search, ShieldAlert, Sparkles, Stethoscope, Trash2, Utensils, X,
@@ -1130,7 +1131,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                   {/* One line where there's room (six fields), otherwise three per row. */}
                   <div className="@container"><div className="grid grid-cols-2 @min-[28rem]:grid-cols-3 @min-[34rem]:grid-cols-[0.9fr_0.75fr_1.3fr_0.95fr_0.95fr_1.2fr] gap-x-2 gap-y-4 pt-2">
                     <FloatingSelect id={`rx-form-${i}`} label="Form" value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })} placeholder="Choose">
-                      {formOptions.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                      {sortLabels(formOptions).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                     </FloatingSelect>
                     <FloatingField id={`rx-dose-${i}`} label="Dose" value={p.dose} onChange={(e) => updRx(i, { dose: e.target.value })} title="e.g. 5 g" />
                     <FloatingSelect id={`rx-timing-${i}`} label="Timing" value={p.timing || ""} onValueChange={(v) => updRx(i, { timing: v })} placeholder="Choose">

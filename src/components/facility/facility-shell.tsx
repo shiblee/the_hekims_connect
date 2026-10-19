@@ -76,7 +76,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
   if (!facility) return null;
 
   return (
-    <div className="min-h-screen flex relative overflow-x-hidden bg-gradient-to-br from-primary/10 via-background to-accent/5">
+    <div className="min-h-screen flex relative overflow-x-clip bg-gradient-to-br from-primary/10 via-background to-accent/5">
       <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/15 blur-[100px]" />
       <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-[100px]" />
 

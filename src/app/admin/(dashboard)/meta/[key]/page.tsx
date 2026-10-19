@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Loader2, Plus, ChevronUp, ChevronDown, ListChecks, Pencil, X,
+  Loader2, Plus, ListChecks, Pencil, X,
   CircleDot, CheckSquare, Hash, Type, Info, TriangleAlert, Search, Pill, Leaf, Tablets, TrendingUp, TrendingDown, PersonStanding, Hourglass,
   CalendarClock,
 } from "lucide-react";
@@ -28,6 +28,7 @@ import { AsbabAdmin } from "@/components/admin/asbab-admin";
 import { TashkheesAdmin } from "@/components/admin/tashkhees-admin";
 import { ANATOMICAL_REGION_ICONS, REGION_GENDERS, regionIcon } from "@/lib/anatomical-region-icons";
 import { BODY_ZONES } from "@/lib/body-zones";
+import { sortByLabel } from "@/lib/sort-options";
 
 interface Section {
   id: string;
@@ -262,24 +263,6 @@ export default function MetaSectionPage() {
     }
   };
 
-  const move = async (index: number, dir: -1 | 1) => {
-    const target = index + dir;
-    if (target < 0 || target >= options.length) return;
-    const a = options[index];
-    const b = options[target];
-    const reordered = [...options];
-    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    setOptions(reordered);
-    try {
-      await Promise.all([
-        adminApi.patch(`/api/admin/metadata/options/${a.id}`, { sortOrder: b.sortOrder }),
-        adminApi.patch(`/api/admin/metadata/options/${b.id}`, { sortOrder: a.sortOrder }),
-      ]);
-    } catch {
-      toast.error("Could not reorder — refreshing");
-      if (selected) loadOptions(selected);
-    }
-  };
 
   // ==================== L1 Screening state & handlers ====================
   const [screeningConfig, setScreeningConfig] = useState<ScreeningConfig | null>(null);
@@ -356,38 +339,14 @@ export default function MetaSectionPage() {
     }
   };
 
-  const moveFactor = async (kind: FactorKind, index: number, direction: -1 | 1) => {
-    const list = factorsOf(kind);
-    const current = list[index];
-    const target = list[index + direction];
-    if (!current || !target) return;
-    try {
-      // Re-number the whole list so legacy rows with duplicate sortOrder values still swap cleanly.
-      const reordered = [...list];
-      reordered[index] = target;
-      reordered[index + direction] = current;
-      await Promise.all(reordered.map((f, i) => f.sortOrder === i ? null : adminApi.patch(`/api/admin/humor/factor-tags/${f.id}`, { sortOrder: i })));
-      loadFactorTags();
-    } catch (e: any) {
-      toast.error(e.message || "Could not reorder");
-    }
-  };
 
   const renderFactorRows = (kind: FactorKind) => {
     const list = factorsOf(kind);
     const Icon = kind === "aggravating" ? TrendingUp : TrendingDown;
     return (
       <div className="space-y-1.5">
-        {list.map((f, idx) => (
+        {sortByLabel(list).map((f) => (
           <div key={f.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-            <div className="flex flex-col -my-1">
-              <button disabled={idx === 0} onClick={() => moveFactor(kind, idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                <ChevronUp className="h-3.5 w-3.5" />
-              </button>
-              <button disabled={idx === list.length - 1} onClick={() => moveFactor(kind, idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-            </div>
             <Icon className={cn("h-3.5 w-3.5 shrink-0", kind === "aggravating" ? "text-destructive" : "text-emerald-500")} />
             <span className="flex-1 text-sm font-medium truncate">{f.label}</span>
             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditFactor(f)}>
@@ -441,20 +400,6 @@ export default function MetaSectionPage() {
     }
   };
 
-  const moveRegion = async (index: number, direction: -1 | 1) => {
-    const current = regions[index];
-    const target = regions[index + direction];
-    if (!current || !target) return;
-    try {
-      const reordered = [...regions];
-      reordered[index] = target;
-      reordered[index + direction] = current;
-      await Promise.all(reordered.map((r, i) => r.sortOrder === i ? null : adminApi.patch(`/api/admin/anatomical-regions/${r.id}`, { sortOrder: i })));
-      loadRegions();
-    } catch (e: any) {
-      toast.error(e.message || "Could not reorder");
-    }
-  };
 
   // ---------- Onset Nature & Rhythm tab (Stage 3 options) ----------
   const [onsetPatterns, setOnsetPatterns] = useState<OnsetRow[]>([]);
@@ -493,20 +438,6 @@ export default function MetaSectionPage() {
     }
   };
 
-  const moveOnset = async (index: number, direction: -1 | 1) => {
-    const current = onsetPatterns[index];
-    const target = onsetPatterns[index + direction];
-    if (!current || !target) return;
-    try {
-      const reordered = [...onsetPatterns];
-      reordered[index] = target;
-      reordered[index + direction] = current;
-      await Promise.all(reordered.map((o, i) => o.sortOrder === i ? null : adminApi.patch(`/api/admin/onset-patterns/${o.id}`, { sortOrder: i })));
-      loadOnsetPatterns();
-    } catch (e: any) {
-      toast.error(e.message || "Could not reorder");
-    }
-  };
 
   // ---------- Allergies tab ----------
   const [allergies, setAllergies] = useState<AllergyRow[]>([]);
@@ -570,20 +501,6 @@ export default function MetaSectionPage() {
     }
   };
 
-  const moveAllergy = async (index: number, direction: -1 | 1) => {
-    const target = allergies[index + direction];
-    const current = allergies[index];
-    if (!target || !current) return;
-    try {
-      await Promise.all([
-        adminApi.patch(`/api/admin/allergies/${current.id}`, { sortOrder: target.sortOrder }),
-        adminApi.patch(`/api/admin/allergies/${target.id}`, { sortOrder: current.sortOrder }),
-      ]);
-      loadAllergies();
-    } catch (e: any) {
-      toast.error(e.message || "Could not reorder");
-    }
-  };
 
   // ---------- Medications & Herbs tab ----------
   const [medications, setMedications] = useState<MedicationRow[]>([]);
@@ -630,16 +547,8 @@ export default function MetaSectionPage() {
     const list = medications.filter((m) => m.kind === kind);
     return (
       <div className="space-y-1.5">
-        {list.map((m, idx) => (
+        {sortByLabel(list).map((m) => (
           <div key={m.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-            <div className="flex flex-col -my-1">
-              <button disabled={idx === 0} onClick={() => moveMedication(kind, idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                <ChevronUp className="h-3.5 w-3.5" />
-              </button>
-              <button disabled={idx === list.length - 1} onClick={() => moveMedication(kind, idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-            </div>
             <span className={cn("flex-1 text-sm", !m.active && "text-muted-foreground line-through")}>{m.label}</span>
             {(() => {
               const info = profileStatuses[m.id];
@@ -771,20 +680,6 @@ export default function MetaSectionPage() {
     }
   };
 
-  const moveRedFlag = async (index: number, direction: -1 | 1) => {
-    const target = redFlags[index + direction];
-    const current = redFlags[index];
-    if (!target || !current) return;
-    try {
-      await Promise.all([
-        adminApi.patch(`/api/admin/red-flags/${current.id}`, { sortOrder: target.sortOrder }),
-        adminApi.patch(`/api/admin/red-flags/${target.id}`, { sortOrder: current.sortOrder }),
-      ]);
-      loadRedFlags();
-    } catch (e: any) {
-      toast.error(e.message || "Could not reorder");
-    }
-  };
 
   const openEditRedFlag = (r: RedFlagRow) => {
     setEditRedFlagId(r.id);
@@ -852,20 +747,6 @@ export default function MetaSectionPage() {
     }
   };
 
-  const moveAcuteSymptom = async (index: number, direction: -1 | 1) => {
-    const target = acuteSymptoms[index + direction];
-    const current = acuteSymptoms[index];
-    if (!target || !current) return;
-    try {
-      await Promise.all([
-        adminApi.patch(`/api/admin/acute-symptoms/${current.id}`, { sortOrder: target.sortOrder }),
-        adminApi.patch(`/api/admin/acute-symptoms/${target.id}`, { sortOrder: current.sortOrder }),
-      ]);
-      loadAcuteSymptoms();
-    } catch (e: any) {
-      toast.error(e.message || "Could not reorder");
-    }
-  };
 
   const openEditAcuteSymptom = (s: AcuteSymptomRow) => {
     setEditSymptomId(s.id);
@@ -890,21 +771,6 @@ export default function MetaSectionPage() {
     }
   };
 
-  const moveMedication = async (kind: "supplement" | "medication", index: number, direction: -1 | 1) => {
-    const list = medications.filter((m) => m.kind === kind);
-    const current = list[index];
-    const target = list[index + direction];
-    if (!current || !target) return;
-    try {
-      await Promise.all([
-        adminApi.patch(`/api/admin/medications/${current.id}`, { sortOrder: target.sortOrder }),
-        adminApi.patch(`/api/admin/medications/${target.id}`, { sortOrder: current.sortOrder }),
-      ]);
-      loadMedications();
-    } catch (e: any) {
-      toast.error(e.message || "Could not reorder");
-    }
-  };
 
   // ---------- Chief Complaints tab ----------
   const [newComplaintLabel, setNewComplaintLabel] = useState("");
@@ -932,7 +798,7 @@ export default function MetaSectionPage() {
   }, [existingComplaintCategories]);
 
   const complaintsInSelectedCategory = useMemo(
-    () => (screeningConfig?.complaints || []).filter((c) => c.category === selectedComplaintCategory),
+    () => sortByLabel((screeningConfig?.complaints || []).filter((c) => c.category === selectedComplaintCategory)),
     [screeningConfig, selectedComplaintCategory]
   );
 
@@ -1842,16 +1708,8 @@ export default function MetaSectionPage() {
                   <LastUpdated rows={redFlags} />
                 </div>
                 <div className="space-y-1.5">
-                {redFlags.map((r, idx) => (
+                {sortByLabel(redFlags).map((r) => (
                   <div key={r.id} className="flex items-start gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-                    <div className="flex flex-col -my-1 mt-0.5">
-                      <button disabled={idx === 0} onClick={() => moveRedFlag(idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      </button>
-                      <button disabled={idx === redFlags.length - 1} onClick={() => moveRedFlag(idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
                     <TriangleAlert className="h-3.5 w-3.5 text-destructive shrink-0 mt-1" />
                     <div className="flex-1 min-w-0 py-0.5">
                       <p className="text-sm font-medium">{r.label}</p>
@@ -1882,16 +1740,8 @@ export default function MetaSectionPage() {
                 <h2 className="font-serif text-lg font-semibold">Onset Nature &amp; Rhythm</h2>
                 <p className="text-sm text-muted-foreground mb-3">Active options appear in Stage 3 (Mizaj &amp; Morphometry) under Onset &amp; Chronology — doctors can pick more than one.</p>
                 <div className="space-y-1.5">
-                  {onsetPatterns.map((o, idx) => (
+                  {sortByLabel(onsetPatterns).map((o) => (
                     <div key={o.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-                      <div className="flex flex-col -my-1">
-                        <button disabled={idx === 0} onClick={() => moveOnset(idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button disabled={idx === onsetPatterns.length - 1} onClick={() => moveOnset(idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
                       <Hourglass className="h-3.5 w-3.5 text-primary shrink-0" />
                       <div className="flex-1 min-w-0 py-0.5">
                         <p className="text-sm font-medium">{o.label}</p>
@@ -1915,18 +1765,10 @@ export default function MetaSectionPage() {
                 <h2 className="font-serif text-lg font-semibold">Anatomical Region &amp; Organ System</h2>
                 <p className="text-sm text-muted-foreground mb-3">Active regions appear as multi-select cards at the top of Stage 3 (Mizaj &amp; Morphometry). Female-only and male-only regions are shown only to patients of that recorded gender.</p>
                 <div className="space-y-1.5">
-                  {regions.map((r, idx) => {
+                  {sortByLabel(regions).map((r) => {
                     const Icon = regionIcon(r.icon);
                     return (
                       <div key={r.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-                        <div className="flex flex-col -my-1">
-                          <button disabled={idx === 0} onClick={() => moveRegion(idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button disabled={idx === regions.length - 1} onClick={() => moveRegion(idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
                         <Icon className="h-4 w-4 text-primary shrink-0" />
                         <div className="flex-1 min-w-0 py-0.5">
                           <p className="text-sm font-medium flex items-center gap-2 flex-wrap">
@@ -1959,16 +1801,8 @@ export default function MetaSectionPage() {
                   <LastUpdated rows={acuteSymptoms} />
                 </div>
         <div className="space-y-1.5">
-          {acuteSymptoms.map((s, idx) => (
+          {sortByLabel(acuteSymptoms).map((s) => (
             <div key={s.id} className="flex items-start gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-              <div className="flex flex-col -my-1 mt-0.5">
-                <button disabled={idx === 0} onClick={() => moveAcuteSymptom(idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                  <ChevronUp className="h-3.5 w-3.5" />
-                </button>
-                <button disabled={idx === acuteSymptoms.length - 1} onClick={() => moveAcuteSymptom(idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </button>
-              </div>
               <ListChecks className="h-3.5 w-3.5 text-primary shrink-0 mt-1" />
               <div className="flex-1 min-w-0 py-0.5">
                 <p className="text-sm font-medium">{s.label}</p>
@@ -1990,16 +1824,8 @@ export default function MetaSectionPage() {
               <>
                 <h2 className="font-serif text-lg font-semibold">Allergies</h2>
                 <div className="space-y-1.5">
-                {allergies.map((a, idx) => (
+                {sortByLabel(allergies).map((a) => (
                   <div key={a.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-                    <div className="flex flex-col -my-1">
-                      <button disabled={idx === 0} onClick={() => moveAllergy(idx, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      </button>
-                      <button disabled={idx === allergies.length - 1} onClick={() => moveAllergy(idx, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
                     <TriangleAlert className="h-3.5 w-3.5 text-destructive shrink-0" />
                     <span className="flex-1 text-sm font-medium truncate">{a.label}</span>
                     <Badge variant="secondary" className="shrink-0 font-normal text-xs whitespace-nowrap">
@@ -2047,16 +1873,8 @@ export default function MetaSectionPage() {
                   <p className="text-muted-foreground text-sm py-6">No options yet — use &quot;Add New&quot; above to add one.</p>
                 ) : (
                   <div className="space-y-1.5">
-                    {options.map((o, i) => (
+                    {sortByLabel(options).map((o) => (
                       <div key={o.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-                        <div className="flex flex-col -my-1">
-                          <button disabled={i === 0} onClick={() => move(i, -1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button disabled={i === options.length - 1} onClick={() => move(i, 1)} className="disabled:opacity-20 text-muted-foreground hover:text-foreground">
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
 
                         <span className={cn("flex-1 text-sm", !o.active && "text-muted-foreground line-through")}>{o.label}</span>
                         {!HIDE_STATS_KEYS.includes(selected.key) && (

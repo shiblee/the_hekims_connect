@@ -13,6 +13,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Upload, FileImage, FileText, Trash2, Loader2, Plus, Film, X, Download, Eye } from "lucide-react";
+import { sortLabels } from "@/lib/sort-options";
 
 const CATEGORIES = ["Lab Report", "Scan / Imaging", "Prescription", "Consultation Note", "Video Consultation", "Other"];
 
@@ -190,7 +191,7 @@ export function RecordsView() {
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger className="bg-background/60"><SelectValue /></SelectTrigger>
-                <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectContent>{sortLabels(CATEGORIES).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { cn, formatDateTime } from "@/lib/utils";
 import { PAYMENT_STATE_LABEL, type PaymentState } from "@/lib/payments";
+import { sortLabels } from "@/lib/sort-options";
 
 interface PaymentRow {
   id: string; paymentCode: string; amount: number; net: number; mode: string; state: PaymentState; createdAt: string;
@@ -96,7 +97,7 @@ export default function AdminPaymentsPage() {
           <SelectTrigger className="w-44 bg-background/60"><SelectValue placeholder="All modes" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All modes</SelectItem>
-            {MODES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            {sortLabels(MODES).map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>

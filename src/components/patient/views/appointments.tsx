@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CalendarDays, Clock, Plus, Loader2, Stethoscope, Star, Check, X, Droplet } from "lucide-react";
+import { sortLabels } from "@/lib/sort-options";
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string;
@@ -180,7 +181,7 @@ export function PatientAppointmentsView() {
               <Label>Consultation Type</Label>
               <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
                 <SelectTrigger className="bg-background/60"><SelectValue /></SelectTrigger>
-                <SelectContent>{TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                <SelectContent>{sortLabels(TYPES).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">

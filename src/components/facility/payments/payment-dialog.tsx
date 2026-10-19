@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle, Loader2, Receipt } from "lucide-react";
+import { sortLabels } from "@/lib/sort-options";
 
 export interface Fee { id: string; name: string; amount: number; kind: string; active: boolean }
 const DEFAULT_MODES = ["Cash", "UPI", "Card", "Bank transfer"];
@@ -106,7 +107,7 @@ function PaymentForm({ onOpenChange, visitId, patientLabel, onRecorded }: {
         <FeeAmountFields fees={fees} feeId={feeId} setFeeId={(v) => setPicked({ feeId: v, amount })} amount={amount} setAmount={(v) => setPicked({ feeId, amount: v })} reason={reason} setReason={setReason} />
         <div className="grid gap-3 sm:grid-cols-2">
           <FloatingSelect id="payMode" label="Paid by" value={mode} onValueChange={setMode} placeholder="Select">
-            {modes.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            {sortLabels(modes).map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </FloatingSelect>
           {mode && mode.toLowerCase() !== "cash" && <FloatingField id="payRef" label="Transaction / reference no." value={ref} onChange={(e) => setRef(e.target.value)} />}
         </div>

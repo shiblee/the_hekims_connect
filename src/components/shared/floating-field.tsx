@@ -4,6 +4,7 @@ import { useRef, useState, type ComponentType, type InputHTMLAttributes, type Re
 import { AlertCircle, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { sortSearchResults } from "@/lib/sort-options";
 
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -230,7 +231,7 @@ const TONES = {
 export function FloatingMultiSelect<T extends { id: string; label: string }>({
   id, label, required, error, selected, onRemove, query, onQueryChange, results, onPick,
   onCreate, createLabel = (q) => `Add "${q}"`, createOptions, tone = "primary", labelIcon: LabelIcon, itemIcon: ItemIcon,
-  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache", openOnFocus, describe, emptyHint,
+  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache", openOnFocus, describe, emptyHint, keepOrder,
 }: {
   id: string;
   label: string;
@@ -260,12 +261,15 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
   labelIcon?: ComponentType<{ className?: string }>;
   itemIcon?: ComponentType<{ className?: string }>;
   placeholder?: string;
+  /** Show results in the given order instead of A–Z (closest matches first). */
+  keepOrder?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const t = TONES[tone];
   const floated = focused || !!query || selected.length > 0;
   const q = query.trim();
+  results = keepOrder ? results : sortSearchResults(results, q);
   // Offer the typed text as a new entry unless it's already listed or chosen.
   const exists = results.some((r) => r.label.toLowerCase() === q.toLowerCase())
     || selected.some((s) => s.label.toLowerCase() === q.toLowerCase());

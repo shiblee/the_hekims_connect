@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
+import { sortByLabel } from "@/lib/sort-options";
 
 /** Active Anatomical Region & Organ System cards for the Stage 3 selector. */
 export async function GET(req: NextRequest) {
@@ -14,5 +15,5 @@ export async function GET(req: NextRequest) {
     orderBy: { sortOrder: "asc" },
     select: { id: true, label: true, localTerms: true, icon: true, gender: true, bodyZone: true },
   });
-  return NextResponse.json({ regions });
+  return NextResponse.json({ regions: sortByLabel(regions) });
 }

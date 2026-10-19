@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
+import { sortByLabel } from "@/lib/sort-options";
 
 /** Active "Onset Nature & Rhythm" options for Stage 3. */
 export async function GET(req: NextRequest) {
@@ -13,5 +14,5 @@ export async function GET(req: NextRequest) {
     orderBy: { sortOrder: "asc" },
     select: { id: true, label: true, description: true },
   });
-  return NextResponse.json({ patterns });
+  return NextResponse.json({ patterns: sortByLabel(patterns) });
 }

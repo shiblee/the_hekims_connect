@@ -13,6 +13,7 @@ import { SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FloatingField, FloatingMultiSelect, FloatingSelect } from "@/components/shared/floating-field";
 import { AlertTriangle, CheckCircle2, ImageIcon, Loader2, Pencil, Plus, Search, Sparkles, Utensils } from "lucide-react";
+import { sortLabels } from "@/lib/sort-options";
 
 interface Side { symptoms?: string[]; conditions?: string[]; categories?: string[]; organs?: string[] }
 interface Rule { good?: Side; avoid?: Side; allergens?: string[]; heavy?: boolean; nafakh?: boolean }
@@ -143,7 +144,7 @@ export function GhizaAdmin() {
         </div>
         <FloatingSelect label="Food group" value={group} onValueChange={setGroup}>
           <SelectItem value="all">All groups</SelectItem>
-          {GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+          {sortLabels(GROUPS).map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
         </FloatingSelect>
         <FloatingSelect label="Status" value={status} onValueChange={setStatus}>
           <SelectItem value="all">Any status</SelectItem>
@@ -208,7 +209,7 @@ export function GhizaAdmin() {
                   <FloatingField id="gzLabel" label="Food (English · Unani / Urdu name)" required value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
                   <FloatingField id="gzDesc" label="Properties (shown to the doctor)" maxLength={300} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
                   <div className="grid sm:grid-cols-4 gap-3 pt-1">
-                    <FloatingSelect id="gzGroup" label="Food group" value={draft.category || GROUPS[0]} onValueChange={(v) => setDraft({ ...draft, category: v })}>{GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</FloatingSelect>
+                    <FloatingSelect id="gzGroup" label="Food group" value={draft.category || GROUPS[0]} onValueChange={(v) => setDraft({ ...draft, category: v })}>{sortLabels(GROUPS).map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</FloatingSelect>
                     <FloatingSelect id="gzHot" label="Hot / cold" value={draft.hot || "none"} onValueChange={(v) => setDraft({ ...draft, hot: v === "none" ? "" : v })}>
                       <SelectItem value="none">Balanced</SelectItem><SelectItem value="Haar">Haar (hot)</SelectItem><SelectItem value="Barid">Barid (cold)</SelectItem>
                     </FloatingSelect>

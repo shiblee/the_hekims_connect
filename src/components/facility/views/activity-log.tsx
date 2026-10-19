@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, History, Loader2, Search, ShieldAlert } from "lucide-react";
+import { sortLabels } from "@/lib/sort-options";
 
 interface Event { id: string; createdAt: string; actorType: string; actorName: string; action: string; entityLabel: string | null; outcome: string; summary: string; ip: string | null; facilityName?: string }
 interface Resp { scope: "clinic" | "own" | "all"; events: Event[]; total: number; page: number; pageSize: number; actors: { actorId: string; actorName: string }[]; groups: string[]; labels: Record<string, string>; facilities?: { id: string; facilityName: string }[] }
@@ -98,7 +99,7 @@ export function ActivityLogView({ client = api, endpoint = "/api/facility/activi
           <SelectTrigger className="bg-background/60" aria-label="Activity type"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All activity</SelectItem>
-            {(data?.groups ?? []).map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+            {sortLabels((data?.groups ?? [])).map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={outcome} onValueChange={(v) => reset(() => setOutcome(v))}>

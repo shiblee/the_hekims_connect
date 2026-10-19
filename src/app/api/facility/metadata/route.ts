@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { getSetting } from "@/lib/settings";
+import { sortLabels } from "@/lib/sort-options";
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const sections: Record<string, { label: string; options: string[] }> = {};
   for (const s of sectionRows) {
-    sections[s.key] = { label: s.label, options: s.options.map((o) => o.label) };
+    sections[s.key] = { label: s.label, options: sortLabels(s.options.map((o) => o.label)) };
   }
 
   const [trialMonths, price, currency, defaultState, defaultCity] = await Promise.all([
