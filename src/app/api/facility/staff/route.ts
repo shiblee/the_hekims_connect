@@ -21,7 +21,7 @@ const SELECT = {
 async function nextStaffCode() {
   for (let i = 0; i < 5; i++) {
     const count = await db.staff.count();
-    const code = `ST${String(count + 1 + i).padStart(8, "0")}`;
+    const code = `ST${count + 1 + i}`;
     const exists = await db.staff.findUnique({ where: { staffCode: code } });
     if (!exists) return code;
   }
