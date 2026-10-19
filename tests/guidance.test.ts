@@ -167,12 +167,12 @@ describe("starter content", () => {
     assert.deepEqual(problems, []);
   });
   it("only points tours at markers registered for their page", async () => {
-    const { STARTER_TOURS } = await import("@/lib/guidance/starter-content");
+    const { STARTER_TOURS } = await import("@/lib/guidance/starter-seed");
     const { GUIDANCE_MODULES } = await import("@/lib/guidance/registry");
     for (const t of STARTER_TOURS) for (const s of t.steps) {
       if (!s.target) continue;
       const route = s.route ?? moduleDef(t.moduleKey)!.route;
-      const m = GUIDANCE_MODULES.find((x) => x.route === route);
+      const m = GUIDANCE_MODULES.find((x) => x.route === route && x.app === moduleDef(t.moduleKey)!.app);
       assert.ok(m?.targets.some((x) => x.id === s.target), `${t.key}/${s.id}: ${s.target} not registered on ${route}`);
     }
   });

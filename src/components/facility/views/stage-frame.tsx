@@ -103,13 +103,13 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
         <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">{STAGE_TITLES[stage]}</h1>
       </div>
 
-      <PatientStageTracker
+      <div data-tour="stage.tracker"><PatientStageTracker
         steps={PATIENT_JOURNEY_STEPS.map((s) => (completed.includes(s.key) && stageUrls[s.key] ? { ...s, href: stageUrls[s.key] } : s))}
         activeKey={stage}
         completedKeys={completed}
-      />
+      /></div>
 
-      <PatientSignatureCard
+      <div data-tour="stage.patient"><PatientSignatureCard
         patient={patient}
         visitCount={visits.length}
         lastAmaAt={sortedVisits.find((v) => v.amaDecline)?.amaDecline?.createdAt}
@@ -125,7 +125,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
             </button>
           }
         />
-      </PatientSignatureCard>
+      </PatientSignatureCard></div>
 
       {/* What triage recorded — the referral (if any) and the findings the main doctor must see. */}
       {sortedVisits.some((v) => v.referral) && (

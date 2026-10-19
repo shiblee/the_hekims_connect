@@ -88,17 +88,17 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
-            ? <TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} />
+            ? <div data-tour="dossier.panel"><TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} /></div>
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete the earlier stages first.</Card>}
         </div>
         <div ref={spacerRef} className="relative min-w-0">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
-            {latestVisit && <HakeemInsightPanel visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} />}
+            {latestVisit && <div data-tour="stage.insight"><HakeemInsightPanel visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} /></div>}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />
             {latestVisit && <Stage3FindingsCards visitId={latestVisit.id} patientId={patientId} />}
             {latestVisit && <Stage4AsbabCard visitId={latestVisit.id} patientId={patientId} />}
-            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+            {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
           </div>
         </div>
       </div>
@@ -106,7 +106,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       {/* Same action bar as the earlier stages; its messages sit right above it. */}
       <NoticeSlot state={t.msg} className="mb-3" />
       {latestVisit && (
-        <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
+        <Card data-tour="stage.actions" className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
           <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
             <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report incl. this dossier (opens in a new tab; shows saved data — Save Draft first)">
               <Printer className="h-3.5 w-3.5" />

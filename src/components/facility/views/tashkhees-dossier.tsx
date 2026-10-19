@@ -108,9 +108,9 @@ type TashkheesState = ReturnType<typeof useTashkhees>;
 // ---------------------------------------------------------------- small pieces
 
 
-function Panel({ icon: Icon, title, aside, children }: { icon: typeof Activity; title: string; hint?: string; aside?: ReactNode; children: ReactNode }) {
+function Panel({ icon: Icon, title, aside, tour, children }: { icon: typeof Activity; title: string; hint?: string; aside?: ReactNode; tour?: string; children: ReactNode }) {
   return (
-    <Card className="p-5 border-border/50 bg-card/60 gap-4">
+    <Card data-tour={tour} className="p-5 border-border/50 bg-card/60 gap-4">
       <SectionHeading icon={Icon} title={title} right={aside} />
       {children}
     </Card>
@@ -276,7 +276,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
   const addable = allQs.filter(({ q }) => !visibleIds.has(q.id) && (!aq || q.label.toLowerCase().includes(aq) || q.options.some((o) => o.label.toLowerCase().includes(aq))));
 
   return (
-    <Panel icon={Stethoscope} title="Dala'il — Clinical Signs"
+    <Panel icon={Stethoscope} tour="dossier.dalail" title="Dala'il — Clinical Signs"
       aside={
         <span className="flex items-center gap-1.5 shrink-0 flex-wrap">
           {sel && !selError && (
@@ -578,7 +578,7 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
   const { dossier: d, set, options } = state;
   const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, sub: o.localName || o.description }));
   return (
-    <Panel icon={FileSignature} title="Tashkhees — Diagnosis" hint="Constitution, the present dyscrasia and the organs affected.">
+    <Panel icon={FileSignature} tour="dossier.diagnosis" title="Tashkhees — Diagnosis" hint="Constitution, the present dyscrasia and the organs affected.">
       <EngineCard state={state} visitId={visitId} />
       <div><Label required>Mizaj-e-Asli (baseline temperament)</Label>
         <Chips items={mizaj} selected={d.mizajAsli ? [d.mizajAsli] : []} onToggle={(l) => set({ mizajAsli: d.mizajAsli === l ? null : l })} /></div>
@@ -706,7 +706,7 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
 function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
   return (
-    <Panel icon={ClipboardCheck} title="Usool-e-Ilaj — Principles of Treatment" hint="The strategy the treatment below will follow.">
+    <Panel icon={ClipboardCheck} tour="dossier.usool" title="Usool-e-Ilaj — Principles of Treatment" hint="The strategy the treatment below will follow.">
       <UsoolEngineCard state={state} visitId={visitId} />
       <div className="grid sm:grid-cols-2 gap-2">
         {(options?.usool || []).map((o) => {
@@ -968,7 +968,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
 
   const counts = { unani: r?.unani.length ?? 0, supplements: r?.supplements.length ?? 0, safety: (r?.excluded.length ?? 0), info: r?.infoNeeded.length ?? 0 };
   return (
-    <Panel icon={ShieldAlert} title="Clinical Decision Support — Medicines & Supplements"
+    <Panel icon={ShieldAlert} tour="dossier.cds" title="Clinical Decision Support — Medicines & Supplements"
       aside={
         <span className="flex items-center gap-2 shrink-0">
           <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Pilot · data under review</Badge>
@@ -1062,7 +1062,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
   return (
     <div className="space-y-5">
       {/* Ilaj-bil-Ghiza */}
-      <Panel icon={Utensils} title="Ilaj-bil-Ghiza — Diet" hint="Foods to recommend and Parhez (restrictions), with meal guidance."
+      <Panel icon={Utensils} tour="dossier.ghiza" title="Ilaj-bil-Ghiza — Diet" hint="Foods to recommend and Parhez (restrictions), with meal guidance."
         aside={<Badge variant="outline" className="mt-1 shrink-0">{d.ghizaRecommended.length} advised · {d.ghizaAvoid.length} Parhez</Badge>}>
         <GhizaEngineCard state={state} visitId={visitId} />
         {(d.ghizaRecommended.length > 0 || d.ghizaAvoid.length > 0) && (
@@ -1115,7 +1115,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       <CdsPanel state={state} visitId={visitId} />
 
       {/* Ilaj-bil-Dawa */}
-      <Panel icon={Pill} title="Ilaj-bil-Dawa — Medicines" hint="Formulations from Unani Medicine. Doses are the Hakim's own entry."
+      <Panel icon={Pill} tour="dossier.dawa" title="Ilaj-bil-Dawa — Medicines" hint="Formulations from Unani Medicine. Doses are the Hakim's own entry."
         aside={<HerbPicker herbs={herbs} onPick={(h) => set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] })} />}>
         {d.prescriptions.length === 0 ? <p className="text-sm text-muted-foreground">No medicines added yet.</p> : (
           <div className="space-y-3">
@@ -1159,7 +1159,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       </Panel>
 
       {/* Ilaj-bil-Tadbeer */}
-      <Panel icon={HeartPulse} title="Ilaj-bil-Tadbeer — Regimenal Therapy" hint="Hijama, Dalk, Hammam and other regimens."
+      <Panel icon={HeartPulse} tour="dossier.tadbeer" title="Ilaj-bil-Tadbeer — Regimenal Therapy" hint="Hijama, Dalk, Hammam and other regimens."
         aside={
           <Select value="" onValueChange={(v) => set({ tadbeer: [...d.tadbeer, { label: v, frequency: "", duration: "", notes: "" }] })}>
             <SelectTrigger className="h-9 w-48 bg-background/60"><SelectValue placeholder="+ Add regimen" /></SelectTrigger>
@@ -1193,7 +1193,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
 function HandoverTab({ state }: { state: TashkheesState }) {
   const { dossier: d, set, options } = state;
   return (
-    <Panel icon={CalendarDays} title="Prognosis & Handover" hint="Expected course, follow-up and the handover note."
+    <Panel icon={CalendarDays} tour="dossier.handover" title="Prognosis & Handover" hint="Expected course, follow-up and the handover note."
       aside={d.status === "finalized" ? <Badge variant="outline" className="mt-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Finalised</Badge> : undefined}>
       <div><Label>Prognosis (Inzar)</Label>
         <Chips items={(options?.prognosis || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.prognosis ? [d.prognosis] : []}

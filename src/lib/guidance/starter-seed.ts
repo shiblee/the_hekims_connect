@@ -4,13 +4,22 @@ import type { PrismaClient } from "@prisma/client";
 import { cleanDoc, cleanTour, type L10n } from "./content";
 import { syncGuidanceModules } from "./registry";
 import { publishGuidance } from "./server";
-import { STARTER_DOCS, STARTER_TOURS } from "./starter-content";
+import { STARTER_DOCS as CORE_DOCS, STARTER_TOURS as CORE_TOURS } from "./starter-content";
+import { STAGE_DOCS, STAGE_TOURS } from "./starter-content-stages";
+import { ADMIN_DOCS, ADMIN_TOURS } from "./starter-content-admin";
 import { HI } from "./starter-tr-hi";
 import { UR } from "./starter-tr-ur";
 import { AR } from "./starter-tr-ar";
 import { FA } from "./starter-tr-fa";
+import { HI2 } from "./starter-tr2-hi";
+import { UR2 } from "./starter-tr2-ur";
+import { AR2 } from "./starter-tr2-ar";
+import { FA2 } from "./starter-tr2-fa";
 
-export const STARTER_TRANSLATIONS = { hi: HI, ur: UR, ar: AR, fa: FA } as const;
+export const STARTER_TOURS = [...CORE_TOURS, ...STAGE_TOURS, ...ADMIN_TOURS];
+export const STARTER_DOCS = [...CORE_DOCS, ...STAGE_DOCS, ...ADMIN_DOCS];
+
+export const STARTER_TRANSLATIONS = { hi: { ...HI, ...HI2 }, ur: { ...UR, ...UR2 }, ar: { ...AR, ...AR2 }, fa: { ...FA, ...FA2 } } as const;
 
 const l10n = (key: string, en: string): L10n => {
   const out: L10n = { en };
@@ -56,7 +65,7 @@ export async function seedStarterGuidance(db: PrismaClient, by = "system") {
       sections: Object.fromEntries(Object.entries(d.sections).map(([k, v]) => [k, l10n(`doc:${d.key}:${k}`, v!)])),
       faqs: d.faqs.map((f) => ({ id: f.id, q: l10n(`doc:${d.key}:faq:${f.id}:q`, f.q), a: l10n(`doc:${d.key}:faq:${f.id}:a`, f.a) })),
     });
-    const row = await db.guidanceDoc.create({ data: { moduleKey: d.moduleKey, name: d.name, audience: "[]", draft: JSON.stringify(draft), updatedBy: by } });
+    const row = await db.guidanceDoc.create({ data: { moduleKey: d.moduleKey, name: d.name, audience: d.moduleKey.startsWith("admin.") ? '["admin"]' : "[]", draft: JSON.stringify(draft), updatedBy: by } });
     await publishGuidance("doc", row.id, by, "Starter content (English). Other languages awaiting review.");
     docs++;
   }

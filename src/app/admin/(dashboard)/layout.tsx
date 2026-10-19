@@ -102,7 +102,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
               </DropdownMenu>
 
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-2.5 shrink-0 rounded-lg pl-2 pr-2.5 py-1.5 hover:bg-card transition-colors outline-none">
+                <DropdownMenuTrigger data-tour="admin.account" className="flex items-center gap-2.5 shrink-0 rounded-lg pl-2 pr-2.5 py-1.5 hover:bg-card transition-colors outline-none">
                   <AdminAvatar name={admin.name} avatarColor={admin.avatarColor} avatarImage={admin.avatarImage} size="md" />
                   <div className="text-right hidden sm:block">
                     <p className="text-sm font-medium leading-tight">{admin.name}</p>
@@ -148,13 +148,14 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
             </div>
           </div>
           {/* Horizontal nav — its own full-width row so it never wraps or collides with the logo/profile above it. */}
-          <nav className="pb-3.5 -mt-0.5">
+          <nav className="pb-3.5 -mt-0.5" data-tour="admin.nav">
             <div className="inline-flex items-center gap-1 rounded-full border border-border/50 bg-card/40 p-1.5 max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {navLinks.map((l) => {
                 const active = l.href === "/admin" ? pathname === "/admin" : pathname.startsWith(l.href);
                 return (
                   <Link
                     key={l.href}
+                    data-tour={`admin.nav.${l.href.split("/")[2] ?? "dashboard"}`}
                     href={l.href}
                     className={cn(
                       "group relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-300",

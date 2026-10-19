@@ -1,7 +1,7 @@
 // What a signed-in user may see: published tours / tutorials for modules they can open, in their language.
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { cleanDoc, cleanTour, pickLang, RTL_LANGS, t, type GuideLang } from "./content";
+import { cleanDoc, cleanTour, pickLang, routeMatches, RTL_LANGS, t, type GuideLang } from "./content";
 import { GUIDANCE_MODULES, moduleDef, type GuidanceModuleDef } from "./registry";
 import { audienceMatches, canOpenModule, getGuidanceSettings, type GuidanceSettings, type Viewer } from "./server";
 
@@ -14,11 +14,11 @@ export async function viewerLanguage(settings: GuidanceSettings): Promise<string
   return settings.defaultLanguage;
 }
 
-/** The module a page belongs to (longest matching route in the viewer's app). */
+/** The module a page belongs to (most specific matching route in the viewer's app; "[id]" matches any segment). */
 export function moduleForPath(app: "clinic" | "admin", path: string): GuidanceModuleDef | null {
   const clean = path.split("?")[0].replace(/\/+$/, "") || "/";
-  return GUIDANCE_MODULES.filter((m) => m.app === app && (clean === m.route || clean.startsWith(`${m.route}/`)))
-    .sort((a, b) => b.route.length - a.route.length)[0] ?? null;
+  return GUIDANCE_MODULES.filter((m) => m.app === app && routeMatches(m.route, clean))
+    .sort((a, b) => b.route.split("/").length - a.route.split("/").length || b.route.length - a.route.length)[0] ?? null;
 }
 
 export interface TourPayload {

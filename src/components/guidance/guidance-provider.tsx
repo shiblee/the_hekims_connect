@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { GUIDANCE_MODULES } from "@/lib/guidance/registry";
+import { isPatternRoute, routeMatches } from "@/lib/guidance/content";
 import type { TourPayload } from "@/lib/guidance/viewer-content";
 import { TourOverlay } from "./tour-overlay";
 
@@ -99,7 +100,7 @@ export function GuidanceProvider({ client, children, renderHelp }: { client: Cli
   }, [path, startTour]);
 
   const openTour = useCallback((id: string, route: string, resume = false) => {
-    if (path === route || path.startsWith(`${route}/`)) startTour(id, resume);
+    if (routeMatches(route, path) || isPatternRoute(route)) startTour(id, resume);
     else router.push(`${route}?guide=${encodeURIComponent(id)}${resume ? "&resume=1" : ""}`);
   }, [path, router, startTour]);
 

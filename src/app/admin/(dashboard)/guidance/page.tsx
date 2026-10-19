@@ -102,7 +102,7 @@ export default function GuidanceAdminPage() {
         <div className="flex items-center gap-2 py-16 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
-          <Card className="h-fit gap-4 border-border bg-card/60 p-5 xl:sticky xl:top-6">
+          <Card data-tour="guidance.settings" className="h-fit gap-4 border-border bg-card/60 p-5 xl:sticky xl:top-6">
             <h2 className="flex items-center gap-2 font-serif text-lg font-semibold"><Settings2 className="h-4 w-4 text-primary" /> Settings</h2>
             <div className="divide-y divide-border">
               {SWITCHES.map((sw) => {
@@ -125,7 +125,7 @@ export default function GuidanceAdminPage() {
             </div>
           </Card>
 
-          <div className="min-w-0 space-y-4">
+          <div data-tour="guidance.modules" className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="inline-flex rounded-lg border border-border bg-card/60 p-1">
                 {(["clinic", "admin"] as const).map((a) => (

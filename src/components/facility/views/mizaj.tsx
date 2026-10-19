@@ -151,26 +151,26 @@ function MizajStage({ patientId }: { patientId: string }) {
 
       <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5 min-w-0">
-          {latestVisit && <AnatomicalRegionSelector ref={regionRef} visitId={latestVisit.id} patientGender={patient.gender} />}
+          {latestVisit && <div data-tour="mizaj.regions"><AnatomicalRegionSelector ref={regionRef} visitId={latestVisit.id} patientGender={patient.gender} /></div>}
           {latestVisit ? (
-            <ChiefComplaintMatrix ref={chiefComplaintRef} visitId={latestVisit.id} intakeComplaints={intakeComplaints} onDurationsChange={setComplaintDurations} />
+            <div data-tour="stage.complaints"><ChiefComplaintMatrix ref={chiefComplaintRef} visitId={latestVisit.id} intakeComplaints={intakeComplaints} onDurationsChange={setComplaintDurations} /></div>
           ) : (
             <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete Stage 2 first.</Card>
           )}
-          {latestVisit && <OnsetChronologyPanel ref={chronologyRef} visitId={latestVisit.id} complaintDurations={complaintDurations} />}
+          {latestVisit && <div data-tour="mizaj.chronology"><OnsetChronologyPanel ref={chronologyRef} visitId={latestVisit.id} complaintDurations={complaintDurations} /></div>}
         </div>
 
         <div ref={spacerRef} className="relative">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
             {latestVisit && (
-              <HakeemInsightPanel
+              <div data-tour="stage.insight"><HakeemInsightPanel
                 ref={humoralCluesRef}
                 visitId={latestVisit.id}
                 hasVitals={!!latestVisit.vitalSigns}
                 onBeforeGenerate={async () => { await chiefComplaintRef.current?.save(); }}
-              />
+              /></div>
             )}
-            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+            {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />
           </div>
@@ -179,7 +179,7 @@ function MizajStage({ patientId }: { patientId: string }) {
 
       {/* Same action bar as Stage 2 (Clinical Record), so every stage ends the same way; its messages sit right above it. */}
       <NoticeSlot state={msg} className="mb-3" />
-      <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
+      <Card data-tour="stage.actions" className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
         <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
           {latestVisit && (
             <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report (opens in a new tab; shows saved data — Save Draft first to include new edits)">

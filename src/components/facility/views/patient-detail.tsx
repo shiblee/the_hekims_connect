@@ -240,19 +240,19 @@ export function PatientDetail({ patientId }: { patientId: string }) {
           gated on checkInComplete separately), it doesn't mean the user has
           left this stage. Jumping the tracker to "Mizaj" while still on
           this page claimed a stage that hadn't actually started yet. */}
-      <PatientStageTracker
+      <div data-tour="stage.tracker"><PatientStageTracker
         steps={PATIENT_JOURNEY_STEPS.map((s) => (s.key === "registration" ? { ...s, href: `/facility/patients/${patientId}` } : s))}
         activeKey="vitals"
         completedKeys={["registration"]}
-      />
+      /></div>
 
-      <PatientSignatureCard
+      <div data-tour="stage.patient"><PatientSignatureCard
         patient={patient}
         visitCount={visits.length}
         lastAmaAt={amaVisits[0]?.amaDecline?.createdAt}
         onPhotoClick={() => setPhotoDialogOpen(true)}
         visits={sortedVisits}
-      />
+      /></div>
 
       <PhotoUploadDialog
         open={photoDialogOpen}
@@ -294,35 +294,35 @@ export function PatientDetail({ patientId }: { patientId: string }) {
 
       <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
-          <VitalsPanel visits={visits} patientId={patientId} onSaved={refreshVisits} patientDob={patient.dob} patientGender={patient.gender} currentVisitId={latestVisit?.id} />
+          <div data-tour="record.vitals"><VitalsPanel visits={visits} patientId={patientId} onSaved={refreshVisits} patientDob={patient.dob} patientGender={patient.gender} currentVisitId={latestVisit?.id} /></div>
           {latestVisit && (
-            <ChiefComplaintMatrix
+            <div data-tour="stage.complaints"><ChiefComplaintMatrix
               ref={chiefComplaintRef}
               visitId={latestVisit.id}
               intakeComplaints={intakeComplaints}
-            />
+            /></div>
           )}
-          {latestVisit && <RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} onReferralChange={refreshVisits} />}
-          {latestVisit && <AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} />}
+          {latestVisit && <div data-tour="record.redflags"><RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} onReferralChange={refreshVisits} /></div>}
+          {latestVisit && <div data-tour="record.symptoms"><AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} /></div>}
         </div>
         <div ref={rightRailSpacerRef} className="relative">
         <div ref={rightRailContentRef} className="space-y-5" style={rightRailStyle || undefined}>
           {latestVisit && (
-            <HakeemInsightPanel
+            <div data-tour="stage.insight"><HakeemInsightPanel
               ref={humoralCluesRef}
               visitId={latestVisit.id}
               hasVitals={!!latestVisit.vitalSigns}
               onBeforeGenerate={async () => { await chiefComplaintRef.current?.save(); }}
-            />
+            /></div>
           )}
-          {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+          {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
           <TriageNotesCard visits={visits} />
         </div>
         </div>
       </div>
 
       <NoticeSlot state={msg} className="mb-3" />
-      <Card className={cn(
+      <Card data-tour="stage.actions" className={cn(
         "p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap",
         checkInComplete ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/50 bg-card/60"
       )}>

@@ -321,7 +321,7 @@ export default function FacilityListPage() {
           {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
           {/* KPIs */}
-          <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div data-tour="facilities.kpis" className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <Kpi icon={Building2} label="Facilities" value={String(k.total)} hint={<>{k.new30} new in 30 days</>} tone="primary" onClick={() => apply({})} />
             <Kpi icon={Activity} label="Active this week" value={String(k.active7)} hint={<>{k.total ? Math.round((k.active7 / k.total) * 100) : 0}% of all clinics</>} onClick={() => apply({ login: "within7" })} />
             <Kpi icon={Users} label="Patients served" value={k.patients.toLocaleString("en-IN")} hint="Distinct patients per clinic" />
@@ -331,7 +331,7 @@ export default function FacilityListPage() {
           </div>
 
           {/* Insights + health */}
-          <div className="mb-6 grid gap-4 lg:grid-cols-3">
+          <div data-tour="facilities.insights" className="mb-6 grid gap-4 lg:grid-cols-3">
             <Card className="gap-3 border-border bg-card/60 p-5 lg:col-span-2">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="flex items-center gap-2 font-serif text-lg font-semibold"><Sparkles className="h-4 w-4 text-primary" /> Insights</h2>
@@ -383,7 +383,7 @@ export default function FacilityListPage() {
           </div>
 
           {/* Search + filters */}
-          <Card className="mb-4 gap-3 border-border bg-card/60 p-4">
+          <Card data-tour="facilities.filters" className="mb-4 gap-3 border-border bg-card/60 p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -436,7 +436,7 @@ export default function FacilityListPage() {
           </Card>
 
           {/* Table */}
-          <Card className="overflow-hidden border-border bg-card/60 p-0">
+          <Card data-tour="facilities.table" className="overflow-hidden border-border bg-card/60 p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/40">

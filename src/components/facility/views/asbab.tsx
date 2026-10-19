@@ -100,18 +100,18 @@ function AsbabStage({ patientId }: { patientId: string }) {
       <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
-            ? <AsbabAssessmentPanel state={asbab} visitId={latestVisit.id} />
+            ? <div data-tour="asbab.pillars"><AsbabAssessmentPanel state={asbab} visitId={latestVisit.id} /></div>
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete the earlier stages first.</Card>}
         </div>
 
         <div ref={spacerRef} className="relative min-w-0">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
-            {latestVisit && <HakeemInsightPanel ref={insightRef} visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} />}
+            {latestVisit && <div data-tour="stage.insight"><HakeemInsightPanel ref={insightRef} visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} /></div>}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />
             {latestVisit && <Stage3FindingsCards visitId={latestVisit.id} patientId={patientId} />}
-            {latestVisit && <AsbabDriftCard state={asbab} />}
-            {latestVisit && <ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} />}
+            {latestVisit && <div data-tour="asbab.drift"><AsbabDriftCard state={asbab} /></div>}
+            {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
           </div>
         </div>
       </div>
@@ -119,7 +119,7 @@ function AsbabStage({ patientId }: { patientId: string }) {
       {/* Same action bar as Stages 2 and 3; its messages sit right above it. */}
       <NoticeSlot state={asbab.msg} className="mb-3" />
       {latestVisit && (
-        <Card className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
+        <Card data-tour="stage.actions" className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
           <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
             <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report (opens in a new tab; shows saved data — Save Draft first to include new answers)">
               <Printer className="h-3.5 w-3.5" />

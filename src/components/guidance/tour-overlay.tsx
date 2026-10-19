@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { GuideText } from "./guide-text";
 import { useGuideUi } from "@/lib/guidance/ui-strings";
+import { isPatternRoute, routeMatches } from "@/lib/guidance/content";
 import type { TourPayload } from "@/lib/guidance/viewer-content";
 
 const PAD = 6, GAP = 12, CARD_W = 360;
@@ -16,7 +17,7 @@ function findTarget(id?: string): HTMLElement | null {
   const all = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${CSS.escape(id)}"]`));
   return all.find((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden"; }) ?? null;
 }
-const onRoute = (path: string, route?: string) => !route || path === route || path.startsWith(`${route}/`);
+const onRoute = (path: string, route?: string) => !route || routeMatches(route, path);
 
 /**
  * One step of a guided tour: a spotlight around the step's marked element (if it's on screen)
@@ -121,7 +122,7 @@ export function TourOverlay({ tour, step, routeName, hasDoc, onStep, onClose, on
         {elsewhere && s.route && (
           <div className="mt-3 rounded-lg bg-primary/5 p-2.5 text-sm">
             <p>{ui.onOtherPage(routeName(s.route))}</p>
-            <Button size="sm" variant="outline" className="mt-2" onClick={() => router.push(s.route!)}><ExternalLink className="h-3.5 w-3.5" /> {ui.openPage(routeName(s.route))}</Button>
+            {!isPatternRoute(s.route) && <Button size="sm" variant="outline" className="mt-2" onClick={() => router.push(s.route!)}><ExternalLink className="h-3.5 w-3.5" /> {ui.openPage(routeName(s.route))}</Button>}
           </div>
         )}
         {!elsewhere && s.target && !rect && <p className="mt-2 text-xs text-muted-foreground">{ui.notOnScreen}</p>}
