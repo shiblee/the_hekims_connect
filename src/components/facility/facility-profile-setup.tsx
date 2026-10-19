@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { FloatingField, FieldError, FloatingMultiSelect } from "@/components/shared/floating-field";
+import { FloatingCombobox } from "@/components/shared/combobox";
 import {
   Building2, MapPin, MapPinned, Clock, Stethoscope, Sparkles, LogOut, ChevronLeft,
   ChevronRight, CheckCircle2, Loader2, Hospital, HeartPulse, Hash, Calendar,
@@ -45,6 +46,9 @@ type StepKey = (typeof STEP_KEYS)[number];
 const FACILITY_TYPE_ICONS: Record<string, any> = {
   Hospital, Clinic: Stethoscope, "Nursing Home": HeartPulse, "Health Centre": Building2,
 };
+/** Shown as tiles; every other facility type is in the searchable "More facility types" field. */
+const COMMON_TYPES = ["Clinic", "Hospital", "Nursing Home", "Health Centre"];
+
 function facilityTypeIcon(type: string) {
   return FACILITY_TYPE_ICONS[type] || Sparkles;
 }
@@ -258,7 +262,8 @@ export function FacilityProfileSetup() {
     [meta]
   );
 
-  const isHospital = form.facilityType === "Hospital";
+  // Any hospital-type facility (Hospital, Unani Hospital, Teaching Hospital…) must give its bed capacity.
+  const isHospital = /hospital/i.test(form.facilityType);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
 
@@ -457,8 +462,8 @@ export function FacilityProfileSetup() {
                             </div>
                             <div>
                               <p className="text-[15px] font-semibold mb-2">What type of facility is this?</p>
-                              <div className={cn("grid sm:grid-cols-3 gap-2 rounded-xl", fieldErrors.facilityType && "ring-2 ring-destructive/50 p-2 -mx-2 -mt-2 mb-1")}>
-                                {facilityTypes.map((t) => {
+                              <div className={cn("grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl", fieldErrors.facilityType && "ring-2 ring-destructive/50 p-2 -mx-2 -mt-2 mb-1")}>
+                                {facilityTypes.filter((t) => COMMON_TYPES.includes(t)).map((t) => {
                                   const TypeIcon = facilityTypeIcon(t);
                                   const active = form.facilityType === t;
                                   return (
@@ -482,6 +487,18 @@ export function FacilityProfileSetup() {
                                   );
                                 })}
                               </div>
+                              {facilityTypes.some((t) => !COMMON_TYPES.includes(t)) && (
+                                <div className="mt-2">
+                                  <FloatingCombobox
+                                    id="moreFacilityTypes"
+                                    label={COMMON_TYPES.includes(form.facilityType) || !form.facilityType ? "More facility types" : "Facility type"}
+                                    value={COMMON_TYPES.includes(form.facilityType) ? "" : form.facilityType}
+                                    onValueChange={(v) => set("facilityType", v)}
+                                    options={facilityTypes.filter((t) => !COMMON_TYPES.includes(t))}
+                                    placeholder="Search other types — e.g. Polyclinic, Wellness Centre"
+                                  />
+                                </div>
+                              )}
                               <FieldError message={fieldErrors.facilityType} />
                             </div>
                             <div>

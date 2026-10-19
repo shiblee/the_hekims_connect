@@ -1,4 +1,5 @@
 import { REPORT_DEFAULTS } from "@/lib/report-branding";
+import { seedFacilityMeta } from "@/lib/facility-meta-seed";
 import { seedMetaCatalogs } from "@/lib/meta-catalog-seed";
 import { WARNING_SIGN_SEED, OTHER_SYMPTOM_SEED, ONSET_PATTERN_SEED } from "@/lib/triage-catalog-seed";
 import { db } from "@/lib/db";
@@ -592,6 +593,7 @@ export async function seedDatabase() {
   await seedUsoolBank();
   await seedGhizaBank();
   await seedMetaCatalogs(db);
+  await seedFacilityMeta(db);
   await seedEmailTemplates();
 
   // Check if already seeded
