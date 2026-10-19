@@ -877,7 +877,7 @@ export function FacilityProfileSetup() {
 
                   <FieldError message={error || undefined} />
 
-                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/50">
+                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-input">
                     {step > 0 ? (
                       <Button variant="outline" size="lg" onClick={goBack} disabled={submitting}>
                         <ChevronLeft className="h-4 w-4 mr-1" /> Back
@@ -903,6 +903,10 @@ export function FacilityProfileSetup() {
             </Card>
           </div>
         </main>
+
+        <footer className="px-4 pb-6 pt-2 text-center text-xs text-muted-foreground">
+          © {new Date().getFullYear()} The Hekim&apos;s Connect. All rights reserved.
+        </footer>
       </div>
     </div>
   );
