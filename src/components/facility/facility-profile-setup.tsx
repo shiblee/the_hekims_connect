@@ -191,6 +191,8 @@ export function FacilityProfileSetup() {
     try { return JSON.parse(localStorage.getItem(draftKey) || "{}"); } catch { return {}; }
   };
   const [stepKey, setStepKey] = useUrlParam<StepKey>("step", "facility", STEP_KEYS);
+  // HFR numbers are unique across facilities — check as soon as the number is complete.
+  const [hfrTaken, setHfrTaken] = useState<{ hfr: string; taken: boolean } | null>(null);
   const requestedStep = STEP_KEYS.indexOf(stepKey);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -233,6 +235,18 @@ export function FacilityProfileSetup() {
   useEffect(() => {
     try { localStorage.setItem(draftKey, JSON.stringify({ form })); } catch { /* private mode — nothing kept */ }
   }, [draftKey, form]);
+  useEffect(() => {
+    const hfr = form.hfrNumber.trim().toUpperCase();
+    if (!HFR_PATTERN.test(hfr)) return;
+    let alive = true;
+    const t = setTimeout(() => {
+      api.get<{ valid: boolean; available: boolean }>(`/api/facility/profile/hfr-check?hfr=${encodeURIComponent(hfr)}`)
+        .then((r) => { if (alive) setHfrTaken({ hfr, taken: r.valid && !r.available }); })
+        .catch(() => {});
+    }, 350);
+    return () => { alive = false; clearTimeout(t); };
+  }, [form.hfrNumber]);
+  const hfrIsTaken = !!hfrTaken && hfrTaken.taken && hfrTaken.hfr === form.hfrNumber.trim().toUpperCase();
 
   const set = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -274,6 +288,7 @@ export function FacilityProfileSetup() {
       if (!form.facilityType) errs.facilityType = "Please select a Facility Type";
       if (!form.hfrNumber) errs.hfrNumber = "HFR Number is required";
       else if (!HFR_PATTERN.test(form.hfrNumber)) errs.hfrNumber = "Should be IN followed by 10 digits (e.g. IN0123456789)";
+      else if (hfrIsTaken) errs.hfrNumber = "This HFR Number is already registered to another facility";
       if (form.establishmentDate && form.establishmentDate > currentMonth) errs.establishmentDate = "Cannot be in the future";
     } else if (i === 1) {
       if (!form.addressLine1) errs.addressLine1 = "Address is required";
@@ -513,6 +528,8 @@ export function FacilityProfileSetup() {
                               />
                               {fieldErrors.hfrNumber ? (
                                 <FieldError message={fieldErrors.hfrNumber} />
+                              ) : hfrIsTaken ? (
+                                <FieldError message="This HFR Number is already registered to another facility. Check the number, or contact support if it is yours." />
                               ) : HFR_PATTERN.test(form.hfrNumber) ? (
                                 <p className="mt-1.5 ml-1 flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> Valid format</p>
                               ) : (

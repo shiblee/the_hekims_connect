@@ -96,7 +96,12 @@ export async function PATCH(req: NextRequest) {
   if (Array.isArray(body.services)) data.services = JSON.stringify(body.services);
 
   if (Object.keys(data).length) {
-    await db.facility.update({ where: { id: auth.id }, data });
+    try {
+      await db.facility.update({ where: { id: auth.id }, data });
+    } catch (e) {
+      if ((e as { code?: string })?.code === "P2002") return NextResponse.json({ error: "This HFR Number is already registered to another facility" }, { status: 409 });
+      throw e;
+    }
     await logClinicEvent(req, auth, { action: "facility.updated", summary: `Changed clinic ${Object.keys(data).join(", ")}`, entityType: "facility", entityId: auth.id, details: { fields: Object.keys(data) } });
   }
 

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
     if (hfrNumber) {
       const hfrConflict = await db.facility.findFirst({
-        where: { hfrNumber: hfrNumber.toUpperCase(), id: { not: auth.id } },
+        where: { hfrNumber: hfrNumber.trim().toUpperCase(), id: { not: auth.id } },
       });
       if (hfrConflict) {
         return NextResponse.json({ error: "This HFR Number is already registered to another facility" }, { status: 409 });
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         facilityName,
         registeredFacilityName: existing.registeredFacilityName ?? existing.facilityName,
         facilityType,
-        hfrNumber: hfrNumber.toUpperCase(),
+        hfrNumber: hfrNumber.trim().toUpperCase(),
         establishmentDate: establishmentDate ? new Date(establishmentDate) : null,
         addressLine1,
         addressLine2: addressLine2 || null,
@@ -164,6 +164,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ facility });
   } catch (e) {
+    // Two clinics saving the same HFR number at the same moment — the database keeps it unique.
+    if ((e as { code?: string })?.code === "P2002") {
+      return NextResponse.json({ error: "This HFR Number is already registered to another facility" }, { status: 409 });
+    }
     console.error("Facility profile completion error:", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
