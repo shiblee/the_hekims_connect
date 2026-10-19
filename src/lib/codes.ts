@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 
-// Same retry-loop convention as the Staff module's staffCode generator.
+// Short running numbers — PT9, V6, PAY3 (no leading zeros). Same retry-loop convention as the staffCode generator.
 export async function nextPatientCode() {
   for (let i = 0; i < 5; i++) {
     const count = await db.patient.count();
@@ -14,7 +14,7 @@ export async function nextPatientCode() {
 export async function nextVisitCode() {
   for (let i = 0; i < 5; i++) {
     const count = await db.visit.count();
-    const code = `V${String(count + 1 + i).padStart(8, "0")}`;
+    const code = `V${count + 1 + i}`;
     const exists = await db.visit.findUnique({ where: { visitCode: code } });
     if (!exists) return code;
   }
@@ -24,7 +24,7 @@ export async function nextVisitCode() {
 export async function nextPaymentCode() {
   for (let i = 0; i < 5; i++) {
     const count = await db.payment.count();
-    const code = `PAY${String(count + 1 + i).padStart(8, "0")}`;
+    const code = `PAY${count + 1 + i}`;
     const exists = await db.payment.findUnique({ where: { paymentCode: code } });
     if (!exists) return code;
   }

@@ -8,7 +8,7 @@ import { netAmount, paymentState } from "@/lib/payments";
 /** Same numbering as src/lib/codes.ts, but inside the payment's transaction (SQLite would otherwise wait on itself). */
 async function nextPaymentCode(tx: Pick<typeof db, "payment">) {
   for (let i = 0; i < 5; i++) {
-    const code = `PAY${String((await tx.payment.count()) + 1 + i).padStart(8, "0")}`;
+    const code = `PAY${(await tx.payment.count()) + 1 + i}`;
     if (!(await tx.payment.findUnique({ where: { paymentCode: code }, select: { id: true } }))) return code;
   }
   throw new Error("Could not generate a unique payment code");
