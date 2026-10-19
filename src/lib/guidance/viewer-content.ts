@@ -26,11 +26,20 @@ export interface TourPayload {
   steps: { id: string; title: string; body: string; route?: string; target?: string; placement?: string }[];
 }
 
-export function tourPayload(row: { id: string; version: number; trigger: string; moduleKey: string; published: string | null }, wanted: string, fallback: string): TourPayload | null {
+/**
+ * A tour in the user's language. Pass `viewer` to drop steps on pages that user can't open
+ * (a user is never guided to something they can't use).
+ */
+export function tourPayload(row: { id: string; version: number; trigger: string; moduleKey: string; published: string | null }, wanted: string, fallback: string, viewer?: Viewer): TourPayload | null {
   if (!row.published) return null;
   const c = cleanTour(JSON.parse(row.published));
   const { lang, isFallback } = pickLang(c, wanted, fallback);
-  const steps = c.steps.filter((s) => s.active).map((s) => ({ id: s.id, title: t(s.title, lang), body: t(s.body, lang), route: s.route, target: s.target, placement: s.placement }));
+  const reachable = (route?: string) => {
+    if (!viewer || !route) return true;
+    const m = moduleForPath(viewer.app, route);
+    return !m || canOpenModule(viewer, m);
+  };
+  const steps = c.steps.filter((s) => s.active && reachable(s.route)).map((s) => ({ id: s.id, title: t(s.title, lang), body: t(s.body, lang), route: s.route, target: s.target, placement: s.placement }));
   if (!steps.length) return null;
   return { id: row.id, version: row.version, trigger: row.trigger, moduleKey: row.moduleKey, title: t(c.title, lang), lang, rtl: RTL_LANGS.includes(lang), isFallback, steps };
 }

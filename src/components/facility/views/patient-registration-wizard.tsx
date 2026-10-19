@@ -909,7 +909,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
             {!directEntry && !formOpen && (
             <section className="space-y-3 animate-in fade-in duration-200">
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
+                <h2 data-tour="register.search" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Search first so the same patient isn&apos;t registered twice.</p>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
@@ -1168,7 +1168,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     </section>
 
                     {canCollect && <section className="space-y-3">
-                      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payment (optional)</h2>
+                      <h2 data-tour="register.payment" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payment (optional)</h2>
                       {existingPayment && (
                         <p className="text-sm text-muted-foreground">Already collected: ₹{existingPayment.amount} ({existingPayment.mode}). Fields below add another payment, if needed.</p>
                       )}

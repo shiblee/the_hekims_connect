@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       key: m.key, name: m.name, route: m.route, doc: docTitle ? { title: docTitle } : null,
       tours: tours.filter((x) => x.moduleKey === m.key).map((x) => {
         const p = prog.get(x.id);
-        const payload = tourPayload(x, lang, settings.fallbackLanguage);
+        const payload = tourPayload(x, lang, settings.fallbackLanguage, viewer);
         return { id: x.id, title: payload?.title ?? x.name, steps: payload?.steps.length ?? 0, firstRoute: payload?.steps[0]?.route ?? m.route, state: p?.state ?? "new", step: p?.step ?? 0, outdated: !!p && p.version < x.version, completedAt: p?.completedAt ?? null };
       }),
     };

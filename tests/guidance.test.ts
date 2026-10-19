@@ -131,3 +131,49 @@ describe("tours on screen", () => {
     assert.equal(tourPayload({ ...row, published: null }, "en", "en"), null);
   });
 });
+
+describe("never guided to pages you can't open", () => {
+  it("drops tour steps on pages the user can't open", () => {
+    const content = cleanTour({ title: { en: "Mixed" }, steps: [
+      { title: { en: "Reception" }, body: { en: "r" }, route: "/facility/reception" },
+      { title: { en: "Staff" }, body: { en: "s" }, route: "/facility/profile/staff" },
+      { title: { en: "Anywhere" }, body: { en: "a" } },
+    ] });
+    const row = { id: "t", version: 1, trigger: "manual", moduleKey: "clinic.reception", published: JSON.stringify(content) };
+    const nurse: Viewer = { app: "clinic", userKey: "staff:n", permissions: ["patients.view"], isOwner: false, staffRole: "Staff Nurse", facilityId: "f", clinicOff: false };
+    const owner: Viewer = { ...nurse, userKey: "facility:f", permissions: null, isOwner: true, staffRole: null };
+    assert.deepEqual(tourPayload(row, "en", "en", nurse)!.steps.map((s) => s.title), ["Reception", "Anywhere"]);
+    assert.equal(tourPayload(row, "en", "en", owner)!.steps.length, 3);
+  });
+});
+
+describe("starter content", () => {
+  it("every text has Hindi, Urdu, Arabic and Farsi drafts that keep the same links and bold marks", async () => {
+    const { STARTER_TRANSLATIONS, starterKeys, starterEnglish } = await import("@/lib/guidance/starter-seed");
+    const marks = (x: string) => ({ bold: (x.match(/\*\*/g) || []).length, links: (x.match(/\]\((\/[^)]*)\)/g) || []).map((l) => l.slice(l.indexOf("(")))
+      .sort().join(",") });
+    const problems: string[] = [];
+    for (const key of starterKeys()) {
+      const en = starterEnglish(key);
+      if (!en) { problems.push(`no English for ${key}`); continue; }
+      for (const [lang, map] of Object.entries(STARTER_TRANSLATIONS)) {
+        const tr = (map as Record<string, string>)[key];
+        if (!tr) { problems.push(`${lang} missing ${key}`); continue; }
+        const a = marks(en), b = marks(tr);
+        if (a.bold !== b.bold) problems.push(`${lang} bold marks differ in ${key}`);
+        if (a.links !== b.links) problems.push(`${lang} link paths differ in ${key}`);
+      }
+    }
+    assert.deepEqual(problems, []);
+  });
+  it("only points tours at markers registered for their page", async () => {
+    const { STARTER_TOURS } = await import("@/lib/guidance/starter-content");
+    const { GUIDANCE_MODULES } = await import("@/lib/guidance/registry");
+    for (const t of STARTER_TOURS) for (const s of t.steps) {
+      if (!s.target) continue;
+      const route = s.route ?? moduleDef(t.moduleKey)!.route;
+      const m = GUIDANCE_MODULES.find((x) => x.route === route);
+      assert.ok(m?.targets.some((x) => x.id === s.target), `${t.key}/${s.id}: ${s.target} not registered on ${route}`);
+    }
+  });
+});

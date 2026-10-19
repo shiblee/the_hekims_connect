@@ -38,9 +38,9 @@ export async function GET(req: NextRequest) {
       module: mod ? { key: mod.key, name: mod.name, hasDoc: docs.some((d) => d.moduleKey === mod.key) } : null,
       pageTours: mod ? tours.filter((t) => t.moduleKey === mod.key).map((t) => {
         const p = prog.get(t.id);
-        return { id: t.id, title: tourPayload(t, lang, settings.fallbackLanguage)?.title ?? t.name, state: p?.state ?? "new", step: p?.step ?? 0, outdated: !!p && p.version < t.version };
+        return { id: t.id, title: tourPayload(t, lang, settings.fallbackLanguage, viewer)?.title ?? t.name, state: p?.state ?? "new", step: p?.step ?? 0, outdated: !!p && p.version < t.version };
       }) : [],
-      autostart: auto ? tourPayload(auto, lang, settings.fallbackLanguage) : null,
+      autostart: auto ? tourPayload(auto, lang, settings.fallbackLanguage, viewer) : null,
     });
   } catch {
     return NextResponse.json({ on: false });

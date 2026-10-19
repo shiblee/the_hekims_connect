@@ -13,5 +13,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const tour = (await visibleTours(viewer)).find((t) => t.id === id);
   if (!tour) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const p = await db.guidanceProgress.findUnique({ where: { userKey_tourId: { userKey: viewer.userKey, tourId: id } } });
-  return NextResponse.json({ tour: tourPayload(tour, await viewerLanguage(settings), settings.fallbackLanguage), progress: p ? { state: p.state, step: p.step, version: p.version } : null });
+  return NextResponse.json({ tour: tourPayload(tour, await viewerLanguage(settings), settings.fallbackLanguage, viewer), progress: p ? { state: p.state, step: p.step, version: p.version } : null });
 }
