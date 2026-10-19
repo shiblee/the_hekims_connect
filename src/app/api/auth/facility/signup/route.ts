@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { brandEmailVars, emailDate } from "@/lib/email-vars";
 import { db } from "@/lib/db";
 import { hashPassword, normalizeContact, isSecurePassword } from "@/lib/auth";
 import { startSession, fetchFacility } from "@/lib/api-auth";
@@ -66,11 +67,11 @@ export async function POST(req: NextRequest) {
         templateKey: "facility_welcome",
         to: normalizedContact,
         vars: {
+          ...(await brandEmailVars(req)),
           facility_name: facility.facilityName,
           facility_email: normalizedContact,
           portal_name: portalName,
-          registration_date: new Date().toLocaleDateString(),
-          login_url: `${getSiteUrl(req)}/login/facility`,
+          registration_date: emailDate(new Date()),
         },
         event: "welcome_sent",
       });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { brandEmailVars, emailDate } from "@/lib/email-vars";
 import { logClinicEventRaw } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { startSession, fetchFacility, fetchPatient, fetchStaff } from "@/lib/api-auth";
@@ -94,11 +95,11 @@ export async function POST(req: NextRequest) {
           templateKey: "facility_welcome",
           to: facility.email,
           vars: {
+            ...(await brandEmailVars(req)),
             facility_name: facility.facilityName,
             facility_email: facility.email,
             portal_name: portalName,
-            registration_date: new Date().toLocaleDateString(),
-            login_url: `${getSiteUrl(req)}/login/facility`,
+            registration_date: emailDate(new Date()),
           },
           event: "welcome_sent",
         });

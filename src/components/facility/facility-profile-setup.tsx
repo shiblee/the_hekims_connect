@@ -186,6 +186,41 @@ function GroupMultiSelect({ group, error }: { group: PickGroup; error: boolean }
   );
 }
 
+const DAY_SHORT: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+const time12 = (t: string) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+/** "Mon–Sat · 9:00 AM–5:00 PM", or the days alone when hours differ from day to day. */
+function hoursSummary(f: WizardForm): string {
+  if (f.is24x7) return "Open 24×7";
+  const order = [1, 2, 3, 4, 5, 6, 0].filter((d) => f.operatingDays.includes(d));
+  if (!order.length) return "No opening days set";
+  const runs: number[][] = [];
+  for (const d of order) { const last = runs.at(-1); const prev = last?.at(-1); if (last && prev !== undefined && [1, 2, 3, 4, 5, 6, 0].indexOf(d) === [1, 2, 3, 4, 5, 6, 0].indexOf(prev) + 1) last.push(d); else runs.push([d]); }
+  const days = runs.map((r) => (r.length > 2 ? `${DAY_SHORT[r[0]]}–${DAY_SHORT[r.at(-1)!]}` : r.map((d) => DAY_SHORT[d]).join(", "))).join(", ");
+  const slots = order.map((d) => { const h = f.hours[d]; return h ? `${time12(h.open)}–${time12(h.close)}${h.open2 && h.close2 ? `, ${time12(h.open2)}–${time12(h.close2)}` : ""}` : ""; });
+  return new Set(slots).size === 1 && slots[0] ? `${days} · ${slots[0]}` : days;
+}
+
+/** One summary card on the Review step, with a jump back to its step. */
+function ReviewCard({ icon: Icon, title, onEdit, children }: { icon: typeof Building2; title: string; onEdit: () => void; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-input bg-background/60 p-4">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-3.5 w-3.5" /></span>{title}</h3>
+        <button type="button" onClick={onEdit} className="text-xs font-medium text-primary hover:underline">Edit</button>
+      </div>
+      <dl className="space-y-1.5 text-sm">{children}</dl>
+    </section>
+  );
+}
+function ReviewRow({ label, value, wide }: { label: string; value: React.ReactNode; wide?: boolean }) {
+  return (
+    <div className={cn("grid gap-2", wide ? "grid-cols-[7.5rem_1fr]" : "grid-cols-[5.25rem_1fr]")}>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words font-medium">{value || <span className="font-normal text-muted-foreground">—</span>}</dd>
+    </div>
+  );
+}
+
 export function FacilityProfileSetup() {
   const router = useRouter();
   const facility = useAppStore((s) => s.facility);
@@ -408,7 +443,7 @@ export function FacilityProfileSetup() {
               <p className="mt-1.5 text-sm text-muted-foreground">About 3 minutes · you can change any of this later in Facility Profile.</p>
             </div>
 
-            {step < 5 && (
+            {(
               <div className="flex items-center justify-center gap-1 mb-7 overflow-x-auto overflow-y-visible py-2 px-2">
                 {STEPS.map((label, i) => (
                   <div key={label} className="flex items-center shrink-0">
@@ -801,43 +836,79 @@ export function FacilityProfileSetup() {
                         );
                       })()}
 
-                      {step === 5 && (
-                        <div>
-                          <StepHeader icon={CheckCircle2} title="Review Facility Profile" />
-                          <div className="space-y-5 text-sm">
-                            <div>
-                              <p className="font-medium mb-1.5">Facility Information</p>
-                              <p className="text-muted-foreground">{form.facilityName} · {form.facilityType} · HFR {form.hfrNumber}{form.establishmentDate ? ` · Est. ${form.establishmentDate}` : ""}</p>
+                      {step === 5 && (() => {
+                        const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+                        const est = form.establishmentDate ? new Date(`${form.establishmentDate}-01T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : "";
+                        const place = [form.locality, form.city, form.district !== form.city ? form.district : "", form.state].filter(Boolean).join(", ");
+                        const chips = (list: string[], max = 8) => list.length === 0 ? null : (
+                          <span className="flex flex-wrap gap-1">
+                            {list.slice(0, max).map((x) => <span key={x} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{x}</span>)}
+                            {list.length > max && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">+{list.length - max} more</span>}
+                          </span>
+                        );
+                        const cur = meta?.subscription.currency ?? "INR";
+                        const price = cur === "INR" ? `₹${(meta?.subscription.price ?? 0).toLocaleString("en-IN")}` : `${cur} ${meta?.subscription.price}`;
+                        return (
+                          <div>
+                            <StepHeader icon={CheckCircle2} title="Review Facility Profile" />
+                            {/* Identity banner — how the clinic will appear */}
+                            <div className="mb-4 flex flex-wrap items-center gap-4 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4">
+                              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary font-serif text-xl font-bold text-primary-foreground shadow-sm">
+                                {form.facilityName.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?"}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate font-serif text-xl font-bold">{form.facilityName}</p>
+                                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                                  <span className="rounded-full bg-background/80 px-2 py-0.5 text-xs font-medium text-foreground">{form.facilityType}</span>
+                                  {form.city && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{form.city}{form.state ? `, ${form.state}` : ""}</span>}
+                                  <span className="font-mono text-xs">{form.hfrNumber}</span>
+                                </p>
+                              </div>
+                              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> All 5 steps complete</span>
                             </div>
-                            <div>
-                              <p className="font-medium mb-1.5">Location</p>
-                              <p className="text-muted-foreground">{[form.addressLine1, form.addressLine2, form.locality, form.city, form.district, form.state, form.pincode].filter(Boolean).join(", ")}</p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <ReviewCard icon={Building2} title="Facility" onEdit={() => setStep(0)}>
+                                <ReviewRow label="Name" value={form.facilityName} />
+                                <ReviewRow label="Type" value={form.facilityType} />
+                                <ReviewRow label="HFR number" value={<span className="font-mono">{form.hfrNumber}</span>} />
+                                <ReviewRow label="Established" value={est} />
+                              </ReviewCard>
+                              <ReviewCard icon={MapPin} title="Location" onEdit={() => setStep(1)}>
+                                <ReviewRow label="Address" value={[form.addressLine1, form.addressLine2].filter(Boolean).join(", ")} />
+                                <ReviewRow label="Area" value={place} />
+                                <ReviewRow label="PIN code" value={form.pincode} />
+                                <ReviewRow label="Contact" value={[facility.phone || facility.email, form.alternateContactNumber].filter(Boolean).join(" · ")} />
+                              </ReviewCard>
+                              <ReviewCard icon={Clock} title="Capacity & hours" onEdit={() => setStep(2)}>
+                                {(isHospital || form.bedCapacity) && <ReviewRow label="Beds" value={form.bedCapacity} />}
+                                <ReviewRow label="Daily OPD" value={form.dailyOpdCount ? `${form.dailyOpdCount} patients` : ""} />
+                                <ReviewRow label="Open" value={hoursSummary(form)} />
+                              </ReviewCard>
+                              <ReviewCard icon={Sparkles} title="Plan" onEdit={() => setStep(4)}>
+                                <ReviewRow label="Now" value={`Free trial · ${meta?.subscription.trialMonths ?? 3} months`} />
+                                <ReviewRow label="Trial ends" value={fmt(planDates.end)} />
+                                <ReviewRow label="Then" value={`Premium · ${price} / month`} />
+                              </ReviewCard>
+                              <div className="sm:col-span-2">
+                                <ReviewCard icon={Stethoscope} title="Services & specialization" onEdit={() => setStep(3)}>
+                                  <ReviewRow wide label="Specializations" value={chips(form.specializations)} />
+                                  <ReviewRow wide label="Services" value={chips(form.services, 12)} />
+                                  <ReviewRow wide label="Emergency" value={form.emergencyServices ? "Yes" : "No"} />
+                                  <ReviewRow wide label="Ambulance" value={form.ambulanceAvailable ? "Yes" : "No"} />
+                                </ReviewCard>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium mb-1.5">Capacity & Operations</p>
-                              <p className="text-muted-foreground">
-                                {form.bedCapacity ? `${form.bedCapacity} beds · ` : ""}
-                                {form.dailyOpdCount} daily OPD
-                                {" · "}{form.is24x7 ? "Open 24×7" : `Open ${form.operatingDays.length} day(s)/week`}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="font-medium mb-1.5">Services</p>
-                              <p className="text-muted-foreground">
-                                {form.specializations.join(", ")}
-                                <br />
-                                {form.services.join(", ")}
-                                {form.emergencyServices ? " · Emergency services" : ""}
-                                {form.ambulanceAvailable ? " · Ambulance" : ""}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="font-medium mb-1.5">Plan</p>
-                              <p className="text-muted-foreground">FREE — {meta?.subscription.trialMonths} Months, valid until {planDates.end.toLocaleDateString()}</p>
+                            <div className="mt-4 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+                              <p className="text-sm font-semibold">What happens when you complete</p>
+                              <ul className="mt-2 grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-3">
+                                <li className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Your free trial starts today</li>
+                                <li className="flex items-start gap-2"><Building2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Your dashboard opens, ready for patients</li>
+                                <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{facility.email ? <>A confirmation goes to <b className="font-medium text-foreground">{facility.email}</b></> : "Everything stays editable in Facility Profile"}</li>
+                              </ul>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </motion.div>
                   </AnimatePresence>
 
@@ -858,8 +929,8 @@ export function FacilityProfileSetup() {
                     ) : (
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
                         <Button onClick={submit} disabled={submitting} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
-                          {submitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-                          Complete Profile
+                          {submitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <CheckCircle2 className="h-5 w-5 mr-1.5" />}
+                          Complete profile
                         </Button>
                       </motion.div>
                     )}

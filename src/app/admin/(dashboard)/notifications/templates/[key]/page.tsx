@@ -20,7 +20,8 @@ interface EmailTemplate { id: string; key: string; name: string; type: string; s
 
 const PLACEHOLDER_HINTS: Record<string, string[]> = {
   facility_otp_verification: ["{{facility_name}}", "{{otp}}", "{{otp_validity}}", "{{portal_name}}"],
-  facility_welcome: ["{{facility_name}}", "{{facility_email}}", "{{portal_name}}", "{{registration_date}}", "{{login_url}}"],
+  facility_welcome: ["{{facility_name}}", "{{facility_email}}", "{{registration_date}}", "{{profile_setup_url}}", "{{login_url}}", "{{portal_name}}", "{{support_email}}", "{{support_phone}}", "{{year}}"],
+  facility_profile_completed: ["{{facility_name}}", "{{facility_type}}", "{{hfr_number}}", "{{address}}", "{{specializations}}", "{{services_count}}", "{{trial_months}}", "{{start_date}}", "{{end_date}}", "{{price_text}}", "{{dashboard_url}}", "{{portal_name}}", "{{support_email}}", "{{support_phone}}", "{{year}}"],
   facility_suspended: ["{{facility_name}}", "{{portal_name}}", "{{support_email}}"],
   facility_reactivated: ["{{facility_name}}", "{{portal_name}}", "{{login_url}}"],
   staff_otp_verification: ["{{staff_name}}", "{{otp}}", "{{otp_validity}}", "{{portal_name}}"],

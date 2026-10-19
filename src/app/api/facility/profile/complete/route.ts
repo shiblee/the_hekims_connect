@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { brandEmailVars, emailDate, priceText } from "@/lib/email-vars";
 import { db } from "@/lib/db";
 import { getAuthUser, fetchFacility } from "@/lib/api-auth";
 import { getSetting } from "@/lib/settings";
@@ -146,17 +147,20 @@ export async function POST(req: NextRequest) {
         templateKey: "facility_profile_completed",
         to: facility.email,
         vars: {
+          ...(await brandEmailVars(req)),
           facility_name: facility.facilityName,
           facility_type: facilityType,
-          hfr_number: hfrNumber,
+          hfr_number: String(hfrNumber).trim().toUpperCase(),
           address: addressParts.join(", "),
           trial_months: String(trialMonths),
-          start_date: subscriptionStart.toLocaleDateString(),
-          end_date: subscriptionEnd.toLocaleDateString(),
+          start_date: emailDate(subscriptionStart),
+          end_date: emailDate(subscriptionEnd),
           paid_price: priceSetting,
           currency: currencySetting,
+          price_text: priceText(priceSetting, currencySetting),
+          specializations: Array.isArray(specializations) && specializations.length ? specializations.join(", ") : "—",
+          services_count: String(Array.isArray(services) ? services.length : 0),
           portal_name: portalName,
-          login_url: `${getSiteUrl(req)}/login/facility`,
         },
         event: "profile_completed",
       });

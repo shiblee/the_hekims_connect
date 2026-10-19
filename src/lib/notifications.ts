@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { sendRealEmail } from "@/lib/mailer";
+import { FACILITY_WELCOME_HTML, FACILITY_WELCOME_SUBJECT, FACILITY_COMPLETED_HTML, FACILITY_COMPLETED_SUBJECT } from "@/lib/email-templates-facility";
 
 export function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => vars[key] ?? "");
@@ -162,122 +163,15 @@ If you did not request this code, you can safely ignore this email.
     key: "facility_welcome",
     name: "Facility Registration Success / Welcome",
     type: "Welcome",
-    subject: "Welcome to {{portal_name}}, {{facility_name}}!",
-    body: emailShell(`<tr>
-<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
-<div style="font-size:23px; color:#0f5c52; font-weight:700;">Welcome, {{facility_name}}</div>
-<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
-Your registration on {{portal_name}} is complete, and your facility is ready to begin taking patients.
-</p>
-</td>
-</tr>
-<tr>
-<td style="padding:22px 40px 4px 40px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf3e1; border:1px solid #e3d9c0; border-radius:8px;">
-<tr>
-<td style="padding:18px 22px; font-family:Helvetica, Arial, sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr>
-<td style="padding:5px 0; font-size:13px; color:#9a9183; width:140px;">Registered email</td>
-<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{facility_email}}</td>
-</tr>
-<tr>
-<td style="padding:5px 0; font-size:13px; color:#9a9183;">Registration date</td>
-<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{registration_date}}</td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td style="padding:22px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
-<p style="margin:0; font-size:14px; line-height:1.75; color:#4a4238;">
-You now join a network of facilities carrying forward the classical tradition of Mizaj assessment and personalised Ilaj, supported by modern tools for consultations, prescriptions and patient records &mdash; all under one secure, OTP-protected account.
-</p>
-</td>
-</tr>
-<tr>
-<td style="padding:14px 40px 30px 40px; text-align:center;">
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-<tr>
-<td style="background-color:#c7963f; border-radius:6px;">
-<a href="{{login_url}}" style="display:inline-block; padding:13px 34px; font-family:Helvetica, Arial, sans-serif; font-size:14.5px; font-weight:700; color:#fffdf8; text-decoration:none; letter-spacing:0.3px;">Enter Your Portal</a>
-</td>
-</tr>
-</table>
-</td>
-</tr>`),
+    subject: FACILITY_WELCOME_SUBJECT,
+    body: FACILITY_WELCOME_HTML,
   },
   {
     key: "facility_profile_completed",
     name: "Facility Profile Completed",
     type: "Welcome",
-    subject: "Your facility profile is complete — {{portal_name}}",
-    body: emailShell(`<tr>
-<td style="padding:22px 40px 6px 40px; text-align:center; font-family:Georgia, 'Times New Roman', serif;">
-<div style="font-size:23px; color:#0f5c52; font-weight:700;">You're all set, {{facility_name}}</div>
-<p style="margin:10px 0 0 0; font-size:14.5px; line-height:1.7; color:#6b6155; font-family:Helvetica, Arial, sans-serif;">
-Your facility profile has been successfully completed on {{portal_name}}.
-</p>
-</td>
-</tr>
-<tr>
-<td style="padding:22px 40px 4px 40px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf3e1; border:1px solid #e3d9c0; border-radius:8px;">
-<tr>
-<td style="padding:18px 22px; font-family:Helvetica, Arial, sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr>
-<td style="padding:5px 0; font-size:13px; color:#9a9183; width:140px;">Facility Type</td>
-<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{facility_type}}</td>
-</tr>
-<tr>
-<td style="padding:5px 0; font-size:13px; color:#9a9183;">HFR Number</td>
-<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{hfr_number}}</td>
-</tr>
-<tr>
-<td style="padding:5px 0; font-size:13px; color:#9a9183;">Address</td>
-<td style="padding:5px 0; font-size:13.5px; color:#2b2420; font-weight:600;">{{address}}</td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td style="padding:22px 40px 0 40px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf3e1; border:1px dashed #c7963f; border-radius:8px;">
-<tr>
-<td style="padding:20px 22px; text-align:center; font-family:Helvetica, Arial, sans-serif;">
-<div style="font-size:12px; letter-spacing:2px; text-transform:uppercase; color:#c7963f; font-weight:700; margin-bottom:6px;">Current Plan</div>
-<div style="font-size:22px; font-weight:700; color:#0f5c52;">FREE &mdash; {{trial_months}} Months</div>
-<div style="font-size:13px; color:#6b6155; margin-top:10px;">Started {{start_date}} &middot; Valid until {{end_date}}</div>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td style="padding:18px 40px 10px 40px; font-family:Helvetica, Arial, sans-serif;">
-<p style="margin:0; font-size:13.5px; line-height:1.75; color:#4a4238;">
-You currently have full access to the free service package. After {{end_date}}, you can renew or upgrade to the paid plan at {{currency}} {{paid_price}} per month.
-</p>
-</td>
-</tr>
-<tr>
-<td style="padding:14px 40px 30px 40px; text-align:center;">
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-<tr>
-<td style="background-color:#c7963f; border-radius:6px;">
-<a href="{{login_url}}" style="display:inline-block; padding:13px 34px; font-family:Helvetica, Arial, sans-serif; font-size:14.5px; font-weight:700; color:#fffdf8; text-decoration:none; letter-spacing:0.3px;">Go to Your Dashboard</a>
-</td>
-</tr>
-</table>
-</td>
-</tr>`),
+    subject: FACILITY_COMPLETED_SUBJECT,
+    body: FACILITY_COMPLETED_HTML,
   },
   {
     key: "facility_suspended",
@@ -553,14 +447,23 @@ export const SAMPLE_VARS: Record<string, string> = {
   otp: "482913",
   otp_validity: "10",
   portal_name: "The Hekim's Connect",
-  registration_date: new Date().toLocaleDateString(),
+  registration_date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
   login_url: "https://hekims.connect/login/facility",
   facility_type: "Clinic",
-  hfr_number: "HFR-2026-00042",
+  hfr_number: "IN0123456789",
   address: "123 Wellness Street, Bandra West, Mumbai, Maharashtra, 400050",
   trial_months: "3",
-  start_date: new Date().toLocaleDateString(),
-  end_date: new Date(new Date().setMonth(new Date().getMonth() + 3)).toLocaleDateString(),
+  start_date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+  end_date: new Date(new Date().setMonth(new Date().getMonth() + 3)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
   paid_price: "999",
   currency: "INR",
+  price_text: "₹999",
+  specializations: "Moalijat (General Medicine), Ilaj-bil-Tadbeer (Regimenal Therapy)",
+  services_count: "8",
+  support_email: "care@hekims.connect",
+  support_phone: "+91 98765 43210",
+  year: String(new Date().getFullYear()),
+  site_url: "https://thehekimsconnect.com",
+  profile_setup_url: "https://thehekimsconnect.com/facility/profile-setup",
+  dashboard_url: "https://thehekimsconnect.com/facility/dashboard",
 };
