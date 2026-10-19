@@ -96,7 +96,7 @@ export function PermissionsView() {
 
       {tab === "roles" ? (
         <>
-          <div className="overflow-x-auto rounded-xl border border-border">
+          <div data-tour="permissions.roles" className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-muted/40 text-xs">
                 <tr>
@@ -138,11 +138,11 @@ export function PermissionsView() {
           </div>
           <div className="flex items-center justify-end gap-3">
             {changedRoles.length > 0 && <span className="text-xs text-muted-foreground">Unsaved changes: {changedRoles.map((r) => r.role).join(", ")}</span>}
-            <Button onClick={saveRoles} disabled={saving || changedRoles.length === 0}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save permissions</Button>
+            <Button data-tour="permissions.save" onClick={saveRoles} disabled={saving || changedRoles.length === 0}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save permissions</Button>
           </div>
         </>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
+        <div data-tour="permissions.people" className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr><th className="px-3 py-2.5">Staff</th><th className="px-3 py-2.5">Role</th><th className="px-3 py-2.5">Can do</th><th className="px-3 py-2.5 text-right">Actions</th></tr>

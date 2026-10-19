@@ -18,30 +18,33 @@ export interface GuidanceModuleDef {
   targets: { id: string; label: string }[];
 }
 
+const NAV_ITEMS: [string, string][] = [["dashboard", "Dashboard"], ["reception", "Reception desk"], ["patients", "Patients"], ["payments", "Payments"], ["mizaj", "Mizaj Assessment"], ["pharmacy", "Pharmacy"], ["appointments", "Appointments"], ["messages", "Messages"], ["prescriptions", "Prescriptions"]];
 const SHELL: GuidanceModuleDef["targets"] = [
   { id: "shell.nav", label: "Main menu (left)" },
+  ...NAV_ITEMS.map(([id, label]) => ({ id: `nav.${id}`, label: `Menu item: ${label}` })),
   { id: "shell.search", label: "Patient search (top bar)" },
   { id: "shell.help", label: "Help button (?)" },
   { id: "shell.account", label: "Account & profile (bottom left)" },
 ];
+const T = (...items: [string, string][]) => [...items.map(([id, label]) => ({ id, label })), ...SHELL];
 
 export const GUIDANCE_MODULES: GuidanceModuleDef[] = [
   // Clinic app
-  { key: "clinic.profile-setup", app: "clinic", name: "Profile setup", route: "/facility/profile-setup", permission: [], ownerOnly: true, related: ["clinic.fees", "clinic.staff"], targets: [] },
-  { key: "clinic.dashboard", app: "clinic", name: "Dashboard", route: "/facility/dashboard", permission: ["dashboard"], related: ["clinic.reception", "clinic.patients"], targets: [...SHELL] },
-  { key: "clinic.reception", app: "clinic", name: "Reception desk", route: "/facility/reception", permission: ["patients.view"], related: ["clinic.patient-register", "clinic.payments"], targets: [...SHELL] },
+  { key: "clinic.profile-setup", app: "clinic", name: "Profile setup", route: "/facility/profile-setup", permission: [], ownerOnly: true, related: ["clinic.fees", "clinic.staff"], targets: [{ id: "setup.steps", label: "Setup steps (top)" }, { id: "setup.continue", label: "Continue button" }] },
+  { key: "clinic.dashboard", app: "clinic", name: "Dashboard", route: "/facility/dashboard", permission: ["dashboard"], related: ["clinic.reception", "clinic.patients"], targets: T(["dashboard.actions", "Quick actions"], ["dashboard.today", "Today's figures"]) },
+  { key: "clinic.reception", app: "clinic", name: "Reception desk", route: "/facility/reception", permission: ["patients.view"], related: ["clinic.patient-register", "clinic.payments"], targets: T(["reception.register", "Register new patient button"], ["reception.week", "Seven-day strip"], ["reception.tabs", "Visits / New registrations tabs"], ["reception.search", "Search box"], ["reception.list", "Patient list"]) },
   { key: "clinic.patients", app: "clinic", name: "Patients", route: "/facility/patients", permission: ["patients.view"], related: ["clinic.patient-register", "clinic.reception"], targets: [...SHELL] },
   { key: "clinic.patient-register", app: "clinic", name: "Register a patient", route: "/facility/patients/register", permission: ["patients.register"], related: ["clinic.patients", "clinic.payments"], targets: [] },
-  { key: "clinic.payments", app: "clinic", name: "Payments & receipts", route: "/facility/payments", permission: ["payments", "finance.view"], related: ["clinic.fees", "clinic.reception"], targets: [...SHELL] },
+  { key: "clinic.payments", app: "clinic", name: "Payments & receipts", route: "/facility/payments", permission: ["payments", "finance.view"], related: ["clinic.fees", "clinic.reception"], targets: T(["payments.totals", "Collection totals"], ["payments.search", "Search box"], ["payments.list", "Payments list (receipts, refunds)"]) },
   { key: "clinic.appointments", app: "clinic", name: "Appointments", route: "/facility/appointments", permission: ["appointments"], related: ["clinic.patients"], targets: [...SHELL] },
   { key: "clinic.messages", app: "clinic", name: "Messages", route: "/facility/messages", permission: ["messages"], related: [], targets: [...SHELL] },
   { key: "clinic.pharmacy", app: "clinic", name: "Pharmacy", route: "/facility/pharmacy", permission: ["pharmacy"], related: ["clinic.prescriptions"], targets: [...SHELL] },
   { key: "clinic.prescriptions", app: "clinic", name: "Prescriptions", route: "/facility/prescriptions", permission: ["prescribe", "patients.view"], related: ["clinic.pharmacy"], targets: [...SHELL] },
   { key: "clinic.mizaj", app: "clinic", name: "Mizaj assessment", route: "/facility/mizaj", permission: ["mizaj"], related: ["clinic.patients"], targets: [...SHELL] },
   { key: "clinic.profile", app: "clinic", name: "Facility profile", route: "/facility/profile/overview", permission: ["settings"], related: ["clinic.fees", "clinic.staff"], targets: [...SHELL] },
-  { key: "clinic.fees", app: "clinic", name: "Fees", route: "/facility/profile/fees", permission: ["settings"], related: ["clinic.payments", "clinic.staff"], targets: [...SHELL] },
-  { key: "clinic.staff", app: "clinic", name: "Staff", route: "/facility/profile/staff", permission: ["staff.manage"], related: ["clinic.permissions"], targets: [...SHELL] },
-  { key: "clinic.permissions", app: "clinic", name: "Permissions", route: "/facility/profile/permissions", permission: ["staff.manage"], related: ["clinic.staff", "clinic.activity"], targets: [...SHELL] },
+  { key: "clinic.fees", app: "clinic", name: "Fees", route: "/facility/profile/fees", permission: ["settings"], related: ["clinic.payments", "clinic.staff"], targets: T(["fees.add", "Add fee button"], ["fees.list", "Fee list"]) },
+  { key: "clinic.staff", app: "clinic", name: "Staff", route: "/facility/profile/staff", permission: ["staff.manage"], related: ["clinic.permissions"], targets: T(["staff.add", "Add Staff button"], ["staff.search", "Search box"], ["staff.list", "Staff list"]) },
+  { key: "clinic.permissions", app: "clinic", name: "Permissions", route: "/facility/profile/permissions", permission: ["staff.manage"], related: ["clinic.staff", "clinic.activity"], targets: T(["permissions.roles", "Role permissions grid"], ["permissions.save", "Save permissions button"], ["permissions.people", "Per-person changes"]) },
   { key: "clinic.activity", app: "clinic", name: "Activity log", route: "/facility/profile/activity", permission: [], related: [], targets: [...SHELL] },
   { key: "clinic.learning", app: "clinic", name: "Learning & tutorials", route: "/facility/profile/learning", permission: [], related: [], targets: [...SHELL] },
   // Admin panel

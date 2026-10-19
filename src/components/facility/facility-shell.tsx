@@ -93,10 +93,11 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
             content (e.g. a report title) widen the sidebar — force block so
             truncation works and nothing is cut off at the edge. */}
         <ScrollArea className="flex-1 px-3 py-4 [&_[data-slot=scroll-area-viewport]>div]:!block">
-          <nav className="space-y-1">
+          <nav className="space-y-1" data-tour="shell.nav">
             {NAV.filter((n) => can(`/facility/${n.id}`)).map((n) => (
               <button
                 key={n.id}
+                data-tour={`nav.${n.id}`}
                 onClick={() => go(n.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
@@ -128,6 +129,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
 
         <div className="p-3 border-t border-sidebar-border">
           <button
+            data-tour="shell.account"
             onClick={() => (asStaff ? router.push(can("/facility/profile") ? "/facility/profile" : can("/facility/profile/staff") ? "/facility/profile/staff" : "/staff") : go("profile"))}
             className={cn(
               "w-full flex items-center gap-2.5 p-2 rounded-lg transition-colors",
@@ -166,7 +168,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
                 {asStaff ? `${staffRole ?? "Staff"} · ${facility.facilityName}` : `${facility.specialization} · Rating ${facility.rating}★`}
               </p>
             </div>
-            <div className="hidden md:block relative w-56">
+            <div className="hidden md:block relative w-56" data-tour="shell.search">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search patients…" className="pl-9 h-9 bg-background/60" onClick={() => go("patients")} readOnly />
             </div>

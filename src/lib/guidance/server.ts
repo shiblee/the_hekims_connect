@@ -125,3 +125,9 @@ export function visibleModule(v: Viewer, key: string, enabledInDb: boolean): Gui
   const m = moduleDef(key);
   return m && enabledInDb && canOpenModule(v, m) ? m : null;
 }
+
+/** Should this tour start by itself for a user? Once per version; never while they're mid-way; updates only if re-offering is on. */
+export function tourDue(tour: { version: number; reoffer: boolean }, progress: { state: string; version: number } | undefined, reofferUpdated: boolean): boolean {
+  if (!progress) return true;
+  return progress.state !== "in_progress" && progress.version < tour.version && (tour.reoffer || reofferUpdated);
+}

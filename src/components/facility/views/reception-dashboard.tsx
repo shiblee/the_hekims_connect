@@ -70,7 +70,7 @@ export function ReceptionDashboard() {
       </div>
 
       {/* Quick actions */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" data-tour="dashboard.actions">
         {actions.map((a) => (
           <Button key={a.label} variant={a.primary ? "default" : "outline"} onClick={() => go(a.path)} className={cn(!a.primary && "bg-card/60")}>
             <a.icon className="h-4 w-4" /> {a.label}
@@ -85,7 +85,7 @@ export function ReceptionDashboard() {
       ) : data && (
         <>
           {/* Today */}
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-tour="dashboard.today">
             <Stat label="New patients" range="Today" value={data.patients.newToday} sub={vsYesterday(data.patients.newToday, data.patients.newYesterday)} icon={UserPlus} tone="primary" onClick={() => go("/facility/patients?filter=today")} />
             <Stat label="Returning patients" range="Today" value={data.patients.returningToday} sub="seen here before" icon={UserRoundCheck} tone="accent" onClick={() => go("/facility/patients?filter=today")} />
             <Stat label="Visits" range="Today" value={data.visits.today} sub={vsYesterday(data.visits.today, data.visits.yesterday)} icon={ClipboardList} tone="primary" onClick={() => go("/facility/patients?filter=today")} />

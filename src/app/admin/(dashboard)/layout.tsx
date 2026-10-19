@@ -1,5 +1,6 @@
 "use client";
 
+import { GuidanceProvider } from "@/components/guidance/guidance-provider";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -165,7 +166,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           </nav>
         </div>
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1"><GuidanceProvider client={adminApi}>{children}</GuidanceProvider></main>
     </div>
   );
 }

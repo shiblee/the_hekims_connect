@@ -77,7 +77,7 @@ export function PaymentsView() {
 
       {fin && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-tour="payments.totals">
             {([["Today", fin.today], ["Last 7 days", fin.last7], ["Last 30 days", fin.last30], ["Last 12 months", fin.last12m]] as const).map(([l, x]) => (
               <Card key={l} className="gap-1 border-border/50 bg-card/60 p-4">
                 <p className="text-xs text-muted-foreground">Net collected <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium">{l}</span></p>
@@ -133,14 +133,14 @@ export function PaymentsView() {
         </Select>
         <form className="relative" onSubmit={(e) => { e.preventDefault(); reset(() => setQuery(q.trim())); }}>
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q.trim() !== query && reset(() => setQuery(q.trim()))} placeholder="Receipt, patient, visit, reference…" className="w-64 bg-background/60 pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q.trim() !== query && reset(() => setQuery(q.trim()))} data-tour="payments.search" placeholder="Receipt, patient, visit, reference…" className="w-64 bg-background/60 pl-9" />
         </form>
         {data && <span className="ml-auto text-sm text-muted-foreground">{data.totals.count} payment{data.totals.count === 1 ? "" : "s"} · net <b className="text-foreground">{inr(data.totals.net)}</b></span>}
       </div>
 
       {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">Payments couldn&apos;t be loaded — {error}. <button className="underline" onClick={load}>Try again</button></p>}
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card/60">
+      <div data-tour="payments.list" className="overflow-x-auto rounded-xl border border-border bg-card/60">
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr><th className="px-3 py-2.5">Receipt</th><th className="px-3 py-2.5">Patient</th><th className="px-3 py-2.5">For</th><th className="px-3 py-2.5 text-right">Amount</th><th className="px-3 py-2.5">Method</th><th className="px-3 py-2.5">Collected by</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5 text-right">Actions</th></tr>

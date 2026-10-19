@@ -38,7 +38,7 @@ export function FeesView() {
           <h2 className="flex items-center gap-2 font-serif text-xl font-bold"><IndianRupee className="h-5 w-5 text-primary" /> Fees</h2>
           <p className="text-sm text-muted-foreground">Reception picks one of these when recording a payment. Charging a different amount needs a reason, which is logged. Price changes don&apos;t alter past receipts.</p>
         </div>
-        <Button onClick={() => setDraft({ name: "", amount: "", kind: "consultation", active: true })}><Plus className="h-4 w-4" /> Add fee</Button>
+        <Button data-tour="fees.add" onClick={() => setDraft({ name: "", amount: "", kind: "consultation", active: true })}><Plus className="h-4 w-4" /> Add fee</Button>
       </div>
       {error && !draft && <p className="text-sm text-destructive">{error}</p>}
 
@@ -52,7 +52,7 @@ export function FeesView() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div data-tour="fees.list" className="overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr><th className="px-3 py-2.5">Fee</th><th className="px-3 py-2.5">Type</th><th className="px-3 py-2.5 text-right">Amount</th><th className="px-3 py-2.5 text-center">In use</th><th className="px-3 py-2.5 text-right">Edit</th></tr>

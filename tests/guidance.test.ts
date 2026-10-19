@@ -5,7 +5,8 @@ import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { db } from "@/lib/db";
 import { cleanDoc, cleanText, cleanTour, emptyTour, formatBlocks, pickLang, translationState } from "@/lib/guidance/content";
-import { audienceMatches, canOpenModule, publishGuidance, type Viewer } from "@/lib/guidance/server";
+import { audienceMatches, canOpenModule, publishGuidance, tourDue, type Viewer } from "@/lib/guidance/server";
+import { moduleForPath, tourPayload } from "@/lib/guidance/viewer-content";
 import { moduleDef, syncGuidanceModules } from "@/lib/guidance/registry";
 
 const created: string[] = [];
@@ -97,5 +98,36 @@ describe("publishing", () => {
   });
   it("an empty tour has no complete English and can't be published", () => {
     assert.notEqual(translationState(emptyTour("x"), "en"), "complete");
+  });
+});
+
+describe("tours on screen", () => {
+  it("starts a tour once, never while the user is mid-way, and again after an update only when re-offering is on", () => {
+    assert.equal(tourDue({ version: 1, reoffer: false }, undefined, false), true);
+    assert.equal(tourDue({ version: 1, reoffer: false }, { state: "completed", version: 1 }, false), false);
+    assert.equal(tourDue({ version: 1, reoffer: false }, { state: "skipped", version: 1 }, false), false);
+    assert.equal(tourDue({ version: 2, reoffer: false }, { state: "in_progress", version: 1 }, true), false);
+    assert.equal(tourDue({ version: 2, reoffer: false }, { state: "completed", version: 1 }, false), false);
+    assert.equal(tourDue({ version: 2, reoffer: true }, { state: "completed", version: 1 }, false), true);
+    assert.equal(tourDue({ version: 2, reoffer: false }, { state: "skipped", version: 1 }, true), true);
+  });
+  it("finds the most specific module for a page", () => {
+    assert.equal(moduleForPath("clinic", "/facility/patients/register")?.key, "clinic.patient-register");
+    assert.equal(moduleForPath("clinic", "/facility/patients/abc123")?.key, "clinic.patients");
+    assert.equal(moduleForPath("clinic", "/facility/profile/staff?x=1")?.key, "clinic.staff");
+    assert.equal(moduleForPath("admin", "/admin/facilities/xyz/overview")?.key, "admin.facilities");
+    assert.equal(moduleForPath("clinic", "/admin"), null);
+  });
+  it("serves only active steps, in the user's language when ready, else the fallback", () => {
+    const content = cleanTour({ title: { en: "Tour", ur: "ٹور" }, reviewed: { ur: true }, steps: [
+      { title: { en: "A", ur: "الف" }, body: { en: "a", ur: "ا" } }, { title: { en: "Off" }, body: { en: "x" }, active: false },
+    ] });
+    const row = { id: "t", version: 1, trigger: "manual", moduleKey: "clinic.reception", published: JSON.stringify(content) };
+    const ur = tourPayload(row, "ur", "en")!;
+    assert.equal(ur.steps.length, 1);
+    assert.equal(ur.lang, "ur"); assert.equal(ur.rtl, true); assert.equal(ur.steps[0].title, "الف");
+    const hi = tourPayload(row, "hi", "en")!;
+    assert.equal(hi.lang, "en"); assert.equal(hi.isFallback, true); assert.equal(hi.rtl, false);
+    assert.equal(tourPayload({ ...row, published: null }, "en", "en"), null);
   });
 });

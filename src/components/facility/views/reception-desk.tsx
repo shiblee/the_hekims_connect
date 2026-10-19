@@ -84,12 +84,12 @@ export function ReceptionDesk() {
           <p className="text-sm text-muted-foreground">Patients by day — pick a date to see who came in.</p>
         </div>
         {canOpenPage(perms, "/facility/patients/register") && (
-          <Button onClick={() => router.push("/facility/patients/register")}><UserPlus className="h-4 w-4" /> Register new patient</Button>
+          <Button data-tour="reception.register" onClick={() => router.push("/facility/patients/register")}><UserPlus className="h-4 w-4" /> Register new patient</Button>
         )}
       </div>
 
       {/* Seven-day strip */}
-      <Card className="flex-row items-stretch gap-2 border-border/50 bg-card/60 p-2">
+      <Card data-tour="reception.week" className="flex-row items-stretch gap-2 border-border/50 bg-card/60 p-2">
         <Button variant="ghost" size="icon" className="h-auto shrink-0" onClick={() => shiftWeek(-1)} aria-label="Previous 7 days"><ChevronLeft className="h-5 w-5" /></Button>
         <div className="grid flex-1 grid-cols-7 gap-1.5">
           {(data?.strip ?? []).map((d) => {
@@ -113,7 +113,7 @@ export function ReceptionDesk() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5">
+          <div data-tour="reception.tabs" className="inline-flex rounded-lg border border-border bg-background/60 p-0.5">
             {([["visits", "Visits", dayTotals?.visits], ["registrations", "New registrations", dayTotals?.registrations]] as const).map(([k, l, n]) => (
               <button key={k} type="button" onClick={() => { setTab(k); setPage(1); }} className={cn("rounded-md px-3 py-1.5 text-sm transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
                 {l}{n !== undefined && <span className="ml-1.5 tabular-nums opacity-80">{n}</span>}
@@ -123,7 +123,7 @@ export function ReceptionDesk() {
           {selected && data && selected !== data.today && <Button size="sm" variant="ghost" onClick={() => { setEnd(""); pick(data.today); }}><CalendarDays className="h-4 w-4" /> Back to today</Button>}
         </div>
         <div className="flex flex-wrap gap-2">
-          <form className="relative" onSubmit={(e) => { e.preventDefault(); setQuery(q.trim()); setPage(1); }}>
+          <form data-tour="reception.search" className="relative" onSubmit={(e) => { e.preventDefault(); setQuery(q.trim()); setPage(1); }}>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => { if (q.trim() !== query) { setQuery(q.trim()); setPage(1); } }} placeholder="Name, patient ID, visit or phone…" className="w-64 bg-background/60 pl-9" />
           </form>
@@ -165,7 +165,7 @@ export function ReceptionDesk() {
       )}
       {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">The list couldn&apos;t be loaded — {error}. <button className="underline" onClick={load}>Try again</button></p>}
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card/60">
+      <div data-tour="reception.list" className="overflow-x-auto rounded-xl border border-border bg-card/60">
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>

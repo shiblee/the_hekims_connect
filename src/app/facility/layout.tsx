@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useRequireFacility } from "@/lib/use-require-session";
 import { FacilityShell } from "@/components/facility/facility-shell";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { GuidanceProvider } from "@/components/guidance/guidance-provider";
+import { api } from "@/lib/api";
 
 function LoadingScreen() {
   return (
@@ -36,7 +38,7 @@ export default function FacilityLayout({ children }: { children: React.ReactNode
   if (!facility.profileCompleted && !isSetupPage) return <LoadingScreen />;
   if (facility.profileCompleted && isSetupPage) return <LoadingScreen />;
 
-  if (isSetupPage) return <>{children}</>;
+  if (isSetupPage) return <GuidanceProvider client={api}>{children}</GuidanceProvider>;
 
-  return <FacilityShell>{children}</FacilityShell>;
+  return <GuidanceProvider client={api}><FacilityShell>{children}</FacilityShell></GuidanceProvider>;
 }

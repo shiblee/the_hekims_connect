@@ -435,7 +435,7 @@ export function FacilityProfileSetup() {
             </div>
 
             {(
-              <div className="flex items-center justify-center gap-1 mb-7 overflow-x-auto overflow-y-visible py-2 px-2">
+              <div data-tour="setup.steps" className="flex items-center justify-center gap-1 mb-7 overflow-x-auto overflow-y-visible py-2 px-2">
                 {STEPS.map((label, i) => (
                   <div key={label} className="flex items-center shrink-0">
                     <button
@@ -900,7 +900,7 @@ export function FacilityProfileSetup() {
                     ) : <span />}
                     {step < 5 ? (
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
-                        <Button onClick={goNext} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
+                        <Button data-tour="setup.continue" onClick={goNext} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
                           {step === 4 ? "Review" : "Continue"} <ChevronRight className="h-5 w-5 ml-1" />
                         </Button>
                       </motion.div>

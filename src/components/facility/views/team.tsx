@@ -199,14 +199,14 @@ export function TeamView() {
         <div>
           <h2 className="font-serif text-xl font-bold">Staff</h2>
         </div>
-        <Button onClick={openAdd} className="shrink-0">
+        <Button data-tour="staff.add" onClick={openAdd} className="shrink-0">
           <Plus className="h-4 w-4" /> Add Staff
         </Button>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, staff ID, email or phone…" className="pl-9 bg-background/60 max-w-md" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} data-tour="staff.search" placeholder="Search by name, staff ID, email or phone…" className="pl-9 bg-background/60 max-w-md" />
       </div>
       <NoticeSlot state={msg} />
 
@@ -218,7 +218,7 @@ export function TeamView() {
           <p className="text-sm text-muted-foreground">No staff added yet.</p>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
+        <div data-tour="staff.list" className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
