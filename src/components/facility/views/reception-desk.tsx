@@ -81,7 +81,6 @@ export function ReceptionDesk() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-serif text-2xl font-bold">Reception desk</h1>
-          <p className="text-sm text-muted-foreground">Patients by day — pick a date to see who came in.</p>
         </div>
         {canOpenPage(perms, "/facility/patients/register") && (
           <Button data-tour="reception.register" onClick={() => router.push("/facility/patients/register")}><UserPlus className="h-4 w-4" /> Register new patient</Button>

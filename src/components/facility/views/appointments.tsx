@@ -60,7 +60,6 @@ export function AppointmentsView() {
     <div className="space-y-5">
       <div>
         <h2 className="font-serif text-xl font-bold">Appointments</h2>
-        <p className="text-sm text-muted-foreground">Manage your consultation queue.</p>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

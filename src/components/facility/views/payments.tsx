@@ -70,7 +70,6 @@ export function PaymentsView() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 font-serif text-2xl font-bold"><Wallet className="h-6 w-6 text-primary" /> Payments</h1>
-          <p className="text-sm text-muted-foreground">{data?.canSeeAll ? "Clinic collections, receipts, cancellations and refunds." : "Payments you collected, with their receipts."} Payments are never deleted — a cancellation or refund is recorded with its reason.</p>
         </div>
         <Button variant="outline" onClick={() => router.push("/facility/reception")}>Record a payment from the Reception desk</Button>
       </div>
