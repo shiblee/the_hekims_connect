@@ -50,7 +50,7 @@ export function ReceptionDashboard() {
   const actions = [
     { label: "Register new patient", icon: UserPlus, path: "/facility/patients/register", primary: true },
     { label: "Find existing patient", icon: Search, path: "/facility/patients" },
-    { label: "Today's patients", icon: CalendarCheck, path: "/facility/patients?filter=today" },
+    { label: "Reception desk (7 days)", icon: CalendarCheck, path: "/facility/reception" },
     { label: "In progress", icon: Stethoscope, path: "/facility/patients?filter=progress" },
     { label: "My activity", icon: History, path: "/facility/profile/activity" },
   ].filter((a) => can(a.path.split("?")[0]));

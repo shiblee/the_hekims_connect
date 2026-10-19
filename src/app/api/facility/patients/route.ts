@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { logClinicEvent, changedFields } from "@/lib/clinic-audit";
 import { NextRequest, NextResponse } from "next/server";
+import { visitStage } from "@/lib/visit-stage";
 import { db } from "@/lib/db";
 import { getAuthUser, fetchPatient } from "@/lib/api-auth";
 import { hashPassword, isEmailLike } from "@/lib/auth";
@@ -150,26 +151,4 @@ export async function POST(req: NextRequest) {
   await logClinicEvent(req, auth, { action: "patient.registered", summary: `Registered ${created.patientCode} · ${created.name}`, entityType: "patient", entityId: created.id, entityLabel: `${created.patientCode} · ${created.name}` });
 
   return NextResponse.json({ patient: await fetchPatient(created.id) });
-}
-
-/**
- * Where the patient's latest visit is in the clinical journey — drives the
- * stage tag and the "Continue" shortcut on the patient list.
- */
-function visitStage(v: {
-  status: string;
-  vitalSigns: { id: string } | null;
-  redFlagScreening: { outcome: string | null } | null;
-  referral: { id: string } | null;
-  asbabAssessments: { status: string }[];
-  tashkheesDossier: { status: string } | null;
-}): "waiting" | "vitals" | "mizaj" | "asbab" | "handover" | "done" | "referred" {
-  if (v.referral) return "referred";
-  if (v.tashkheesDossier?.status === "finalized") return "done";
-  const asbab = v.asbabAssessments[0];
-  if (v.tashkheesDossier || asbab?.status === "completed") return "handover";
-  if (asbab) return "asbab";
-  if (v.redFlagScreening?.outcome === "cleared" || v.redFlagScreening?.outcome === "continued_ama") return "mizaj";
-  if (v.vitalSigns) return "vitals";
-  return v.status === "waiting" ? "waiting" : "vitals";
 }

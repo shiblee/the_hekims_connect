@@ -16,13 +16,14 @@ import { FlashNotice } from "@/components/shared/flash-notice";
 import { canOpenPage } from "@/lib/staff-permissions";
 import {
   LayoutDashboard, Activity, Pill, CalendarDays, Users, MessageSquare,
-  FilePlus2, LogOut, Search, Bell, Stethoscope, Lock,
+  FilePlus2, LogOut, Search, Bell, Stethoscope, Lock, ClipboardList,
 } from "lucide-react";
 
-type Tab = "dashboard" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions" | "profile";
+type Tab = "dashboard" | "reception" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions" | "profile";
 
 const NAV: { id: Tab; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "reception", label: "Reception desk", icon: ClipboardList },
   { id: "patients", label: "Patients", icon: Users },
   { id: "mizaj", label: "Mizaj Assessment", icon: Activity },
   { id: "pharmacy", label: "Pharmacy", icon: Pill },

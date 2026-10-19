@@ -99,6 +99,7 @@ export const PAGE_PERMISSION: { prefix: string; need: PermissionKey[] }[] = [
   { prefix: "/facility/dashboard", need: ["dashboard"] },
   { prefix: "/facility/patients/register", need: ["patients.register"] },
   { prefix: "/facility/patients", need: ["patients.view"] },
+  { prefix: "/facility/reception", need: ["patients.view"] },
   { prefix: "/facility/mizaj", need: ["mizaj"] },
   { prefix: "/facility/asbab", need: ["asbab"] },
   { prefix: "/facility/tashkhees", need: ["diagnosis"] },
