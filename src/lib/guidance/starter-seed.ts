@@ -7,6 +7,7 @@ import { publishGuidance } from "./server";
 import { STARTER_DOCS as CORE_DOCS, STARTER_TOURS as CORE_TOURS } from "./starter-content";
 import { STAGE_DOCS, STAGE_TOURS } from "./starter-content-stages";
 import { ADMIN_DOCS, ADMIN_TOURS } from "./starter-content-admin";
+import { MORE_DOCS } from "./starter-content-more";
 import { HI } from "./starter-tr-hi";
 import { UR } from "./starter-tr-ur";
 import { AR } from "./starter-tr-ar";
@@ -15,11 +16,15 @@ import { HI2 } from "./starter-tr2-hi";
 import { UR2 } from "./starter-tr2-ur";
 import { AR2 } from "./starter-tr2-ar";
 import { FA2 } from "./starter-tr2-fa";
+import { HI3 } from "./starter-tr3-hi";
+import { UR3 } from "./starter-tr3-ur";
+import { AR3 } from "./starter-tr3-ar";
+import { FA3 } from "./starter-tr3-fa";
 
 export const STARTER_TOURS = [...CORE_TOURS, ...STAGE_TOURS, ...ADMIN_TOURS];
-export const STARTER_DOCS = [...CORE_DOCS, ...STAGE_DOCS, ...ADMIN_DOCS];
+export const STARTER_DOCS = [...CORE_DOCS, ...STAGE_DOCS, ...ADMIN_DOCS, ...MORE_DOCS];
 
-export const STARTER_TRANSLATIONS = { hi: { ...HI, ...HI2 }, ur: { ...UR, ...UR2 }, ar: { ...AR, ...AR2 }, fa: { ...FA, ...FA2 } } as const;
+export const STARTER_TRANSLATIONS = { hi: { ...HI, ...HI2, ...HI3 }, ur: { ...UR, ...UR2, ...UR3 }, ar: { ...AR, ...AR2, ...AR3 }, fa: { ...FA, ...FA2, ...FA3 } } as const;
 
 const l10n = (key: string, en: string): L10n => {
   const out: L10n = { en };
