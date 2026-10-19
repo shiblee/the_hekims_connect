@@ -15,10 +15,11 @@ import { Separator } from "@/components/ui/separator";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound,
+  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History,
 } from "lucide-react";
 import { TeamView } from "./team";
 import { PermissionsView } from "./permissions";
+import { ActivityLogView } from "./activity-log";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { useAppStore } from "@/lib/store";
 
@@ -33,7 +34,7 @@ const SECTIONS = [
   { key: "capacity", label: "Capacity & Schedule", icon: Gauge },
   { key: "services", label: "Services", icon: Stethoscope },
 ];
-const STAFF_SECTIONS = [{ key: "staff", label: "Staff", icon: UserCog }, { key: "permissions", label: "Permissions", icon: KeyRound }];
+const STAFF_SECTIONS = [{ key: "staff", label: "Staff", icon: UserCog }, { key: "permissions", label: "Permissions", icon: KeyRound }, { key: "activity", label: "Activity log", icon: History }];
 
 interface OperatingHourRow {
   dayOfWeek: number;
@@ -455,6 +456,12 @@ export function ProfileView({ section }: { section: string }) {
         {section === "staff" && (
           <Card className="p-6 border-border/50 bg-card/60">
             <TeamView />
+          </Card>
+        )}
+
+        {section === "activity" && (
+          <Card className="p-6 border-border/50 bg-card/60">
+            <ActivityLogView />
           </Card>
         )}
 

@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   { key: "payments", group: "Clinic", label: "Payments", hint: "Record and view payments" },
   { key: "staff.manage", group: "Administration", label: "Manage staff & permissions", hint: "Add or edit staff and their permissions" },
   { key: "settings", group: "Administration", label: "Facility profile & settings", hint: "Clinic details, location, schedule, services" },
+  { key: "activity", group: "Administration", label: "Clinic activity log", hint: "Everyone's sign-ins and actions (without it, staff see only their own)" },
 ] as const;
 export type PermissionKey = (typeof PERMISSIONS)[number]["key"];
 export const ALL_PERMISSIONS: PermissionKey[] = PERMISSIONS.map((p) => p.key);
@@ -29,7 +30,7 @@ export const ROLE_DEFAULTS: Record<string, PermissionKey[]> = {
   Hakim: ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "asbab", "diagnosis", "prescribe", "refer", "reports", "appointments", "messages"],
   "Staff Nurse": ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "appointments"],
   Counsellor: ["patients.view", "asbab", "appointments", "messages"],
-  Administrator: ["dashboard", "patients.view", "patients.register", "reports", "appointments", "messages", "payments", "staff.manage", "settings"],
+  Administrator: ["dashboard", "patients.view", "patients.register", "reports", "appointments", "messages", "payments", "staff.manage", "settings", "activity"],
   "Support Staff": ["patients.view", "patients.register", "appointments"],
   Other: ["patients.view"],
 };
@@ -64,6 +65,7 @@ export function requiredPermission(path: string, method: string): Need {
   if (R("/api/facility/me").test(path)) return read ? "allow" : ["settings"];
   if (/^\/api\/facility\/profile(\/|$)/.test(path)) return read ? "allow" : ["settings"];
   if (R("/api/facility/staff-permissions").test(path)) return ["staff.manage"];
+  if (R("/api/facility/activity").test(path)) return read ? "allow" : "deny"; // the route scopes it: own history unless "activity"
   if (/^\/api\/facility\/staff(\/|$)/.test(path)) return read ? "allow" : ["staff.manage"];
   if (R("/api/facility/stats").test(path)) return ["dashboard"];
   if (R("/api/facility/payments").test(path)) return ["payments"];
@@ -106,6 +108,7 @@ export const PAGE_PERMISSION: { prefix: string; need: PermissionKey[] }[] = [
   { prefix: "/facility/payments", need: ["payments"] },
   { prefix: "/facility/profile/staff", need: ["staff.manage"] },
   { prefix: "/facility/profile/permissions", need: ["staff.manage"] },
+  { prefix: "/facility/profile/activity", need: [] }, // everyone: own history at least
   { prefix: "/facility/profile", need: ["settings"] },
 ];
 /** Where a staff member lands after signing in — their own profile when they can't open any clinic page. */
@@ -117,5 +120,5 @@ export function firstAllowedPage(perms: readonly string[]): string {
 export function canOpenPage(perms: readonly string[] | null, path: string): boolean {
   if (!perms) return true; // owner
   const rule = PAGE_PERMISSION.find((r) => path === r.prefix || path.startsWith(`${r.prefix}/`) || path.startsWith(`${r.prefix}?`));
-  return !rule || rule.need.some((k) => perms.includes(k));
+  return !rule || rule.need.length === 0 || rule.need.some((k) => perms.includes(k));
 }

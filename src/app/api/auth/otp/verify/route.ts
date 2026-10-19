@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEventRaw } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { startSession, fetchFacility, fetchPatient, fetchStaff } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
@@ -39,6 +40,11 @@ export async function POST(req: NextRequest) {
 
     if (otp.code !== code) {
       await db.otpCode.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
+      if (otp.purpose === "login" && (otp.facilityId || otp.staffId)) {
+        const st = otp.staffId ? await db.staff.findUnique({ where: { id: otp.staffId }, select: { facilityId: true, name: true, staffCode: true } }) : null;
+        const fid = st?.facilityId ?? otp.facilityId;
+        if (fid) await logClinicEventRaw({ facilityId: fid, actorType: st ? "staff" : "facility", actorId: otp.staffId ?? otp.facilityId, actorName: st ? `${st.name} (${st.staffCode})` : "Clinic owner", action: "auth.login_failed", outcome: "failed", summary: "Wrong one-time code", ip });
+      }
       return NextResponse.json({ error: "Invalid verification code" }, { status: 400 });
     }
 
@@ -106,6 +112,7 @@ export async function POST(req: NextRequest) {
             ip, browser, os, device, status: "success", sessionId,
           },
         });
+        await logClinicEventRaw({ facilityId: facility.id, actorType: "facility", actorId: facility.id, actorName: `${facility.facilityName} (owner)`, action: "auth.login", summary: `Signed in (${browser ?? "browser"} on ${os ?? "device"})`, entityType: "session", entityId: sessionId, ip, sessionId });
       }
 
       return NextResponse.json({
@@ -143,6 +150,7 @@ export async function POST(req: NextRequest) {
       await db.loginEvent.create({
         data: { facilityId: s.facilityId, staffId: otp.staffId, identifier: contact, displayName: `${s.name} (staff)`, ip, browser, os, device, status: "success", sessionId },
       });
+      await logClinicEventRaw({ facilityId: s.facilityId, actorType: "staff", actorId: otp.staffId, actorName: `${s.name} (${staff?.staffCode ?? "staff"})`, action: "auth.login", summary: `Signed in (${browser ?? "browser"} on ${os ?? "device"})`, entityType: "session", entityId: sessionId, ip, sessionId });
 
       return NextResponse.json({
         success: true,

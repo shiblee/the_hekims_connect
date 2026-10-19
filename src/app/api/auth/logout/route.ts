@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 
@@ -12,5 +13,6 @@ export async function POST(req: NextRequest) {
     where: { id: auth.sessionId },
     data: { logoutAt: new Date(), logoutType: "manual" },
   });
+  await logClinicEvent(req, auth, { action: "auth.logout", summary: "Signed out", entityType: "session", entityId: auth.sessionId });
   return NextResponse.json({ success: true });
 }

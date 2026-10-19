@@ -129,6 +129,9 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
                   <DropdownMenuItem asChild>
                     <Link href="/admin/history/activity"><ListChecks className="h-4 w-4" /> Activity History</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/history/clinics"><ListChecks className="h-4 w-4" /> Clinic Activity (all clinics)</Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={doLogout}>
                     <LogOut className="h-4 w-4" /> Logout

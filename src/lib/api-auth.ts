@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { logClinicEventRaw } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { makeSessionToken, readSessionToken } from "@/lib/session-token";
 
@@ -30,6 +31,10 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
     if (!session || session.logoutAt) return null;
     if (claims.expired) {
       await db.userSession.update({ where: { id: claims.sessionId }, data: { logoutAt: new Date(), logoutType: "expired" } }).catch(() => {});
+      if (session.facilityId) {
+        const st = session.staffId ? await db.staff.findUnique({ where: { id: session.staffId }, select: { name: true, staffCode: true } }) : null;
+        await logClinicEventRaw({ facilityId: session.facilityId, actorType: st ? "staff" : "facility", actorId: session.staffId ?? session.facilityId, actorName: st ? `${st.name} (${st.staffCode})` : "Clinic owner", action: "auth.session_expired", summary: "Session expired — signed out automatically", entityType: "session", entityId: claims.sessionId, sessionId: claims.sessionId });
+      }
       return null;
     }
     const { type, id } = claims;

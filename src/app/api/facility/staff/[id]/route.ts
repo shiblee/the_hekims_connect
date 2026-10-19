@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent, changedFields } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { isEmailLike } from "@/lib/auth";
@@ -44,6 +45,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const body = await req.json();
+  // A staff member can't change their own role or switch themselves on/off (no self-escalation).
+  if (auth.staffId === id && (body.role !== undefined || body.active !== undefined)) {
+    return NextResponse.json({ error: "You can't change your own role or account status" }, { status: 403 });
+  }
   const data: Record<string, unknown> = {};
 
   if (body.name !== undefined) {
@@ -84,7 +89,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (Array.isArray(body.responsibilities)) data.responsibilities = JSON.stringify(body.responsibilities);
   if (body.active !== undefined) data.active = !!body.active;
 
+  const before = await db.staff.findUnique({ where: { id } });
   const staff = await db.staff.update({ where: { id }, data, select: SELECT });
+  const label = `${staff.name} (${staff.staffCode})`;
+  if (typeof body.active === "boolean" && body.active !== existing.active) {
+    await logClinicEvent(req, auth, { action: body.active ? "staff.activated" : "staff.deactivated", summary: `${body.active ? "Activated" : "Deactivated"} ${label}`, entityType: "staff", entityId: id, entityLabel: label });
+  }
+  const fields = before ? changedFields(before as unknown as Record<string, unknown>, data, Object.keys(data).filter((k) => k !== "active")) : [];
+  if (fields.length) {
+    await logClinicEvent(req, auth, { action: "staff.updated", summary: `Updated ${fields.join(", ")} for ${label}${fields.includes("role") ? ` — role now ${staff.role ?? "none"}` : ""}`, entityType: "staff", entityId: id, entityLabel: label, details: { fields } });
+  }
 
   if (typeof body.active === "boolean" && body.active !== existing.active && existing.email) {
     const facility = await db.facility.findUnique({ where: { id: auth.id }, select: { facilityName: true } });

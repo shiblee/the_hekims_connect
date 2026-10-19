@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { nextVisitCode } from "@/lib/codes";
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
   }
   const validStatus = status === "waiting" ? "waiting" : "registered";
 
-  const patient = await db.patient.findUnique({ where: { id: patientId }, select: { id: true } });
+  const patient = await db.patient.findUnique({ where: { id: patientId }, select: { id: true, name: true, patientCode: true } });
   if (!patient) {
     return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
@@ -81,6 +82,8 @@ export async function POST(req: NextRequest) {
     validDoctorId = doctor.id;
   }
 
+  const firstHere = !(await db.visit.findFirst({ where: { patientId, facilityId: auth.id }, select: { id: true } }))
+    && !(await db.appointment.findFirst({ where: { patientId, facilityId: auth.id }, select: { id: true } }));
   const visitCode = await nextVisitCode();
   const visit = await db.visit.create({
     data: {
@@ -94,6 +97,13 @@ export async function POST(req: NextRequest) {
     },
     select: SELECT,
   });
+  const label = `${patient.patientCode ?? ""} · ${patient.name}`;
+  if (firstHere) {
+    // Either a patient just registered here, or someone registered elsewhere now attending this clinic.
+    const registeredHere = await db.facilityAuditEvent.findFirst({ where: { facilityId: auth.id, action: "patient.registered", entityId: patientId }, select: { id: true } });
+    if (!registeredHere) await logClinicEvent(req, auth, { action: "patient.linked", summary: `Linked existing patient ${label} to this clinic`, entityType: "patient", entityId: patientId, entityLabel: label });
+  }
+  await logClinicEvent(req, auth, { action: "visit.created", summary: `Started visit ${visitCode} for ${label}`, entityType: "visit", entityId: visit.id, entityLabel: `${visitCode} · ${patient.name}` });
 
   return NextResponse.json({ visit });
 }

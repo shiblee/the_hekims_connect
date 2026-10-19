@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { clearClinicalRoutingInsight } from "@/lib/complaint-sync";
@@ -132,6 +133,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     });
     await db.visit.update({ where: { id }, data: { status: "referred" } });
+    const v = await db.visit.findUnique({ where: { id }, select: { visitCode: true, patient: { select: { name: true } } } });
+    await logClinicEvent(req, auth, { action: "visit.referred", summary: `${v?.visitCode} · ${v?.patient.name} referred to ${String(referral.referredTo).trim()} (${referral.urgency})`, entityType: "visit", entityId: id, entityLabel: `${v?.visitCode} · ${v?.patient.name}` });
     await clearClinicalRoutingInsight(id);
 
     const full = await db.redFlagScreening.findUnique({ where: { visitId: id }, select: SCREENING_SELECT });

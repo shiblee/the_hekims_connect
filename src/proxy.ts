@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEventRaw } from "@/lib/clinic-audit";
+import { db } from "@/lib/db";
 import { allowed, requiredPermission } from "@/lib/staff-permissions";
 import { loadStaffAccess } from "@/lib/staff-permissions-server";
 import { readSessionToken } from "@/lib/session-token";
@@ -19,6 +21,12 @@ export async function proxy(req: NextRequest) {
   const access = await loadStaffAccess(id);
   if (!access) return NextResponse.next(); // inactive — the route itself answers 401
   if (allowed(access.permissions, need)) return NextResponse.next();
+  const s = await db.staff.findUnique({ where: { id }, select: { name: true, staffCode: true } });
+  await logClinicEventRaw({
+    facilityId: access.facilityId, actorType: "staff", actorId: id, actorName: s ? `${s.name} (${s.staffCode})` : "Staff member",
+    action: "access.denied", outcome: "denied", summary: `Refused: ${req.method} ${req.nextUrl.pathname} (needs ${need === "deny" ? "clinic owner" : need.join(" or ")})`,
+    ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null, sessionId: claims.sessionId,
+  });
   return NextResponse.json({ error: "You don't have permission for this. Ask the clinic owner to change your permissions." }, { status: 403 });
 }
 

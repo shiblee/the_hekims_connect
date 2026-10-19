@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { logClinicEvent, changedFields } from "@/lib/clinic-audit";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser, fetchPatient } from "@/lib/api-auth";
@@ -146,6 +147,7 @@ export async function POST(req: NextRequest) {
       active: true,
     },
   });
+  await logClinicEvent(req, auth, { action: "patient.registered", summary: `Registered ${created.patientCode} · ${created.name}`, entityType: "patient", entityId: created.id, entityLabel: `${created.patientCode} · ${created.name}` });
 
   return NextResponse.json({ patient: await fetchPatient(created.id) });
 }

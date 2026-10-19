@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 
@@ -96,6 +97,7 @@ export async function PATCH(req: NextRequest) {
 
   if (Object.keys(data).length) {
     await db.facility.update({ where: { id: auth.id }, data });
+    await logClinicEvent(req, auth, { action: "facility.updated", summary: `Changed clinic ${Object.keys(data).join(", ")}`, entityType: "facility", entityId: auth.id, details: { fields: Object.keys(data) } });
   }
 
   if (Array.isArray(body.operatingHours)) {
@@ -113,6 +115,7 @@ export async function PATCH(req: NextRequest) {
       }));
     if (rows.length) {
       await db.facilityOperatingHours.createMany({ data: rows });
+      await logClinicEvent(req, auth, { action: "facility.updated", summary: "Changed opening hours", entityType: "facility", entityId: auth.id, details: { fields: ["operatingHours"] } });
     }
   }
 

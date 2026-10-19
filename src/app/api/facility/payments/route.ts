@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { nextPaymentCode } from "@/lib/codes";
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Payment mode is required" }, { status: 400 });
   }
 
-  const visit = await db.visit.findFirst({ where: { id: visitId, facilityId }, select: { id: true } });
+  const visit = await db.visit.findFirst({ where: { id: visitId, facilityId }, select: { id: true, visitCode: true, patient: { select: { name: true, patientCode: true } } } });
   if (!visit) {
     return NextResponse.json({ error: "Visit not found" }, { status: 404 });
   }
@@ -53,6 +54,10 @@ export async function POST(req: NextRequest) {
       referenceNumber: referenceNumber || null,
       recordedById: auth.staffId ?? null,
     },
+  });
+  await logClinicEvent(req, auth, {
+    action: "payment.recorded", summary: `${paymentCode}: ${parsedAmount} by ${payment.mode} for ${visit.patient.patientCode ?? ""} · ${visit.patient.name} (${visit.visitCode})`,
+    entityType: "payment", entityId: payment.id, entityLabel: `${paymentCode} · ${visit.patient.name}`, details: { amount: parsedAmount, mode: payment.mode, status: payment.status },
   });
 
   return NextResponse.json({ payment });

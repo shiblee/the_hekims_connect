@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent, changedFields } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser, fetchPatient } from "@/lib/api-auth";
 import { isEmailLike } from "@/lib/auth";
@@ -13,7 +14,7 @@ async function assertInScope(patientId: string, facilityId: string) {
       id: patientId,
       OR: [{ visits: { some: { facilityId } } }, { appointments: { some: { facilityId } } }],
     },
-    select: { id: true, email: true, phone: true },
+    select: { id: true, email: true, phone: true, name: true, patientCode: true },
   });
 }
 
@@ -49,6 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Photo-only update (clicking the avatar) skips the full-form validation below.
   if (body.photo !== undefined && Object.keys(body).length === 1) {
     await db.patient.update({ where: { id }, data: { photo: body.photo || null } });
+    await logClinicEvent(req, auth, { action: "patient.updated", summary: `Photo ${body.photo ? "changed" : "removed"} for ${existing.patientCode ?? ""} · ${existing.name}`, entityType: "patient", entityId: id, entityLabel: `${existing.patientCode ?? ""} · ${existing.name}`, details: { fields: ["photo"] } });
     return NextResponse.json({ patient: await fetchPatient(id) });
   }
 
@@ -108,7 +110,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.state !== undefined) data.state = body.state || null;
   if (body.city !== undefined) data.city = body.city || null;
 
+  const before = await db.patient.findUnique({ where: { id } });
   await db.patient.update({ where: { id }, data });
+  const fields = before ? changedFields(before as unknown as Record<string, unknown>, data, Object.keys(data)) : Object.keys(data);
+  if (fields.length) {
+    await logClinicEvent(req, auth, { action: "patient.updated", summary: `Updated ${fields.join(", ")} for ${existing.patientCode ?? ""} · ${existing.name}`, entityType: "patient", entityId: id, entityLabel: `${existing.patientCode ?? ""} · ${existing.name}`, details: { fields } });
+  }
 
   return NextResponse.json({ patient: await fetchPatient(id) });
 }

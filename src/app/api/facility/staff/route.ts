@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent, changedFields } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { isEmailLike, normalizeContact } from "@/lib/auth";
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
     },
     select: SELECT,
   });
+  await logClinicEvent(req, auth, { action: "staff.created", summary: `Added ${staff.name} (${staff.staffCode}) — ${staff.employeeType}${staff.role ? `, role ${staff.role}` : ""}`, entityType: "staff", entityId: staff.id, entityLabel: `${staff.name} (${staff.staffCode})` });
 
   if (staff.email) {
     const facility = await db.facility.findUnique({ where: { id: auth.id }, select: { facilityName: true } });

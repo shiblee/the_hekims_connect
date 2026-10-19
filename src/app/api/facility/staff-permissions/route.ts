@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent, changedFields } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { ALL_PERMISSIONS, defaultsFor, effectivePermissions, parseKeys, roleKey, type PermissionKey } from "@/lib/staff-permissions";
@@ -43,6 +44,8 @@ export async function PUT(req: NextRequest) {
     if (!s) return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
     const grants = keys(b.grants), revokes = keys(b.revokes).filter((k) => !grants.includes(k));
     await db.staff.update({ where: { id: s.id }, data: { permissionGrants: JSON.stringify(grants), permissionRevokes: JSON.stringify(revokes) } });
+    const who = await db.staff.findUnique({ where: { id: s.id }, select: { name: true, staffCode: true } });
+    await logClinicEvent(req, auth, { action: "permissions.person_changed", summary: `Permissions for ${who?.name}: ${grants.length ? `added ${grants.join(", ")}` : "nothing added"}; ${revokes.length ? `removed ${revokes.join(", ")}` : "nothing removed"}`, entityType: "staff", entityId: s.id, entityLabel: `${who?.name} (${who?.staffCode})`, details: { grants, revokes } });
     return NextResponse.json({ ok: true });
   }
   const role = typeof b.role === "string" ? roleKey(b.role) : "";
@@ -53,9 +56,14 @@ export async function PUT(req: NextRequest) {
   }
   if (b.reset) {
     await db.staffRolePermission.deleteMany({ where: { facilityId: auth.id, role } });
+    await logClinicEvent(req, auth, { action: "permissions.role_changed", summary: `${role} reset to the standard permissions`, entityType: "role", entityLabel: role });
     return NextResponse.json({ ok: true });
   }
   const permissions = JSON.stringify(keys(b.permissions));
+  const prev = await db.staffRolePermission.findUnique({ where: { facilityId_role: { facilityId: auth.id, role } }, select: { permissions: true } });
+  const was = prev ? parseKeys(prev.permissions) : defaultsFor(role), now = keys(b.permissions);
+  const added = now.filter((k) => !was.includes(k)), removed = was.filter((k) => !now.includes(k));
+  await logClinicEvent(req, auth, { action: "permissions.role_changed", summary: `${role}: ${added.length ? `added ${added.join(", ")}` : ""}${added.length && removed.length ? "; " : ""}${removed.length ? `removed ${removed.join(", ")}` : ""}${!added.length && !removed.length ? "saved unchanged" : ""}`, entityType: "role", entityLabel: role, details: { added, removed } });
   await db.staffRolePermission.upsert({
     where: { facilityId_role: { facilityId: auth.id, role } },
     create: { facilityId: auth.id, role, permissions },

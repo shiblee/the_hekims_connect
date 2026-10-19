@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEventRaw } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { verifyPassword, generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
               ip, browser, os, device, status: "failed", failureReason: "Account locked",
             },
           });
+          await logClinicEventRaw({ facilityId: facility.id, actorType: "facility", actorId: facility.id, actorName: `${facility.facilityName} (owner)`, action: "auth.login_failed", outcome: "failed", summary: "Too many wrong passwords — sign-in locked", ip });
           return NextResponse.json(
             { error: `Too many failed attempts. Try again in ${lockoutMinutes} minutes.` },
             { status: 429 }
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest) {
             ip, browser, os, device, status: "failed", failureReason: "Incorrect password",
           },
         });
+        await logClinicEventRaw({ facilityId: facility.id, actorType: "facility", actorId: facility.id, actorName: `${facility.facilityName} (owner)`, action: "auth.login_failed", outcome: "failed", summary: "Wrong password", ip });
       }
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }

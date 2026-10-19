@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 
@@ -29,6 +30,7 @@ export async function PUT(req: NextRequest) {
       },
       select: { id: true, facilityName: true, email: true, phone: true, specialization: true, experience: true, rating: true, license: true, avatarColor: true, bio: true, verified: true },
     });
+    await logClinicEvent(req, auth, { action: "facility.updated", summary: `Changed clinic ${Object.keys(body).filter((k) => body[k] !== undefined).join(", ")}`, entityType: "facility", entityId: auth.id, details: { fields: Object.keys(body) } });
     return NextResponse.json({ user: updated });
   } catch (e) {
     console.error("Facility update error:", e);

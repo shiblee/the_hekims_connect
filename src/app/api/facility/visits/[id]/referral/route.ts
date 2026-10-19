@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 
@@ -62,5 +63,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     db.referral.delete({ where: { id: referral.id } }),
     db.redFlagScreening.update({ where: { id: referral.screeningId }, data: { outcome: "pending" } }),
   ]);
+  const v = await db.visit.findUnique({ where: { id }, select: { visitCode: true, patient: { select: { name: true } } } });
+  await logClinicEvent(req, auth, { action: "visit.referral_withdrawn", summary: `Referral withdrawn for ${v?.visitCode} · ${v?.patient.name}`, entityType: "visit", entityId: id, entityLabel: `${v?.visitCode} · ${v?.patient.name}` });
   return NextResponse.json({ ok: true });
 }

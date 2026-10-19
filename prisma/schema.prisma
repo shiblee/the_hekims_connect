@@ -1982,3 +1982,29 @@ model StaffRolePermission {
 
   @@unique([facilityId, role])
 }
+
+// Clinic activity log — append-only (nothing in the app updates or deletes rows). One row per
+// significant action in a facility: sign-ins, patient registration / edits, visits, payments,
+// staff and permission changes, settings changes, refused access. Keeps only what an
+// investigation needs (who, what, which record, outcome) — no clinical details or secrets.
+model FacilityAuditEvent {
+  id          String   @id @default(cuid())
+  facilityId  String
+  actorType   String // "facility" (the owner) | "staff" | "admin" | "system"
+  actorId     String?
+  actorName   String
+  action      String // e.g. "patient.registered", "payment.recorded", "auth.login"
+  entityType  String? // "patient" | "visit" | "payment" | "staff" | "facility" | "session"
+  entityId    String?
+  entityLabel String? // human label, e.g. "PT33 · patient 12"
+  outcome     String   @default("success") // "success" | "denied" | "failed"
+  summary     String
+  details     String? // small JSON (changed field names, amounts) — never clinical content
+  ip          String?
+  sessionId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([facilityId, createdAt])
+  @@index([facilityId, actorId, createdAt])
+  @@index([facilityId, entityId])
+}
