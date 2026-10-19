@@ -34,6 +34,16 @@ export const ROLE_DEFAULTS: Record<string, PermissionKey[]> = {
   Counsellor: ["patients.view", "asbab", "appointments", "messages"],
   Administrator: ["dashboard", "patients.view", "patients.register", "reports", "appointments", "messages", "payments", "finance.view", "payments.refund", "staff.manage", "settings", "activity"],
   "Support Staff": ["patients.view", "patients.register", "appointments", "payments"],
+  "Clinic Manager": ["dashboard", "patients.view", "patients.register", "reports", "appointments", "messages", "pharmacy", "payments", "finance.view", "payments.refund", "staff.manage", "settings", "activity"],
+  "Junior Hakim / Intern": ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "asbab", "diagnosis", "reports", "appointments"],
+  Receptionist: ["dashboard", "patients.view", "patients.register", "appointments", "messages", "payments"],
+  "Cashier / Accounts": ["patients.view", "payments", "finance.view", "payments.refund"],
+  Pharmacist: ["patients.view", "pharmacy", "payments"],
+  "Lab Technician": ["patients.view", "reports"],
+  "Regimenal Therapist": ["patients.view", "triage", "appointments"],
+  Dietitian: ["patients.view", "asbab", "appointments", "messages"],
+  Physiotherapist: ["patients.view", "triage", "appointments"],
+  "Data Entry Operator": ["patients.view", "patients.register", "reports"],
   Other: ["patients.view"],
 };
 export const roleKey = (role: string | null | undefined) => (role && role.trim() ? role.trim() : "Other");

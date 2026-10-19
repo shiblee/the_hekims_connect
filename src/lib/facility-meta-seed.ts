@@ -52,10 +52,10 @@ export const FACILITY_META: Record<string, string[]> = {
 
 const norm = (s: string) => s.trim().toLowerCase();
 
-/** Adds missing options; returns how many were added per section. */
-export async function seedFacilityMeta(db: PrismaClient, opts: { dryRun?: boolean } = {}) {
+/** Adds missing options to Meta sections (add-only, "Other" kept last); returns how many were added per section. */
+export async function seedMetaOptions(db: PrismaClient, map: Record<string, string[]>, opts: { dryRun?: boolean } = {}) {
   const out: Record<string, number> = {};
-  for (const [key, labels] of Object.entries(FACILITY_META)) {
+  for (const [key, labels] of Object.entries(map)) {
     const section = await db.metadataSection.findFirst({ where: { key }, include: { options: { orderBy: { sortOrder: "asc" } } } });
     if (!section) { out[key] = -1; continue; }
     const have = new Set(section.options.map((o) => norm(o.label)));
@@ -69,3 +69,5 @@ export async function seedFacilityMeta(db: PrismaClient, opts: { dryRun?: boolea
   }
   return out;
 }
+
+export const seedFacilityMeta = (db: PrismaClient, opts: { dryRun?: boolean } = {}) => seedMetaOptions(db, FACILITY_META, opts);

@@ -594,6 +594,7 @@ export async function seedDatabase() {
   await seedGhizaBank();
   await seedMetaCatalogs(db);
   await seedFacilityMeta(db);
+  await (await import("@/lib/staff-meta-seed")).seedStaffMeta(db);
   await seedEmailTemplates();
 
   // Check if already seeded
