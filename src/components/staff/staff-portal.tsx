@@ -8,7 +8,7 @@ import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Mail, Phone } from "lucide-react";
+import { GraduationCap, LogOut, Mail, Phone } from "lucide-react";
 
 function parseList(json: string | null): string[] {
   if (!json) return [];
@@ -114,6 +114,14 @@ export function StaffPortal() {
             </div>
           </Card>
         )}
+
+        <Card className="flex-row items-center justify-between gap-3 p-6 border-border/50 bg-card/60">
+          <div>
+            <h2 className="flex items-center gap-2 font-serif text-lg font-semibold"><GraduationCap className="h-4 w-4 text-primary" /> Learning &amp; tutorials</h2>
+            <p className="text-sm text-muted-foreground">Guided tours and tutorials for the parts of the app you use.</p>
+          </div>
+          <Button variant="outline" onClick={() => router.push("/facility/profile/learning")}>Open</Button>
+        </Card>
 
         <Card className="p-6 border-border/50 bg-card/60 space-y-3">
           <h2 className="font-serif text-lg font-semibold">Contact</h2>

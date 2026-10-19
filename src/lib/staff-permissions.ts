@@ -126,6 +126,7 @@ export const PAGE_PERMISSION: { prefix: string; need: PermissionKey[] }[] = [
   { prefix: "/facility/profile/staff", need: ["staff.manage"] },
   { prefix: "/facility/profile/permissions", need: ["staff.manage"] },
   { prefix: "/facility/profile/activity", need: [] }, // everyone: own history at least
+  { prefix: "/facility/profile/learning", need: [] }, // everyone: their own tours and tutorials
   { prefix: "/facility/profile", need: ["settings"] },
 ];
 /** Where a staff member lands after signing in — their own profile when they can't open any clinic page. */

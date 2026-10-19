@@ -128,6 +128,9 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
                     <Link href="/admin/profile/password"><Lock className="h-4 w-4" /> Change Password</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link href="/admin/profile/learning"><GraduationCap className="h-4 w-4" /> Learning &amp; Tutorials</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/admin/history/logins"><LogIn className="h-4 w-4" /> Login History</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

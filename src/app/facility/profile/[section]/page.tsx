@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProfileView } from "@/components/facility/views/profile";
 
-const VALID_SECTIONS = ["overview", "location", "capacity", "services", "fees", "staff", "permissions", "activity"];
+const VALID_SECTIONS = ["overview", "location", "capacity", "services", "fees", "staff", "permissions", "activity", "learning"];
 
 export default async function FacilityProfileSectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;

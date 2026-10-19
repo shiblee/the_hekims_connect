@@ -1,12 +1,12 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { GUIDANCE_MODULES } from "@/lib/guidance/registry";
 import type { TourPayload } from "@/lib/guidance/viewer-content";
 import { TourOverlay } from "./tour-overlay";
 
-interface Client { get: <T = unknown>(url: string) => Promise<T>; post: <T = unknown>(url: string, body?: unknown) => Promise<T> }
+interface Client { get: <T = unknown>(url: string) => Promise<T>; post: <T = unknown>(url: string, body?: unknown) => Promise<T>; patch: <T = unknown>(url: string, body?: unknown) => Promise<T> }
 export interface PageTour { id: string; title: string; state: "new" | "in_progress" | "completed" | "skipped"; step: number; outdated: boolean }
 export interface GuidanceState {
   on: boolean; toursOn?: boolean; docsOn?: boolean; lang?: string;
@@ -17,8 +17,13 @@ interface Ctx {
   state: GuidanceState;
   client: Client;
   startTour: (id: string, resume?: boolean) => Promise<void>;
+  /** Opens the tour's page first if needed, then starts (or resumes) it there. */
+  openTour: (id: string, route: string, resume?: boolean) => void;
   helpOpen: boolean;
   setHelpOpen: (open: boolean) => void;
+  /** Module whose tutorial the help panel shows (null = the current page's). */
+  helpModule: string | null;
+  openHelp: (moduleKey?: string) => void;
   refresh: () => void;
 }
 
@@ -34,9 +39,13 @@ const routeName = (route: string) => GUIDANCE_MODULES.find((m) => m.route === ro
  */
 export function GuidanceProvider({ client, children, renderHelp }: { client: Client; children: ReactNode; renderHelp?: () => ReactNode }) {
   const path = usePathname() || "/";
+  const router = useRouter();
   const [state, setState] = useState<GuidanceState>({ on: false });
   const [active, setActive] = useState<{ tour: TourPayload; step: number } | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpOpen, setHelpOpenRaw] = useState(false);
+  const [helpModule, setHelpModule] = useState<string | null>(null);
+  const setHelpOpen = useCallback((open: boolean) => { setHelpOpenRaw(open); if (!open) setHelpModule(null); }, []);
+  const openHelp = useCallback((moduleKey?: string) => { setHelpModule(moduleKey ?? null); setHelpOpenRaw(true); }, []);
   const shown = useRef(new Set<string>());
 
   const load = useCallback(async () => {
@@ -77,6 +86,23 @@ export function GuidanceProvider({ client, children, renderHelp }: { client: Cli
     } catch { /* unavailable — nothing to show */ }
   }, [client, begin]);
 
+  // A tour requested from another page arrives as ?guide=<id>[&resume=1].
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const id = sp.get("guide");
+    if (!id) return;
+    const resume = sp.get("resume") === "1";
+    sp.delete("guide"); sp.delete("resume");
+    window.history.replaceState(null, "", window.location.pathname + (sp.toString() ? `?${sp}` : ""));
+    const timer = setTimeout(() => startTour(id, resume), 700);
+    return () => clearTimeout(timer);
+  }, [path, startTour]);
+
+  const openTour = useCallback((id: string, route: string, resume = false) => {
+    if (path === route || path.startsWith(`${route}/`)) startTour(id, resume);
+    else router.push(`${route}?guide=${encodeURIComponent(id)}${resume ? "&resume=1" : ""}`);
+  }, [path, router, startTour]);
+
   const end = (st: "in_progress" | "completed" | "skipped") => {
     if (!active) return;
     save(active.tour.id, st, active.step);
@@ -85,7 +111,7 @@ export function GuidanceProvider({ client, children, renderHelp }: { client: Cli
   };
 
   return (
-    <GuidanceContext.Provider value={{ state, client, startTour, helpOpen, setHelpOpen, refresh: load }}>
+    <GuidanceContext.Provider value={{ state, client, startTour, openTour, helpOpen, setHelpOpen, helpModule, openHelp, refresh: load }}>
       {children}
       {state.on && renderHelp?.()}
       {active && (

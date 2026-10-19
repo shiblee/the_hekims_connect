@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee, Lock,
+  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee, Lock, GraduationCap,
 } from "lucide-react";
 import { TeamView } from "./team";
 import { PermissionsView } from "./permissions";
@@ -22,6 +22,7 @@ import { FeesView } from "./fees";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { useAppStore } from "@/lib/store";
 import { groupQuestion, EMERGENCY_QUESTION } from "@/lib/facility-services";
+import { LearningCenter } from "@/components/guidance/learning-center";
 
 const DAY_LABELS: Record<number, string> = {
   0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday",
@@ -35,7 +36,7 @@ const SECTIONS = [
   { key: "services", label: "Services", icon: Stethoscope },
   { key: "fees", label: "Fees", icon: IndianRupee },
 ];
-const STAFF_SECTIONS = [{ key: "staff", label: "Staff", icon: UserCog }, { key: "permissions", label: "Permissions", icon: KeyRound }, { key: "activity", label: "Activity log", icon: History }];
+const STAFF_SECTIONS = [{ key: "staff", label: "Staff", icon: UserCog }, { key: "permissions", label: "Permissions", icon: KeyRound }, { key: "activity", label: "Activity log", icon: History }, { key: "learning", label: "Learning & tutorials", icon: GraduationCap }];
 
 interface OperatingHourRow {
   dayOfWeek: number;
@@ -460,6 +461,12 @@ export function ProfileView({ section }: { section: string }) {
         {section === "fees" && (
           <Card className="p-6 border-border/50 bg-card/60">
             <FeesView />
+          </Card>
+        )}
+
+        {section === "learning" && (
+          <Card className="p-6 border-border/50 bg-card/60">
+            <LearningCenter isOwner={!perms} />
           </Card>
         )}
 

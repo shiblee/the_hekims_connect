@@ -48,26 +48,27 @@ export function HelpPanel() {
   const [data, setData] = useState<DocResp | null>(null);
   const [loading, setLoading] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const moduleKey = g?.state.module?.key;
-  const wantDoc = !!(g?.helpOpen && g.state.docsOn && g.state.module?.hasDoc);
+  const moduleKey = g?.helpModule ?? g?.state.module?.key;
+  const wantDoc = !!(g?.helpOpen && g.state.docsOn && (g.helpModule || g.state.module?.hasDoc));
   const key = openKey ?? moduleKey;
 
+  const client = g?.client;
   useEffect(() => {
     if (!wantDoc && !openKey) return;
-    if (!g || !key) return;
+    if (!client || !key) return;
     let stale = false;
     Promise.resolve().then(() => { if (!stale) setLoading(true); });
-    g.client.get<DocResp>(`/api/guidance/doc?module=${encodeURIComponent(key)}`)
+    client.get<DocResp>(`/api/guidance/doc?module=${encodeURIComponent(key)}`)
       .then((r) => { if (!stale) setData(r); })
       .catch(() => { if (!stale) setData(null); })
       .finally(() => { if (!stale) setLoading(false); });
     return () => { stale = true; };
-  }, [g, key, wantDoc, openKey]);
+  }, [client, key, wantDoc, openKey]);
 
   if (!g) return null;
   const s = g.state;
   const rtl = RTL_LANGS.includes((s.lang ?? "en") as GuideLang);
-  const tours = s.toursOn && !openKey ? s.pageTours ?? [] : [];
+  const tours = s.toursOn && !openKey && !g.helpModule ? s.pageTours ?? [] : [];
   const close = (o: boolean) => { g.setHelpOpen(o); if (!o) setOpenKey(null); };
 
   return (
