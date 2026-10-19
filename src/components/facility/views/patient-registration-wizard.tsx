@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppStore } from "@/lib/store";
+import { FeeAmountFields, newPaymentKey, useFeesAndModes } from "@/components/facility/payments/payment-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -181,6 +183,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   // Payment (optional)
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("");
+  // Fee list + reason when the amount differs; one-time key so a double submit can't charge twice.
+  const [feeId, setFeeId] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
+  const [paymentKey, setPaymentKey] = useState(newPaymentKey);
+  const { fees: feeList } = useFeesAndModes();
+  const canCollect = useAppStore((st) => !(st.staff && st.permissions !== null) || (st.permissions ?? []).includes("payments"));
   const [existingPayment, setExistingPayment] = useState<{ amount: number; mode: string } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -544,7 +552,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setSearchMobile(""); setSearchName(""); setCandidates(null);
     clearForm();
     setDoctorId("");
-    setAmount(""); setPaymentMode("");
+    setAmount(""); setPaymentMode(""); setFeeId(""); setOverrideReason("");
     setResult(null);
     setPrintNotice(null);
     setSearchNotice(null);
@@ -675,9 +683,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       let paymentRecorded: { amount: string; mode: string } | null = null;
       if (amount && paymentMode) {
         await api.post("/api/facility/payments", {
-          visitId: visitRes.visit.id, amount, mode: paymentMode, status: "Paid",
-          amountReceived: amount,
+          visitId: visitRes.visit.id, amount, mode: paymentMode, feeId: feeId || null, overrideReason: overrideReason || null, idempotencyKey: paymentKey,
         });
+        setPaymentKey(newPaymentKey());
         paymentRecorded = { amount, mode: paymentMode };
       }
 
@@ -763,8 +771,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
       if (amount && paymentMode) {
         await api.post("/api/facility/payments", {
-          visitId: resolvedVisitId, amount, mode: paymentMode, status: "Paid", amountReceived: amount,
+          visitId: resolvedVisitId, amount, mode: paymentMode, feeId: feeId || null, overrideReason: overrideReason || null, idempotencyKey: paymentKey,
         });
+        setPaymentKey(newPaymentKey());
       }
 
       savedSnapshotRef.current = buildRegistrationSnapshot({
@@ -1142,20 +1151,18 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       </FloatingSelect>
                     </section>
 
-                    <section className="space-y-3">
+                    {canCollect && <section className="space-y-3">
                       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payment (optional)</h2>
                       {existingPayment && (
                         <p className="text-sm text-muted-foreground">Already collected: ₹{existingPayment.amount} ({existingPayment.mode}). Fields below add another payment, if needed.</p>
                       )}
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <FloatingField id="amount" type="number" label="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                        {meta.payment_mode && (
-                          <FloatingSelect id="paymentMode" label="Payment Mode" value={paymentMode} onValueChange={setPaymentMode} placeholder="Select">
-                            {meta.payment_mode.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                          </FloatingSelect>
-                        )}
-                      </div>
-                    </section>
+                      <FeeAmountFields fees={feeList} feeId={feeId} setFeeId={setFeeId} amount={amount} setAmount={setAmount} reason={overrideReason} setReason={setOverrideReason} />
+                      {meta.payment_mode && (
+                        <FloatingSelect id="paymentMode" label="Payment Mode" value={paymentMode} onValueChange={setPaymentMode} placeholder="Select">
+                          {meta.payment_mode.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        </FloatingSelect>
+                      )}
+                    </section>}
                   </div>
 
                   <div className="lg:col-span-3">

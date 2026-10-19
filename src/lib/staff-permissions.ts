@@ -16,7 +16,9 @@ export const PERMISSIONS = [
   { key: "appointments", group: "Clinic", label: "Appointments", hint: "Book and manage appointments" },
   { key: "messages", group: "Clinic", label: "Messages", hint: "Patient conversations" },
   { key: "pharmacy", group: "Clinic", label: "Pharmacy", hint: "Pharmacy and dispensing" },
-  { key: "payments", group: "Clinic", label: "Payments", hint: "Record and view payments" },
+  { key: "payments", group: "Clinic", label: "Collect payments", hint: "Record payments, print receipts, see own collections" },
+  { key: "finance.view", group: "Clinic", label: "Clinic finances", hint: "All collections, totals and reports for the clinic" },
+  { key: "payments.refund", group: "Clinic", label: "Cancel / refund payments", hint: "With a reason — payments are never deleted" },
   { key: "staff.manage", group: "Administration", label: "Manage staff & permissions", hint: "Add or edit staff and their permissions" },
   { key: "settings", group: "Administration", label: "Facility profile & settings", hint: "Clinic details, location, schedule, services" },
   { key: "activity", group: "Administration", label: "Clinic activity log", hint: "Everyone's sign-ins and actions (without it, staff see only their own)" },
@@ -30,8 +32,8 @@ export const ROLE_DEFAULTS: Record<string, PermissionKey[]> = {
   Hakim: ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "asbab", "diagnosis", "prescribe", "refer", "reports", "appointments", "messages"],
   "Staff Nurse": ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "appointments"],
   Counsellor: ["patients.view", "asbab", "appointments", "messages"],
-  Administrator: ["dashboard", "patients.view", "patients.register", "reports", "appointments", "messages", "payments", "staff.manage", "settings", "activity"],
-  "Support Staff": ["patients.view", "patients.register", "appointments"],
+  Administrator: ["dashboard", "patients.view", "patients.register", "reports", "appointments", "messages", "payments", "finance.view", "payments.refund", "staff.manage", "settings", "activity"],
+  "Support Staff": ["patients.view", "patients.register", "appointments", "payments"],
   Other: ["patients.view"],
 };
 export const roleKey = (role: string | null | undefined) => (role && role.trim() ? role.trim() : "Other");
@@ -69,7 +71,10 @@ export function requiredPermission(path: string, method: string): Need {
   if (/^\/api\/facility\/staff(\/|$)/.test(path)) return read ? "allow" : ["staff.manage"];
   if (R("/api/facility/stats").test(path)) return ["dashboard"];
   if (R("/api/facility/reception").test(path)) return ["dashboard", "patients.view"];
-  if (R("/api/facility/payments").test(path)) return ["payments"];
+  if (R("/api/facility/payments").test(path)) return ["payments", "finance.view"]; // the route scopes reads; POST re-checks "payments"
+  if (R("/api/facility/payments/[^/]+").test(path)) return read ? ["payments", "finance.view"] : ["payments.refund"];
+  if (R("/api/facility/finance").test(path)) return ["finance.view"];
+  if (R("/api/facility/fees").test(path)) return read ? ["payments", "finance.view", "settings"] : ["settings"];
   if (R("/api/facility/patients/search").test(path)) return ["patients.view"];
   if (R("/api/facility/patients/[^/]+/vitals-insight").test(path)) return ["triage"];
   if (/^\/api\/facility\/(patients\/[^/]+\/reports|reports)(\/|$)/.test(path)) return rw(["patients.view"], ["reports"]);
@@ -107,7 +112,7 @@ export const PAGE_PERMISSION: { prefix: string; need: PermissionKey[] }[] = [
   { prefix: "/facility/appointments", need: ["appointments"] },
   { prefix: "/facility/messages", need: ["messages"] },
   { prefix: "/facility/prescriptions", need: ["prescribe", "patients.view"] },
-  { prefix: "/facility/payments", need: ["payments"] },
+  { prefix: "/facility/payments", need: ["payments", "finance.view"] },
   { prefix: "/facility/profile/staff", need: ["staff.manage"] },
   { prefix: "/facility/profile/permissions", need: ["staff.manage"] },
   { prefix: "/facility/profile/activity", need: [] }, // everyone: own history at least

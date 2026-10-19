@@ -11,17 +11,18 @@ import { canOpenPage } from "@/lib/staff-permissions";
 import { STAGES } from "@/lib/visit-stage-ui";
 import type { VisitStage } from "@/lib/visit-stage";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
+import { PaymentDialog } from "@/components/facility/payments/payment-dialog";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Loader2, Phone, Search, UserPlus } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, IndianRupee, Loader2, Phone, Receipt, Search, UserPlus } from "lucide-react";
 
 interface Row {
   visitId: string; visitCode: string; at: string; isNew: boolean; stage: VisitStage; registeredBy: string; doctor: string | null;
   patient: { id: string; patientCode: string | null; name: string; gender: string | null; dob: string | null; phone: string | null; photo: string | null };
-  payment: { count: number; amount: number } | null;
+  payment: { count: number; amount: number; lastId: string | null; lastCode: string | null } | null;
 }
 interface Resp { date: string; today: string; tab: "visits" | "registrations"; strip: { date: string; visits: number; registrations: number }[]; total: number; page: number; pageSize: number; rows: Row[]; staff: { id: string; name: string }[]; payments: boolean }
 
@@ -45,6 +46,9 @@ export function ReceptionDesk() {
   const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [paying, setPaying] = useState<Row | null>(null);
+  const [notice, setNotice] = useState<{ code: string; id: string } | null>(null);
+  const canCollect = !perms || perms.includes("payments");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,6 +151,18 @@ export function ReceptionDesk() {
         {tab === "visits" ? "Every visit on this day — a patient seen twice appears twice." : "People whose first visit to this clinic was on this day — each person counted once."}
       </p>
 
+      {notice && (
+        <p className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-300">
+          Payment recorded — receipt {notice.code}.
+          <button type="button" className="font-medium underline" onClick={() => router.push(`/facility/payments/${notice.id}/receipt`)}>Open / print receipt</button>
+          <button type="button" className="ml-auto text-xs opacity-70 hover:opacity-100" onClick={() => setNotice(null)}>Dismiss</button>
+        </p>
+      )}
+      {paying && (
+        <PaymentDialog open={!!paying} onOpenChange={(o) => { if (!o) setPaying(null); }} visitId={paying.visitId}
+          patientLabel={`${paying.patient.name} · ${paying.patient.patientCode ?? ""} · visit ${paying.visitCode}`}
+          onRecorded={(p) => { setNotice({ code: p.paymentCode, id: p.id }); load(); }} />
+      )}
       {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">The list couldn&apos;t be loaded — {error}. <button className="underline" onClick={load}>Try again</button></p>}
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card/60">
@@ -188,7 +204,16 @@ export function ReceptionDesk() {
                   <td className="px-3 py-2.5"><span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium", st.tone)}><span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />{st.label}</span></td>
                   <td className="px-3 py-2.5 text-xs">{r.registeredBy}{r.doctor && <span className="block text-muted-foreground">Hakim: {r.doctor}</span>}</td>
                   {data.payments && (
-                    <td className="px-3 py-2.5 text-xs">{r.payment && r.payment.count > 0 ? <span className="font-medium text-emerald-700 dark:text-emerald-400">₹{r.payment.amount.toLocaleString("en-IN")} paid</span> : <span className="text-amber-700 dark:text-amber-400">Not paid</span>}</td>
+                    <td className="px-3 py-2.5 text-xs" onClick={(e) => e.stopPropagation()}>
+                      {r.payment && r.payment.count > 0 ? (
+                        <span className="flex flex-col items-start gap-0.5">
+                          <span className="font-medium text-emerald-700 dark:text-emerald-400">₹{r.payment.amount.toLocaleString("en-IN")} paid</span>
+                          {r.payment.lastId && <button type="button" className="inline-flex items-center gap-1 text-primary hover:underline" onClick={() => router.push(`/facility/payments/${r.payment!.lastId}/receipt`)}><Receipt className="h-3 w-3" /> {r.payment.lastCode}</button>}
+                        </span>
+                      ) : canCollect ? (
+                        <Button size="sm" variant="outline" className="h-7 border-amber-500/40 px-2 text-amber-700 dark:text-amber-400" onClick={() => setPaying(r)}><IndianRupee className="h-3 w-3" /> Collect</Button>
+                      ) : <span className="text-amber-700 dark:text-amber-400">Not paid</span>}
+                    </td>
                   )}
                   <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <Button size="sm" variant={r.stage === "done" || r.stage === "referred" ? "outline" : "default"} onClick={() => router.push(st.href(r.patient.id))}>

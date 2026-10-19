@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { netAmount, paymentState } from "@/lib/payments";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { loadStaffAccess } from "@/lib/staff-permissions-server";
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const tz = Math.max(-840, Math.min(840, Number(sp.get("tz")) || 0));
   const access = auth.staffId ? await loadStaffAccess(auth.staffId) : null;
-  const canPay = !auth.staffId || !!access?.permissions.includes("payments");
+  const canPay = !auth.staffId || !!access?.permissions.some((k) => k === "payments" || k === "finance.view");
 
   const startOf = (ymd: string) => Date.parse(`${ymd}T00:00:00Z`) - tz * 60_000;
   const ymdOf = (t: number) => new Date(t + tz * 60_000).toISOString().slice(0, 10);
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
       id: true, visitCode: true, visitDate: true, patientId: true, ...STAGE_SELECT,
       patient: { select: { id: true, patientCode: true, name: true, gender: true, dob: true, phone: true, photo: true } },
       registeredBy: { select: { name: true } }, doctor: { select: { name: true } },
-      payments: canPay ? { select: { amount: true, status: true } } : false,
+      payments: canPay ? { select: { id: true, paymentCode: true, amount: true, status: true, refundAmount: true } } : false,
     },
   });
   // Registrations: one row per person (their first visit that day).
@@ -82,8 +83,8 @@ export async function GET(req: NextRequest) {
       registeredBy: r.registeredBy?.name ?? "Clinic owner",
       doctor: r.doctor?.name ?? null,
       payment: canPay ? (() => {
-        const paid = (r.payments as { amount: number; status: string }[]).filter((p) => p.status !== "cancelled");
-        return { count: paid.length, amount: Math.round(paid.reduce((a, p) => a + p.amount, 0) * 100) / 100 };
+        const paid = (r.payments as { id: string; paymentCode: string; amount: number; status: string; refundAmount: number | null }[]).filter((p) => paymentState(p.status) !== "cancelled");
+        return { count: paid.length, amount: Math.round(paid.reduce((a, p) => a + netAmount(p), 0) * 100) / 100, lastId: paid.at(-1)?.id ?? null, lastCode: paid.at(-1)?.paymentCode ?? null };
       })() : null,
     }));
   const stage = sp.get("stage");

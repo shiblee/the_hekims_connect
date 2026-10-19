@@ -15,11 +15,12 @@ import { Separator } from "@/components/ui/separator";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History,
+  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee,
 } from "lucide-react";
 import { TeamView } from "./team";
 import { PermissionsView } from "./permissions";
 import { ActivityLogView } from "./activity-log";
+import { FeesView } from "./fees";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { useAppStore } from "@/lib/store";
 
@@ -33,6 +34,7 @@ const SECTIONS = [
   { key: "location", label: "Location", icon: MapPin },
   { key: "capacity", label: "Capacity & Schedule", icon: Gauge },
   { key: "services", label: "Services", icon: Stethoscope },
+  { key: "fees", label: "Fees", icon: IndianRupee },
 ];
 const STAFF_SECTIONS = [{ key: "staff", label: "Staff", icon: UserCog }, { key: "permissions", label: "Permissions", icon: KeyRound }, { key: "activity", label: "Activity log", icon: History }];
 
@@ -456,6 +458,12 @@ export function ProfileView({ section }: { section: string }) {
         {section === "staff" && (
           <Card className="p-6 border-border/50 bg-card/60">
             <TeamView />
+          </Card>
+        )}
+
+        {section === "fees" && (
+          <Card className="p-6 border-border/50 bg-card/60">
+            <FeesView />
           </Card>
         )}
 

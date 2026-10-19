@@ -20,6 +20,8 @@ export const AUDIT_ACTIONS: Record<string, { label: string; group: string }> = {
   "visit.referred": { label: "Patient referred out", group: "Visits" },
   "visit.referral_withdrawn": { label: "Referral withdrawn", group: "Visits" },
   "payment.recorded": { label: "Payment recorded", group: "Payments" },
+  "payment.cancelled": { label: "Payment cancelled", group: "Payments" },
+  "payment.refunded": { label: "Payment refunded", group: "Payments" },
   "staff.created": { label: "Staff added", group: "Staff" },
   "staff.updated": { label: "Staff updated", group: "Staff" },
   "staff.activated": { label: "Staff activated", group: "Staff" },

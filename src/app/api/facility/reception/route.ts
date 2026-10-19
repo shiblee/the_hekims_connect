@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { netAmount } from "@/lib/payments";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { loadStaffAccess } from "@/lib/staff-permissions-server";
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     }),
     db.payment.findMany({
       where: { visit: { facilityId: fid }, createdAt: { gte: new Date(today - 29 * DAY) }, status: { not: "cancelled" } },
-      select: { amount: true, createdAt: true, recordedById: true, mode: true },
+      select: { amount: true, status: true, refundAmount: true, createdAt: true, recordedById: true, mode: true },
     }),
   ]);
   const first = new Map(firstVisits.map((f) => [f.patientId, f._min.visitDate!.getTime()]));
@@ -46,7 +47,8 @@ export async function GET(req: NextRequest) {
   const returningToday = new Set(todays.filter((v) => dayStart(first.get(v.patientId) ?? 0) < today).map((v) => v.patientId)).size;
   const referred = (v: (typeof visits)[number]) => !!v.referral || v.status === "referred";
 
-  const sum = (rows: typeof payments) => ({ amount: Math.round(rows.reduce((a, p) => a + p.amount, 0) * 100) / 100, count: rows.length });
+  // Net of refunds; cancelled payments are excluded above.
+  const sum = (rows: typeof payments) => ({ amount: Math.round(rows.reduce((a, p) => a + netAmount(p), 0) * 100) / 100, count: rows.length });
   const payIn = (from: number) => payments.filter((p) => p.createdAt.getTime() >= from);
 
   // Trend: daily for 7 / 30 days, monthly for 12 months.
@@ -86,7 +88,7 @@ export async function GET(req: NextRequest) {
       completed: todays.filter((v) => v.tashkheesDossier?.status === "finalized").length,
       referred: todays.filter(referred).length,
     },
-    money: can("payments") ? { today: sum(payIn(today)), last7: sum(payIn(today - 6 * DAY)), last30: sum(payIn(today - 29 * DAY)) } : null,
+    money: can("finance.view") ? { today: sum(payIn(today)), last7: sum(payIn(today - 6 * DAY)), last30: sum(payIn(today - 29 * DAY)) } : null,
     trend: { d7: daily(7), d30: daily(30), m12: months },
     mine,
   });
