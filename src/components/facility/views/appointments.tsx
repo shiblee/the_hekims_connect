@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
 import { Card } from "@/components/ui/card";
@@ -25,6 +27,9 @@ export function AppointmentsView() {
   const [search, setSearch] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const msg = useNotice();
+  const t = useTranslations("clinic.appointments");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
 
   const load = async () => {
     setLoading(true);
@@ -40,54 +45,54 @@ export function AppointmentsView() {
       list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
       setAppts(list);
       setLoadError(null);
-    } catch (e: any) { setLoadError(e.message || "Network error"); } finally { setLoading(false); }
+    } catch (e: any) { setLoadError(e.message || tc("network_error")); } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [tab, search]);
 
   const update = async (id: string, status: string) => {
-    const name = appts.find((a) => a.id === id)?.patient.name ?? "The appointment";
+    const name = appts.find((a) => a.id === id)?.patient.name ?? t("the_appointment");
     try {
       await api.patch(`/api/appointments/${id}`, { status });
-      msg.success(`${name}'s appointment marked as ${status}`);
+      msg.success(t("marked", { name, status: t(status === "completed" ? "st_completed" : "st_cancelled") }));
       load();
     } catch (e: any) {
-      msg.error(`${name}'s appointment wasn't updated`, `${e.message || "Network error"}.`, { retry: () => update(id, status) });
+      msg.error(t("not_updated", { name }), `${e.message || tc("network_error")}.`, { retry: () => update(id, status) });
     }
   };
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-serif text-xl font-bold">Appointments</h2>
+        <h2 className="font-serif text-xl font-bold">{t("title")}</h2>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-card/60">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="today">Today</TabsTrigger>
-            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+            <TabsTrigger value="all">{t("tab_all")}</TabsTrigger>
+            <TabsTrigger value="today">{t("tab_today")}</TabsTrigger>
+            <TabsTrigger value="upcoming">{t("tab_upcoming")}</TabsTrigger>
+            <TabsTrigger value="completed">{t("tab_completed")}</TabsTrigger>
+            <TabsTrigger value="cancelled">{t("tab_cancelled")}</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="relative w-full sm:w-64">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search patient or type…" className="ps-9 bg-background/60" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("search")} className="ps-9 bg-background/60" />
         </div>
       </div>
 
       <NoticeSlot state={msg} />
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> {tc("loading")}</div>
       ) : loadError ? (
-        <LoadFailed what="appointments" detail={loadError} onRetry={load} />
+        <LoadFailed what={t("what")} detail={loadError} onRetry={load} />
       ) : appts.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">No appointments in this view.</p>
+          <p className="text-sm text-muted-foreground">{t("none")}</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -97,7 +102,7 @@ export function AppointmentsView() {
               <Card key={a.id} className="p-4 border-border/50 bg-card/60 hover:border-primary/30 transition-colors">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex flex-col items-center justify-center w-16 shrink-0 rounded-lg bg-background/50 py-2">
-                    <span className="text-[10px] text-muted-foreground uppercase">{new Date(a.date).toLocaleDateString("en-US", { month: "short" })}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{new Date(a.date).toLocaleDateString(dl, { month: "short" })}</span>
                     <span className="font-serif text-xl font-bold leading-none">{new Date(a.date).getDate()}</span>
                     <span className="text-[10px] text-primary mt-0.5">{a.time}</span>
                   </div>
@@ -107,7 +112,7 @@ export function AppointmentsView() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium">{a.patient.name}</p>
-                      <Badge variant="outline" className={cn("border", mizajBadge(a.patient.mizaj))}>{a.patient.mizaj || "Unknown"}</Badge>
+                      <Badge variant="outline" className={cn("border", mizajBadge(a.patient.mizaj))}>{a.patient.mizaj || t("unknown")}</Badge>
                       {a.patient.bloodGroup && <Badge variant="outline" className="text-red-300 border-red-500/30 bg-red-500/10"><Droplet className="h-3 w-3 me-0.5" />{a.patient.bloodGroup}</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{a.type}{a.reason ? ` · ${a.reason}` : ""}</p>
@@ -116,13 +121,13 @@ export function AppointmentsView() {
                   <div className="flex items-center gap-2">
                     {a.status === "scheduled" && (
                       <>
-                        {urgent && <Badge className="text-accent bg-accent/15 border-accent/30">URGENT</Badge>}
-                        <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => update(a.id, "completed")}><Check className="h-3.5 w-3.5 me-1" /> Complete</Button>
+                        {urgent && <Badge className="text-accent bg-accent/15 border-accent/30">{t("urgent")}</Badge>}
+                        <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => update(a.id, "completed")}><Check className="h-3.5 w-3.5 me-1" /> {t("complete")}</Button>
                         <Button size="sm" variant="outline" className="h-8 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => update(a.id, "cancelled")}><X className="h-3.5 w-3.5" /></Button>
                       </>
                     )}
-                    {a.status === "completed" && <Badge className="text-emerald-300 bg-emerald-500/15 border-emerald-500/30">COMPLETED</Badge>}
-                    {a.status === "cancelled" && <Badge className="text-destructive bg-destructive/15 border-destructive/30">CANCELLED</Badge>}
+                    {a.status === "completed" && <Badge className="text-emerald-300 bg-emerald-500/15 border-emerald-500/30">{t("completed_badge")}</Badge>}
+                    {a.status === "cancelled" && <Badge className="text-destructive bg-destructive/15 border-destructive/30">{t("cancelled_badge")}</Badge>}
                   </div>
                 </div>
               </Card>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { InlineNotice, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { Pill, Plus, Search, Loader2, Package, AlertTriangle, IndianRupee, Edit2, Trash2, FlaskConical, Boxes } from "lucide-react";
-import { sortLabels } from "@/lib/sort-options";
+import { sortByLabel } from "@/lib/sort-options";
 
 interface Item {
   id: string; name: string; category: string; form: string; quantity: number;
@@ -44,6 +46,10 @@ export function PharmacyView() {
   // Removal is confirmed on the page, not in a browser pop-up.
   const [pendingRemove, setPendingRemove] = useState<Item | null>(null);
   const [removing, setRemoving] = useState(false);
+  const t = useTranslations("clinic.pharmacy");
+  const tc = useTranslations("common");
+  const vl = useValueLabel();
+  const dl = useDateLocale();
 
   const load = async () => {
     setLoading(true);
@@ -56,7 +62,7 @@ export function PharmacyView() {
       setLowStock(r.lowStock);
       setTotalValue(r.totalValue);
     } catch (e: any) {
-      msg.error("Couldn't load the pharmacy", `${e.message || "Network error"}.`, { retry: load });
+      msg.error(t("load_failed"), `${e.message || tc("network_error")}.`, { retry: load });
     } finally { setLoading(false); }
   };
 
@@ -69,20 +75,20 @@ export function PharmacyView() {
   };
 
   const save = async () => {
-    if (!form.name.trim()) { dialogMsg.warning("Enter the item name", "For example Majoon Suranjan."); return; }
+    if (!form.name.trim()) { dialogMsg.warning(t("enter_name"), t("enter_name_hint")); return; }
     setSaving(true);
     try {
       if (editItem) {
         await api.patch(`/api/pharmacy/${editItem.id}`, form);
-        msg.success(`${form.name.trim()} updated`);
+        msg.success(t("updated", { name: form.name.trim() }));
       } else {
         await api.post("/api/pharmacy", form);
-        msg.success(`${form.name.trim()} added to the pharmacy`);
+        msg.success(t("added", { name: form.name.trim() }));
       }
       setAddOpen(false);
       load();
     } catch (e: any) {
-      dialogMsg.error(editItem ? "The changes weren't saved" : "The item wasn't added", `${e.message || "Network error"}. Everything is still filled in — try again.`, { retry: save });
+      dialogMsg.error(editItem ? t("not_saved") : t("not_added"), t("still_filled", { error: e.message || tc("network_error") }), { retry: save });
     } finally { setSaving(false); }
   };
 
@@ -94,24 +100,24 @@ export function PharmacyView() {
     try {
       await api.delete(`/api/pharmacy/${it.id}`);
       setPendingRemove(null);
-      msg.success(`${it.name} removed from the pharmacy`);
+      msg.success(t("removed", { name: it.name }));
       load();
     } catch (e: any) {
       setPendingRemove(null);
-      msg.error(`${it.name} wasn't removed`, `${e.message || "Network error"}.`, { retry: () => { setPendingRemove(it); } , retryLabel: "Try again" });
+      msg.error(t("not_removed", { name: it.name }), `${e.message || tc("network_error")}.`, { retry: () => { setPendingRemove(it); } , retryLabel: tc("retry") });
     } finally { setRemoving(false); }
   };
 
-  const fmtINR = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  const fmtINR = (n: number) => `₹${n.toLocaleString(dl, { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-serif text-xl font-bold">Unani Pharmacy</h2>
-          <p className="text-sm text-muted-foreground">Manage formulations, distillates and stock levels.</p>
+          <h2 className="font-serif text-xl font-bold">{t("title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button onClick={openAdd} className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" /> Add Item</Button>
+        <Button onClick={openAdd} className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" /> {t("add_item")}</Button>
       </div>
 
       {/* Stats */}
@@ -119,25 +125,25 @@ export function PharmacyView() {
         <Card className="p-4 border-border/50 bg-card/60">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary/15 flex items-center justify-center"><Boxes className="h-4 w-4 text-primary" /></div>
-            <div><p className="text-xs text-muted-foreground">Total Items</p><p className="font-serif text-xl font-bold">{items.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("total_items")}</p><p className="font-serif text-xl font-bold">{items.length}</p></div>
           </div>
         </Card>
         <Card className="p-4 border-border/50 bg-card/60">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-accent/15 flex items-center justify-center"><AlertTriangle className="h-4 w-4 text-accent" /></div>
-            <div><p className="text-xs text-muted-foreground">Low Stock</p><p className="font-serif text-xl font-bold text-accent">{lowStock}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("low_stock")}</p><p className="font-serif text-xl font-bold text-accent">{lowStock}</p></div>
           </div>
         </Card>
         <Card className="p-4 border-border/50 bg-card/60">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-emerald-500/15 flex items-center justify-center"><IndianRupee className="h-4 w-4 text-emerald-400" /></div>
-            <div><p className="text-xs text-muted-foreground">Stock Value</p><p className="font-serif text-xl font-bold">{fmtINR(totalValue)}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("stock_value")}</p><p className="font-serif text-xl font-bold">{fmtINR(totalValue)}</p></div>
           </div>
         </Card>
         <Card className="p-4 border-border/50 bg-card/60">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-violet-500/15 flex items-center justify-center"><FlaskConical className="h-4 w-4 text-violet-300" /></div>
-            <div><p className="text-xs text-muted-foreground">Categories</p><p className="font-serif text-xl font-bold">{CATEGORIES.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("categories")}</p><p className="font-serif text-xl font-bold">{CATEGORIES.length}</p></div>
           </div>
         </Card>
       </div>
@@ -146,13 +152,13 @@ export function PharmacyView() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" className="ps-9 bg-background/60" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("search")} className="ps-9 bg-background/60" />
         </div>
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger className="w-[180px] bg-background/60"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {sortLabels(CATEGORIES).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            <SelectItem value="all">{t("all_categories")}</SelectItem>
+            {sortByLabel(CATEGORIES, vl).map((c) => <SelectItem key={c} value={c}>{vl(c)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -160,13 +166,13 @@ export function PharmacyView() {
       {pendingRemove && (
         <InlineNotice
           tone="warning"
-          title={`Remove ${pendingRemove.name} from the pharmacy?`}
-          detail="It will no longer appear in stock or when prescribing. This can't be undone."
+          title={t("remove_q", { name: pendingRemove.name })}
+          detail={t("remove_hint")}
           action={
             <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setPendingRemove(null)} disabled={removing}>Keep</Button>
+              <Button size="sm" variant="ghost" onClick={() => setPendingRemove(null)} disabled={removing}>{tc("keep")}</Button>
               <Button size="sm" variant="destructive" onClick={confirmRemove} disabled={removing}>
-                {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
+                {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} {tc("remove")}
               </Button>
             </div>
           }
@@ -176,11 +182,11 @@ export function PharmacyView() {
 
       {/* Items grid */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading pharmacy…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> {t("loading")}</div>
       ) : items.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <Pill className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">No items found. Add your first Unani formulation.</p>
+          <p className="text-sm text-muted-foreground">{t("none")}</p>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -192,21 +198,21 @@ export function PharmacyView() {
                 <div className="flex items-start justify-between mb-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{it.name}</p>
-                    <p className="text-xs text-muted-foreground">{it.category} · {it.form}</p>
+                    <p className="text-xs text-muted-foreground">{vl(it.category)} · {vl(it.form)}</p>
                   </div>
-                  {out ? <Badge className="text-destructive bg-destructive/15 border-destructive/30">OUT</Badge>
-                    : low ? <Badge className="text-accent bg-accent/15 border-accent/30">LOW</Badge>
-                    : <Badge className="text-emerald-300 bg-emerald-500/15 border-emerald-500/30">IN STOCK</Badge>}
+                  {out ? <Badge className="text-destructive bg-destructive/15 border-destructive/30">{t("out")}</Badge>
+                    : low ? <Badge className="text-accent bg-accent/15 border-accent/30">{t("low")}</Badge>
+                    : <Badge className="text-emerald-300 bg-emerald-500/15 border-emerald-500/30">{t("in_stock")}</Badge>}
                 </div>
                 {it.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{it.description}</p>}
                 <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div><p className="text-muted-foreground">Quantity</p><p className="font-semibold">{it.quantity} {it.unit}</p></div>
-                  <div><p className="text-muted-foreground">Reorder</p><p className="font-semibold">{it.reorderLevel}</p></div>
-                  <div><p className="text-muted-foreground">Price</p><p className="font-semibold text-primary">{fmtINR(it.price)}</p></div>
+                  <div><p className="text-muted-foreground">{t("quantity")}</p><p className="font-semibold">{it.quantity} {it.unit}</p></div>
+                  <div><p className="text-muted-foreground">{t("reorder")}</p><p className="font-semibold">{it.reorderLevel}</p></div>
+                  <div><p className="text-muted-foreground">{t("price")}</p><p className="font-semibold text-primary">{fmtINR(it.price)}</p></div>
                 </div>
-                {it.expiryDate && <p className="text-[11px] text-muted-foreground mt-2">Expires: {it.expiryDate}</p>}
+                {it.expiryDate && <p className="text-[11px] text-muted-foreground mt-2">{t("expires", { date: it.expiryDate })}</p>}
                 <div className="flex gap-2 mt-3">
-                  <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => openEdit(it)}><Edit2 className="h-3.5 w-3.5 me-1" /> Edit</Button>
+                  <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => openEdit(it)}><Edit2 className="h-3.5 w-3.5 me-1" /> {tc("edit")}</Button>
                   <Button size="sm" variant="ghost" className="h-8 text-destructive hover:bg-destructive/10" onClick={() => remove(it)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </Card>
@@ -218,57 +224,57 @@ export function PharmacyView() {
       {/* Add/Edit dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editItem ? "Edit Item" : "Add Pharmacy Item"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editItem ? t("edit_title") : t("add_title")}</DialogTitle></DialogHeader>
           <div className="grid sm:grid-cols-2 gap-3 py-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Majoon Suranjan" className="bg-background/60" />
+              <Label>{t("name")}</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("name_eg")} className="bg-background/60" />
             </div>
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label>{t("category")}</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger className="bg-background/60"><SelectValue /></SelectTrigger>
-                <SelectContent>{sortLabels(CATEGORIES).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectContent>{sortByLabel(CATEGORIES, vl).map((c) => <SelectItem key={c} value={c}>{vl(c)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Form</Label>
+              <Label>{t("form")}</Label>
               <Select value={form.form} onValueChange={(v) => setForm({ ...form, form: v })}>
                 <SelectTrigger className="bg-background/60"><SelectValue /></SelectTrigger>
-                <SelectContent>{sortLabels(FORMS).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectContent>{sortByLabel(FORMS, vl).map((c) => <SelectItem key={c} value={c}>{vl(c)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Quantity</Label>
+              <Label>{t("quantity")}</Label>
               <Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className="bg-background/60" />
             </div>
             <div className="space-y-1.5">
-              <Label>Unit</Label>
+              <Label>{t("unit")}</Label>
               <Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="bg-background/60" />
             </div>
             <div className="space-y-1.5">
-              <Label>Reorder Level</Label>
+              <Label>{t("reorder_level")}</Label>
               <Input type="number" value={form.reorderLevel} onChange={(e) => setForm({ ...form, reorderLevel: e.target.value })} className="bg-background/60" />
             </div>
             <div className="space-y-1.5">
-              <Label>Price (₹)</Label>
+              <Label>{t("price_inr")}</Label>
               <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="bg-background/60" />
             </div>
             <div className="space-y-1.5">
-              <Label>Expiry Date</Label>
+              <Label>{t("expiry")}</Label>
               <Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} className="bg-background/60" />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Description</Label>
+              <Label>{t("description")}</Label>
               <Textarea maxLength={500} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-background/60 min-h-[60px]" />
             </div>
           </div>
           <NoticeSlot state={dialogMsg} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>{tc("cancel")}</Button>
             <Button onClick={save} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {editItem ? "Update" : "Add"} Item
+              {editItem ? t("update_item") : t("add_item")}
             </Button>
           </DialogFooter>
         </DialogContent>

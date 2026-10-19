@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { Card } from "@/components/ui/card";
@@ -32,6 +34,10 @@ export function PrescriptionsView() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const msg = useNotice();
   const dialogMsg = useNotice();
+  const t = useTranslations("clinic.prescriptions");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
+  const list = useListFormat();
   const [form, setForm] = useState({ patientId: "", therapyType: "Ilaj-bil-Dawa", notes: "", items: [{ name: "", dose: "", frequency: "", instructions: "" }] });
 
   const load = async () => {
@@ -44,7 +50,7 @@ export function PrescriptionsView() {
       setPrescriptions(pr.prescriptions || []);
       setPatients(pa.patients || []);
       setLoadError(null);
-    } catch (e: any) { setLoadError(e.message || "Network error"); } finally { setLoading(false); }
+    } catch (e: any) { setLoadError(e.message || tc("network_error")); } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
@@ -58,20 +64,20 @@ export function PrescriptionsView() {
   const removeItem = (i: number) => setForm({ ...form, items: form.items.filter((_, j) => j !== i) });
 
   const save = async () => {
-    const missing = [!form.patientId && "choose the patient", !form.items.some((i) => i.name.trim()) && "add at least one remedy"].filter(Boolean) as string[];
+    const missing = [!form.patientId && t("need_patient"), !form.items.some((i) => i.name.trim()) && t("need_remedy")].filter(Boolean) as string[];
     if (missing.length) {
-      dialogMsg.warning(`Before creating: ${missing.join(" and ")}`, "A prescription needs a patient and at least one named remedy.");
+      dialogMsg.warning(t("before", { items: list(missing) }), t("before_hint"));
       return;
     }
     setSaving(true);
     try {
       await api.post("/api/prescriptions", { ...form, items: form.items.filter((i) => i.name) });
-      msg.success("Prescription created", `For ${patients.find((p) => p.id === form.patientId)?.name ?? "the patient"} — listed below.`);
+      msg.success(t("created"), t("created_for", { name: patients.find((p) => p.id === form.patientId)?.name ?? t("the_patient") }));
       setOpen(false);
       setForm({ patientId: "", therapyType: "Ilaj-bil-Dawa", notes: "", items: [{ name: "", dose: "", frequency: "", instructions: "" }] });
       load();
     } catch (e: any) {
-      dialogMsg.error("The prescription wasn't created", `${e.message || "Network error"}. Everything is still filled in — try again.`, { retry: save });
+      dialogMsg.error(t("not_created"), t("still_filled", { error: e.message || tc("network_error") }), { retry: save });
     } finally { setSaving(false); }
   };
 
@@ -79,21 +85,21 @@ export function PrescriptionsView() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-serif text-xl font-bold">Prescriptions</h2>
-          <p className="text-sm text-muted-foreground">Classical Unani formulations prescribed to your patients.</p>
+          <h2 className="font-serif text-xl font-bold">{t("title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button onClick={() => { dialogMsg.clear(); setOpen(true); }} className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" /> New Prescription</Button>
+        <Button onClick={() => { dialogMsg.clear(); setOpen(true); }} className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" /> {t("new")}</Button>
       </div>
       <NoticeSlot state={msg} />
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> {tc("loading")}</div>
       ) : loadError ? (
-        <LoadFailed what="prescriptions" detail={loadError} onRetry={load} />
+        <LoadFailed what={t("what")} detail={loadError} onRetry={load} />
       ) : prescriptions.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <FileText className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">No prescriptions yet. Create your first one.</p>
+          <p className="text-sm text-muted-foreground">{t("none")}</p>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
@@ -106,7 +112,7 @@ export function PrescriptionsView() {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{pr.patient?.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(pr.createdAt).toLocaleDateString()}</p>
+                    <p className="text-[11px] text-muted-foreground">{new Date(pr.createdAt).toLocaleDateString(dl)}</p>
                   </div>
                 </div>
                 <Badge variant="outline" className="text-primary border-primary/30 bg-primary/10">{pr.therapyType}</Badge>
@@ -127,38 +133,38 @@ export function PrescriptionsView() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader><DialogTitle>New Prescription</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("new")}</DialogTitle></DialogHeader>
           <ScrollArea className="flex-1 -mx-6 px-6">
             <div className="space-y-4 py-2">
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Patient</Label>
+                  <Label>{t("patient")}</Label>
                   <Select value={form.patientId} onValueChange={(v) => setForm({ ...form, patientId: v })}>
-                    <SelectTrigger className="bg-background/60"><SelectValue placeholder="Select patient" /></SelectTrigger>
+                    <SelectTrigger className="bg-background/60"><SelectValue placeholder={t("select_patient")} /></SelectTrigger>
                     <SelectContent>{patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Therapy Type</Label>
+                  <Label>{t("therapy")}</Label>
                   <Select value={form.therapyType} onValueChange={(v) => setForm({ ...form, therapyType: v })}>
                     <SelectTrigger className="bg-background/60"><SelectValue /></SelectTrigger>
-                    <SelectContent>{THERAPIES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>{THERAPIES.map((th) => <SelectItem key={th.value} value={th.value}>{th.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Remedies</Label>
-                  <Button size="sm" variant="outline" onClick={addItem}><Plus className="h-3.5 w-3.5 me-1" /> Add remedy</Button>
+                  <Label>{t("remedies")}</Label>
+                  <Button size="sm" variant="outline" onClick={addItem}><Plus className="h-3.5 w-3.5 me-1" /> {t("add_remedy")}</Button>
                 </div>
                 <div className="space-y-2">
                   {form.items.map((it, i) => (
                     <div key={i} className="grid grid-cols-12 gap-2 items-start rounded-lg bg-background/40 p-2">
-                      <Input className="col-span-12 sm:col-span-4 h-9 bg-background/60" placeholder="Remedy name" value={it.name} onChange={(e) => updateItem(i, "name", e.target.value)} />
-                      <Input className="col-span-6 sm:col-span-2 h-9 bg-background/60" placeholder="Dose (5g)" value={it.dose} onChange={(e) => updateItem(i, "dose", e.target.value)} />
-                      <Input className="col-span-6 sm:col-span-3 h-9 bg-background/60" placeholder="Frequency" value={it.frequency} onChange={(e) => updateItem(i, "frequency", e.target.value)} />
-                      <Input className="col-span-10 sm:col-span-2 h-9 bg-background/60" placeholder="Instructions" value={it.instructions} onChange={(e) => updateItem(i, "instructions", e.target.value)} />
+                      <Input className="col-span-12 sm:col-span-4 h-9 bg-background/60" placeholder={t("remedy_name")} value={it.name} onChange={(e) => updateItem(i, "name", e.target.value)} />
+                      <Input className="col-span-6 sm:col-span-2 h-9 bg-background/60" placeholder={t("dose")} value={it.dose} onChange={(e) => updateItem(i, "dose", e.target.value)} />
+                      <Input className="col-span-6 sm:col-span-3 h-9 bg-background/60" placeholder={t("frequency")} value={it.frequency} onChange={(e) => updateItem(i, "frequency", e.target.value)} />
+                      <Input className="col-span-10 sm:col-span-2 h-9 bg-background/60" placeholder={t("instructions")} value={it.instructions} onChange={(e) => updateItem(i, "instructions", e.target.value)} />
                       <Button size="icon" variant="ghost" className="col-span-2 sm:col-span-1 h-9 text-destructive" onClick={() => removeItem(i)} disabled={form.items.length === 1}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   ))}
@@ -166,17 +172,17 @@ export function PrescriptionsView() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Textarea maxLength={500} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Duration, follow-up advice…" className="bg-background/60 min-h-[60px]" />
+                <Label>{t("notes")}</Label>
+                <Textarea maxLength={500} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder={t("notes_ph")} className="bg-background/60 min-h-[60px]" />
               </div>
             </div>
           </ScrollArea>
           <NoticeSlot state={dialogMsg} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{tc("cancel")}</Button>
             <Button onClick={save} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}
-              Create Prescription
+              {t("create")}
             </Button>
           </DialogFooter>
         </DialogContent>
