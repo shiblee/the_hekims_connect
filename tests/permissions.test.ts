@@ -1,0 +1,23 @@
+// Staff permissions: every request a workflow makes must be allowed for the roles that do that work.
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { allowed, defaultsFor, requiredPermission } from "@/lib/staff-permissions";
+
+const can = (role: string, method: string, path: string) => allowed(defaultsFor(role), requiredPermission(path, method));
+const V = "/api/facility/visits/v123";
+
+describe("receptionist: register a patient and collect a fee", () => {
+  const steps: [string, string][] = [
+    ["GET", "/api/facility/metadata"], ["GET", "/api/facility/allergies"], ["GET", "/api/facility/medications"],
+    ["GET", "/api/facility/screening/config"], ["GET", "/api/facility/patients/search?mobile=98"], ["GET", "/api/facility/staff?active=true"],
+    ["POST", "/api/facility/patients"], ["PATCH", "/api/facility/patients/p1"], ["POST", "/api/facility/visits"], ["PATCH", V],
+    ["GET", `${V}/registration`], ["POST", `${V}/intake`], ["GET", "/api/facility/fees"], ["POST", "/api/facility/payments"],
+  ];
+  for (const [method, path] of steps) it(`${method} ${path}`, () => assert.equal(can("Receptionist", method, path), true));
+});
+
+describe("intake rules", () => {
+  it("nurses (triage) can still correct the reason for visit", () => assert.equal(can("Staff Nurse", "POST", `${V}/intake`), true));
+  it("roles without registration or triage can't change it", () => assert.equal(can("Cashier / Accounts", "POST", `${V}/intake`), false));
+  it("receptionists still can't record vitals", () => assert.equal(can("Receptionist", "POST", `${V}/vitals`), false));
+});

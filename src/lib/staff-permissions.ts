@@ -64,7 +64,7 @@ type Need = "allow" | "deny" | PermissionKey[]; // any one of the listed keys is
 const R = (re: string) => new RegExp(`^${re}/?$`);
 const READ_LISTS = R("/api/facility/(acute-symptoms|allergies|anatomical-regions|asbab/config|humor/config|medications|metadata|onset-patterns|red-flags|screening/config|tashkhees/options|vitals/validation-config)");
 const V = "/api/facility/visits/[^/]+";
-const TRIAGE = R(`${V}/(vitals|intake|screening|complaint-assessments|red-flag-screening|acute-symptoms|humoral-assessment|clinical-routing-insight|humoral-clues-insight)`);
+const TRIAGE = R(`${V}/(vitals|screening|complaint-assessments|red-flag-screening|acute-symptoms|humoral-assessment|clinical-routing-insight|humoral-clues-insight)`);
 const MIZAJ = R(`${V}/(anatomical-regions|chronology)`);
 const DIAG = R(`${V}/(dalail-selection|dossier|tashkhees-engine|usool-engine|ghiza-engine|clinical-assessment|treatment-plan|clinical-summary)`);
 
@@ -91,6 +91,8 @@ export function requiredPermission(path: string, method: string): Need {
   if (/^\/api\/facility\/patients(\/|$)/.test(path)) return rw(["patients.view"], ["patients.register"]);
   if (R("/api/facility/visits").test(path)) return rw(["patients.view"], ["patients.register", "triage"]);
   if (R(V).test(path) || R(`${V}/registration`).test(path)) return rw(["patients.view"], ["patients.register"]);
+  // Reason for visit is taken at registration by reception, and corrected later at triage.
+  if (R(`${V}/intake`).test(path)) return rw(["patients.view"], ["patients.register", "triage"]);
   if (TRIAGE.test(path)) return rw(["patients.view"], ["triage"]);
   if (R(`${V}/resident-notes`).test(path)) return rw(["patients.view"], ["triage", "mizaj", "asbab", "diagnosis"]);
   if (MIZAJ.test(path) || /^\/api\/mizaj(\/|$)/.test(path)) return rw(["patients.view"], ["mizaj"]);
