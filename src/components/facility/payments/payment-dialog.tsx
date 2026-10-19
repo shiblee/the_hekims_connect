@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useValueLabel } from "@/lib/i18n/use-date-locale";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import { Button } from "@/components/ui/button";
 import { SelectItem } from "@/components/ui/select";
@@ -31,24 +33,25 @@ export function FeeAmountFields({ fees, feeId, setFeeId, amount, setAmount, reas
   fees: Fee[]; feeId: string; setFeeId: (v: string) => void; amount: string; setAmount: (v: string) => void; reason: string; setReason: (v: string) => void;
 }) {
   const fee = fees.find((f) => f.id === feeId);
+  const t = useTranslations("clinic.payments");
   const differs = !!fee && amount !== "" && Number(amount) !== fee.amount;
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         {fees.length > 0 ? (
-          <FloatingSelect id="payFee" label="Fee" value={feeId || "custom"} onValueChange={(v) => { setFeeId(v === "custom" ? "" : v); const f = fees.find((x) => x.id === v); if (f) setAmount(String(f.amount)); }} placeholder="Select a fee">
+          <FloatingSelect id="payFee" label={t("fee")} value={feeId || "custom"} onValueChange={(v) => { setFeeId(v === "custom" ? "" : v); const f = fees.find((x) => x.id === v); if (f) setAmount(String(f.amount)); }} placeholder={t("select_fee")}>
             {fees.map((f) => <SelectItem key={f.id} value={f.id}>{f.name} — ₹{f.amount.toLocaleString("en-IN")}</SelectItem>)}
-            <SelectItem value="custom">Other amount</SelectItem>
+            <SelectItem value="custom">{t("other_amount")}</SelectItem>
           </FloatingSelect>
         ) : (
-          <p className="self-center text-xs text-muted-foreground">No fee list yet — the clinic owner can add fees in Facility Profile → Fees.</p>
+          <p className="self-center text-xs text-muted-foreground">{t("no_fees")}</p>
         )}
-        <FloatingField id="payAmount" type="number" inputMode="decimal" min={0} label="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <FloatingField id="payAmount" type="number" inputMode="decimal" min={0} label={t("amount")} value={amount} onChange={(e) => setAmount(e.target.value)} />
       </div>
       {differs && (
         <div>
-          <FloatingField id="payReason" label={`Reason for ₹${amount} instead of ₹${fee!.amount}`} value={reason} onChange={(e) => setReason(e.target.value)} />
-          <p className="mt-1 flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400"><AlertTriangle className="h-3 w-3" /> A different amount needs a reason — it is recorded in the activity log.</p>
+          <FloatingField id="payReason" label={t("reason_for", { amount, fee: fee!.amount })} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <p className="mt-1 flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400"><AlertTriangle className="h-3 w-3" /> {t("differs_hint")}</p>
         </div>
       )}
     </div>
@@ -60,10 +63,11 @@ export function PaymentDialog(props: {
   open: boolean; onOpenChange: (o: boolean) => void; visitId: string; patientLabel: string;
   onRecorded: (p: { id: string; paymentCode: string; amount: number }) => void;
 }) {
+  const t = useTranslations("clinic.payments");
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle>Record payment</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("record_title")}</DialogTitle></DialogHeader>
         {/* Mounted only while open, so every opening starts a fresh form with a fresh one-time key. */}
         {props.open && <PaymentForm {...props} />}
       </DialogContent>
@@ -84,11 +88,14 @@ function PaymentForm({ onOpenChange, visitId, patientLabel, onRecorded }: {
   const [mode, setMode] = useState(""); const [ref, setRef] = useState("");
   const [saving, setSaving] = useState(false); const [error, setError] = useState("");
   const [key] = useState(newPaymentKey);
+  const t = useTranslations("clinic.payments");
+  const tc = useTranslations("common");
+  const val = useValueLabel();
 
   const submit = async () => {
     setError("");
-    if (!amount || Number(amount) <= 0) return setError("Enter the amount");
-    if (!mode) return setError("Choose how the patient paid");
+    if (!amount || Number(amount) <= 0) return setError(t("enter_amount"));
+    if (!mode) return setError(t("choose_mode"));
     setSaving(true);
     try {
       const r = await api.post<{ payment: { id: string; paymentCode: string; amount: number }; duplicate?: boolean }>("/api/facility/payments", {
@@ -96,7 +103,7 @@ function PaymentForm({ onOpenChange, visitId, patientLabel, onRecorded }: {
       });
       onRecorded(r.payment);
       onOpenChange(false);
-    } catch (e: any) { setError(e.message || "The payment wasn't recorded"); }
+    } catch (e: any) { setError(e.message || t("not_recorded")); }
     finally { setSaving(false); }
   };
 
@@ -106,16 +113,16 @@ function PaymentForm({ onOpenChange, visitId, patientLabel, onRecorded }: {
       <div className="space-y-3 pt-1">
         <FeeAmountFields fees={fees} feeId={feeId} setFeeId={(v) => setPicked({ feeId: v, amount })} amount={amount} setAmount={(v) => setPicked({ feeId, amount: v })} reason={reason} setReason={setReason} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <FloatingSelect id="payMode" label="Paid by" value={mode} onValueChange={setMode} placeholder="Select">
-            {sortLabels(modes).map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          <FloatingSelect id="payMode" label={t("paid_by")} value={mode} onValueChange={setMode} placeholder={tc("select")}>
+            {sortLabels(modes).map((m) => <SelectItem key={m} value={m}>{val(m)}</SelectItem>)}
           </FloatingSelect>
-          {mode && mode.toLowerCase() !== "cash" && <FloatingField id="payRef" label="Transaction / reference no." value={ref} onChange={(e) => setRef(e.target.value)} />}
+          {mode && mode.toLowerCase() !== "cash" && <FloatingField id="payRef" label={t("reference")} value={ref} onChange={(e) => setRef(e.target.value)} />}
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-        <Button onClick={submit} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />} Record ₹{amount || 0}</Button>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button>
+        <Button onClick={submit} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />} {t("record_x", { amount: amount || 0 })}</Button>
       </DialogFooter>
     </>
   );

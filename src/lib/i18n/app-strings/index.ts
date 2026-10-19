@@ -9,9 +9,10 @@ import { CLINIC_DASHBOARD, CLINIC_OVERVIEW } from "./clinic-dashboard";
 import { CLINIC_PATIENTS } from "./clinic-patients";
 import { VALUE_LABELS } from "./values";
 import { CLINIC_REPORTS } from "./clinic-reports";
+import { CLINIC_PAYMENTS, CLINIC_RECEIPT } from "./clinic-payments";
 
 /** Every clinic / staff / patient app text. Add new files here. */
-export const APP_STRINGS: AppString[] = [...CLINIC_REPORTS, ...VALUE_LABELS, ...CLINIC_PATIENTS, ...CLINIC_DASHBOARD, ...CLINIC_OVERVIEW, ...CLINIC_STAGES, ...CLINIC_RECEPTION, ...SHARED_WIDGETS, ...COMMON, ...CLINIC_SHELL, ...PATIENT_SHELL, ...STAFF_PORTAL];
+export const APP_STRINGS: AppString[] = [...CLINIC_PAYMENTS, ...CLINIC_RECEIPT, ...CLINIC_REPORTS, ...VALUE_LABELS, ...CLINIC_PATIENTS, ...CLINIC_DASHBOARD, ...CLINIC_OVERVIEW, ...CLINIC_STAGES, ...CLINIC_RECEPTION, ...SHARED_WIDGETS, ...COMMON, ...CLINIC_SHELL, ...PATIENT_SHELL, ...STAFF_PORTAL];
 
 /** Message namespaces each app needs (the rest of the store — e.g. the public website — isn't sent). */
 export const AREA_NAMESPACES = {

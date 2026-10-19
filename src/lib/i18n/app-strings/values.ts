@@ -23,4 +23,9 @@ export const VALUE_LABELS = defineStrings("common.values", {
   Guardian: ["Guardian", "अभिभावक", "سرپرست", "الوصي", "سرپرست"],
   Friend: ["Friend", "मित्र", "دوست", "صديق", "دوست"],
   Relative: ["Relative", "रिश्तेदार", "رشتہ دار", "قريب", "خویشاوند"],
+  Cash: ["Cash", "नक़द", "نقد", "نقدًا", "نقد"],
+  UPI: ["UPI", "UPI", "UPI", "UPI", "UPI"],
+  Card: ["Card", "कार्ड", "کارڈ", "بطاقة", "کارت"],
+  "Bank transfer": ["Bank transfer", "बैंक ट्रांसफ़र", "بینک ٹرانسفر", "تحويل بنكي", "انتقال بانکی"],
+  Cheque: ["Cheque", "चेक", "چیک", "شيك", "چک"],
 });
