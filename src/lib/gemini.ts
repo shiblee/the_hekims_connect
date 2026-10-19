@@ -912,3 +912,35 @@ Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON,
     return sel.filter((x: unknown): x is string => typeof x === "string" && allowed.has(x)).slice(0, limit);
   } catch { return null; }
 }
+
+/** "on" = key saved and switched on; "off" = an admin switched AI off; "no_key" = no key saved. */
+export async function geminiStatus(): Promise<"on" | "off" | "no_key"> {
+  const row = await db.integrationConfig.findUnique({ where: { provider: "gemini" }, select: { active: true, keyEnc: true } });
+  if (!row?.keyEnc) return "no_key";
+  return row.active ? "on" : "off";
+}
+
+/** Why an AI feature returned nothing: switched off, out of credits, or a passing failure. */
+export async function geminiUnavailableReason(): Promise<"off" | "quota" | "unavailable"> {
+  if ((await geminiStatus()) !== "on") return "off";
+  return geminiQuotaRecentlyHit() ? "quota" : "unavailable";
+}
+
+/** Checks a key with one tiny request (used by the admin "Test connection" button). Never logs the key. */
+export async function testGeminiKey(apiKey: string): Promise<{ ok: boolean; message: string }> {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: "Reply with OK." }] }], generationConfig: { maxOutputTokens: 5 } }),
+    });
+    if (res.ok) return { ok: true, message: "Connected — the key works." };
+    const body = await res.json().catch(() => ({}));
+    const msg = String(body?.error?.message || "").slice(0, 200);
+    if (res.status === 402 || res.status === 429) return { ok: false, message: `The key works but the account is out of credits or over its limit. ${msg}`.trim() };
+    if (res.status === 400 || res.status === 401 || res.status === 403) return { ok: false, message: `Google rejected the key. ${msg}`.trim() };
+    return { ok: false, message: `Google answered with an error (${res.status}). ${msg}`.trim() };
+  } catch {
+    return { ok: false, message: "Couldn't reach Google from the server — try again in a moment." };
+  }
+}

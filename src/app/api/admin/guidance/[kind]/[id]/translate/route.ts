@@ -44,8 +44,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ kin
     }
   } catch (e) {
     if (done === 0) {
-      const { geminiQuotaRecentlyHit } = await import("@/lib/gemini");
-      const msg = geminiQuotaRecentlyHit()
+      const { geminiQuotaRecentlyHit, geminiStatus } = await import("@/lib/gemini");
+      const off = (await geminiStatus()) !== "on";
+      const msg = off
+        ? "The AI service is switched off (Admin → Settings → AI service). Turn it on to draft translations, or type them in by hand."
+        : geminiQuotaRecentlyHit()
         ? "The translation service (Gemini) has run out of credits — top up in Google AI Studio, then try again. You can also type translations in by hand."
         : isMissingAnthropicCredentials(e) ? "No translation service is set up on this server — you can type translations in by hand." : "Translation failed — try again in a moment.";
       return NextResponse.json({ error: msg }, { status: 502 });

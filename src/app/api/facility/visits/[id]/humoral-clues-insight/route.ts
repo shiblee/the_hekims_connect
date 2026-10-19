@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { formatAge } from "@/lib/age";
-import { generateHumoralClues, geminiQuotaRecentlyHit } from "@/lib/gemini";
+import { generateHumoralClues, geminiUnavailableReason } from "@/lib/gemini";
 
 async function resolveFacilityId(auth: { id: string; type: "facility" | "patient" | "staff" }): Promise<string | null> {
   if (auth.type === "facility") return auth.id;
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     { ...visit.humoralAssessment, breakdown }
   );
 
-  if (!clue) return NextResponse.json({ clue: null, unavailable: true, reason: geminiQuotaRecentlyHit() ? "quota" : "unavailable" });
+  if (!clue) return NextResponse.json({ clue: null, unavailable: true, reason: await geminiUnavailableReason() });
 
   await db.humoralAssessment.update({
     where: { visitId: id },

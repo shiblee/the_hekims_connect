@@ -108,7 +108,12 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       // Work out what didn't come back, and why.
       const rReason = r.status === "rejected" ? "error" : r.value.routing ? null : (r.value.reason || "unavailable");
       const cReason = c.status === "rejected" ? "error" : c.value.clue ? null : (c.value.reason || "unavailable");
-      if (rReason === "quota" || cReason === "quota") {
+      if (rReason === "off" || cReason === "off") {
+        msg.info(
+          "Hakeem Insight is switched off",
+          "An administrator has turned off the AI service. Everything else on this page keeps working.",
+        );
+      } else if (rReason === "quota" || cReason === "quota") {
         msg.warning(
           "Hakeem Insight is paused — its AI credits have run out",
           "The Google Gemini account behind Hakeem Insight has used up its prepaid credits. An administrator can top it up in Google AI Studio; everything else on this page keeps working.",

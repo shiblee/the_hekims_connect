@@ -14,6 +14,7 @@ import { CatalogAssistantControls, CatalogAssistantLog, type CatalogAssistantCon
 import { SupplementProfilesStatus } from "@/components/admin/supplement-profile-dialog";
 import { cn } from "@/lib/utils";
 import { VITALS_RANGE_FIELDS, type VitalsRangeField } from "@/lib/vitals-ranges";
+import { AiServiceCard } from "@/components/admin/ai-service-card";
 
 interface SettingRow { id: string; category: string; key: string; value: string; updatedAt: string }
 
@@ -336,6 +337,7 @@ export default function SettingsPage() {
                   })
                 ) : selected === "general" ? (
                   <div className="space-y-5">
+                    <AiServiceCard />
                     {GENERAL_GROUP.filter((c) => settings.some((s) => s.category === c)).map((c) => {
                       const rows = settings.filter((s) => s.category === c).sort((a, b) => orderOf(a.key) - orderOf(b.key));
                       const switches = rows.filter((s) => BOOLEAN_KEYS.has(s.key));
