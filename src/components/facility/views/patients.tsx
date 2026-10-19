@@ -101,15 +101,15 @@ export function PatientsView() {
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-60 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, mobile or patient code…"
-            className="pl-9 pr-9 bg-background/60"
+            className="ps-9 pe-9 bg-background/60"
           />
           {search && (
-            <button type="button" onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={() => setSearch("")} aria-label="Clear search" className="absolute end-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           )}
@@ -133,7 +133,7 @@ export function PatientsView() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
       ) : loadError ? (
         <LoadFailed what="patients" detail={loadError} onRetry={load} />
       ) : shown.length === 0 ? (
@@ -206,7 +206,7 @@ export function PatientsView() {
                 </div>
 
                 {/* Stage + next action */}
-                <div className="flex items-center gap-2 sm:w-[19rem] sm:justify-end ml-auto">
+                <div className="flex items-center gap-2 sm:w-[19rem] sm:justify-end ms-auto">
                   {st ? (
                     <>
                       <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap", st.tone)}>

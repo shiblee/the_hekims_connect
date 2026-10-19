@@ -31,7 +31,7 @@ export function ReferralLine({ visits, onEdit, editHref, className }: { onEdit?:
           · <span className="text-foreground">{r.reason}</span>
           {r.notes && <> · Notes: <span className="text-foreground">{r.notes}</span></>}
         </span>
-        <span className="ml-auto shrink-0 text-[13px] text-muted-foreground whitespace-nowrap">{v.visitCode ? `${v.visitCode} · ` : ""}{when}</span>
+        <span className="ms-auto shrink-0 text-[13px] text-muted-foreground whitespace-nowrap">{v.visitCode ? `${v.visitCode} · ` : ""}{when}</span>
       </div>
     );
   };
@@ -109,7 +109,7 @@ export function TriageFindingsLine({ visit, editHref, className }: {
       </span>
 
       {editHref && (
-        <Link href={editHref} className="ml-auto shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">
+        <Link href={editHref} className="ms-auto shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">
           <Pencil className="h-3 w-3" /> Edit in Clinical Record
         </Link>
       )}

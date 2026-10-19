@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { LanguageSelector } from "@/components/shared/language-selector";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { avatarGradient, initials } from "@/lib/avatar";
@@ -16,13 +18,13 @@ import {
 
 type Tab = "dashboard" | "records" | "profile" | "appointments" | "messages" | "prescriptions";
 
-const NAV: { id: Tab; label: string; icon: any }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "records", label: "My Records", icon: FileImage },
-  { id: "profile", label: "Medical Profile", icon: ClipboardList },
-  { id: "appointments", label: "Appointments", icon: CalendarDays },
-  { id: "messages", label: "Messages", icon: MessageSquare },
-  { id: "prescriptions", label: "Prescriptions", icon: FileText },
+const NAV: { id: Tab; icon: any }[] = [
+  { id: "dashboard", icon: LayoutDashboard },
+  { id: "records", icon: FileImage },
+  { id: "profile", icon: ClipboardList },
+  { id: "appointments", icon: CalendarDays },
+  { id: "messages", icon: MessageSquare },
+  { id: "prescriptions", icon: FileText },
 ];
 
 export function PatientShell({ children }: { children: React.ReactNode }) {
@@ -33,6 +35,8 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   const active = (pathname.split("/")[2] || "dashboard") as Tab;
   const [mobileNav, setMobileNav] = useState(false);
   const [unread, setUnread] = useState(0);
+  const t = useTranslations("patient.shell");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     fetch("/api/messages/conversations", { headers: { "x-hekim-auth": localStorage.getItem("hekims-connect-token") || "" } })
@@ -50,8 +54,8 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:sticky top-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform lg:translate-x-0",
-        mobileNav ? "translate-x-0" : "-translate-x-full"
+        "fixed start-0 lg:sticky top-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-e border-sidebar-border flex flex-col transition-transform lg:translate-x-0 lg:rtl:translate-x-0",
+        mobileNav ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
       )}>
         <div className="p-4 border-b border-sidebar-border">
           <BrandLogo size={34} />
@@ -69,12 +73,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <n.icon className="h-4 w-4 shrink-0" />
-                {n.label}
+                {t(`nav_${n.id}`)}
                 {n.id === "messages" && unread > 0 && (
-                  <Badge className="ml-auto h-5 px-1.5 text-[10px] bg-primary text-primary-foreground">{unread}</Badge>
+                  <Badge className="ms-auto h-5 px-1.5 text-[10px] bg-primary text-primary-foreground">{unread}</Badge>
                 )}
                 {n.id === "profile" && (!patient.familyHistory || !patient.medicalHistory) && (
-                  <Badge className="ml-auto h-5 px-1.5 text-[10px] bg-accent text-accent-foreground">!</Badge>
+                  <Badge className="ms-auto h-5 px-1.5 text-[10px] bg-accent text-accent-foreground">!</Badge>
                 )}
               </button>
             ))}
@@ -82,7 +86,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
           <div className="mt-6 px-3">
             <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => go("appointments")}>
-              <CalendarDays className="mr-2 h-4 w-4" /> Book Appointment
+              <CalendarDays className="me-2 h-4 w-4" /> {t("book")}
             </Button>
           </div>
         </ScrollArea>
@@ -94,11 +98,11 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{patient.name}</p>
-              <p className="text-xs text-muted-foreground truncate">Patient</p>
+              <p className="text-xs text-muted-foreground truncate">{t("patient")}</p>
             </div>
           </div>
           <button onClick={onLogout} className="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
-            <LogOut className="h-4 w-4" /> Logout
+            <LogOut className="h-4 w-4 rtl:rotate-180" /> {tc("logout")}
           </button>
         </div>
       </aside>
@@ -109,19 +113,20 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-20 glass border-b border-border">
           <div className="flex items-center gap-3 px-4 lg:px-6 py-3">
-            <button className="lg:hidden p-2" onClick={() => setMobileNav(true)}>
+            <button className="lg:hidden p-2" aria-label={t("open_menu")} onClick={() => setMobileNav(true)}>
               <LayoutDashboard className="h-5 w-5" />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="font-serif text-lg lg:text-xl font-bold truncate">Hello, {patient.name.split(" ")[0]} 👋</h1>
+              <h1 className="font-serif text-lg lg:text-xl font-bold truncate">{t("hello", { name: patient.name.split(" ")[0] })} 👋</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                {patient.mizaj ? <>Mizaj: <span className="text-accent">{patient.mizaj}</span> · </> : null}
-                {patient.bloodGroup ? `Blood ${patient.bloodGroup} · ` : ""}Your healing journey, harmonised.
+                {patient.mizaj ? <>{t("mizaj")} <span className="text-accent">{patient.mizaj}</span> · </> : null}
+                {patient.bloodGroup ? `${t("blood", { group: patient.bloodGroup })} · ` : ""}{t("tagline")}
               </p>
             </div>
-            <Button variant="ghost" size="icon" className="relative" onClick={() => go("messages")}>
+            <LanguageSelector compact />
+            <Button variant="ghost" size="icon" className="relative" aria-label={t("messages")} onClick={() => go("messages")}>
               <Bell className="h-5 w-5" />
-              {unread > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />}
+              {unread > 0 && <span className="absolute top-1.5 end-1.5 h-2 w-2 rounded-full bg-accent" />}
             </Button>
           </div>
         </header>

@@ -95,7 +95,7 @@ export function LearningCenter({ isOwner = false }: { isOwner?: boolean }) {
           {clinic.staff.length > 0 && clinic.publishedTours > 0 && (
             <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full min-w-[520px] text-sm">
-                <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <tr><th className="px-3 py-2">Staff</th><th className="px-3 py-2">Finished</th><th className="px-3 py-2">In progress</th><th className="px-3 py-2">Skipped</th><th className="px-3 py-2">Last activity</th></tr>
                 </thead>
                 <tbody className="divide-y divide-border">

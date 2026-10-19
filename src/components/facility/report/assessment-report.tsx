@@ -165,7 +165,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                   <p className="mt-1.5 text-[10pt] italic text-[#4b5563]">{b.slogan}</p>
                   <p className="text-[9.5pt] text-[#0f766e]">{b.website_url.replace(/^https?:\/\//, "")}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <h1 className="font-serif text-[19pt] font-bold leading-tight text-[#111827]">{b.report_title}</h1>
                   <p className="text-[10.5pt] text-[#4b5563]">{b.report_subtitle}</p>
                 </div>
@@ -279,16 +279,16 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                       </p>
                     </div>
                     <table className="w-full text-[10pt] border-collapse">
-                      <thead><tr className="text-left text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
-                        <th className="py-1 pr-2 font-semibold">Complaint</th><th className="py-1 pr-2 font-semibold">Duration</th><th className="py-1 pr-2 font-semibold">Severity</th><th className="py-1 pr-2 font-semibold">Worse with (Muharrikat)</th><th className="py-1 font-semibold">Better with (Musakkinat)</th>
+                      <thead><tr className="text-start text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
+                        <th className="py-1 pe-2 font-semibold">Complaint</th><th className="py-1 pe-2 font-semibold">Duration</th><th className="py-1 pe-2 font-semibold">Severity</th><th className="py-1 pe-2 font-semibold">Worse with (Muharrikat)</th><th className="py-1 font-semibold">Better with (Musakkinat)</th>
                       </tr></thead>
                       <tbody>
                         {data.complaints.map((c: R, i: number) => (
                           <tr key={i} className="align-top border-b border-[#f3f4f6]">
-                            <td className="py-1 pr-2 font-medium">{c.chiefComplaintLabel}{i === 0 && <span className="ml-1 text-[8.5pt] text-[#0f766e]">PRIMARY</span>}{c.clinicalNotes && <div className="text-[9pt] text-[#6b7280] font-normal">{c.clinicalNotes}</div>}</td>
-                            <td className="py-1 pr-2">{c.onsetValue != null ? `${c.onsetValue} ${c.onsetUnit || ""}` : <Dim>Not recorded</Dim>}</td>
-                            <td className="py-1 pr-2">{c.severityScore != null ? `${c.severityScore}/10${sev(c.severityScore) ? ` · ${sev(c.severityScore)}` : ""}` : <Dim>Not recorded</Dim>}</td>
-                            <td className="py-1 pr-2">{c.aggravatingFactors.length ? c.aggravatingFactors.join(", ") : <Dim>None recorded</Dim>}</td>
+                            <td className="py-1 pe-2 font-medium">{c.chiefComplaintLabel}{i === 0 && <span className="ms-1 text-[8.5pt] text-[#0f766e]">PRIMARY</span>}{c.clinicalNotes && <div className="text-[9pt] text-[#6b7280] font-normal">{c.clinicalNotes}</div>}</td>
+                            <td className="py-1 pe-2">{c.onsetValue != null ? `${c.onsetValue} ${c.onsetUnit || ""}` : <Dim>Not recorded</Dim>}</td>
+                            <td className="py-1 pe-2">{c.severityScore != null ? `${c.severityScore}/10${sev(c.severityScore) ? ` · ${sev(c.severityScore)}` : ""}` : <Dim>Not recorded</Dim>}</td>
+                            <td className="py-1 pe-2">{c.aggravatingFactors.length ? c.aggravatingFactors.join(", ") : <Dim>None recorded</Dim>}</td>
                             <td className="py-1">{c.relievingFactors.length ? c.relievingFactors.join(", ") : <Dim>None recorded</Dim>}</td>
                           </tr>
                         ))}
@@ -304,7 +304,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                   ]} />
                 )}
                 {data.intake?.narrative && (
-                  <blockquote className="rpt-keep mt-2 border-l-4 border-[#d1d5db] pl-3 text-[10.5pt] italic text-[#374151]">
+                  <blockquote className="rpt-keep mt-2 border-s-4 border-[#d1d5db] ps-3 text-[10.5pt] italic text-[#374151]">
                     <span className="not-italic text-[9pt] uppercase tracking-wide text-[#6b7280] block">In the patient&apos;s own words</span>
                     “{data.intake.narrative}”
                   </blockquote>
@@ -375,7 +375,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                               <li key={r.label} className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 ${r.primary ? "border-[#059669] bg-[#ecfdf5]" : "border-[#e5e7eb] bg-white"}`}>
                                 <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8.5pt] font-bold ${r.primary ? "bg-[#059669] text-white" : "border border-[#059669] text-[#059669]"}`}>{i + 1}</span>
                                 <span className="min-w-0">
-                                  <span className="block text-[10.5pt] font-semibold text-[#111827]">{r.label}{r.primary && <span className="ml-1.5 rounded bg-[#059669] px-1.5 py-px text-[7.5pt] font-bold tracking-wide text-white align-middle">PRIMARY</span>}</span>
+                                  <span className="block text-[10.5pt] font-semibold text-[#111827]">{r.label}{r.primary && <span className="ms-1.5 rounded bg-[#059669] px-1.5 py-px text-[7.5pt] font-bold tracking-wide text-white align-middle">PRIMARY</span>}</span>
                                   {r.localTerms && <span className="block text-[9pt] text-[#6b7280]">{r.localTerms}</span>}
                                 </span>
                               </li>
@@ -397,7 +397,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                         {chron?.durationValue != null ? (
                           <>
                             <p className="text-[12pt] font-bold text-[#111827]">{chron.durationValue} {chron.durationUnit || ""}
-                              {course && <span className="ml-2 rounded px-1.5 py-0.5 text-[9pt] font-semibold" style={{ background: `${course.style.dot}22`, color: course.style.dot }}>{course.label} · {course.unani}</span>}
+                              {course && <span className="ms-2 rounded px-1.5 py-0.5 text-[9pt] font-semibold" style={{ background: `${course.style.dot}22`, color: course.style.dot }}>{course.label} · {course.unani}</span>}
                             </p>
                             <p className="text-[9.5pt] text-[#4b5563]">
                               {chron.onsetDate && <>Started around <b>{fmtDate(chron.onsetDate)}</b></>}
@@ -433,7 +433,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                   <>
                     {drift && (
                       <div className="rpt-keep mb-3 rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1.5">⚖️ Humoral drift from lifestyle{driftLead && <span className="ml-1 normal-case tracking-normal text-[#111827]">— leaning towards <b>{driftLead}</b></span>}</p>
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1.5">⚖️ Humoral drift from lifestyle{driftLead && <span className="ms-1 normal-case tracking-normal text-[#111827]">— leaning towards <b>{driftLead}</b></span>}</p>
                         <div className="grid grid-cols-4 gap-3">
                           {HUMOURS.map((h) => (
                             <div key={h.key}>
@@ -521,15 +521,15 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                           <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">💊 Ilaj-bil-Dawa — medicines prescribed</p>
                           {dos.prescriptions?.length ? (
                             <table className="w-full text-[10pt] border-collapse">
-                              <thead><tr className="text-left text-[8.5pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
-                                <th className="py-1 pr-2 font-semibold">#</th><th className="py-1 pr-2 font-semibold">Medicine</th><th className="py-1 pr-2 font-semibold">Form</th><th className="py-1 pr-2 font-semibold">Dose</th><th className="py-1 pr-2 font-semibold">Timing</th><th className="py-1 pr-2 font-semibold">Duration</th><th className="py-1 font-semibold">With</th>
+                              <thead><tr className="text-start text-[8.5pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
+                                <th className="py-1 pe-2 font-semibold">#</th><th className="py-1 pe-2 font-semibold">Medicine</th><th className="py-1 pe-2 font-semibold">Form</th><th className="py-1 pe-2 font-semibold">Dose</th><th className="py-1 pe-2 font-semibold">Timing</th><th className="py-1 pe-2 font-semibold">Duration</th><th className="py-1 font-semibold">With</th>
                               </tr></thead>
                               <tbody>
                                 {dos.prescriptions.map((rx: R, i: number) => (
                                   <tr key={i} className="align-top border-b border-[#f3f4f6]">
-                                    <td className="py-1 pr-2 text-[#6b7280]">{i + 1}</td>
-                                    <td className="py-1 pr-2 font-semibold">{rx.name}{rx.instructions && <div className="text-[9pt] font-normal text-[#6b7280]">{rx.instructions}</div>}</td>
-                                    <td className="py-1 pr-2">{rx.form || "—"}</td><td className="py-1 pr-2">{rx.dose || "—"}</td><td className="py-1 pr-2">{rx.timing || "—"}</td><td className="py-1 pr-2">{rx.duration || "—"}</td><td className="py-1">{rx.adjuvant || "—"}</td>
+                                    <td className="py-1 pe-2 text-[#6b7280]">{i + 1}</td>
+                                    <td className="py-1 pe-2 font-semibold">{rx.name}{rx.instructions && <div className="text-[9pt] font-normal text-[#6b7280]">{rx.instructions}</div>}</td>
+                                    <td className="py-1 pe-2">{rx.form || "—"}</td><td className="py-1 pe-2">{rx.dose || "—"}</td><td className="py-1 pe-2">{rx.timing || "—"}</td><td className="py-1 pe-2">{rx.duration || "—"}</td><td className="py-1">{rx.adjuvant || "—"}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -608,7 +608,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               {/* ---------------- Doctor notes ---------------- */}
               <Section emoji="🗒️" title="Doctor's observations & clinical notes" n={13} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
                 {data.residentNotes?.points?.length ? (
-                  <ul className="text-[10.5pt] space-y-0.5 list-disc pl-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
+                  <ul className="text-[10.5pt] space-y-0.5 list-disc ps-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
                 ) : <Empty>No clinical notes recorded.</Empty>}
                 <p className="mt-1 text-[9pt] text-[#6b7280]">Recorded by the clinical team, reproduced unchanged.</p>
               </Section>
@@ -644,7 +644,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     {l1 && (
                       <Insight title="L1 screening note" when={data.l1Screening?.updatedAt}>
                         <p className="font-medium">{l1.headline}</p>
-                        {l1.findings?.length > 0 && <ul className="list-disc pl-5">{l1.findings.map((f, i) => <li key={i}>{f.severity === "red" ? "▲ " : ""}{f.text}</li>)}</ul>}
+                        {l1.findings?.length > 0 && <ul className="list-disc ps-5">{l1.findings.map((f, i) => <li key={i}>{f.severity === "red" ? "▲ " : ""}{f.text}</li>)}</ul>}
                         {l1.priority && <p><Dim>Check first:</Dim> {l1.priority}</p>}
                         {l1.unani && <p><Dim>Unani note:</Dim> {l1.unani}</p>}
                       </Insight>
@@ -662,14 +662,14 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               <Section emoji="📁" title="Patient reports on file" n={16}>
                 {data.reports?.length ? (
                   <table className="w-full text-[10pt] border-collapse">
-                    <thead><tr className="text-left text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
-                      <th className="py-1 pr-2 font-semibold">Report</th><th className="py-1 pr-2 font-semibold">Date</th><th className="py-1 pr-2 font-semibold">Result</th><th className="py-1 font-semibold">Review</th>
+                    <thead><tr className="text-start text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
+                      <th className="py-1 pe-2 font-semibold">Report</th><th className="py-1 pe-2 font-semibold">Date</th><th className="py-1 pe-2 font-semibold">Result</th><th className="py-1 font-semibold">Review</th>
                     </tr></thead>
                     <tbody>{data.reports.map((r: R, i: number) => (
                       <tr key={i} className="align-top border-b border-[#f3f4f6]">
-                        <td className="py-1 pr-2"><b>{r.title}</b>{r.source && <span className="text-[#6b7280]"> · {r.source}</span>}{r.findings && <div className="text-[9pt] text-[#4b5563]">{r.findings}</div>}</td>
-                        <td className="py-1 pr-2">{fmtDate(r.reportDate || r.createdAt)}</td>
-                        <td className={`py-1 pr-2 ${r.resultFlag === "critical" || r.resultFlag === "abnormal" ? "font-semibold text-[#b91c1c]" : ""}`}>{r.resultFlag === "unknown" ? "Not stated" : r.resultFlag}</td>
+                        <td className="py-1 pe-2"><b>{r.title}</b>{r.source && <span className="text-[#6b7280]"> · {r.source}</span>}{r.findings && <div className="text-[9pt] text-[#4b5563]">{r.findings}</div>}</td>
+                        <td className="py-1 pe-2">{fmtDate(r.reportDate || r.createdAt)}</td>
+                        <td className={`py-1 pe-2 ${r.resultFlag === "critical" || r.resultFlag === "abnormal" ? "font-semibold text-[#b91c1c]" : ""}`}>{r.resultFlag === "unknown" ? "Not stated" : r.resultFlag}</td>
                         <td className="py-1">{r.status === "reviewed" ? `Reviewed${r.reviewedByName ? ` by ${r.reviewedByName}` : ""}` : "Awaiting doctor review"}</td>
                       </tr>
                     ))}</tbody>
@@ -724,7 +724,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
           <p className="text-sm font-semibold truncate">Assessment report · {p.name}</p>
           <p className="text-xs text-muted-foreground">{data.report.id} · generated {fmtDateTime(data.report.generatedAt)} · shows saved data only — Save Draft on the assessment, then refresh, to include new edits</p>
         </div>
-        <span className={`ml-auto rounded-full border px-2.5 py-1 text-xs font-semibold ${complete || data.referral ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10" : "border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10"}`}>
+        <span className={`ms-auto rounded-full border px-2.5 py-1 text-xs font-semibold ${complete || data.referral ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10" : "border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10"}`}>
           {complete || data.referral ? statusLabel : "Draft — incomplete"}
         </span>
         <Button variant="outline" size="sm" onClick={() => window.print()} title="Choose “Save as PDF” as the printer">
@@ -755,7 +755,7 @@ function Section({ title, n, meta, emoji, tone, children }: { title: string; n: 
         <span className="flex items-center gap-2">
           {emoji && <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12pt] ${senior ? "bg-[#ede9fe]" : "bg-[#f0fdfa]"}`} aria-hidden>{emoji}</span>}
           <span className={`font-serif text-[13pt] font-bold ${senior ? "text-[#5b21b6]" : "text-[#0f766e]"}`}>
-            <span className="text-[#9ca3af] font-sans text-[9.5pt] mr-1.5">{String(n).padStart(2, "0")}</span>{title}
+            <span className="text-[#9ca3af] font-sans text-[9.5pt] me-1.5">{String(n).padStart(2, "0")}</span>{title}
           </span>
         </span>
         {meta && <span className="text-[9pt] text-[#6b7280] font-normal">{meta}</span>}

@@ -64,7 +64,7 @@ export function PatientStageTracker({
                 aria-label={`${s.label} — ${status}`}
                 onClick={() => { if (clickable && s.href) go(s.href); }}
                 className={cn(
-                  "group relative flex items-center gap-2 rounded-full p-0.5 sm:pr-2.5 outline-none transition-colors shrink-0 whitespace-nowrap",
+                  "group relative flex items-center gap-2 rounded-full p-0.5 sm:pe-2.5 outline-none transition-colors shrink-0 whitespace-nowrap",
                   clickable ? "cursor-pointer hover:bg-muted/60 focus-visible:bg-muted/60" : "cursor-default",
                   variant === "active" && "bg-emerald-500/10",
                   variant === "warning" && "bg-amber-500/10",
@@ -99,9 +99,9 @@ export function PatientStageTracker({
                 <span
                   role="tooltip"
                   className={cn(
-                    "pointer-events-none absolute top-full z-30 mt-2 w-64 rounded-xl border border-border/60 bg-popover p-3 text-left shadow-lg",
+                    "pointer-events-none absolute top-full z-30 mt-2 w-64 rounded-xl border border-border/60 bg-popover p-3 text-start shadow-lg",
                     "opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0",
-                    i === 0 ? "left-0" : last ? "right-0" : "left-1/2 -translate-x-1/2",
+                    i === 0 ? "start-0" : last ? "end-0" : "left-1/2 -translate-x-1/2",
                   )}
                 >
                   <span className="flex items-center justify-between gap-2">
@@ -129,7 +129,7 @@ export function PatientStageTracker({
             </li>
           );
         })}
-        <li className="hidden lg:block shrink-0 pl-3 ml-1 border-l border-border/60 text-[13px] text-muted-foreground whitespace-nowrap">
+        <li className="hidden lg:block shrink-0 ps-3 ms-1 border-s border-border/60 text-[13px] text-muted-foreground whitespace-nowrap">
           Step <span className="font-semibold text-foreground">{activeIndex + 1}</span>/{steps.length}
         </li>
       </ol>

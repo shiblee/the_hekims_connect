@@ -150,8 +150,8 @@ export function LandingPage() {
         onMouseLeave={handleHeroLeave}
       >
         <ConnectorField className="absolute inset-0 h-full w-full opacity-90" mx={heroSmx} my={heroSmy} />
-        <div className="absolute -top-32 -right-32 h-[28rem] w-[28rem] rounded-full bg-primary/25 blur-3xl animate-pulse-slow" />
-        <div className="absolute -bottom-32 -left-32 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl animate-pulse-slow" style={{ animationDelay: "1.5s" }} />
+        <div className="absolute -top-32 -end-32 h-[28rem] w-[28rem] rounded-full bg-primary/25 blur-3xl animate-pulse-slow" />
+        <div className="absolute -bottom-32 -start-32 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl animate-pulse-slow" style={{ animationDelay: "1.5s" }} />
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-12 lg:py-16 w-full">
           <motion.div {...fadeUp} className="max-w-3xl mx-auto text-center">
             <h1 className="font-serif font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
@@ -239,7 +239,7 @@ export function LandingPage() {
                   {/* soft glow that sweeps in on hover */}
                   <div
                     className={cn(
-                      "pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100",
+                      "pointer-events-none absolute -top-12 -end-12 h-32 w-32 rounded-full blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100",
                       f.accent === "teal" ? "bg-primary/25" : "bg-accent/25"
                     )}
                   />
@@ -362,7 +362,7 @@ export function LandingPage() {
                       onClick={s.a}
                       className="group relative h-full p-7 overflow-hidden border-border/50 bg-card/60 cursor-pointer transition-all duration-300 hover:border-primary/60 hover:shadow-[0_16px_44px_-10px_oklch(0.72_0.13_175/0.4)]"
                     >
-                      <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-primary/20 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                      <div className="pointer-events-none absolute -top-10 -end-10 h-28 w-28 rounded-full bg-primary/20 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                       <div className="relative flex items-center justify-between mb-4">
                         <div className="h-11 w-11 rounded-full bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{i + 1}</div>
                         <s.icon className="h-6 w-6 text-primary/50" />
@@ -385,7 +385,7 @@ export function LandingPage() {
                       onClick={s.a}
                       className="group relative h-full p-7 overflow-hidden border-border/50 bg-card/60 cursor-pointer transition-all duration-300 hover:border-accent/60 hover:shadow-[0_16px_44px_-10px_oklch(0.78_0.14_80/0.4)]"
                     >
-                      <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-accent/20 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                      <div className="pointer-events-none absolute -top-10 -end-10 h-28 w-28 rounded-full bg-accent/20 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                       <div className="relative flex items-center justify-between mb-4">
                         <div className="h-11 w-11 rounded-full bg-accent text-accent-foreground font-bold text-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{i + 1}</div>
                         <s.icon className="h-6 w-6 text-accent/50" />
@@ -429,7 +429,7 @@ export function LandingPage() {
                       whileTap={{ y: -3 }}
                     >
                       <Card className="group relative h-full p-7 overflow-hidden border-border bg-card/60 cursor-default transition-all duration-300 hover:border-accent/60 hover:shadow-[0_16px_44px_-10px_oklch(0.78_0.14_80/0.35)]">
-                        <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-accent/20 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                        <div className="pointer-events-none absolute -top-10 -end-10 h-28 w-28 rounded-full bg-accent/20 blur-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                         <Quote className="relative h-8 w-8 text-primary/40 mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:text-primary/70" />
                         <p className="relative text-lg text-foreground/90 leading-relaxed mb-5">{t(`landing.testimonials.${tm.slug}.quote`)}</p>
                         <div className="relative flex items-center gap-3">
@@ -483,8 +483,8 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp}>
             <Card className="relative overflow-hidden p-10 lg:p-14 text-center border-primary/30 bg-gradient-to-br from-card via-card to-primary/5">
-              <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-primary/15 blur-3xl" />
-              <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-accent/15 blur-3xl" />
+              <div className="absolute -top-20 -end-20 h-60 w-60 rounded-full bg-primary/15 blur-3xl" />
+              <div className="absolute -bottom-20 -start-20 h-60 w-60 rounded-full bg-accent/15 blur-3xl" />
               <div className="relative">
                 <Leaf className="mx-auto h-12 w-12 text-primary mb-5 animate-pulse-slow" />
                 <h2 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight">

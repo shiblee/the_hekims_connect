@@ -180,7 +180,7 @@ function MizajStage({ patientId }: { patientId: string }) {
       {/* Same action bar as Stage 2 (Clinical Record), so every stage ends the same way; its messages sit right above it. */}
       <NoticeSlot state={msg} className="mb-3" />
       <Card data-tour="stage.actions" className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
-        <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap ms-auto">
           {latestVisit && (
             <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report (opens in a new tab; shows saved data — Save Draft first to include new edits)">
               <Printer className="h-3.5 w-3.5" />

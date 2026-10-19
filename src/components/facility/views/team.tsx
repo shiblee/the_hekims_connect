@@ -205,13 +205,13 @@ export function TeamView() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} data-tour="staff.search" placeholder="Search by name, staff ID, email or phone…" className="pl-9 bg-background/60 max-w-md" />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} data-tour="staff.search" placeholder="Search by name, staff ID, email or phone…" className="ps-9 bg-background/60 max-w-md" />
       </div>
       <NoticeSlot state={msg} />
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
       ) : staff.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <UserCog className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
@@ -220,7 +220,7 @@ export function TeamView() {
       ) : (
         <div data-tour="staff.list" className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-2.5">Staff</th>
                 <th className="px-3 py-2.5">Type &amp; designation</th>
@@ -228,7 +228,7 @@ export function TeamView() {
                 <th className="px-3 py-2.5">Contact</th>
                 <th className="px-3 py-2.5">Last login</th>
                 <th className="px-3 py-2.5 text-center">Active</th>
-                <th className="px-3 py-2.5 text-right">Actions</th>
+                <th className="px-3 py-2.5 text-end">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

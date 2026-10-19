@@ -413,8 +413,8 @@ export function FacilityProfileSetup() {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-primary/15 via-background to-accent/10">
-      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/20 blur-[100px]" />
-      <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-accent/20 blur-[100px]" />
+      <div className="pointer-events-none absolute -top-32 -start-32 h-96 w-96 rounded-full bg-primary/20 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-32 -end-24 h-96 w-96 rounded-full bg-accent/20 blur-[100px]" />
       <div className="pointer-events-none absolute inset-0 bg-background/30" />
 
       <div className="relative z-10 min-h-full flex flex-col">
@@ -422,7 +422,7 @@ export function FacilityProfileSetup() {
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <BrandLogo size={32} />
             <Button variant="ghost" size="sm" onClick={onLogout} className="text-muted-foreground hover:text-foreground">
-              <LogOut className="h-4 w-4 mr-1.5" /> Logout
+              <LogOut className="h-4 w-4 me-1.5" /> Logout
             </Button>
           </div>
         </header>
@@ -473,7 +473,7 @@ export function FacilityProfileSetup() {
             )}
 
             <Card className="relative overflow-hidden p-6 sm:p-9 border-border/40 bg-card/95 backdrop-blur-sm shadow-2xl shadow-black/20 rounded-2xl">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+              <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
               {metaLoading ? (
                 <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm py-16">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -523,7 +523,7 @@ export function FacilityProfileSetup() {
                                       whileTap={{ scale: 0.97 }}
                                       onClick={() => set("facilityType", t)}
                                       className={cn(
-                                        "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-left transition-colors",
+                                        "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-start transition-colors",
                                         active ? "border-primary bg-primary/10 text-primary font-medium shadow-sm" : "border-border/60 bg-background/60 text-muted-foreground hover:border-primary/40"
                                       )}
                                     >
@@ -565,9 +565,9 @@ export function FacilityProfileSetup() {
                               ) : hfrIsTaken ? (
                                 <FieldError message="This HFR Number is already registered to another facility. Check the number, or contact support if it is yours." />
                               ) : HFR_PATTERN.test(form.hfrNumber) ? (
-                                <p className="mt-1.5 ml-1 flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> Valid format</p>
+                                <p className="mt-1.5 ms-1 flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> Valid format</p>
                               ) : (
-                                <p className="text-xs text-muted-foreground mt-1.5 ml-1">
+                                <p className="text-xs text-muted-foreground mt-1.5 ms-1">
                                   IN followed by 10 digits, e.g. IN0123456789 ·{" "}
                                   <a href="https://facility.abdm.gov.in/" target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">What&apos;s this?</a>{" "}
                                   — your Health Facility Registry ID from ABDM
@@ -658,12 +658,12 @@ export function FacilityProfileSetup() {
                                 <div className="mt-3 border border-border/60 rounded-xl overflow-hidden">
                                   <table className="w-full table-fixed text-sm">
                                     <thead>
-                                      <tr className="border-b border-border/50 text-left text-muted-foreground bg-background/40">
+                                      <tr className="border-b border-border/50 text-start text-muted-foreground bg-background/40">
                                         <th className="w-12 px-1.5 py-2 font-medium" rowSpan={2}>Day</th>
                                         <th className="px-1 py-2 font-medium text-center" colSpan={2}>Shift 1</th>
                                         <th className="px-1 py-2 font-medium text-center" colSpan={2}>Shift 2 (optional)</th>
                                       </tr>
-                                      <tr className="border-b border-border/50 text-left text-muted-foreground bg-background/40">
+                                      <tr className="border-b border-border/50 text-start text-muted-foreground bg-background/40">
                                         <th className="px-1 py-1.5 font-medium text-[11px]">Open</th>
                                         <th className="px-1 py-1.5 font-medium text-[11px]">Close</th>
                                         <th className="px-1 py-1.5 font-medium text-[11px]">Open</th>
@@ -791,18 +791,18 @@ export function FacilityProfileSetup() {
                               {/* Free trial — what the clinic gets now */}
                               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24 }}
                                 className="relative flex flex-col rounded-2xl border-2 border-primary bg-primary/[0.06] p-5">
-                                <span className="absolute -top-2.5 left-4 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">Your plan now</span>
+                                <span className="absolute -top-2.5 start-4 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">Your plan now</span>
                                 <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Gift className="h-4 w-4" /> Free trial</div>
                                 <p className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-bold tabular-nums">{money(0)}</span><span className="text-sm text-muted-foreground">for {months} months</span></p>
                                 {/* Trial timeline: today → end date */}
                                 <div className="mt-4">
                                   <div className="relative h-1.5 rounded-full bg-primary/20">
-                                    <span className="absolute left-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-primary ring-2 ring-background" />
-                                    <span className="absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-primary bg-background" />
+                                    <span className="absolute start-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-primary ring-2 ring-background" />
+                                    <span className="absolute end-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-primary bg-background" />
                                   </div>
                                   <div className="mt-1.5 flex justify-between text-xs">
                                     <span><b className="font-semibold">Today</b><span className="block text-muted-foreground">{fmt(planDates.start)}</span></span>
-                                    <span className="text-right"><b className="font-semibold">Trial ends</b><span className="block text-muted-foreground">{fmt(planDates.end)}</span></span>
+                                    <span className="text-end"><b className="font-semibold">Trial ends</b><span className="block text-muted-foreground">{fmt(planDates.end)}</span></span>
                                   </div>
                                 </div>
                                 <ul className="mt-4 space-y-1.5 text-sm">
@@ -895,19 +895,19 @@ export function FacilityProfileSetup() {
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-input">
                     {step > 0 ? (
                       <Button variant="outline" size="lg" onClick={goBack} disabled={submitting}>
-                        <ChevronLeft className="h-4 w-4 mr-1" /> Back
+                        <ChevronLeft className="h-4 w-4 me-1" /> Back
                       </Button>
                     ) : <span />}
                     {step < 5 ? (
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
                         <Button data-tour="setup.continue" onClick={goNext} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
-                          {step === 4 ? "Review" : "Continue"} <ChevronRight className="h-5 w-5 ml-1" />
+                          {step === 4 ? "Review" : "Continue"} <ChevronRight className="h-5 w-5 ms-1" />
                         </Button>
                       </motion.div>
                     ) : (
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
                         <Button onClick={submit} disabled={submitting} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
-                          {submitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <CheckCircle2 className="h-5 w-5 mr-1.5" />}
+                          {submitting ? <Loader2 className="h-4 w-4 me-1.5 animate-spin" /> : <CheckCircle2 className="h-5 w-5 me-1.5" />}
                           Complete profile
                         </Button>
                       </motion.div>

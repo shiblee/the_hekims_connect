@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { appStringFallbacks } from "@/lib/i18n/app-strings";
 
 type Bundle = Record<string, unknown>;
 
@@ -54,6 +55,9 @@ export async function getPublishedMessages(locale: string): Promise<Bundle> {
   ]);
   const byKey = new Map(published.map((r) => [r.key.key, r.text]));
   const merged = allKeys.map((k) => ({ key: k.key, text: byKey.get(k.key) ?? k.sourceText }));
+  // App texts not yet in the store (e.g. just deployed, before seeding) come from the code.
+  const inStore = new Set(allKeys.map((k) => k.key));
+  for (const f of appStringFallbacks(locale)) if (!inStore.has(f.key)) merged.push(f);
 
   const messages = toNested(merged);
   messageCache.set(locale, { version, messages });

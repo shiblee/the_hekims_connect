@@ -85,7 +85,7 @@ function buildQuickFields(entryBounds: Record<string, [number, number]>): Record
 }
 
 function unitAdornment(unit: string) {
-  return <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground pointer-events-none">{unit}</span>;
+  return <span className="absolute end-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground pointer-events-none">{unit}</span>;
 }
 
 /** Compact unit dropdown; doesn't open the card it sits on. */
@@ -502,7 +502,7 @@ export function VitalsPanel({
                   {t.status.label}
                 </span>
               ) : <span />}
-              {t.latestVisit && <span className="truncate text-right group-hover:hidden" title={when(t.latestVisit.visitDate)}>{whenShort(t.latestVisit.visitDate)}</span>}
+              {t.latestVisit && <span className="truncate text-end group-hover:hidden" title={when(t.latestVisit.visitDate)}>{whenShort(t.latestVisit.visitDate)}</span>}
               <span className="hidden group-hover:flex items-center gap-0.5 text-primary font-medium whitespace-nowrap">View details <ChevronRight className="h-3 w-3" /></span>
             </div>
           </>
@@ -578,7 +578,7 @@ export function VitalsPanel({
                     <span className="block text-[13px] font-normal text-muted-foreground">{metric.unani}</span>
                   </span>
                   {status && tone && (
-                    <span className={cn("ml-auto mr-6 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-semibold", tone.text, tone.bg, tone.border)}>
+                    <span className={cn("ms-auto me-6 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-semibold", tone.text, tone.bg, tone.border)}>
                       <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} /> {status.label}
                     </span>
                   )}
@@ -871,7 +871,7 @@ function RangeBar({ value, scale, normal, tone, label, large, fmt }: {
         <div className="absolute inset-y-0 rounded-full bg-emerald-500/30" style={{ left: `${pct(normal[0])}%`, width: `${pct(normal[1]) - pct(normal[0])}%` }} />
         {marker != null && (off ? (
           <span
-            className={cn("absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full ring-2 ring-background text-white", large ? "h-5 w-5" : "h-3.5 w-3.5", off === "below" ? "left-0 -translate-x-1/4" : "right-0 translate-x-1/4")}
+            className={cn("absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full ring-2 ring-background text-white", large ? "h-5 w-5" : "h-3.5 w-3.5", off === "below" ? "start-0 -translate-x-1/4" : "end-0 translate-x-1/4")}
             style={{ background: color }} aria-label={`Reading ${off} the scale`}>
             <Arrow className={large ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} />
           </span>
@@ -889,7 +889,7 @@ function RangeBar({ value, scale, normal, tone, label, large, fmt }: {
             style={{ left: `${t.at}%` }}>{t.text}</span>
         ))}
       </div>
-      {large && value != null && <span className="w-12 shrink-0 text-right text-[13px] font-semibold tabular-nums">{fmtN(value)}</span>}
+      {large && value != null && <span className="w-12 shrink-0 text-end text-[13px] font-semibold tabular-nums">{fmtN(value)}</span>}
     </div>
   );
 }

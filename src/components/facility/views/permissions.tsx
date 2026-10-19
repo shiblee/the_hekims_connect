@@ -100,7 +100,7 @@ export function PermissionsView() {
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-muted/40 text-xs">
                 <tr>
-                  <th className="sticky left-0 z-[2] bg-card shadow-[1px_0_0_var(--border)] min-w-[13rem] px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-muted-foreground"><span className="absolute inset-0 -z-10 bg-muted/40" />Permission</th>
+                  <th className="sticky start-0 z-[2] bg-card shadow-[1px_0_0_var(--border)] min-w-[13rem] px-3 py-2.5 text-start font-semibold uppercase tracking-wide text-muted-foreground"><span className="absolute inset-0 -z-10 bg-muted/40" />Permission</th>
                   {roles.map((r) => (
                     <th key={r.role} className="min-w-[6.5rem] px-2 py-2.5 text-center font-semibold">
                       <span className="block">{r.role}</span>
@@ -112,10 +112,10 @@ export function PermissionsView() {
               <tbody className="divide-y divide-border">
                 {GROUPS.map((g) => (
                   <Fragment key={g}>
-                    <tr className="bg-muted/20"><td colSpan={roles.length + 1} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span className="sticky left-3">{g}</span></td></tr>
+                    <tr className="bg-muted/20"><td colSpan={roles.length + 1} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span className="sticky start-3">{g}</span></td></tr>
                     {PERMISSIONS.filter((p) => p.group === g).map((p) => (
                       <tr key={p.key} className="hover:bg-muted/20">
-                        <td className="sticky left-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2"><p className="font-medium">{p.label}</p><p className="text-xs text-muted-foreground">{p.hint}</p></td>
+                        <td className="sticky start-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2"><p className="font-medium">{p.label}</p><p className="text-xs text-muted-foreground">{p.hint}</p></td>
                         {roles.map((r) => (
                           <td key={r.role} className="px-2 py-2 text-center">
                             <Checkbox checked={(draft[r.role] || []).includes(p.key)} onCheckedChange={() => toggleRole(r.role, p.key)} aria-label={`${r.role}: ${p.label}`} />
@@ -126,7 +126,7 @@ export function PermissionsView() {
                   </Fragment>
                 ))}
                 <tr>
-                  <td className="sticky left-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2 text-xs text-muted-foreground">Standard permissions</td>
+                  <td className="sticky start-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2 text-xs text-muted-foreground">Standard permissions</td>
                   {roles.map((r) => (
                     <td key={r.role} className="px-2 py-2 text-center">
                       {r.customised && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => resetRole(r.role)}><RotateCcw className="h-3 w-3" /> Reset</Button>}
@@ -144,8 +144,8 @@ export function PermissionsView() {
       ) : (
         <div data-tour="permissions.people" className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <tr><th className="px-3 py-2.5">Staff</th><th className="px-3 py-2.5">Role</th><th className="px-3 py-2.5">Can do</th><th className="px-3 py-2.5 text-right">Actions</th></tr>
+            <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <tr><th className="px-3 py-2.5">Staff</th><th className="px-3 py-2.5">Role</th><th className="px-3 py-2.5">Can do</th><th className="px-3 py-2.5 text-end">Actions</th></tr>
             </thead>
             <tbody className="divide-y divide-border">
               {people.map((s) => (
@@ -154,9 +154,9 @@ export function PermissionsView() {
                   <td className="px-3 py-2.5"><Badge variant="outline">{s.role}</Badge></td>
                   <td className="px-3 py-2.5 text-xs">
                     <span className="font-medium">{s.effective.length} of {PERMISSIONS.length}</span>
-                    {(s.grants.length > 0 || s.revokes.length > 0) && <span className="ml-2 text-amber-700 dark:text-amber-400">adjusted for this person (+{s.grants.length} / −{s.revokes.length})</span>}
+                    {(s.grants.length > 0 || s.revokes.length > 0) && <span className="ms-2 text-amber-700 dark:text-amber-400">adjusted for this person (+{s.grants.length} / −{s.revokes.length})</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-right">
+                  <td className="px-3 py-2.5 text-end">
                     <Button size="sm" variant="ghost" className="h-8 px-2" disabled={s.self} title={s.self ? "You can't change your own permissions" : undefined} onClick={() => setPerson({ s, on: s.effective })}>
                       <KeyRound className="h-3.5 w-3.5" /> Set permissions
                     </Button>

@@ -135,7 +135,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
               possible beside the body map: seven rows (7×56 + 6×6 = 428px),
               three columns when there's room — so 18 regions fit without
               scrolling on a wide screen. Full names show on hover. */}
-          <div ref={listRef} className="grid @sm:grid-cols-2 @3xl:grid-cols-3 gap-1.5 max-h-[432px] overflow-y-auto p-0.5 pr-1.5 -m-0.5">
+          <div ref={listRef} className="grid @sm:grid-cols-2 @3xl:grid-cols-3 gap-1.5 max-h-[432px] overflow-y-auto p-0.5 pe-1.5 -m-0.5">
             {cards.map((r) => {
               const idx = selected.indexOf(r.label);
               const checked = idx >= 0;
@@ -148,7 +148,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
                   aria-pressed={checked}
                   title={r.localTerms ? `${r.label} — ${r.localTerms}` : r.label}
                   className={cn(
-                    "h-14 flex items-center justify-between gap-2.5 rounded-lg border px-3 py-1.5 text-left transition-colors",
+                    "h-14 flex items-center justify-between gap-2.5 rounded-lg border px-3 py-1.5 text-start transition-colors",
                     checked ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30"
                   )}
                 >

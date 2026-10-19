@@ -124,7 +124,7 @@ export function PatientSignatureCard({
               <span className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
                 <Camera className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </span>
-              <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-card">
+              <span className="absolute -bottom-0.5 -end-0.5 h-4 w-4 rounded-full bg-primary flex items-center justify-center ring-2 ring-card">
                 <Camera className="h-2 w-2 text-primary-foreground" />
               </span>
             </button>
@@ -135,7 +135,7 @@ export function PatientSignatureCard({
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="font-serif text-lg sm:text-xl font-bold tracking-tight leading-tight">{patient.name}</h1>
               {patient.patientCode && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 text-amber-700 dark:text-amber-400 border border-amber-400/30 font-mono text-xs pl-1.5 pr-1 py-0.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 text-amber-700 dark:text-amber-400 border border-amber-400/30 font-mono text-xs ps-1.5 pe-1 py-0.5">
                   <IdCard className="h-3 w-3" /> {patient.patientCode}
                   <CopyButton value={patient.patientCode} label="patient code" />
                 </span>
@@ -210,7 +210,7 @@ export function PatientSignatureCard({
           )}
           {(complaints.length > 0 || intake?.onsetTimeline) && (
             <>
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 ml-1"><Stethoscope className="h-3 w-3" /> Came in for</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 ms-1"><Stethoscope className="h-3 w-3" /> Came in for</span>
               {complaints.map((c) => (
                 <span key={c} className="rounded-full bg-primary/10 border border-primary/25 text-primary px-2 py-0.5 text-[13px] font-medium">{c}</span>
               ))}
@@ -224,7 +224,7 @@ export function PatientSignatureCard({
               type="button"
               onClick={() => setExpanded((v) => !v)}
               aria-expanded={expanded}
-              className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"
+              className="ms-auto inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"
             >
               {expanded ? "Fewer details" : "More details"}
               <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />

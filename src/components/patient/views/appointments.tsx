@@ -92,13 +92,13 @@ export function PatientAppointmentsView() {
       </Tabs>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
       ) : filtered.length === 0 ? (
         <Card className="p-10 border-dashed border-border bg-card/60 text-center">
           <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
           <p className="font-medium">No {tab} appointments</p>
           <p className="text-sm text-muted-foreground mb-4">Book a consultation to get started.</p>
-          <Button onClick={() => setOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90"><Plus className="h-4 w-4 mr-1" /> Book now</Button>
+          <Button onClick={() => setOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90"><Plus className="h-4 w-4 me-1" /> Book now</Button>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -139,13 +139,13 @@ export function PatientAppointmentsView() {
           <div className="space-y-4 py-2">
             <div>
               <Label className="mb-2 block">Choose a Facility</Label>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-48 overflow-y-auto pe-1">
                 {facilities.map((h) => (
                   <button
                     key={h.id}
                     onClick={() => setForm({ ...form, facilityId: h.id })}
                     className={cn(
-                      "w-full flex items-center gap-3 p-2.5 rounded-lg border transition-colors text-left",
+                      "w-full flex items-center gap-3 p-2.5 rounded-lg border transition-colors text-start",
                       form.facilityId === h.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/40 bg-background/40"
                     )}
                   >
@@ -156,7 +156,7 @@ export function PatientAppointmentsView() {
                       <p className="text-sm font-medium truncate">{h.facilityName}</p>
                       <p className="text-xs text-muted-foreground truncate">{h.specialization}</p>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-end shrink-0">
                       <p className="text-xs flex items-center gap-0.5 text-accent"><Star className="h-3 w-3 fill-accent" />{h.rating}</p>
                       <p className="text-[10px] text-muted-foreground">{h.experience}yrs</p>
                     </div>

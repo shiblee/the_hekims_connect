@@ -133,7 +133,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
   const answered = isAnswered(value);
 
   return (
-    <Wrap bare={bare} className={cn(bare ? "" : "p-4 border-border/50 bg-card/60 gap-3", !bare && (answered ? "border-l-2 border-l-emerald-500/60" : q.required && "border-l-2 border-l-amber-500/60"))}>
+    <Wrap bare={bare} className={cn(bare ? "" : "p-4 border-border/50 bg-card/60 gap-3", !bare && (answered ? "border-s-2 border-s-emerald-500/60" : q.required && "border-s-2 border-s-amber-500/60"))}>
       <div className="flex items-start gap-3">
         <span className={cn(
           "h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold",
@@ -147,7 +147,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
           )}
           <p className="text-base font-semibold leading-snug">
             {q.label}{q.required && <span className="text-destructive"> *</span>}
-            {q.labelLocal && <span className="ml-1.5 text-[13px] font-normal text-muted-foreground">· {q.labelLocal}</span>}
+            {q.labelLocal && <span className="ms-1.5 text-[13px] font-normal text-muted-foreground">· {q.labelLocal}</span>}
           </p>
           {q.helpText && <p className="text-[13px] text-muted-foreground mt-0.5">{q.helpText}</p>}
         </div>
@@ -167,7 +167,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
                 aria-pressed={on}
                 title={hint ? `Suggested — recorded earlier: ${hint}` : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors",
+                  "flex items-center gap-3 rounded-xl border px-3 py-2 text-start transition-colors",
                   on ? "border-emerald-500/40 bg-emerald-500/10" : hint ? "border-dashed border-primary/50 bg-primary/5 hover:border-primary" : "border-border/50 bg-background/40 hover:border-primary/30",
                 )}
               >
@@ -327,7 +327,7 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
               </button>
             );
           })}
-          <span className="hidden md:inline shrink-0 border-l border-border/60 pl-2 text-xs tabular-nums text-muted-foreground">{answeredN}/{all.length}</span>
+          <span className="hidden md:inline shrink-0 border-s border-border/60 ps-2 text-xs tabular-nums text-muted-foreground">{answeredN}/{all.length}</span>
         </div>
       )}
       <Card ref={headerRef} className="p-5 border-border/50 bg-card/60 gap-0">
@@ -371,7 +371,7 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
                 onClick={() => jump(p.key)}
                 title={`${i + 1}. ${p.label} — ${p.english} · ${a}/${t} answered`}
                 className={cn(
-                  "flex min-w-[6.5rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1 @3xl:gap-1.5 rounded-xl border px-1 @3xl:px-1.5 py-1.5 text-left transition-colors",
+                  "flex min-w-[6.5rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1 @3xl:gap-1.5 rounded-xl border px-1 @3xl:px-1.5 py-1.5 text-start transition-colors",
                   on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/40",
                 )}
               >
@@ -384,7 +384,7 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
                   <span className={cn("absolute inset-0 flex items-center justify-center", done ? "text-emerald-600 dark:text-emerald-400" : on ? "text-primary" : "text-muted-foreground")}>
                     <PillarIcon pillarKey={p.key} className="h-4 w-4" />
                   </span>
-                  {missing && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-amber-500" aria-label="Required question unanswered" />}
+                  {missing && <span className="absolute -end-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-amber-500" aria-label="Required question unanswered" />}
                 </span>
                 <span className="min-w-0">
                   <span className={cn("block truncate text-xs @3xl:text-[13px] font-semibold leading-tight", on && "text-primary")}>{SHORT[p.key]?.[0] ?? p.label}</span>
@@ -412,7 +412,7 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
         const archivedHere = view === "all" ? archived.filter((x) => x.pillarKey === p.key) : [];
         return (
           <section key={p.key} data-pillar={p.key} ref={(el) => { sectionRefs.current[p.key] = el; }} className="scroll-mt-24">
-            <Card className={cn("p-5 border-border/50 bg-card/60 gap-0 border-l-4 transition-colors", done ? "border-l-emerald-500/70" : "border-l-primary/40")}>
+            <Card className={cn("p-5 border-border/50 bg-card/60 gap-0 border-s-4 transition-colors", done ? "border-s-emerald-500/70" : "border-s-primary/40")}>
               <div className="flex items-center justify-between gap-3 pb-1">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", done ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-primary/10 text-primary")}>
@@ -490,7 +490,7 @@ export function AsbabDriftCard({ state }: { state: AsbabState }) {
               <div key={h.key} className="grid grid-cols-[70px_1fr_40px] items-center gap-2 text-[13px]">
                 <span className={cn(drift.dominant === h.key ? cn("font-semibold", h.text) : "text-muted-foreground")}>{h.label}</span>
                 <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full transition-all", h.bar)} style={{ width: `${drift.percent[h.key]}%` }} /></span>
-                <span className="text-right tabular-nums">{drift.percent[h.key]}%</span>
+                <span className="text-end tabular-nums">{drift.percent[h.key]}%</span>
               </div>
             ))}
           </div>

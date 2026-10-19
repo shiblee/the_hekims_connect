@@ -40,14 +40,14 @@ export function FloatingField({
 } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="relative">
-      {Icon && <Icon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />}
+      {Icon && <Icon className="absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />}
       <input
         id={id}
         placeholder=" "
         className={cn(
-          "peer h-14 w-full rounded-lg border bg-transparent pr-3.5 text-base font-medium text-foreground outline-none transition-colors",
-          Icon ? "pl-10" : "pl-3.5",
-          endAdornment && "pr-11",
+          "peer h-14 w-full rounded-lg border bg-transparent pe-3.5 text-base font-medium text-foreground outline-none transition-colors",
+          Icon ? "ps-10" : "ps-3.5",
+          endAdornment && "pe-11",
           error ? "border-destructive" : "border-input focus:border-primary",
           className
         )}
@@ -57,8 +57,8 @@ export function FloatingField({
         htmlFor={id}
         className={cn(
           "pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap bg-card px-1.5 text-base font-medium text-muted-foreground transition-all duration-150",
-          Icon ? "left-10" : "left-3.5",
-          "peer-focus:top-0 peer-focus:left-3 peer-focus:text-sm peer-focus:font-semibold",
+          Icon ? "start-10" : "start-3.5",
+          "peer-focus:top-0 peer-focus:start-3 peer-focus:text-sm peer-focus:font-semibold",
           "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:left-3 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
           error ? "text-destructive" : "peer-focus:text-primary"
         )}
@@ -97,13 +97,13 @@ export function FloatingSelect({
 }) {
   return (
     <div className="relative">
-      {Icon && <Icon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />}
+      {Icon && <Icon className="absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />}
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger
           id={id}
           className={cn(
             "!h-14 w-full rounded-lg border bg-transparent text-base font-medium",
-            Icon ? "pl-10" : "pl-3.5",
+            Icon ? "ps-10" : "ps-3.5",
             error ? "border-destructive" : "border-input"
           )}
         >
@@ -114,7 +114,7 @@ export function FloatingSelect({
       <label
         className={cn(
           "pointer-events-none absolute -top-2.5 z-10 whitespace-nowrap bg-card px-1.5 text-sm font-semibold",
-          Icon ? "left-10" : "left-3",
+          Icon ? "start-10" : "start-3",
           error ? "text-destructive" : "text-primary"
         )}
       >
@@ -161,7 +161,7 @@ export function FloatingSplitField({
       <SelectTrigger
         className={cn(
           "!h-full shrink-0 rounded-none border-0 bg-transparent px-3 text-base font-medium shadow-none focus-visible:ring-0",
-          selectPosition === "left" ? "rounded-l-lg border-r border-input" : "rounded-r-lg border-l border-input",
+          selectPosition === "left" ? "rounded-s-lg border-e border-input" : "rounded-e-lg border-s border-input",
           selectWidthClassName
         )}
       >
@@ -178,7 +178,7 @@ export function FloatingSplitField({
       placeholder=" "
       className={cn(
         "h-full min-w-0 flex-1 bg-transparent px-3.5 text-base font-medium text-foreground outline-none",
-        selectPosition === "left" ? "rounded-r-lg" : "rounded-l-lg",
+        selectPosition === "left" ? "rounded-e-lg" : "rounded-s-lg",
         className
       )}
       {...inputProps}
@@ -198,7 +198,7 @@ export function FloatingSplitField({
       <label
         htmlFor={inputId}
         className={cn(
-          "pointer-events-none absolute -top-2.5 left-3 z-10 whitespace-nowrap bg-card px-1.5 text-sm font-semibold",
+          "pointer-events-none absolute -top-2.5 start-3 z-10 whitespace-nowrap bg-card px-1.5 text-sm font-semibold",
           error ? "text-destructive" : "text-primary"
         )}
       >
@@ -211,7 +211,7 @@ export function FloatingSplitField({
 // Shared label look for the floating fields below — inside the box at rest,
 // up on the border (smaller, primary) once focused or filled.
 const floatLabel = (floated: boolean, error?: boolean, focused?: boolean) => cn(
-  "pointer-events-none absolute left-3 z-10 whitespace-nowrap bg-card px-1.5 transition-all duration-150",
+  "pointer-events-none absolute start-3 z-10 whitespace-nowrap bg-card px-1.5 transition-all duration-150",
   floated ? "top-0 -translate-y-1/2 text-sm font-semibold" : "text-base font-medium",
   error ? "text-destructive" : floated && focused ? "text-primary" : "text-muted-foreground",
 );
@@ -294,7 +294,7 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
         )}
       >
         {selected.map((s) => (
-          <span key={s.id} className={cn("inline-flex items-center gap-1 rounded-full border pl-2.5 pr-1.5 py-0.5 text-sm", chipClassName?.(s) ?? t.chip)}>
+          <span key={s.id} className={cn("inline-flex items-center gap-1 rounded-full border ps-2.5 pe-1.5 py-0.5 text-sm", chipClassName?.(s) ?? t.chip)}>
             {renderIcon?.(s)}
             {s.label}
             <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(s.id); }} aria-label={`Remove ${s.label}`} className={cn("rounded-full p-0.5", t.chipBtn)}>
@@ -337,7 +337,7 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
       </label>
 
       {(q || (openOnFocus && focused)) && (results.length > 0 || canCreate || (!allowsCreate && !!q)) && (
-        <div className={cn("mt-1 rounded-lg border border-border/60 bg-card max-h-56 overflow-y-auto overscroll-contain py-1", inlineList ? "relative" : "absolute left-0 right-0 top-full z-20 shadow-lg")}>
+        <div className={cn("mt-1 rounded-lg border border-border/60 bg-card max-h-56 overflow-y-auto overscroll-contain py-1", inlineList ? "relative" : "absolute start-0 end-0 top-full z-20 shadow-lg")}>
           {!q && emptyHint && <p className="px-3 pt-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{emptyHint}</p>}
           {results.length === 0 && !canCreate ? (
             <p className="px-3 py-2 text-sm text-muted-foreground">No matches for &quot;{query}&quot;.</p>
@@ -347,14 +347,14 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
               type="button"
               onMouseDown={(e) => e.preventDefault() /* keep focus in the box */}
               onClick={() => pick(r.id)}
-              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && q && "bg-muted/40")}
+              className={cn("w-full text-start px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && q && "bg-muted/40")}
             >
               {renderIcon ? renderIcon(r) : <ItemGlyph className={cn("h-3 w-3 shrink-0", tone === "primary" ? "text-muted-foreground" : t.label)} />}
               <span className="min-w-0">
                 <span className="block">{r.label}</span>
                 {describe?.(r) && <span className="block text-[11px] text-muted-foreground leading-snug">{describe(r)}</span>}
               </span>
-              {i === 0 && q && <span className="ml-auto text-[10px] text-muted-foreground shrink-0">Enter</span>}
+              {i === 0 && q && <span className="ms-auto text-[10px] text-muted-foreground shrink-0">Enter</span>}
             </button>
           ))}
           {creates.map((c, i) => (
@@ -363,10 +363,10 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => create(c)}
-              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && "border-t border-border/40", !results.length && i === 0 && "bg-muted/40")}
+              className={cn("w-full text-start px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && "border-t border-border/40", !results.length && i === 0 && "bg-muted/40")}
             >
               {c.icon ?? <Plus className="h-3 w-3 text-muted-foreground shrink-0" />} {c.label}
-              {!results.length && i === 0 && <span className="ml-auto text-[10px] text-muted-foreground">Enter</span>}
+              {!results.length && i === 0 && <span className="ms-auto text-[10px] text-muted-foreground">Enter</span>}
             </button>
           ))}
         </div>
@@ -419,7 +419,7 @@ export function CharCount({ length, max, className }: { length: number; max?: nu
   if (!max) return null;
   return (
     <p className={cn(
-      "text-right text-[11px] tabular-nums",
+      "text-end text-[11px] tabular-nums",
       length >= max ? "text-destructive font-medium" : length >= max * 0.9 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
       className,
     )}>

@@ -70,8 +70,8 @@ export function ActivityLogView({ client = api, endpoint = "/api/facility/activi
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))]">
         <form className="relative" onSubmit={(e) => { e.preventDefault(); reset(() => setQuery(q.trim())); }}>
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q.trim() !== query && reset(() => setQuery(q.trim()))} placeholder="Patient, record or text…" className="pl-9 bg-background/60" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q.trim() !== query && reset(() => setQuery(q.trim()))} placeholder="Patient, record or text…" className="ps-9 bg-background/60" />
         </form>
         <Select value={range} onValueChange={(v) => reset(() => setRange(v))}>
           <SelectTrigger className="bg-background/60" aria-label="Period"><SelectValue /></SelectTrigger>
@@ -116,12 +116,12 @@ export function ActivityLogView({ client = api, endpoint = "/api/facility/activi
 
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[760px] text-sm">
-          <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr><th className="px-3 py-2.5 w-44">When</th><th className="px-3 py-2.5 w-48">Who</th><th className="px-3 py-2.5 w-44">Activity</th><th className="px-3 py-2.5">Details</th></tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && !data ? (
-              <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground"><Loader2 className="inline h-4 w-4 animate-spin mr-2" />Loading…</td></tr>
+              <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground"><Loader2 className="inline h-4 w-4 animate-spin me-2" />Loading…</td></tr>
             ) : data && data.events.length === 0 ? (
               <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">No activity for these filters.</td></tr>
             ) : data?.events.map((e) => (
@@ -133,7 +133,7 @@ export function ActivityLogView({ client = api, endpoint = "/api/facility/activi
                 </td>
                 <td className="px-3 py-2.5">
                   <span className="font-medium">{data.labels[e.action] ?? e.action}</span>
-                  {e.outcome !== "success" && <Badge variant="outline" className={cn("ml-1.5 gap-1", OUTCOME_TONE[e.outcome])}>{e.outcome === "denied" && <ShieldAlert className="h-3 w-3" />}{e.outcome === "denied" ? "Refused" : "Failed"}</Badge>}
+                  {e.outcome !== "success" && <Badge variant="outline" className={cn("ms-1.5 gap-1", OUTCOME_TONE[e.outcome])}>{e.outcome === "denied" && <ShieldAlert className="h-3 w-3" />}{e.outcome === "denied" ? "Refused" : "Failed"}</Badge>}
                 </td>
                 <td className="px-3 py-2.5">
                   <p>{e.summary}</p>
@@ -147,7 +147,7 @@ export function ActivityLogView({ client = api, endpoint = "/api/facility/activi
 
       {data && data.total > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{data.total} entr{data.total === 1 ? "y" : "ies"}{loading && <Loader2 className="ml-2 inline h-3.5 w-3.5 animate-spin" />}</span>
+          <span>{data.total} entr{data.total === 1 ? "y" : "ies"}{loading && <Loader2 className="ms-2 inline h-3.5 w-3.5 animate-spin" />}</span>
           <span className="flex items-center gap-2">
             <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((x) => x - 1)}><ChevronLeft className="h-4 w-4" /> Newer</Button>
             Page {page} of {pages}

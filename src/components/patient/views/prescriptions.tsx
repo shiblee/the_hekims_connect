@@ -56,7 +56,7 @@ export function PatientPrescriptionsView() {
     win.print();
   };
 
-  if (loading) return <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>;
+  if (loading) return <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>;
 
   return (
     <div className="space-y-5">
@@ -87,7 +87,7 @@ export function PatientPrescriptionsView() {
                       <p className="text-[11px] text-muted-foreground">{new Date(pr.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-primary border-primary/30 bg-primary/10"><Icon className="h-3 w-3 mr-1" />{pr.therapyType}</Badge>
+                  <Badge variant="outline" className="text-primary border-primary/30 bg-primary/10"><Icon className="h-3 w-3 me-1" />{pr.therapyType}</Badge>
                 </div>
                 <div className="space-y-2 mb-3">
                   {pr.items.map((it: any, i: number) => (
@@ -100,7 +100,7 @@ export function PatientPrescriptionsView() {
                 </div>
                 {pr.notes && <p className="text-xs text-muted-foreground italic border-t border-border/30 pt-2">{pr.notes}</p>}
                 <Button size="sm" variant="outline" className="w-full mt-3" onClick={() => print(pr)}>
-                  <Printer className="h-3.5 w-3.5 mr-1" /> Print Prescription
+                  <Printer className="h-3.5 w-3.5 me-1" /> Print Prescription
                 </Button>
               </Card>
             );

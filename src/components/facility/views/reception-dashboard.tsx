@@ -106,7 +106,7 @@ export function ReceptionDashboard() {
                 ["Completed", data.visits.completed, "bg-emerald-500", "done"],
                 ["Referred out", data.visits.referred, "bg-red-500", "referred"],
               ] as const).map(([l, n, dot, f]) => (
-                <button key={l} type="button" onClick={() => go(`/facility/patients?filter=${f}`)} className="rounded-lg border border-border bg-background/60 px-3 py-2.5 text-left transition-colors hover:border-primary/40">
+                <button key={l} type="button" onClick={() => go(`/facility/patients?filter=${f}`)} className="rounded-lg border border-border bg-background/60 px-3 py-2.5 text-start transition-colors hover:border-primary/40">
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={cn("h-2 w-2 rounded-full", dot)} />{l}</p>
                   <p className="mt-0.5 font-serif text-2xl font-bold">{n}</p>
                 </button>
@@ -187,7 +187,7 @@ function Stat({ label, range, value, sub, icon: Icon, tone, onClick }: { label: 
   const tones = { primary: "bg-primary/15 text-primary", accent: "bg-accent/15 text-accent", amber: "bg-amber-500/15 text-amber-600 dark:text-amber-400", emerald: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" };
   const Comp = onClick ? "button" : "div";
   return (
-    <Comp type={onClick ? "button" : undefined} onClick={onClick} className={cn("group rounded-xl border border-border/60 bg-card/60 p-4 text-left transition-colors", onClick && "hover:border-primary/40")}>
+    <Comp type={onClick ? "button" : undefined} onClick={onClick} className={cn("group rounded-xl border border-border/60 bg-card/60 p-4 text-start transition-colors", onClick && "hover:border-primary/40")}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">{label} <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium">{range}</span></p>

@@ -247,7 +247,7 @@ export function ProfileView({ section }: { section: string }) {
                     key={s.key}
                     onClick={() => setSection(s.key)}
                     className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                      "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-start transition-colors",
                       section === s.key ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
                     )}
                   >
@@ -266,7 +266,7 @@ export function ProfileView({ section }: { section: string }) {
                   key={s.key}
                   onClick={() => setSection(s.key)}
                   className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                    "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-start transition-colors",
                     section === s.key ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
                   )}
                 >
@@ -293,7 +293,7 @@ export function ProfileView({ section }: { section: string }) {
                 )}
                 {facility?.hfrNumber ? (
                   <div>
-                    <FloatingField id="hfrNumber" label="HFR number" value={hfrNumber} readOnly aria-readonly className="cursor-not-allowed bg-muted/50 text-muted-foreground focus:border-input" endAdornment={<Lock className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />} />
+                    <FloatingField id="hfrNumber" label="HFR number" value={hfrNumber} readOnly aria-readonly className="cursor-not-allowed bg-muted/50 text-muted-foreground focus:border-input" endAdornment={<Lock className="pointer-events-none absolute end-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />} />
                     <p className="mt-1.5 text-xs text-muted-foreground">Locked once saved. To correct it, contact support.</p>
                   </div>
                 ) : (
@@ -345,13 +345,13 @@ export function ProfileView({ section }: { section: string }) {
                   <div className="overflow-x-auto overflow-y-visible">
                     <table className="w-full text-sm min-w-[640px]">
                       <thead>
-                        <tr className="border-b border-border/50 text-left text-muted-foreground">
+                        <tr className="border-b border-border/50 text-start text-muted-foreground">
                           <th rowSpan={2} className="py-2 font-medium align-bottom">Day</th>
                           <th rowSpan={2} className="py-2 font-medium align-bottom">Open</th>
                           <th colSpan={2} className="py-2 font-medium text-center">Shift 1</th>
                           <th colSpan={2} className="py-2 font-medium text-center">Shift 2 (optional)</th>
                         </tr>
-                        <tr className="border-b border-border/50 text-left text-muted-foreground">
+                        <tr className="border-b border-border/50 text-start text-muted-foreground">
                           <th className="py-1.5 font-medium">Opening</th>
                           <th className="py-1.5 font-medium">Closing</th>
                           <th className="py-1.5 font-medium">Opening</th>
@@ -363,17 +363,17 @@ export function ProfileView({ section }: { section: string }) {
                           const row = hours[d] || { isOpen: false, open: "", close: "", open2: "", close2: "" };
                           return (
                             <tr key={d} className="border-b border-border/30 last:border-0">
-                              <td className="py-2 pr-2 whitespace-nowrap">{DAY_LABELS[d]}</td>
-                              <td className="py-2 pr-2">
+                              <td className="py-2 pe-2 whitespace-nowrap">{DAY_LABELS[d]}</td>
+                              <td className="py-2 pe-2">
                                 <Switch checked={row.isOpen} onCheckedChange={(v) => setHours((h) => ({ ...h, [d]: { ...row, isOpen: v } }))} />
                               </td>
-                              <td className="py-2 pr-2">
+                              <td className="py-2 pe-2">
                                 <input type="time" disabled={!row.isOpen} value={row.open} onChange={(e) => setHours((h) => ({ ...h, [d]: { ...row, open: e.target.value } }))} className="rounded-lg border border-input bg-transparent px-2 py-1.5 text-sm disabled:opacity-40" />
                               </td>
-                              <td className="py-2 pr-2">
+                              <td className="py-2 pe-2">
                                 <input type="time" disabled={!row.isOpen} value={row.close} onChange={(e) => setHours((h) => ({ ...h, [d]: { ...row, close: e.target.value } }))} className="rounded-lg border border-input bg-transparent px-2 py-1.5 text-sm disabled:opacity-40" />
                               </td>
-                              <td className="py-2 pr-2">
+                              <td className="py-2 pe-2">
                                 <input type="time" disabled={!row.isOpen} value={row.open2} onChange={(e) => setHours((h) => ({ ...h, [d]: { ...row, open2: e.target.value } }))} className="rounded-lg border border-input bg-transparent px-2 py-1.5 text-sm disabled:opacity-40" />
                               </td>
                               <td className="py-2">

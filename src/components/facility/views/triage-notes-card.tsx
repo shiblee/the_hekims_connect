@@ -43,7 +43,7 @@ export function TriageNotesCard({ visits }: { visits: TriageVisit[] }) {
       {v.primaryFocusArea && (
         <div className={(v.painNotes || v.triageRemarks) ? "flex items-center justify-between gap-2 text-sm pt-3 border-t border-border/30" : "flex items-center justify-between gap-2 text-sm"}>
           <span className="text-muted-foreground flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Primary Focus Area</span>
-          <span className="font-medium text-right">{v.primaryFocusArea}</span>
+          <span className="font-medium text-end">{v.primaryFocusArea}</span>
         </div>
       )}
     </Card>

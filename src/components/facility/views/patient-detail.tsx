@@ -326,7 +326,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         "p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap",
         checkInComplete ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/50 bg-card/60"
       )}>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap ms-auto">
           {latestVisit && (
             <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report (opens in a new tab; shows saved data)">
               <Printer className="h-3.5 w-3.5" />

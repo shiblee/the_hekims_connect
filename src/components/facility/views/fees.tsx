@@ -54,17 +54,17 @@ export function FeesView() {
       ) : (
         <div data-tour="fees.list" className="overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <tr><th className="px-3 py-2.5">Fee</th><th className="px-3 py-2.5">Type</th><th className="px-3 py-2.5 text-right">Amount</th><th className="px-3 py-2.5 text-center">In use</th><th className="px-3 py-2.5 text-right">Edit</th></tr>
+            <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <tr><th className="px-3 py-2.5">Fee</th><th className="px-3 py-2.5">Type</th><th className="px-3 py-2.5 text-end">Amount</th><th className="px-3 py-2.5 text-center">In use</th><th className="px-3 py-2.5 text-end">Edit</th></tr>
             </thead>
             <tbody className="divide-y divide-border">
               {fees.map((f) => (
                 <tr key={f.id} className={cn(!f.active && "opacity-50")}>
                   <td className="px-3 py-2.5 font-medium">{f.name}</td>
                   <td className="px-3 py-2.5"><Badge variant="outline">{KINDS[f.kind] ?? f.kind}</Badge></td>
-                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums">₹{f.amount.toLocaleString("en-IN")}</td>
+                  <td className="px-3 py-2.5 text-end font-semibold tabular-nums">₹{f.amount.toLocaleString("en-IN")}</td>
                   <td className="px-3 py-2.5 text-center"><Switch checked={f.active} onCheckedChange={(v) => save({ id: f.id, name: f.name, amount: String(f.amount), kind: f.kind, active: v })} aria-label={f.active ? `Switch off ${f.name}` : `Switch on ${f.name}`} /></td>
-                  <td className="px-3 py-2.5 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDraft({ id: f.id, name: f.name, amount: String(f.amount), kind: f.kind, active: f.active })} aria-label={`Edit ${f.name}`}><Pencil className="h-3.5 w-3.5" /></Button></td>
+                  <td className="px-3 py-2.5 text-end"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDraft({ id: f.id, name: f.name, amount: String(f.amount), kind: f.kind, active: f.active })} aria-label={`Edit ${f.name}`}><Pencil className="h-3.5 w-3.5" /></Button></td>
                 </tr>
               ))}
             </tbody>

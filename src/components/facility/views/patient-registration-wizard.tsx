@@ -864,7 +864,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       )}
 
       <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+        <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
         {result ? (
           <div className="text-center space-y-4 py-6">
@@ -873,7 +873,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
               <h3 className="font-serif text-lg font-semibold">Patient Registered Successfully</h3>
               <p className="text-sm text-muted-foreground mt-1">{result.patientLabel}</p>
             </div>
-            <Card className="p-4 gap-1 border-border/50 bg-card/60 text-left text-sm max-w-sm mx-auto">
+            <Card className="p-4 gap-1 border-border/50 bg-card/60 text-start text-sm max-w-sm mx-auto">
               <p><span className="text-muted-foreground">Visit ID:</span> {result.visitCode}</p>
               {result.doctorName && <p><span className="text-muted-foreground">Doctor:</span> {result.doctorName}</p>}
               {result.paymentRecorded ? (
@@ -885,7 +885,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
             {printNotice && (
               <InlineNotice
                 {...printNotice}
-                className="max-w-xl mx-auto text-left"
+                className="max-w-xl mx-auto text-start"
                 action={
                   <Button size="sm" variant="outline" onClick={async () => {
                     setPrintNotice(await printWristband({ patientLabel: result.patientLabel, patientCode: result.patientCode, visitCode: result.visitCode }));
@@ -1332,7 +1332,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                   {visitEditMode ? (
                     <>
                       {isDirty && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mr-auto">
+                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 me-auto">
                           <TriangleAlert className="h-3.5 w-3.5" /> Unsaved changes — save before leaving this page
                         </p>
                       )}
@@ -1348,7 +1348,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center gap-2 flex-wrap mr-auto">
+                      <div className="flex items-center gap-2 flex-wrap me-auto">
                         <Button type="button" variant="outline" onClick={() => submitWith("hold")} disabled={submitting}>
                           <Bookmark className="h-4 w-4" /> Hold in Waiting Queue
                         </Button>

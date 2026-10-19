@@ -109,11 +109,11 @@ export function PatientReportsPanel() {
                 key={r.id}
                 type="button"
                 onClick={() => setViewing(r.id)}
-                className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-sidebar-accent"
+                className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 text-start transition-colors hover:bg-sidebar-accent"
               >
                 <span className={cn("relative h-8 w-8 rounded-lg flex items-center justify-center shrink-0", cat.tint)}>
                   <cat.icon className="h-4 w-4" />
-                  {unreviewed && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-sidebar" aria-label="Awaiting review" />}
+                  {unreviewed && <span className="absolute -top-0.5 -end-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-sidebar" aria-label="Awaiting review" />}
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className={cn("block text-sm truncate", unreviewed ? "font-semibold" : "font-medium")}>{r.title}</span>

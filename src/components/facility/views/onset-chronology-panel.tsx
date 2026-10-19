@@ -192,12 +192,12 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                   value={shown.value}
                   onChange={(e) => editDuration(e.target.value, shown.unit)}
                   placeholder=" "
-                  className="peer h-full flex-1 min-w-0 bg-transparent pl-3.5 text-base font-medium outline-none"
+                  className="peer h-full flex-1 min-w-0 bg-transparent ps-3.5 text-base font-medium outline-none"
                 />
                 <label
                   htmlFor="chronology-duration"
                   className={cn(
-                    "pointer-events-none absolute left-3 bg-card px-1.5 whitespace-nowrap transition-all duration-150 text-muted-foreground",
+                    "pointer-events-none absolute start-3 bg-card px-1.5 whitespace-nowrap transition-all duration-150 text-muted-foreground",
                     "top-1/2 -translate-y-1/2 text-base font-medium",
                     "peer-focus:top-0 peer-focus:text-sm peer-focus:font-semibold peer-focus:text-primary",
                     "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
@@ -227,7 +227,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                   <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
                 </div>
                 <div className="mt-1.5 grid grid-cols-3 text-[11px] text-muted-foreground">
-                  {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-right", c.key === course.key && "font-semibold text-foreground")}>{c.range}</span>)}
+                  {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>{c.range}</span>)}
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">{course.hint}</p>
               </div>

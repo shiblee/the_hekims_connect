@@ -21,7 +21,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
     <div className="w-full">
       {field}
       <p className={cn(
-        "mt-1 text-right text-[11px] tabular-nums",
+        "mt-1 text-end text-[11px] tabular-nums",
         length >= max ? "text-destructive font-medium" : length >= max * 0.9 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
       )}>
         {length} / {max}

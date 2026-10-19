@@ -27,12 +27,12 @@ function AuthLayout({ role, children }: { role: AuthRole; children: React.ReactN
     <div className="flex-1 grid lg:grid-cols-2 min-h-[640px] lg:min-h-[780px]">
       {/* Left brand panel */}
       <div className={cn(
-        "relative hidden lg:flex flex-col justify-center py-12 pl-6 sm:pl-16 pr-12 overflow-hidden",
+        "relative hidden lg:flex flex-col justify-center py-12 ps-6 sm:ps-16 pe-12 overflow-hidden",
         isFacility ? "bg-gradient-to-br from-primary/10 via-card to-card" : "bg-gradient-to-br from-accent/10 via-card to-card"
       )}>
         <div className="absolute inset-0 pattern-unani opacity-40" />
-        <div className={cn("absolute -top-24 -left-24 h-72 w-72 rounded-full blur-3xl", isFacility ? "bg-primary/20" : "bg-accent/20")} />
-        <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full blur-3xl bg-primary/10" />
+        <div className={cn("absolute -top-24 -start-24 h-72 w-72 rounded-full blur-3xl", isFacility ? "bg-primary/20" : "bg-accent/20")} />
+        <div className="absolute -bottom-24 -end-24 h-72 w-72 rounded-full blur-3xl bg-primary/10" />
         <div className="relative">
           <h2 className="font-serif text-4xl font-bold leading-tight max-w-md">
             {isFacility
@@ -388,7 +388,7 @@ function FacilitySignup() {
               value={form.password}
               onChange={(e) => setField("password", e.target.value)}
               endAdornment={
-                <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <button type="button" onClick={() => setShow((v) => !v)} className="absolute end-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               }
@@ -661,7 +661,7 @@ function FacilityLogin() {
                   value={form.password}
                   onChange={(e) => setField("password", e.target.value)}
                   endAdornment={
-                    <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <button type="button" onClick={() => setShow((v) => !v)} className="absolute end-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                       {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   }
@@ -824,7 +824,7 @@ function PatientSignup() {
               value={form.password}
               onChange={(e) => setField("password", e.target.value)}
               endAdornment={
-                <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <button type="button" onClick={() => setShow((v) => !v)} className="absolute end-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               }
@@ -1078,7 +1078,7 @@ function PatientLogin() {
                   value={form.password}
                   onChange={(e) => setField("password", e.target.value)}
                   endAdornment={
-                    <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <button type="button" onClick={() => setShow((v) => !v)} className="absolute end-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                       {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   }

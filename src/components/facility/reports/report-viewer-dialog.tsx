@@ -137,7 +137,7 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
     <Dialog open={openId !== null} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-6xl max-h-[92vh] overflow-y-auto p-0 gap-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/50">
-          <div className="flex items-center justify-between gap-3 pr-8">
+          <div className="flex items-center justify-between gap-3 pe-8">
             <DialogTitle className="font-serif flex items-center gap-2 min-w-0">
               {cat && <span className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", cat.tint)}><cat.icon className="h-4 w-4" /></span>}
               <span className="truncate">{report?.title || "Report"}</span>
@@ -159,7 +159,7 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
         ) : (
           <div className="grid lg:grid-cols-[1fr_380px]">
             {/* Document */}
-            <div className="bg-muted/30 border-b lg:border-b-0 lg:border-r border-border/50 p-4 space-y-3 min-w-0">
+            <div className="bg-muted/30 border-b lg:border-b-0 lg:border-e border-border/50 p-4 space-y-3 min-w-0">
               <div className={cn("relative rounded-lg bg-background/60 h-[58vh] overflow-auto flex", !zoom && "items-center justify-center")}>
                 {!url ? (
                   <div className="m-auto flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading file…</div>

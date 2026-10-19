@@ -28,6 +28,7 @@ export async function seedTranslations() {
   for (const l of LANGUAGES) {
     await db.language.upsert({ where: { code: l.code }, update: {}, create: l });
   }
+  await (await import("@/lib/i18n/app-strings/seed")).seedAppStrings(db);
   for (const s of [...LANDING_EN_STRINGS, ...GUIDANCE_UI_STRINGS]) {
     const key = await db.translationKey.upsert({
       where: { key: s.key },

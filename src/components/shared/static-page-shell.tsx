@@ -37,7 +37,7 @@ export function StaticPageShell({
 
       <section className="relative overflow-hidden py-16">
         <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute -top-32 -end-32 h-96 w-96 rounded-full bg-primary/15 blur-3xl" />
         <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-10">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
           <h1 className="mt-3 font-serif text-4xl sm:text-5xl font-bold tracking-tight">{title}</h1>
@@ -85,8 +85,8 @@ export function MarkdownBody({ body }: { body: string }) {
             {children}
           </a>
         ),
-        ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 text-base text-muted-foreground leading-relaxed mb-3">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 text-base text-muted-foreground leading-relaxed mb-3">{children}</ol>,
+        ul: ({ children }) => <ul className="list-disc ps-5 space-y-1.5 text-base text-muted-foreground leading-relaxed mb-3">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal ps-5 space-y-1.5 text-base text-muted-foreground leading-relaxed mb-3">{children}</ol>,
       }}
     >
       {body}

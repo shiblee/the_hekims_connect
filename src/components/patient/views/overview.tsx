@@ -48,11 +48,11 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
     <div className="space-y-5">
       {/* Hero banner */}
       <Card className="relative overflow-hidden p-6 border-accent/30 bg-gradient-to-br from-card via-card to-accent/5">
-        <div className="absolute -top-16 -right-16 h-48 w-48 rounded-full bg-accent/15 blur-3xl" />
+        <div className="absolute -top-16 -end-16 h-48 w-48 rounded-full bg-accent/15 blur-3xl" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <Badge variant="outline" className="mb-2 border-accent/40 text-accent bg-accent/10">
-              <Heart className="mr-1 h-3 w-3" /> Your healing journey
+              <Heart className="me-1 h-3 w-3" /> Your healing journey
             </Badge>
             <h2 className="font-serif text-2xl font-bold">Welcome back, {patient.name.split(" ")[0]}</h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -62,7 +62,7 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
             </p>
           </div>
           <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate(profileComplete ? "appointments" : "profile")}>
-            {profileComplete ? <><CalendarDays className="mr-2 h-4 w-4" /> Book Appointment</> : <><ClipboardList className="mr-2 h-4 w-4" /> Complete Profile</>}
+            {profileComplete ? <><CalendarDays className="me-2 h-4 w-4" /> Book Appointment</> : <><ClipboardList className="me-2 h-4 w-4" /> Complete Profile</>}
           </Button>
         </div>
       </Card>
@@ -115,7 +115,7 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
               <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
               <p className="text-sm font-medium">No upcoming appointments</p>
               <p className="text-xs text-muted-foreground mb-3">Book a consultation with a verified Facility.</p>
-              <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate("appointments")}><Plus className="h-4 w-4 mr-1" /> Book now</Button>
+              <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate("appointments")}><Plus className="h-4 w-4 me-1" /> Book now</Button>
             </Card>
           )}
 

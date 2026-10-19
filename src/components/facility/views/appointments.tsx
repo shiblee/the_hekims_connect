@@ -73,15 +73,15 @@ export function AppointmentsView() {
           </TabsList>
         </Tabs>
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search patient or type…" className="pl-9 bg-background/60" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search patient or type…" className="ps-9 bg-background/60" />
         </div>
       </div>
 
       <NoticeSlot state={msg} />
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
       ) : loadError ? (
         <LoadFailed what="appointments" detail={loadError} onRetry={load} />
       ) : appts.length === 0 ? (
@@ -108,7 +108,7 @@ export function AppointmentsView() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium">{a.patient.name}</p>
                       <Badge variant="outline" className={cn("border", mizajBadge(a.patient.mizaj))}>{a.patient.mizaj || "Unknown"}</Badge>
-                      {a.patient.bloodGroup && <Badge variant="outline" className="text-red-300 border-red-500/30 bg-red-500/10"><Droplet className="h-3 w-3 mr-0.5" />{a.patient.bloodGroup}</Badge>}
+                      {a.patient.bloodGroup && <Badge variant="outline" className="text-red-300 border-red-500/30 bg-red-500/10"><Droplet className="h-3 w-3 me-0.5" />{a.patient.bloodGroup}</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{a.type}{a.reason ? ` · ${a.reason}` : ""}</p>
                     <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><Phone className="h-3 w-3" />{a.patient.phone || "—"}</p>
@@ -117,7 +117,7 @@ export function AppointmentsView() {
                     {a.status === "scheduled" && (
                       <>
                         {urgent && <Badge className="text-accent bg-accent/15 border-accent/30">URGENT</Badge>}
-                        <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => update(a.id, "completed")}><Check className="h-3.5 w-3.5 mr-1" /> Complete</Button>
+                        <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => update(a.id, "completed")}><Check className="h-3.5 w-3.5 me-1" /> Complete</Button>
                         <Button size="sm" variant="outline" className="h-8 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => update(a.id, "cancelled")}><X className="h-3.5 w-3.5" /></Button>
                       </>
                     )}

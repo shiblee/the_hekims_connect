@@ -155,7 +155,7 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
                       <div key={h.key} className="grid grid-cols-[64px_1fr_36px] items-center gap-2 text-xs">
                         <span className="text-muted-foreground">{h.label}</span>
                         <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full", h.bar)} style={{ width: `${s.asbab!.drift!.percent![h.key] ?? 0}%` }} /></span>
-                        <span className="text-right tabular-nums">{s.asbab!.drift!.percent![h.key] ?? 0}%</span>
+                        <span className="text-end tabular-nums">{s.asbab!.drift!.percent![h.key] ?? 0}%</span>
                       </div>
                     ))}
                   </div>
@@ -258,7 +258,7 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
             {s.residentNotes.length > 0 && (
               <div>
                 <p className="text-[11px] text-muted-foreground mb-1">Resident clinical note</p>
-                <ul className="list-disc pl-5 space-y-0.5">{s.residentNotes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+                <ul className="list-disc ps-5 space-y-0.5">{s.residentNotes.map((n, i) => <li key={i}>{n}</li>)}</ul>
               </div>
             )}
           </div>
@@ -278,7 +278,7 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
                 <div key={h.key} className="grid grid-cols-[64px_1fr_36px] items-center gap-2 text-xs">
                   <span className="text-muted-foreground">{h.label}</span>
                   <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full", h.color)} style={{ width: `${pct}%` }} /></span>
-                  <span className="text-right tabular-nums">{pct}%</span>
+                  <span className="text-end tabular-nums">{pct}%</span>
                 </div>
               );
             })}

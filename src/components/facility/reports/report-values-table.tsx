@@ -17,9 +17,9 @@ export function ReportValuesTable({ values }: { values: ReportValue[] }) {
       <div className="rounded-lg border border-border/50 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/30 text-xs text-muted-foreground">
-            <tr className="text-left">
+            <tr className="text-start">
               <th className="px-3 py-2 font-medium">Test</th>
-              <th className="px-3 py-2 font-medium text-right">Result</th>
+              <th className="px-3 py-2 font-medium text-end">Result</th>
               <th className="px-3 py-2 font-medium hidden sm:table-cell">Reference</th>
             </tr>
           </thead>
@@ -29,7 +29,7 @@ export function ReportValuesTable({ values }: { values: ReportValue[] }) {
               return (
                 <tr key={`${v.name}-${i}`} className={cn("border-t border-border/40", off && "bg-amber-500/5")}>
                   <td className="px-3 py-1.5">{v.name}</td>
-                  <td className={cn("px-3 py-1.5 text-right font-semibold whitespace-nowrap", off && "text-amber-600 dark:text-amber-400")}>
+                  <td className={cn("px-3 py-1.5 text-end font-semibold whitespace-nowrap", off && "text-amber-600 dark:text-amber-400")}>
                     <span className="inline-flex items-center gap-1">
                       {v.flag === "high" && <ArrowUp className="h-3 w-3" />}
                       {v.flag === "low" && <ArrowDown className="h-3 w-3" />}

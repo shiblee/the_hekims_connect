@@ -47,7 +47,7 @@ export function ConsultationCard({ visits, showStartButton = true }: { visits: C
 
   return (
     <Card className="relative overflow-hidden p-4 border-border/40 bg-card/95 shadow-lg shadow-black/5 rounded-2xl gap-2">
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+      <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border bg-primary/10 border-primary/20 text-primary">

@@ -145,8 +145,8 @@ export function PharmacyView() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" className="pl-9 bg-background/60" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" className="ps-9 bg-background/60" />
         </div>
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger className="w-[180px] bg-background/60"><SelectValue /></SelectTrigger>
@@ -176,7 +176,7 @@ export function PharmacyView() {
 
       {/* Items grid */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading pharmacy…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading pharmacy…</div>
       ) : items.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <Pill className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
@@ -206,7 +206,7 @@ export function PharmacyView() {
                 </div>
                 {it.expiryDate && <p className="text-[11px] text-muted-foreground mt-2">Expires: {it.expiryDate}</p>}
                 <div className="flex gap-2 mt-3">
-                  <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => openEdit(it)}><Edit2 className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+                  <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => openEdit(it)}><Edit2 className="h-3.5 w-3.5 me-1" /> Edit</Button>
                   <Button size="sm" variant="ghost" className="h-8 text-destructive hover:bg-destructive/10" onClick={() => remove(it)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </Card>

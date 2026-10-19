@@ -11,6 +11,12 @@ import { readSessionToken } from "@/lib/session-token";
  * would sign the person out — so a blocked action just shows an error.
  */
 export async function proxy(req: NextRequest) {
+  // Admin panel pages: always English, left to right — the root layout reads this marker.
+  if (!req.nextUrl.pathname.startsWith("/api/")) {
+    const headers = new Headers(req.headers);
+    headers.set("x-hekim-area", "admin");
+    return NextResponse.next({ request: { headers } });
+  }
   const claims = await readSessionToken(req.headers.get("x-hekim-auth"));
   // Not a valid staff token: the route's own session check decides (401 for bad / expired tokens).
   if (!claims || claims.expired || claims.type !== "staff") return NextResponse.next();
@@ -30,4 +36,4 @@ export async function proxy(req: NextRequest) {
   return NextResponse.json({ error: "You don't have permission for this. Ask the clinic owner to change your permissions." }, { status: 403 });
 }
 
-export const config = { matcher: "/api/:path*" };
+export const config = { matcher: ["/api/:path*", "/admin", "/admin/:path*"] };

@@ -132,7 +132,7 @@ function Chips({ items, selected, onToggle, tone = "emerald" }: {
         return (
           <button key={it.label} type="button" onClick={() => onToggle(it.label)} aria-pressed={on} title={it.tip || it.sub || undefined}
             className={cn(
-              "rounded-full border px-3 py-1 text-sm leading-snug transition-colors text-left",
+              "rounded-full border px-3 py-1 text-sm leading-snug transition-colors text-start",
               on ? (tone === "red" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")
                 : "border-border/60 bg-background/40 hover:border-primary/40",
             )}>
@@ -164,7 +164,7 @@ function HumourBars({ pct, compact }: { pct: HumourPoints; compact?: boolean }) 
         <div key={h.key} className="grid grid-cols-[62px_1fr_36px] items-center gap-2 text-xs">
           <span className="text-muted-foreground">{h.label}</span>
           <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full", h.bar)} style={{ width: `${pct[h.key]}%` }} /></span>
-          <span className="text-right tabular-nums">{pct[h.key]}%</span>
+          <span className="text-end tabular-nums">{pct[h.key]}%</span>
         </div>
       ))}
     </div>
@@ -187,8 +187,8 @@ function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
       <div>
         <p className="text-[15px] font-medium">
           {q.label}{q.required && <span className="text-destructive"> *</span>}
-          {tag === "safety" && <span className="ml-1.5 align-middle rounded-full bg-destructive/10 border border-destructive/30 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-destructive">Safety</span>}
-          {tag === "new" && <span className="ml-1.5 align-middle rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">New</span>}
+          {tag === "safety" && <span className="ms-1.5 align-middle rounded-full bg-destructive/10 border border-destructive/30 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-destructive">Safety</span>}
+          {tag === "new" && <span className="ms-1.5 align-middle rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">New</span>}
         </p>
         {q.labelLocal && <p className="text-[13px] text-muted-foreground">{q.labelLocal}</p>}
         {reason && (
@@ -349,7 +349,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
             const done = a === qs.length;
             return (
               <div key={p.key} ref={(el) => { refs.current[p.key] = el; }}
-                className={cn("rounded-xl border border-l-4 bg-background/30 px-4 pt-3 pb-1", done ? "border-border/50 border-l-emerald-500/70" : "border-border/50 border-l-primary/40")}>
+                className={cn("rounded-xl border border-s-4 bg-background/30 px-4 pt-3 pb-1", done ? "border-border/50 border-s-emerald-500/70" : "border-border/50 border-s-primary/40")}>
                 <div className="flex items-center justify-between gap-2 pb-1">
                   <p className="text-[15px] font-semibold">{p.label} <span className="text-[13px] font-normal text-muted-foreground">· {p.english}</span></p>
                   <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-xs tabular-nums", done ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? "✓ Done" : `${a}/${qs.length}`}</span>
@@ -381,7 +381,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
                 {addable.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">{aq ? "No other question matches." : "Every approved question is already shown."}</p>}
                 {addable.slice(0, 60).map(({ p, q }) => (
                   <button key={q.id} type="button" onClick={() => { changeAdded(q.id, true); setAddOpen(false); setAddQuery(""); }}
-                    className="w-full text-left rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
+                    className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
                     {q.label}<span className="block text-xs text-muted-foreground">{p.label}</span>
                   </button>
                 ))}
@@ -475,7 +475,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
     <ul className="mt-1.5 space-y-0.5">
       {items.slice(0, 3).map((e, i) => {
         const h = AKHLAT.find((x) => x.key === e.humour);
-        return <li key={i} className="text-xs text-muted-foreground">• {e.label}{h && <span className={cn("ml-1 font-medium", h.text)}>→ {h.label}</span>}</li>;
+        return <li key={i} className="text-xs text-muted-foreground">• {e.label}{h && <span className={cn("ms-1 font-medium", h.text)}>→ {h.label}</span>}</li>;
       })}
     </ul>
   ) : null;
@@ -671,7 +671,7 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
                     {newPhase && <p className="mt-1 mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Step {x.phase} · {USOOL_PHASES[x.phase] ?? ""}</p>}
                     <div className={cn("flex items-start justify-between gap-3 rounded-lg border px-3 py-2", on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/50")}>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold">{x.label}{x.localName && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{x.localName}</span>}</p>
+                        <p className="text-sm font-semibold">{x.label}{x.localName && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{x.localName}</span>}</p>
                         {x.description && <p className="text-xs text-muted-foreground">{x.description}</p>}
                         <p className="mt-0.5 text-xs text-primary/90 flex items-center gap-1"><Sparkles className="h-3 w-3 shrink-0" />{x.reason}</p>
                       </div>
@@ -713,7 +713,7 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
           const on = d.usool.includes(o.label);
           return (
             <button key={o.id} type="button" aria-pressed={on} onClick={() => set({ usool: on ? d.usool.filter((x) => x !== o.label) : [...d.usool, o.label] })}
-              className={cn("flex items-start justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors",
+              className={cn("flex items-start justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-start transition-colors",
                 on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30")}>
               <span className="min-w-0"><span className="block text-sm font-semibold">{o.label}</span>{o.description && <span className="block text-[13px] text-muted-foreground mt-0.5">{o.description}</span>}</span>
               <span className={cn("mt-0.5 h-4.5 w-4.5 rounded-full border shrink-0 flex items-center justify-center", on ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40")}>{on && <Check className="h-3 w-3" />}</span>
@@ -743,13 +743,13 @@ function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string
         <div className="max-h-64 overflow-y-auto space-y-0.5">
           {results.map((h) => (
             <button key={h.id} type="button" onClick={() => { onPick({ id: h.id, label: h.label, forms: h.forms }); setOpen(false); setQ(""); }}
-              className="w-full text-left rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
+              className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
               {h.label}{h.category && <span className="block text-[11px] text-muted-foreground">{h.category}</span>}
             </button>
           ))}
           {q.trim() && !herbs.some((h) => h.label.toLowerCase() === q.trim().toLowerCase()) && (
             <button type="button" onClick={() => { onPick({ id: null, label: q.trim(), forms: [] }); setOpen(false); setQ(""); }}
-              className="w-full text-left rounded-md px-2 py-1.5 text-sm hover:bg-muted/60 text-primary">Add &quot;{q.trim()}&quot; (not in catalogue)</button>
+              className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60 text-primary">Add &quot;{q.trim()}&quot; (not in catalogue)</button>
           )}
         </div>
       </PopoverContent>
@@ -923,7 +923,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
       <div className={cn("rounded-xl border p-3 space-y-2", dec?.action === "rejected" ? "border-border/40 bg-muted/30 opacity-70" : dec?.action === "accepted" || inRx ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/50 bg-background/50")}>
         <div className="space-y-1">
           <div className="min-w-0">
-            <p className="text-[15px] font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}</p>
+            <p className="text-[15px] font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}</p>
             <p className="text-xs text-muted-foreground">{[c.herbType, c.mizaj].filter(Boolean).join(" · ")}</p>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -943,7 +943,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           </ul>
         )}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-[11px] text-muted-foreground mr-auto">Profile {c.completeness}% complete{dec ? ` · ${dec.action === "added_to_prescription" ? "added to prescription" : dec.action === "accepted" ? "accepted for evaluation" : dec.action}` : ""}</span>
+          <span className="text-[11px] text-muted-foreground me-auto">Profile {c.completeness}% complete{dec ? ` · ${dec.action === "added_to_prescription" ? "added to prescription" : dec.action === "accepted" ? "accepted for evaluation" : dec.action}` : ""}</span>
           {rejecting?.tagId === c.tagId ? (
             <span className="flex items-center gap-1.5">
               <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder="Reason for rejecting" className="h-7 w-48 text-xs" />
@@ -1073,7 +1073,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                 {list.length ? (
                   <div className="flex flex-wrap gap-1.5">
                     {list.map((l) => (
-                      <span key={l} className={cn("inline-flex items-center gap-1 rounded-full border pl-2.5 pr-1 py-0.5 text-[13px]", k === "rec" ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300" : "border-destructive/40 text-destructive")}>
+                      <span key={l} className={cn("inline-flex items-center gap-1 rounded-full border ps-2.5 pe-1 py-0.5 text-[13px]", k === "rec" ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300" : "border-destructive/40 text-destructive")}>
                         {l}
                         <button type="button" onClick={() => setFood(l, k)} aria-label={`Remove ${l}`} className="rounded-full p-0.5 hover:bg-muted"><X className="h-3 w-3" /></button>
                       </span>
@@ -1085,8 +1085,8 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
           </div>
         )}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input value={foodQuery} onChange={(e) => setFoodQuery(e.target.value)} placeholder={`Search ${options?.ghiza?.length ?? 0} foods — e.g. barley, milk, dates…`} className="h-11 pl-10 bg-background/60" aria-label="Search foods" />
+          <Search className="absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input value={foodQuery} onChange={(e) => setFoodQuery(e.target.value)} placeholder={`Search ${options?.ghiza?.length ?? 0} foods — e.g. barley, milk, dates…`} className="h-11 ps-10 bg-background/60" aria-label="Search foods" />
         </div>
         <div className="rounded-xl border border-border/50 divide-y divide-border/40 max-h-[340px] overflow-y-auto">
           {foods.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">No food matches &quot;{foodQuery}&quot;.</p>}
@@ -1097,7 +1097,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
               <div key={f.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <FoodThumb src={f.imageUrl} alt={f.label} credit={f.imageCredit} className="h-11 w-11" />
-                  <div className="min-w-0"><p className="text-sm font-medium">{f.label}{f.foodMizaj && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{f.foodMizaj}</span>}</p>{f.description && <p className="text-[13px] text-muted-foreground">{f.description}</p>}</div>
+                  <div className="min-w-0"><p className="text-sm font-medium">{f.label}{f.foodMizaj && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{f.foodMizaj}</span>}</p>{f.description && <p className="text-[13px] text-muted-foreground">{f.description}</p>}</div>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button type="button" onClick={() => setFood(f.label, "rec")} className={cn("rounded-md border px-2.5 py-1 text-xs", rec ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "border-border/60 text-muted-foreground hover:text-foreground")}>Recommend</button>
@@ -1200,11 +1200,11 @@ function HandoverTab({ state }: { state: TashkheesState }) {
           onToggle={(l) => set({ prognosis: d.prognosis === l ? null : l })} /></div>
       <div className="grid sm:grid-cols-[220px_1fr] gap-3 pt-1">
         <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
-          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 ml-3.5" />
+          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 ms-3.5" />
           <input id="followup-date" type="date" value={d.followUpDate ?? ""} onChange={(e) => set({ followUpDate: e.target.value || null })}
-            className="peer h-full flex-1 min-w-0 bg-transparent pl-2.5 pr-3 text-base font-medium outline-none" />
+            className="peer h-full flex-1 min-w-0 bg-transparent ps-2.5 pe-3 text-base font-medium outline-none" />
           {/* A date box always shows its dd/mm/yyyy mask, so the label sits on the border. */}
-          <label htmlFor="followup-date" className="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">Follow-up date</label>
+          <label htmlFor="followup-date" className="pointer-events-none absolute start-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">Follow-up date</label>
         </div>
         <FloatingField id="followup-note" label="Follow-up plan" maxLength={500} value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })}
           title="e.g. Re-assess Nabz, tongue coating and bowel habit" />
@@ -1308,7 +1308,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
               </button>
             );
           })}
-          <span className="hidden md:inline shrink-0 border-l border-border/60 pl-2 text-xs tabular-nums text-muted-foreground">{doneCount}/{TABS.length}</span>
+          <span className="hidden md:inline shrink-0 border-s border-border/60 ps-2 text-xs tabular-nums text-muted-foreground">{doneCount}/{TABS.length}</span>
         </div>
       )}
 
@@ -1335,12 +1335,12 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
             const ok = done[t.key];
             return (
               <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${t.label} — ${t.sub}${ok ? " · recorded" : ""}`}
-                className={cn("flex min-w-[7rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1.5 @3xl:gap-2 rounded-xl border px-1.5 @3xl:px-2 py-1.5 text-left transition-colors",
+                className={cn("flex min-w-[7rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1.5 @3xl:gap-2 rounded-xl border px-1.5 @3xl:px-2 py-1.5 text-start transition-colors",
                   on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/40")}>
                 <span className={cn("relative h-8 w-8 @3xl:h-9 @3xl:w-9 shrink-0 rounded-full border-2 flex items-center justify-center",
                   ok ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : on ? "border-primary text-primary" : "border-muted text-muted-foreground")}>
                   <t.icon className="h-4 w-4" />
-                  {ok && <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center border-2 border-card" aria-label="Recorded"><Check className="h-2 w-2" /></span>}
+                  {ok && <span className="absolute -end-1 -top-1 h-3.5 w-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center border-2 border-card" aria-label="Recorded"><Check className="h-2 w-2" /></span>}
                 </span>
                 <span className="min-w-0">
                   <span className={cn("block truncate text-xs @3xl:text-[13px] font-semibold leading-tight", on && "text-primary")}>{t.short}</span>

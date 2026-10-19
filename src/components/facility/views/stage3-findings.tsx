@@ -142,7 +142,7 @@ export function Stage3FindingsCards({ visitId, patientId }: { visitId: string; p
                       <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
                     </div>
                     <div className="mt-1.5 grid grid-cols-3 text-[11px] text-muted-foreground">
-                      {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-right", c.key === course.key && "font-semibold text-foreground")}>{c.range}</span>)}
+                      {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>{c.range}</span>)}
                     </div>
                   </>
                 )}

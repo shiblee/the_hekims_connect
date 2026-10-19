@@ -31,8 +31,8 @@ export function ThemeToggle({ className }: { className?: string }) {
     >
       <span className="sr-only">Toggle theme</span>
       {/* track icons */}
-      <Sun className="absolute left-1.5 h-4 w-4 text-accent/70" />
-      <Moon className="absolute right-1.5 h-4 w-4 text-primary/70" />
+      <Sun className="absolute start-1.5 h-4 w-4 text-accent/70" />
+      <Moon className="absolute end-1.5 h-4 w-4 text-primary/70" />
       {/* knob */}
       <motion.span
         layout

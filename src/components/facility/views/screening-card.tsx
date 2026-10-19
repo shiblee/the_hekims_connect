@@ -31,7 +31,7 @@ function HistoryEntry({ visit, isCurrent }: { visit: ScreeningVisit; isCurrent: 
   return (
     <AccordionItem value={visit.id} className="border border-border/40 rounded-lg px-3 mb-2 last:mb-0">
       <AccordionTrigger className="hover:no-underline py-2.5">
-        <div className="flex items-center gap-2 flex-wrap text-left pr-2">
+        <div className="flex items-center gap-2 flex-wrap text-start pe-2">
           <span className="text-xs font-medium text-foreground">{new Date(visit.visitDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</span>
           {isCurrent && <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Current</Badge>}
           <span className="text-[11px] text-muted-foreground truncate">{chiefComplaints.join(", ") || "No complaints recorded"}</span>
@@ -90,7 +90,7 @@ export function ScreeningCard({
             {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Start Screening
           </Button>
         )}
-        <NoticeSlot state={msg} className="mt-3 text-left" />
+        <NoticeSlot state={msg} className="mt-3 text-start" />
       </Card>
     );
   }
@@ -100,7 +100,7 @@ export function ScreeningCard({
 
   return (
     <Card className="relative overflow-hidden p-4 border-border/40 bg-card/95 shadow-lg shadow-black/5 rounded-2xl gap-2">
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+      <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
       {/* Header — icon, title and a compact New Screening action on one row */}
       <div className="flex items-center justify-between flex-wrap gap-2">

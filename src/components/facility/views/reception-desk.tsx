@@ -115,7 +115,7 @@ export function ReceptionDesk() {
           <div data-tour="reception.tabs" className="inline-flex rounded-lg border border-border bg-background/60 p-0.5">
             {([["visits", "Visits", dayTotals?.visits], ["registrations", "New registrations", dayTotals?.registrations]] as const).map(([k, l, n]) => (
               <button key={k} type="button" onClick={() => { setTab(k); setPage(1); }} className={cn("rounded-md px-3 py-1.5 text-sm transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-                {l}{n !== undefined && <span className="ml-1.5 tabular-nums opacity-80">{n}</span>}
+                {l}{n !== undefined && <span className="ms-1.5 tabular-nums opacity-80">{n}</span>}
               </button>
             ))}
           </div>
@@ -123,8 +123,8 @@ export function ReceptionDesk() {
         </div>
         <div className="flex flex-wrap gap-2">
           <form data-tour="reception.search" className="relative" onSubmit={(e) => { e.preventDefault(); setQuery(q.trim()); setPage(1); }}>
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => { if (q.trim() !== query) { setQuery(q.trim()); setPage(1); } }} placeholder="Name, patient ID, visit or phone…" className="w-64 bg-background/60 pl-9" />
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => { if (q.trim() !== query) { setQuery(q.trim()); setPage(1); } }} placeholder="Name, patient ID, visit or phone…" className="w-64 bg-background/60 ps-9" />
           </form>
           <Select value={stage} onValueChange={(v) => { setStage(v); setPage(1); }}>
             <SelectTrigger className="w-44 bg-background/60" aria-label="Stage"><SelectValue /></SelectTrigger>
@@ -154,7 +154,7 @@ export function ReceptionDesk() {
         <p className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-300">
           Payment recorded — receipt {notice.code}.
           <button type="button" className="font-medium underline" onClick={() => router.push(`/facility/payments/${notice.id}/receipt`)}>Open / print receipt</button>
-          <button type="button" className="ml-auto text-xs opacity-70 hover:opacity-100" onClick={() => setNotice(null)}>Dismiss</button>
+          <button type="button" className="ms-auto text-xs opacity-70 hover:opacity-100" onClick={() => setNotice(null)}>Dismiss</button>
         </p>
       )}
       {paying && (
@@ -166,17 +166,17 @@ export function ReceptionDesk() {
 
       <div data-tour="reception.list" className="overflow-x-auto rounded-xl border border-border bg-card/60">
         <table className="w-full min-w-[900px] text-sm">
-          <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-3 py-2.5">Time</th><th className="px-3 py-2.5">Patient</th><th className="px-3 py-2.5">Contact</th>
               <th className="px-3 py-2.5">Type</th><th className="px-3 py-2.5">Stage</th><th className="px-3 py-2.5">Registered by</th>
               {data?.payments && <th className="px-3 py-2.5">Payment</th>}
-              <th className="px-3 py-2.5 text-right">Action</th>
+              <th className="px-3 py-2.5 text-end">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && !data ? (
-              <tr><td colSpan={8} className="px-3 py-10 text-center text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>
+              <tr><td colSpan={8} className="px-3 py-10 text-center text-muted-foreground"><Loader2 className="me-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>
             ) : data && data.rows.length === 0 ? (
               <tr><td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">
                 {query || stage !== "all" || staff !== "all" ? "No patients match these filters." : tab === "visits" ? "No visits on this day." : "No new registrations on this day."}
@@ -198,7 +198,7 @@ export function ReceptionDesk() {
                       </div>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-xs text-muted-foreground"><Phone className="mr-1 inline h-3 w-3" />{maskPhone(r.patient.phone)}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-xs text-muted-foreground"><Phone className="me-1 inline h-3 w-3" />{maskPhone(r.patient.phone)}</td>
                   <td className="px-3 py-2.5">{r.isNew ? <Badge className="bg-primary/15 text-primary hover:bg-primary/15">New</Badge> : <Badge variant="outline">Returning</Badge>}</td>
                   <td className="px-3 py-2.5"><span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium", st.tone)}><span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />{st.label}</span></td>
                   <td className="px-3 py-2.5 text-xs">{r.registeredBy}{r.doctor && <span className="block text-muted-foreground">Hakim: {r.doctor}</span>}</td>
@@ -214,7 +214,7 @@ export function ReceptionDesk() {
                       ) : <span className="text-amber-700 dark:text-amber-400">Not paid</span>}
                     </td>
                   )}
-                  <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-2.5 text-end" onClick={(e) => e.stopPropagation()}>
                     <Button size="sm" variant={r.stage === "done" || r.stage === "referred" ? "outline" : "default"} onClick={() => router.push(st.href(r.patient.id))}>
                       {st.action} <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
@@ -228,7 +228,7 @@ export function ReceptionDesk() {
 
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{data.total} patients{loading && <Loader2 className="ml-2 inline h-3.5 w-3.5 animate-spin" />}</span>
+          <span>{data.total} patients{loading && <Loader2 className="ms-2 inline h-3.5 w-3.5 animate-spin" />}</span>
           <span className="flex items-center gap-2">
             <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((x) => x - 1)}><ChevronLeft className="h-4 w-4" /> Previous</Button>
             Page {page} of {pages}

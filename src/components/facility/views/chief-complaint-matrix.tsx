@@ -238,7 +238,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                   onKeyDown={(e) => { if (e.key === "Enter") setActiveLabel(label); }}
                   title={label === activeLabel ? "Details below are for this complaint" : "Click to fill in this complaint's details"}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full border pl-2.5 pr-1 py-0.5 text-sm font-medium cursor-pointer transition-colors",
+                    "inline-flex items-center gap-1 rounded-full border ps-2.5 pe-1 py-0.5 text-sm font-medium cursor-pointer transition-colors",
                     label === activeLabel
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-primary/5 text-primary border-primary/30 hover:bg-primary/10"
@@ -270,14 +270,14 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                   aria-label="Add a complaint"
                 />
                 {addComplaintOpen && (
-                  <div className="absolute left-0 top-full mt-2 z-30 w-72 rounded-lg border border-border/60 bg-popover shadow-lg max-h-60 overflow-y-auto py-1">
+                  <div className="absolute start-0 top-full mt-2 z-30 w-72 rounded-lg border border-border/60 bg-popover shadow-lg max-h-60 overflow-y-auto py-1">
                     {addComplaintResults.slice(0, 30).map((c, i) => (
                       <button
                         key={c.id}
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => addComplaint(c.label)}
-                        className={cn("w-full text-left px-3 py-1.5 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && complaintSearch && "bg-muted/40")}
+                        className={cn("w-full text-start px-3 py-1.5 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && complaintSearch && "bg-muted/40")}
                       >
                         <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {c.label}
                       </button>
@@ -304,12 +304,12 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                   value={active.onsetValue}
                   onChange={(e) => updateActive({ onsetValue: e.target.value })}
                   placeholder=" "
-                  className="peer h-full flex-1 min-w-0 bg-transparent pl-3.5 text-base font-medium outline-none"
+                  className="peer h-full flex-1 min-w-0 bg-transparent ps-3.5 text-base font-medium outline-none"
                 />
                 <label
                   htmlFor="complaint-duration"
                   className={cn(
-                    "pointer-events-none absolute left-3 bg-card px-1.5 whitespace-nowrap transition-all duration-150 text-muted-foreground",
+                    "pointer-events-none absolute start-3 bg-card px-1.5 whitespace-nowrap transition-all duration-150 text-muted-foreground",
                     "top-1/2 -translate-y-1/2 text-base font-medium",
                     "peer-focus:top-0 peer-focus:text-sm peer-focus:font-semibold peer-focus:text-primary",
                     "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
@@ -322,7 +322,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                   <SelectTrigger className="h-full border-0 shadow-none focus-visible:ring-0 w-28 bg-transparent"><SelectValue /></SelectTrigger>
                   <SelectContent>{ONSET_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                 </Select>
-                <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 mr-3" />
+                <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 me-3" />
               </div>
               <p className="text-xs text-muted-foreground mt-1.5 px-1">For <span className="font-medium text-foreground">{activeLabel}</span>{active.onsetValue ? ` · ${active.onsetValue} ${active.onsetUnit}` : ""}</p>
             </div>
@@ -349,7 +349,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                 {active.severityScore}/10{severityLabelFor(active.severityScore) ? ` · ${severityLabelFor(active.severityScore)}` : ""}
               </span>
             </div>
-            <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground pr-1">
+            <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground pe-1">
               <span>1 · {severityAnchor(1) || "Mild"}</span>
               <span>5 · {severityAnchor(5) || "Moderate"}</span>
               <span>10 · {severityAnchor(10) || "Severe"}</span>
@@ -374,7 +374,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                       <span
                         key={label}
                         className={cn(
-                          "inline-flex items-center gap-1 rounded-full border pl-2.5 pr-1 py-0.5 text-sm font-medium",
+                          "inline-flex items-center gap-1 rounded-full border ps-2.5 pe-1 py-0.5 text-sm font-medium",
                           tone === "destructive"
                             ? "bg-destructive/10 text-destructive border-destructive/30"
                             : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
@@ -392,7 +392,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                           type="button"
                           className={cn(
                             "inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors",
-                            selected.length === 0 && "absolute inset-0 justify-end pr-3",
+                            selected.length === 0 && "absolute inset-0 justify-end pe-3",
                           )}
                           aria-label={`Add to ${title}`}
                         >
@@ -412,15 +412,15 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                           key={f.id}
                           type="button"
                           onClick={() => toggleFactor(kind, f.label, true)}
-                          className="text-left px-2.5 py-1.5 text-sm rounded-md hover:bg-muted/60 transition-colors"
+                          className="text-start px-2.5 py-1.5 text-sm rounded-md hover:bg-muted/60 transition-colors"
                         >
                           {f.label}
                         </button>
                       ))}
                       {custom && (
                         <button type="button" onClick={() => { toggleFactor(kind, custom, true); setFactorQuery((x) => ({ ...x, [kind]: "" })); }}
-                          className="text-left px-2.5 py-1.5 text-sm rounded-md hover:bg-muted/60 transition-colors text-primary">
-                          <Plus className="inline h-3.5 w-3.5 mr-1" />Add &quot;{custom}&quot;
+                          className="text-start px-2.5 py-1.5 text-sm rounded-md hover:bg-muted/60 transition-colors text-primary">
+                          <Plus className="inline h-3.5 w-3.5 me-1" />Add &quot;{custom}&quot;
                         </button>
                       )}
                     </div>
@@ -452,7 +452,7 @@ function FieldBox({ label, filled, focused, className, children }: {
       className,
     )}>
       <span className={cn(
-        "pointer-events-none absolute left-3 z-10 bg-card px-1.5 whitespace-nowrap transition-all duration-150",
+        "pointer-events-none absolute start-3 z-10 bg-card px-1.5 whitespace-nowrap transition-all duration-150",
         filled ? "top-0 -translate-y-1/2 text-sm font-semibold" : "top-1/2 -translate-y-1/2 text-base font-medium",
         focused ? "text-primary" : "text-muted-foreground",
       )}>

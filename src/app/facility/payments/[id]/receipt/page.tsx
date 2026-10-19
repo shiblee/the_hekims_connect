@@ -50,7 +50,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           {address && <p className="text-[9pt] text-[#4b5563]">{address}</p>}
           <p className="text-[9pt] text-[#4b5563]">{[f.phone, f.email].filter(Boolean).join(" · ")}{f.hfrNumber ? ` · HFR ${f.hfrNumber}` : ""}</p>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <p className="text-[12pt] font-bold uppercase tracking-wide">Receipt</p>
           <p className="font-mono text-[10pt]">{p.paymentCode}</p>
           <p className="text-[9pt] text-[#4b5563]">{when(p.createdAt)}</p>
@@ -65,14 +65,14 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
       </section>
 
       <table className="w-full border-collapse text-[10pt]">
-        <thead><tr className="border-y border-[#d1d5db] bg-[#f3f4f6] text-left"><th className="px-2 py-1.5">Description</th><th className="px-2 py-1.5 text-right">Amount</th></tr></thead>
+        <thead><tr className="border-y border-[#d1d5db] bg-[#f3f4f6] text-start"><th className="px-2 py-1.5">Description</th><th className="px-2 py-1.5 text-end">Amount</th></tr></thead>
         <tbody>
           <tr className="border-b border-[#e5e7eb]">
             <td className="px-2 py-2">{p.feeName ?? "Payment"}{p.overrideReason && <span className="block text-[8.5pt] text-[#6b7280]">Standard fee {inr(p.standardAmount ?? 0)} — {p.overrideReason}</span>}</td>
-            <td className="px-2 py-2 text-right tabular-nums">{inr(p.amount)}</td>
+            <td className="px-2 py-2 text-end tabular-nums">{inr(p.amount)}</td>
           </tr>
-          {p.refundAmount ? <tr className="border-b border-[#e5e7eb] text-red-700"><td className="px-2 py-2">Refunded{p.refundedAt ? ` on ${when(p.refundedAt)}` : ""}{p.refundReason ? ` — ${p.refundReason}` : ""}</td><td className="px-2 py-2 text-right tabular-nums">−{inr(p.refundAmount)}</td></tr> : null}
-          <tr className="font-bold"><td className="px-2 py-2 text-right">{voided ? "Cancelled — nothing payable" : "Total received"}</td><td className="px-2 py-2 text-right tabular-nums">{inr(p.net)}</td></tr>
+          {p.refundAmount ? <tr className="border-b border-[#e5e7eb] text-red-700"><td className="px-2 py-2">Refunded{p.refundedAt ? ` on ${when(p.refundedAt)}` : ""}{p.refundReason ? ` — ${p.refundReason}` : ""}</td><td className="px-2 py-2 text-end tabular-nums">−{inr(p.refundAmount)}</td></tr> : null}
+          <tr className="font-bold"><td className="px-2 py-2 text-end">{voided ? "Cancelled — nothing payable" : "Total received"}</td><td className="px-2 py-2 text-end tabular-nums">{inr(p.net)}</td></tr>
         </tbody>
       </table>
 
@@ -85,7 +85,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       <footer className="mt-6 flex items-end justify-between border-t border-[#e5e7eb] pt-2 text-[8.5pt] text-[#6b7280]">
         <span>Computer-generated receipt · {data.branding.portal_name}</span>
-        <span className="text-right">Authorised signature<br /><span className="inline-block w-36 border-b border-[#9ca3af] pt-6" /></span>
+        <span className="text-end">Authorised signature<br /><span className="inline-block w-36 border-b border-[#9ca3af] pt-6" /></span>
       </footer>
     </article>
   );
@@ -106,7 +106,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /> Back</Button>
         <p className="text-sm font-semibold">Receipt {p.paymentCode} · {p.visit.patient.name}</p>
-        <Button size="sm" className="ml-auto" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>
+        <Button size="sm" className="ms-auto" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>
       </div>
       {doc}
       {mounted && createPortal(<div id="receipt-print">{doc}</div>, document.body)}

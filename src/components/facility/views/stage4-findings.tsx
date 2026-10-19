@@ -64,7 +64,7 @@ export function Stage4AsbabCard({ visitId, patientId }: { visitId: string; patie
                 <div key={h.key} className="grid grid-cols-[62px_1fr_36px] items-center gap-2 text-xs">
                   <span className={cn(data.drift?.dominant === h.key ? cn("font-semibold", h.text) : "text-muted-foreground")}>{h.label}</span>
                   <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full", h.bar)} style={{ width: `${pct[h.key] ?? 0}%` }} /></span>
-                  <span className="text-right tabular-nums">{pct[h.key] ?? 0}%</span>
+                  <span className="text-end tabular-nums">{pct[h.key] ?? 0}%</span>
                 </div>
               ))}
             </div>

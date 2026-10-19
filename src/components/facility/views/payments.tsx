@@ -131,22 +131,22 @@ export function PaymentsView() {
           </SelectContent>
         </Select>
         <form className="relative" onSubmit={(e) => { e.preventDefault(); reset(() => setQuery(q.trim())); }}>
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q.trim() !== query && reset(() => setQuery(q.trim()))} data-tour="payments.search" placeholder="Receipt, patient, visit, reference…" className="w-64 bg-background/60 pl-9" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => q.trim() !== query && reset(() => setQuery(q.trim()))} data-tour="payments.search" placeholder="Receipt, patient, visit, reference…" className="w-64 bg-background/60 ps-9" />
         </form>
-        {data && <span className="ml-auto text-sm text-muted-foreground">{data.totals.count} payment{data.totals.count === 1 ? "" : "s"} · net <b className="text-foreground">{inr(data.totals.net)}</b></span>}
+        {data && <span className="ms-auto text-sm text-muted-foreground">{data.totals.count} payment{data.totals.count === 1 ? "" : "s"} · net <b className="text-foreground">{inr(data.totals.net)}</b></span>}
       </div>
 
       {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">Payments couldn&apos;t be loaded — {error}. <button className="underline" onClick={load}>Try again</button></p>}
 
       <div data-tour="payments.list" className="overflow-x-auto rounded-xl border border-border bg-card/60">
         <table className="w-full min-w-[900px] text-sm">
-          <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <tr><th className="px-3 py-2.5">Receipt</th><th className="px-3 py-2.5">Patient</th><th className="px-3 py-2.5">For</th><th className="px-3 py-2.5 text-right">Amount</th><th className="px-3 py-2.5">Method</th><th className="px-3 py-2.5">Collected by</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5 text-right">Actions</th></tr>
+          <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr><th className="px-3 py-2.5">Receipt</th><th className="px-3 py-2.5">Patient</th><th className="px-3 py-2.5">For</th><th className="px-3 py-2.5 text-end">Amount</th><th className="px-3 py-2.5">Method</th><th className="px-3 py-2.5">Collected by</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5 text-end">Actions</th></tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && !data ? (
-              <tr><td colSpan={8} className="px-3 py-10 text-center text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>
+              <tr><td colSpan={8} className="px-3 py-10 text-center text-muted-foreground"><Loader2 className="me-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>
             ) : data && data.payments.length === 0 ? (
               <tr><td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">No payments for these filters.</td></tr>
             ) : data?.payments.map((r) => (
@@ -154,7 +154,7 @@ export function PaymentsView() {
                 <td className="px-3 py-2.5"><p className="font-mono text-xs font-medium">{r.paymentCode}</p><p className="text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</p></td>
                 <td className="px-3 py-2.5"><p className="font-medium">{r.visit.patient.name}</p><p className="text-xs text-muted-foreground">{r.visit.patient.patientCode ?? "—"} · {r.visit.visitCode}</p></td>
                 <td className="px-3 py-2.5 text-xs">{r.feeName ?? "—"}{r.overrideReason && <span className="block text-amber-700 dark:text-amber-400" title={r.overrideReason}>Changed amount: {r.overrideReason}</span>}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">
+                <td className="px-3 py-2.5 text-end tabular-nums">
                   <span className={cn(r.state === "cancelled" && "line-through")}>{inr(r.amount)}</span>
                   {r.refundAmount ? <span className="block text-xs text-amber-700 dark:text-amber-400">−{inr(r.refundAmount)} refunded</span> : null}
                 </td>

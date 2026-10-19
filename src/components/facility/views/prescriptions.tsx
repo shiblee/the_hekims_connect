@@ -87,7 +87,7 @@ export function PrescriptionsView() {
       <NoticeSlot state={msg} />
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
       ) : loadError ? (
         <LoadFailed what="prescriptions" detail={loadError} onRetry={load} />
       ) : prescriptions.length === 0 ? (
@@ -150,7 +150,7 @@ export function PrescriptionsView() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Remedies</Label>
-                  <Button size="sm" variant="outline" onClick={addItem}><Plus className="h-3.5 w-3.5 mr-1" /> Add remedy</Button>
+                  <Button size="sm" variant="outline" onClick={addItem}><Plus className="h-3.5 w-3.5 me-1" /> Add remedy</Button>
                 </div>
                 <div className="space-y-2">
                   {form.items.map((it, i) => (

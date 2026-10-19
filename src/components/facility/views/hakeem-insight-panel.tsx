@@ -248,7 +248,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
                   disabled={overriding}
                   title={isTop ? "Current dominant humour" : `Set ${c?.unaniLabel || h.dominant} as the doctor's pick`}
                   className={cn(
-                    "group w-full rounded-lg border px-2.5 py-1.5 text-left transition-colors",
+                    "group w-full rounded-lg border px-2.5 py-1.5 text-start transition-colors",
                     isTop ? h.soft : "border-transparent hover:border-border/60 hover:bg-muted/40",
                   )}
                 >
@@ -273,7 +273,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
 
       {/* 3 — Explanation */}
       {humoral?.aiClue && (
-        <section className="rounded-xl border-l-4 border-primary/50 bg-primary/5 px-3 py-2.5">
+        <section className="rounded-xl border-s-4 border-primary/50 bg-primary/5 px-3 py-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1 mb-1"><Quote className="h-3 w-3" /> Why {cfg(HUMORS.find((h) => h.dominant === effective)?.key ?? "")?.unaniLabel || effective}?</p>
           <p className="text-sm leading-relaxed">{humoral.aiClue}</p>
         </section>

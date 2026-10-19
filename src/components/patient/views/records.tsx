@@ -98,13 +98,13 @@ export function RecordsView() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
       ) : records.length === 0 ? (
         <Card className="p-10 border-dashed border-border bg-card/60 text-center">
           <FileImage className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
           <p className="font-medium">No records yet</p>
           <p className="text-sm text-muted-foreground mb-4">Upload your first medical record — image or video.</p>
-          <Button onClick={() => setUploadOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90"><Upload className="h-4 w-4 mr-1" /> Upload now</Button>
+          <Button onClick={() => setUploadOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90"><Upload className="h-4 w-4 me-1" /> Upload now</Button>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -118,13 +118,13 @@ export function RecordsView() {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground"><FileText className="h-10 w-10" /></div>
                 )}
-                <div className="absolute top-2 left-2">
+                <div className="absolute top-2 start-2">
                   <Badge className={cn(r.type === "image" ? "bg-accent/90 text-accent-foreground" : r.type === "video" ? "bg-primary/90 text-primary-foreground" : "bg-muted text-foreground")}>
-                    {r.type === "video" ? <Film className="h-3 w-3 mr-1" /> : <FileImage className="h-3 w-3 mr-1" />}
+                    {r.type === "video" ? <Film className="h-3 w-3 me-1" /> : <FileImage className="h-3 w-3 me-1" />}
                     {r.type}
                   </Badge>
                 </div>
-                <button onClick={() => setPreview(r)} className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => setPreview(r)} className="absolute top-2 end-2 h-7 w-7 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
                   <Eye className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -170,7 +170,7 @@ export function RecordsView() {
                   ) : (
                     <video src={filePreview} className="max-h-40 mx-auto rounded-lg" controls />
                   )}
-                  <button onClick={(e) => { e.stopPropagation(); pickFile(null); }} className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-white flex items-center justify-center">
+                  <button onClick={(e) => { e.stopPropagation(); pickFile(null); }} className="absolute -top-2 -end-2 h-6 w-6 rounded-full bg-destructive text-white flex items-center justify-center">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -220,7 +220,7 @@ export function RecordsView() {
                   <p className="text-xs text-muted-foreground">{preview.category} · {new Date(preview.createdAt).toLocaleString()}</p>
                 </div>
                 <a href={preview.fileData} download={preview.fileName}>
-                  <Button size="sm" variant="outline"><Download className="h-4 w-4 mr-1" /> Download</Button>
+                  <Button size="sm" variant="outline"><Download className="h-4 w-4 me-1" /> Download</Button>
                 </a>
               </div>
               {preview.type === "image" ? (

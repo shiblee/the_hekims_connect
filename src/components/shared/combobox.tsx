@@ -52,7 +52,7 @@ export function FloatingCombobox({
             aria-expanded={open}
             aria-controls={listId}
             className={cn(
-              "!h-14 w-full flex items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 text-base font-medium text-left transition-colors",
+              "!h-14 w-full flex items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 text-base font-medium text-start transition-colors",
               error ? "border-destructive" : "border-input"
             )}
           >
@@ -79,7 +79,7 @@ export function FloatingCombobox({
       </Popover>
       <label
         className={cn(
-          "pointer-events-none absolute -top-2.5 left-3 z-10 whitespace-nowrap bg-card px-1.5 text-sm font-semibold",
+          "pointer-events-none absolute -top-2.5 start-3 z-10 whitespace-nowrap bg-card px-1.5 text-sm font-semibold",
           error ? "text-destructive" : "text-primary"
         )}
       >

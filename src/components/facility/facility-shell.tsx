@@ -2,9 +2,11 @@
 
 import { createContext, Suspense, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { LanguageSelector } from "@/components/shared/language-selector";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,16 +24,16 @@ import {
 
 type Tab = "dashboard" | "reception" | "payments" | "mizaj" | "pharmacy" | "appointments" | "patients" | "messages" | "prescriptions" | "profile";
 
-const NAV: { id: Tab; label: string; icon: any }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "reception", label: "Reception desk", icon: ClipboardList },
-  { id: "patients", label: "Patients", icon: Users },
-  { id: "payments", label: "Payments", icon: Wallet },
-  { id: "mizaj", label: "Mizaj Assessment", icon: Activity },
-  { id: "pharmacy", label: "Pharmacy", icon: Pill },
-  { id: "appointments", label: "Appointments", icon: CalendarDays },
-  { id: "messages", label: "Messages", icon: MessageSquare },
-  { id: "prescriptions", label: "Prescriptions", icon: FilePlus2 },
+const NAV: { id: Tab; icon: any }[] = [
+  { id: "dashboard", icon: LayoutDashboard },
+  { id: "reception", icon: ClipboardList },
+  { id: "patients", icon: Users },
+  { id: "payments", icon: Wallet },
+  { id: "mizaj", icon: Activity },
+  { id: "pharmacy", icon: Pill },
+  { id: "appointments", icon: CalendarDays },
+  { id: "messages", icon: MessageSquare },
+  { id: "prescriptions", icon: FilePlus2 },
 ];
 
 // Visit/assessment pages (/facility/visits/...) are part of the patient
@@ -58,6 +60,8 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
   const active = (PATH_TO_TAB[rawSegment] ?? rawSegment) as Tab;
   const [mobileNav, setMobileNav] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const t = useTranslations("clinic.shell");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     let alive = true;
@@ -78,13 +82,13 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex relative overflow-x-clip bg-gradient-to-br from-primary/10 via-background to-accent/5">
-      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/15 blur-[100px]" />
-      <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-[100px]" />
+      <div className="pointer-events-none absolute -top-32 -start-32 h-96 w-96 rounded-full bg-primary/15 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-32 -end-24 h-96 w-96 rounded-full bg-accent/15 blur-[100px]" />
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed top-0 left-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform lg:translate-x-0",
-        mobileNav ? "translate-x-0" : "-translate-x-full"
+        "fixed top-0 start-0 z-40 h-screen w-64 shrink-0 bg-sidebar border-e border-sidebar-border flex flex-col transition-transform lg:translate-x-0 lg:rtl:translate-x-0",
+        mobileNav ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
       )}>
         <div className="h-16 px-4 border-b border-sidebar-border flex items-center">
           <BrandLogo size={50} className="block" />
@@ -108,9 +112,9 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <n.icon className="h-4 w-4 shrink-0" />
-                {n.label}
+                {t(`nav_${n.id}`)}
                 {n.id === "messages" && stats?.unreadMessages > 0 && (
-                  <Badge className="ml-auto h-5 px-1.5 text-[10px] bg-accent text-accent-foreground">{stats.unreadMessages}</Badge>
+                  <Badge className="ms-auto h-5 px-1.5 text-[10px] bg-accent text-accent-foreground">{stats.unreadMessages}</Badge>
                 )}
               </button>
             ))}
@@ -118,7 +122,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
 
           {can("/facility/patients") && <div className="mt-6 px-3">
             <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => go("patients")}>
-              <Stethoscope className="mr-2 h-4 w-4" /> Start Consultation
+              <Stethoscope className="me-2 h-4 w-4" /> {t("start_consultation")}
             </Button>
           </div>}
 
@@ -140,13 +144,13 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
             <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(facility.avatarColor))}>
               {initials(asStaff ? staff!.name : facility.facilityName)}
             </div>
-            <div className="flex-1 min-w-0 text-left">
+            <div className="flex-1 min-w-0 text-start">
               <p className="text-sm font-medium truncate">{asStaff ? staff!.name : facility.facilityName}</p>
-              <p className="text-xs text-muted-foreground truncate">{asStaff ? `${staffRole ?? "Staff"} · ${facility.facilityName}` : facility.specialization}</p>
+              <p className="text-xs text-muted-foreground truncate">{asStaff ? `${staffRole ?? t("staff")} · ${facility.facilityName}` : facility.specialization}</p>
             </div>
           </button>
           <button onClick={onLogout} className="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
-            <LogOut className="h-4 w-4" /> Logout
+            <LogOut className="h-4 w-4 rtl:rotate-180" /> {tc("logout")}
           </button>
         </div>
       </aside>
@@ -154,31 +158,32 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
       {mobileNav && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setMobileNav(false)} />}
 
       {/* Main */}
-      <div className="relative z-10 flex-1 min-w-0 flex flex-col lg:ml-64">
+      <div className="relative z-10 flex-1 min-w-0 flex flex-col lg:ms-64">
         {/* Topbar */}
         <header className="sticky top-0 z-20 glass border-b border-border">
           <div className="h-16 flex items-center gap-3 px-4 lg:px-6">
-            <button className="lg:hidden p-2" onClick={() => setMobileNav(true)}>
+            <button className="lg:hidden p-2" aria-label={t("open_menu")} onClick={() => setMobileNav(true)}>
               <LayoutDashboard className="h-5 w-5" />
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="font-serif text-lg lg:text-xl font-bold truncate">
-                Hello, {asStaff ? staff!.name : facility.facilityName} 👋
+                {t("hello", { name: asStaff ? staff!.name : facility.facilityName })} 👋
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                {asStaff ? `${staffRole ?? "Staff"} · ${facility.facilityName}` : `${facility.specialization} · Rating ${facility.rating}★`}
+                {asStaff ? `${staffRole ?? t("staff")} · ${facility.facilityName}` : `${facility.specialization} · ${t("rating", { rating: facility.rating })}`}
               </p>
             </div>
             <div className="hidden md:block relative w-56" data-tour="shell.search">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search patients…" className="pl-9 h-9 bg-background/60" onClick={() => go("patients")} readOnly />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder={t("search_patients")} className="ps-9 h-9 bg-background/60" onClick={() => go("patients")} readOnly />
             </div>
             <HelpButton />
+            <LanguageSelector compact />
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative" aria-label={t("notifications")}>
               <Bell className="h-5 w-5" />
               {stats?.unreadMessages > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />
+                <span className="absolute top-1.5 end-1.5 h-2 w-2 rounded-full bg-accent" />
               )}
             </Button>
           </div>
@@ -191,8 +196,8 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
             {pageAllowed ? children : (
               <div className="mx-auto mt-16 max-w-md rounded-2xl border border-border bg-card/70 p-8 text-center">
                 <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 font-serif text-lg font-semibold">You don&apos;t have access to this page</p>
-                <p className="mt-1 text-sm text-muted-foreground">Ask the clinic owner to change your permissions (Facility Profile → Permissions).</p>
+                <p className="mt-3 font-serif text-lg font-semibold">{tc("no_access_title")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{tc("no_access_hint")}</p>
               </div>
             )}
           </FacilityStatsContext.Provider>

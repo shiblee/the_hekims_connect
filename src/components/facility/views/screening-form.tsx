@@ -196,7 +196,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
       {step === "complaints" && (
         <motion.div key="complaints" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
         <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-5">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+          <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chief Complaint(s)</p>
 
           {selectedComplaintIds.length > 0 && (
@@ -222,12 +222,12 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           )}
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               value={complaintSearch}
               onChange={(e) => setComplaintSearch(e.target.value)}
               placeholder="Search chief complaint…"
-              className={cn("pl-9 bg-background/60", voiceSupported && "pr-10")}
+              className={cn("ps-9 bg-background/60", voiceSupported && "pe-10")}
             />
             {voiceSupported && (
               <button
@@ -235,7 +235,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
                 onClick={toggleVoiceSearch}
                 aria-label="Search by voice"
                 className={cn(
-                  "absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors",
+                  "absolute end-2.5 top-1/2 -translate-y-1/2 transition-colors",
                   listening ? "text-destructive animate-pulse" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -245,7 +245,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           </div>
           <NoticeSlot state={voiceMsg} />
 
-          <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="space-y-4 max-h-[50vh] overflow-y-auto pe-1">
             {groupedComplaints.map(([category, items]) => (
               <div key={category}>
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{category}</p>
@@ -281,7 +281,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
       {step === "results" && result && (
         <motion.div key="results" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
         <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-5">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+          <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Screening Result</p>
           </div>

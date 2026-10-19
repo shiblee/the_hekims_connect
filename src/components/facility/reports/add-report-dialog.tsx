@@ -91,7 +91,7 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
     if (skipped.length) {
       fileMsg.warning(
         "Some files weren't added",
-        <ul className="list-disc pl-4 space-y-0.5">{skipped.map((s) => <li key={s}>{s}</li>)}</ul>,
+        <ul className="list-disc ps-4 space-y-0.5">{skipped.map((s) => <li key={s}>{s}</li>)}</ul>,
       );
     } else {
       fileMsg.clear();
@@ -205,9 +205,9 @@ export function AddReportDialog({ patientId, open, onOpenChange, onSaved }: {
                     {f.preview
                       ? <img src={f.preview} alt={f.file.name} className="h-full w-full object-cover" />
                       : <div className="h-full w-full flex flex-col items-center justify-center gap-1 text-muted-foreground p-2"><FileText className="h-6 w-6" /><span className="text-[10px] text-center line-clamp-2 break-all">{f.file.name}</span></div>}
-                    <span className="absolute bottom-1 left-1 rounded bg-background/80 px-1 text-[10px]">{i + 1}</span>
+                    <span className="absolute bottom-1 start-1 rounded bg-background/80 px-1 text-[10px]">{i + 1}</span>
                     <button type="button" onClick={() => removeFile(f.id)} aria-label={`Remove ${f.file.name}`}
-                      className="absolute top-1 right-1 rounded-full bg-background/90 p-0.5 opacity-80 hover:opacity-100">
+                      className="absolute top-1 end-1 rounded-full bg-background/90 p-0.5 opacity-80 hover:opacity-100">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>

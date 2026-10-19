@@ -346,7 +346,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
                   onClick={() => setUrgency(u.value)}
                   aria-pressed={urgency === u.value}
                   className={cn(
-                    "rounded-lg border-2 px-2.5 py-2 text-left transition-colors",
+                    "rounded-lg border-2 px-2.5 py-2 text-start transition-colors",
                     urgency === u.value ? u.tone : "border-border/60 hover:border-border",
                   )}
                 >
@@ -389,7 +389,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           <NoticeSlot state={dialogMsg} />
           <DialogFooter className="sm:justify-between gap-2">
             {editingReferral ? (
-              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 sm:mr-auto" onClick={() => setConfirmRemove(true)} disabled={saving || confirmRemove}>
+              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 sm:me-auto" onClick={() => setConfirmRemove(true)} disabled={saving || confirmRemove}>
                 <Trash2 className="h-4 w-4" /> Remove referral
               </Button>
             ) : <span />}
@@ -472,7 +472,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
             </span>
           ))}
           {presentCount === 0 && <span className="text-sm text-muted-foreground">No warning signs were marked.</span>}
-          <span className="text-[13px] text-muted-foreground ml-auto">Locked after referral — to change, remove the referral (Edit on the referral line).</span>
+          <span className="text-[13px] text-muted-foreground ms-auto">Locked after referral — to change, remove the referral (Edit on the referral line).</span>
         </div>
       ) : (
       <FloatingMultiSelect

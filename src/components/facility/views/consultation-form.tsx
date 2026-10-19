@@ -263,7 +263,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
 
       {/* Doctor Review */}
       <Card className="relative overflow-hidden p-5 sm:p-6 border-border/40 bg-card/95 shadow-lg shadow-black/5 rounded-2xl gap-4 mb-5">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+        <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
           <Stethoscope className="h-3.5 w-3.5 text-primary" /> Doctor Review
         </p>
@@ -322,7 +322,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
 
       {/* Treatment Plan */}
       <Card className="relative overflow-hidden p-5 sm:p-6 border-border/40 bg-card/95 shadow-lg shadow-black/5 rounded-2xl gap-4">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+        <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
           <ClipboardList className="h-3.5 w-3.5 text-primary" /> Treatment Plan
         </p>

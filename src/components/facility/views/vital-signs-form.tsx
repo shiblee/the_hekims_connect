@@ -75,7 +75,7 @@ function RangeHint({
 }
 
 function unitAdornment(unit: string) {
-  return <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{unit}</span>;
+  return <span className="absolute end-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{unit}</span>;
 }
 
 
@@ -298,7 +298,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
       )}
 
       <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-6">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+        <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
         <fieldset disabled={locked} className="contents">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

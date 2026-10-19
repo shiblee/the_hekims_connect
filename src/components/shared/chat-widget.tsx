@@ -201,21 +201,21 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
     <div className={cn("grid gap-0 h-full", compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-[300px_1fr]")}>
       {/* Conversation list */}
       {!compact && (
-        <div className="border-r border-border flex flex-col">
+        <div className="border-e border-border flex flex-col">
           <div className="p-3 border-b border-border">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search conversations…"
-                className="pl-8 h-9 text-sm bg-background/60"
+                className="ps-8 h-9 text-sm bg-background/60"
               />
             </div>
           </div>
           <ScrollArea className="flex-1">
             {loadingConv ? (
-              <div className="p-6 text-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline mr-1" /> Loading…</div>
+              <div className="p-6 text-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline me-1" /> Loading…</div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted-foreground">
                 <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-40" />
@@ -228,7 +228,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
                     key={`${c.partnerType}|${c.partnerId}`}
                     onClick={() => setActivePartner({ id: c.partnerId, type: c.partnerType, name: c.partner?.name || "User" })}
                     className={cn(
-                      "w-full text-left p-2.5 rounded-lg transition-colors flex gap-2.5 items-center",
+                      "w-full text-start p-2.5 rounded-lg transition-colors flex gap-2.5 items-center",
                       activePartner?.id === c.partnerId ? "bg-primary/10" : "hover:bg-muted/50"
                     )}
                   >
@@ -274,7 +274,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
               {loadingMsgs && messages.length === 0 ? (
-                <div className="text-center text-xs text-muted-foreground py-8"><Loader2 className="h-4 w-4 animate-spin inline mr-1" /> Loading messages…</div>
+                <div className="text-center text-xs text-muted-foreground py-8"><Loader2 className="h-4 w-4 animate-spin inline me-1" /> Loading messages…</div>
               ) : (
                 messages.map((m, i) => {
                   const mine = m.senderId === me.id && m.senderType === me.type;
@@ -289,7 +289,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
                       )}
                       <div className={cn(
                         "max-w-[70%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
-                        mine ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
+                        mine ? "bg-primary text-primary-foreground rounded-ee-sm" : "bg-muted text-foreground rounded-es-sm"
                       )}>
                         {m.content}
                         <div className={cn("text-[10px] mt-0.5", mine ? "text-primary-foreground/60" : "text-muted-foreground")}>

@@ -146,7 +146,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
               <h3 className="font-serif text-base font-semibold">Daily Consultation Cap</h3>
               <p className="text-xs text-muted-foreground">You have completed {stats?.monthlyCompleted ?? 0}/{stats?.consultationCap ?? 100} consultations this month.</p>
             </div>
-            <div className="text-right">
+            <div className="text-end">
               <p className="font-serif text-3xl font-bold text-primary">{consultationPct}%</p>
               <p className="text-xs text-emerald-400 flex items-center justify-end gap-1">
                 <TrendingUp className="h-3 w-3" /> Ahead of schedule

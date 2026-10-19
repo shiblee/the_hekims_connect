@@ -101,7 +101,7 @@ export function VoiceInputButton({
       <Mic className={cn("relative z-10", size === "sm" ? "h-4 w-4" : "h-5 w-5")} />
     </button>
     {hint && (
-      <span role="status" className="absolute right-0 top-full mt-1 z-30 w-56 rounded-md border border-amber-500/40 bg-card px-2.5 py-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400 shadow-md">
+      <span role="status" className="absolute end-0 top-full mt-1 z-30 w-56 rounded-md border border-amber-500/40 bg-card px-2.5 py-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400 shadow-md">
         {hint}
       </span>
     )}

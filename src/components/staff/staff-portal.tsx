@@ -2,6 +2,8 @@
 
 import { firstAllowedPage } from "@/lib/staff-permissions";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { LanguageSelector } from "@/components/shared/language-selector";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
@@ -30,6 +32,8 @@ export function StaffPortal() {
   const logout = useAppStore((s) => s.logout);
   const permissions = useAppStore((s) => s.permissions);
   const onLogout = () => { logout(); router.push("/"); };
+  const t = useTranslations("clinic.staff_portal");
+  const tc = useTranslations("common");
 
   if (!staff) return null;
 
@@ -42,10 +46,11 @@ export function StaffPortal() {
           <BrandLogo size={30} />
           <div className="flex items-center gap-2">
           {firstAllowedPage(permissions ?? []) !== "/staff" && (
-            <Button size="sm" onClick={() => router.push(firstAllowedPage(permissions ?? []))}>Open clinic app</Button>
+            <Button size="sm" onClick={() => router.push(firstAllowedPage(permissions ?? []))}>{t("open_clinic")}</Button>
           )}
+          <LanguageSelector compact />
           <Button variant="outline" size="sm" onClick={onLogout}>
-            <LogOut className="h-4 w-4" /> Logout
+            <LogOut className="h-4 w-4 rtl:rotate-180" /> {tc("logout")}
           </Button>
           </div>
         </div>
@@ -61,45 +66,45 @@ export function StaffPortal() {
         </div>
 
         <Card className="p-6 border-border/50 bg-card/60 space-y-4">
-          <h2 className="font-serif text-lg font-semibold">Professional Information</h2>
+          <h2 className="font-serif text-lg font-semibold">{t("professional")}</h2>
           <dl className="grid sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <dt className="text-muted-foreground">Employee Type</dt>
+              <dt className="text-muted-foreground">{t("employee_type")}</dt>
               <dd className="font-medium mt-0.5">{staff.employeeType}</dd>
             </div>
             {staff.specialization && (
               <div>
-                <dt className="text-muted-foreground">Specialization</dt>
+                <dt className="text-muted-foreground">{t("specialization")}</dt>
                 <dd className="font-medium mt-0.5">{staff.specialization}</dd>
               </div>
             )}
             {staff.qualification && (
               <div>
-                <dt className="text-muted-foreground">Qualification</dt>
+                <dt className="text-muted-foreground">{t("qualification")}</dt>
                 <dd className="font-medium mt-0.5">{staff.qualification}</dd>
               </div>
             )}
             {staff.designation && (
               <div>
-                <dt className="text-muted-foreground">Designation</dt>
+                <dt className="text-muted-foreground">{t("designation")}</dt>
                 <dd className="font-medium mt-0.5">{staff.designation}</dd>
               </div>
             )}
             {staff.registrationNumber && (
               <div>
-                <dt className="text-muted-foreground">Registration Number</dt>
+                <dt className="text-muted-foreground">{t("registration")}</dt>
                 <dd className="font-medium mt-0.5">{staff.registrationNumber}</dd>
               </div>
             )}
             {staff.experience !== null && (
               <div>
-                <dt className="text-muted-foreground">Experience</dt>
-                <dd className="font-medium mt-0.5">{staff.experience} year{staff.experience === 1 ? "" : "s"}</dd>
+                <dt className="text-muted-foreground">{t("experience")}</dt>
+                <dd className="font-medium mt-0.5">{t("years", { count: staff.experience })}</dd>
               </div>
             )}
             {staff.role && (
               <div>
-                <dt className="text-muted-foreground">Role</dt>
+                <dt className="text-muted-foreground">{t("role")}</dt>
                 <dd className="font-medium mt-0.5">{staff.role}</dd>
               </div>
             )}
@@ -108,7 +113,7 @@ export function StaffPortal() {
 
         {responsibilities.length > 0 && (
           <Card className="p-6 border-border/50 bg-card/60 space-y-3">
-            <h2 className="font-serif text-lg font-semibold">Responsibilities</h2>
+            <h2 className="font-serif text-lg font-semibold">{t("responsibilities")}</h2>
             <div className="flex flex-wrap gap-1.5">
               {responsibilities.map((r) => <Badge key={r} variant="outline">{r}</Badge>)}
             </div>
@@ -117,14 +122,14 @@ export function StaffPortal() {
 
         <Card className="flex-row items-center justify-between gap-3 p-6 border-border/50 bg-card/60">
           <div>
-            <h2 className="flex items-center gap-2 font-serif text-lg font-semibold"><GraduationCap className="h-4 w-4 text-primary" /> Learning &amp; tutorials</h2>
-            <p className="text-sm text-muted-foreground">Guided tours and tutorials for the parts of the app you use.</p>
+            <h2 className="flex items-center gap-2 font-serif text-lg font-semibold"><GraduationCap className="h-4 w-4 text-primary" /> {t("learning")}</h2>
+            <p className="text-sm text-muted-foreground">{t("learning_hint")}</p>
           </div>
-          <Button variant="outline" onClick={() => router.push("/facility/profile/learning")}>Open</Button>
+          <Button variant="outline" onClick={() => router.push("/facility/profile/learning")}>{t("open")}</Button>
         </Card>
 
         <Card className="p-6 border-border/50 bg-card/60 space-y-3">
-          <h2 className="font-serif text-lg font-semibold">Contact</h2>
+          <h2 className="font-serif text-lg font-semibold">{t("contact")}</h2>
           {staff.email && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="h-4 w-4" /> {staff.email}</p>}
           {staff.phone && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" /> {staff.phone}</p>}
         </Card>

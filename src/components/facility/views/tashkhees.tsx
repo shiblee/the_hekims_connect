@@ -107,7 +107,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       <NoticeSlot state={t.msg} className="mb-3" />
       {latestVisit && (
         <Card data-tour="stage.actions" className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
-          <div className="flex items-center gap-2 shrink-0 flex-wrap ml-auto">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap ms-auto">
             <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report incl. this dossier (opens in a new tab; shows saved data — Save Draft first)">
               <Printer className="h-3.5 w-3.5" />
             </Button>

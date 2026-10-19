@@ -117,15 +117,15 @@ export function ProfileView() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label><Ruler className="inline h-3.5 w-3.5 mr-1" />Height</Label>
+            <Label><Ruler className="inline h-3.5 w-3.5 me-1" />Height</Label>
             <Input value={form.height || ""} onChange={(e) => set("height", e.target.value)} placeholder="178 cm" className="bg-background/60" />
           </div>
           <div className="space-y-1.5">
-            <Label><Weight className="inline h-3.5 w-3.5 mr-1" />Weight</Label>
+            <Label><Weight className="inline h-3.5 w-3.5 me-1" />Weight</Label>
             <Input value={form.weight || ""} onChange={(e) => set("weight", e.target.value)} placeholder="82 kg" className="bg-background/60" />
           </div>
           <div className="space-y-1.5">
-            <Label><Briefcase className="inline h-3.5 w-3.5 mr-1" />Occupation</Label>
+            <Label><Briefcase className="inline h-3.5 w-3.5 me-1" />Occupation</Label>
             <Input value={form.occupation || ""} onChange={(e) => set("occupation", e.target.value)} placeholder="Software Engineer" className="bg-background/60" />
           </div>
           <div className="space-y-1.5">
@@ -153,7 +153,7 @@ export function ProfileView() {
             <Textarea value={form.address || ""} onChange={(e) => set("address", e.target.value)} placeholder="House, street, city, state, pincode" className="bg-background/60 min-h-[60px]" />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label><Phone className="inline h-3.5 w-3.5 mr-1" />Emergency Contact</Label>
+            <Label><Phone className="inline h-3.5 w-3.5 me-1" />Emergency Contact</Label>
             <Input value={form.emergencyContact || ""} onChange={(e) => set("emergencyContact", e.target.value)} placeholder="+91 98765 43210 (Spouse)" className="bg-background/60" />
           </div>
         </div>
@@ -210,7 +210,7 @@ export function ProfileView() {
             <Textarea value={form.allergies || ""} onChange={(e) => set("allergies", e.target.value)} placeholder="e.g. Penicillin, Pollen, Dust" className="bg-background/60 min-h-[80px]" />
           </div>
           <div className="space-y-1.5">
-            <Label><Pill className="inline h-3.5 w-3.5 mr-1" />Current Medications</Label>
+            <Label><Pill className="inline h-3.5 w-3.5 me-1" />Current Medications</Label>
             <Textarea value={form.currentMedications || ""} onChange={(e) => set("currentMedications", e.target.value)} placeholder="e.g. Majoon Suranjan 5g BD, Metformin 500mg OD" className="bg-background/60 min-h-[80px]" />
           </div>
         </div>
