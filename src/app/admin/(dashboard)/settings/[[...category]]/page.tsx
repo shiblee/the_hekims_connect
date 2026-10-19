@@ -229,7 +229,7 @@ export default function SettingsPage() {
     const draftKey = `${s.category}.${s.key}`;
     if (BOOLEAN_KEYS.has(s.key)) {
       return (
-        <label key={s.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2">
+        <label key={s.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-input bg-background/60 px-3 py-2">
           <span className="min-w-0">
             <span className="block text-sm font-medium leading-tight">{KEY_LABELS[s.key] || s.key}</span>
             {KEY_HINTS[s.key] && <span className="block text-xs leading-snug text-muted-foreground">{KEY_HINTS[s.key]}</span>}
@@ -286,7 +286,8 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card className="p-6 gap-4 border-border/50 bg-card/60">
+        {/* Slightly darker borders on this page (fields, switch tiles, dividers) for clarity. */}
+        <Card className="p-6 gap-4 border-border bg-card/60 [--border:#c6c6cd] [--input:#a6a6af] dark:[--border:oklch(0.38_0.012_165)] dark:[--input:oklch(0.42_0.012_165)]">
           {!selected ? (
             <p className="text-muted-foreground text-sm">Select a section to manage its settings.</p>
           ) : (
@@ -342,7 +343,7 @@ export default function SettingsPage() {
                       return (
                         <section key={c} id={`section-${c}`} className="scroll-mt-24 space-y-3">
                           {c !== "general" && (
-                            <div className="flex flex-wrap items-baseline gap-x-2 border-t border-border/50 pt-4">
+                            <div className="flex flex-wrap items-baseline gap-x-2 border-t border-border pt-4">
                               <h3 className="font-serif text-base font-semibold">{CATEGORY_META[c]?.label || c}</h3>
                               {CATEGORY_META[c]?.description && <p className="text-xs text-muted-foreground">{CATEGORY_META[c].description}</p>}
                             </div>
@@ -354,7 +355,7 @@ export default function SettingsPage() {
                     })}
                     {Object.keys(SYSTEM).some((c) => settings.some((s) => s.category === c)) && (
                       <section id="section-engines" className="scroll-mt-24 space-y-3">
-                        <div className="border-t border-border/50 pt-5 pb-2">
+                        <div className="border-t border-border pt-5 pb-2">
                           <h3 className="font-serif text-base font-semibold">Engines & system</h3>
                           <p className="text-xs text-muted-foreground mt-0.5">Set on their own Admin tabs — shown here for reference.</p>
                         </div>
