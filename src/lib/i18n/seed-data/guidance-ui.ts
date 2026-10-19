@@ -33,6 +33,11 @@ export const GUIDANCE_UI_STRINGS: SeedString[] = [
   { key: "guidance.in_progress", group: "guidance", sourceText: "In progress" },
   { key: "guidance.updated_tour", group: "guidance", sourceText: "Updated since you saw it" },
   { key: "guidance.open_tutorial", group: "guidance", sourceText: "Tutorial" },
+  { key: "guidance.all_help", group: "guidance", sourceText: "All tutorials & tours" },
+  { key: "guidance.learning", group: "guidance", sourceText: "Learning & tutorials" },
+  { key: "guidance.back", group: "guidance", sourceText: "Back" },
+  { key: "guidance.tour", group: "guidance", sourceText: "Tour" },
+  { key: "guidance.nothing_yet", group: "guidance", sourceText: "No tours or tutorials are available for your account yet." },
   { key: "guidance.sec_overview", group: "guidance", sourceText: "Overview" },
   { key: "guidance.sec_purpose", group: "guidance", sourceText: "Purpose" },
   { key: "guidance.sec_access", group: "guidance", sourceText: "Who can use it" },
@@ -51,6 +56,7 @@ export const GUIDANCE_UI_STRINGS: SeedString[] = [
 /** Draft translations (status "draft" until reviewed and published in Admin → Languages). */
 export const GUIDANCE_UI_DRAFTS: Record<"hi" | "ur" | "ar" | "fa", Record<string, string>> = {
   hi: {
+    "guidance.all_help": "सभी ट्यूटोरियल और टूर", "guidance.learning": "Learning & tutorials", "guidance.back": "वापस", "guidance.tour": "टूर", "guidance.nothing_yet": "आपके खाते के लिए अभी कोई टूर या ट्यूटोरियल उपलब्ध नहीं है।",
     "guidance.step_of": "चरण {n} / {total}", "guidance.next": "आगे", "guidance.previous": "पीछे", "guidance.finish": "पूरा करें",
     "guidance.skip": "टूर छोड़ें", "guidance.close": "बंद करें", "guidance.close_hint": "बंद करें — आप यह टूर बाद में जारी रख सकते हैं",
     "guidance.full_tutorial": "पूरा ट्यूटोरियल", "guidance.not_on_screen": "यह चरण जिस हिस्से के बारे में है, वह अभी स्क्रीन पर नहीं है — विवरण फिर भी लागू होता है।",
@@ -65,6 +71,7 @@ export const GUIDANCE_UI_DRAFTS: Record<"hi" | "ur" | "ar" | "fa", Record<string
     "guidance.sec_validation": "नियम और सामान्य त्रुटियाँ", "guidance.sec_troubleshooting": "समस्या समाधान", "guidance.sec_security": "गोपनीयता और सुरक्षा", "guidance.sec_next": "अगले कदम",
   },
   ur: {
+    "guidance.all_help": "تمام رہنمائیاں اور ٹور", "guidance.learning": "Learning & tutorials", "guidance.back": "واپس", "guidance.tour": "ٹور", "guidance.nothing_yet": "آپ کے اکاؤنٹ کے لیے ابھی کوئی ٹور یا رہنمائی دستیاب نہیں۔",
     "guidance.step_of": "مرحلہ {n} از {total}", "guidance.next": "اگلا", "guidance.previous": "پچھلا", "guidance.finish": "مکمل کریں",
     "guidance.skip": "ٹور چھوڑیں", "guidance.close": "بند کریں", "guidance.close_hint": "بند کریں — آپ یہ ٹور بعد میں جاری رکھ سکتے ہیں",
     "guidance.full_tutorial": "مکمل رہنمائی", "guidance.not_on_screen": "یہ مرحلہ جس حصے کے بارے میں ہے وہ ابھی اسکرین پر نہیں — وضاحت پھر بھی لاگو ہوتی ہے۔",
@@ -79,6 +86,7 @@ export const GUIDANCE_UI_DRAFTS: Record<"hi" | "ur" | "ar" | "fa", Record<string
     "guidance.sec_validation": "اصول اور عام غلطیاں", "guidance.sec_troubleshooting": "مسائل کا حل", "guidance.sec_security": "رازداری اور حفاظت", "guidance.sec_next": "اگلے اقدامات",
   },
   ar: {
+    "guidance.all_help": "كل الأدلة والجولات", "guidance.learning": "Learning & tutorials", "guidance.back": "رجوع", "guidance.tour": "جولة", "guidance.nothing_yet": "لا تتوفر جولات أو أدلة لحسابك بعد.",
     "guidance.step_of": "الخطوة {n} من {total}", "guidance.next": "التالي", "guidance.previous": "السابق", "guidance.finish": "إنهاء",
     "guidance.skip": "تخطي الجولة", "guidance.close": "إغلاق", "guidance.close_hint": "إغلاق — يمكنك متابعة هذه الجولة لاحقًا",
     "guidance.full_tutorial": "الدليل الكامل", "guidance.not_on_screen": "الجزء الذي تصفه هذه الخطوة غير ظاهر على الشاشة الآن — يبقى الشرح صالحًا.",
@@ -93,6 +101,7 @@ export const GUIDANCE_UI_DRAFTS: Record<"hi" | "ur" | "ar" | "fa", Record<string
     "guidance.sec_validation": "القواعد والأخطاء الشائعة", "guidance.sec_troubleshooting": "حل المشكلات", "guidance.sec_security": "الخصوصية والأمان", "guidance.sec_next": "الخطوات التالية",
   },
   fa: {
+    "guidance.all_help": "همهٔ آموزش‌ها و تورها", "guidance.learning": "Learning & tutorials", "guidance.back": "بازگشت", "guidance.tour": "تور", "guidance.nothing_yet": "هنوز توری یا آموزشی برای حساب شما در دسترس نیست.",
     "guidance.step_of": "مرحلهٔ {n} از {total}", "guidance.next": "بعدی", "guidance.previous": "قبلی", "guidance.finish": "پایان",
     "guidance.skip": "رد کردن راهنما", "guidance.close": "بستن", "guidance.close_hint": "بستن — می‌توانید بعداً این راهنما را ادامه دهید",
     "guidance.full_tutorial": "آموزش کامل", "guidance.not_on_screen": "بخشی که این مرحله توضیح می‌دهد اکنون روی صفحه نیست — توضیح همچنان معتبر است.",

@@ -12,6 +12,7 @@ export interface GuideUi {
   helpTitle: string; tours: string; startTour: string; resumeTour: string; restartTour: string;
   noHelp: string; related: string; questions: string; updated: (d: string) => string; version: (v: number) => string;
   finished: string; skipped: string; inProgress: string; updatedTour: string; openTutorial: string;
+  allHelp: string; learning: string; back: string; tour: string; nothingYet: string;
   section: (key: string) => string;
 }
 
@@ -26,6 +27,7 @@ export function useGuideUi(): GuideUi {
     noHelp: t("no_help"), related: t("related"), questions: t("questions"),
     updated: (date) => t("updated", { date }), version: (version) => t("version", { version }),
     finished: t("finished"), skipped: t("skipped"), inProgress: t("in_progress"), updatedTour: t("updated_tour"), openTutorial: t("open_tutorial"),
+    allHelp: t("all_help"), learning: t("learning"), back: t("back"), tour: t("tour"), nothingYet: t("nothing_yet"),
     section: (key) => t(`sec_${key}` as "sec_overview"),
   };
 }

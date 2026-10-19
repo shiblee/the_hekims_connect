@@ -173,6 +173,8 @@ const escapeRe = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** Does a page path belong to a registry route? "[id]" segments match any one segment; sub-pages count too. */
 export function routeMatches(route: string, path: string): boolean {
   const clean = path.split("?")[0].replace(/\/+$/, "") || "/";
+  // An app's home ("/admin") is its own page, not a catch-all for every page under it.
+  if (route.split("/").length === 2) return clean === route;
   return new RegExp(`^${route.split("/").map((seg) => (/^\[.+\]$/.test(seg) ? "[^/]+" : escapeRe(seg))).join("/")}(/|$)`).test(clean);
 }
 /** A route that needs a specific record (e.g. a patient) can't be opened from a link. */

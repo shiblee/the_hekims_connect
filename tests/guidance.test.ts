@@ -117,6 +117,15 @@ describe("tours on screen", () => {
     assert.equal(moduleForPath("clinic", "/facility/profile/staff?x=1")?.key, "clinic.staff");
     assert.equal(moduleForPath("admin", "/admin/facilities/xyz/overview")?.key, "admin.facilities");
     assert.equal(moduleForPath("clinic", "/admin"), null);
+    // The admin home is its own page, not a catch-all; every admin page gets its own module.
+    assert.equal(moduleForPath("admin", "/admin")?.key, "admin.dashboard");
+    assert.equal(moduleForPath("admin", "/admin/humor")?.key, "admin.humor");
+    assert.equal(moduleForPath("admin", "/admin/history/activity")?.key, "admin.history");
+    assert.equal(moduleForPath("admin", "/admin/profile/learning")?.key, "admin.profile");
+    // Every facility-profile section, and the visit pages.
+    assert.equal(moduleForPath("clinic", "/facility/profile/services")?.key, "clinic.profile");
+    assert.equal(moduleForPath("clinic", "/facility/profile-setup")?.key, "clinic.profile-setup");
+    assert.equal(moduleForPath("clinic", "/facility/visits/v1/vitals")?.key, "clinic.visit-vitals");
   });
   it("serves only active steps, in the user's language when ready, else the fallback", () => {
     const content = cleanTour({ title: { en: "Tour", ur: "ٹور" }, reviewed: { ur: true }, steps: [

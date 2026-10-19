@@ -3,6 +3,9 @@
 import { useRequireStaff } from "@/lib/use-require-session";
 import { StaffPortal } from "@/components/staff/staff-portal";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { GuidanceProvider } from "@/components/guidance/guidance-provider";
+import { HelpButton, HelpPanel } from "@/components/guidance/help-panel";
+import { api } from "@/lib/api";
 
 function LoadingScreen() {
   return (
@@ -23,5 +26,5 @@ export default function StaffPage() {
 
   if (!ready || !staff) return <LoadingScreen />;
 
-  return <StaffPortal />;
+  return <GuidanceProvider client={api} renderHelp={() => <HelpPanel />}><StaffPortal /><HelpButton floating /></GuidanceProvider>;
 }

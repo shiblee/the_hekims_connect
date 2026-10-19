@@ -60,12 +60,15 @@ export const GUIDANCE_MODULES: GuidanceModuleDef[] = [
   { key: "clinic.mizaj", app: "clinic", name: "Stage 3 — Mizaj & morphometry", route: "/facility/mizaj", permission: ["mizaj"], related: ["clinic.record", "clinic.asbab"], targets: STAGE_COMMON(["mizaj.regions", "Body regions"], ["stage.complaints", "Main complaints (detail)"], ["mizaj.chronology", "Onset & chronology"]) },
   { key: "clinic.asbab", app: "clinic", name: "Stage 4 — Asbab-e-Sitta", route: "/facility/asbab", permission: ["asbab"], related: ["clinic.mizaj", "clinic.tashkhees"], targets: STAGE_COMMON(["asbab.pillars", "Six essential factors"], ["asbab.drift", "Lifestyle drift (right)"]) },
   { key: "clinic.tashkhees", app: "clinic", name: "Stage 5 — Tashkhees & handover", route: "/facility/tashkhees", permission: ["diagnosis"], related: ["clinic.asbab", "clinic.prescriptions"], targets: STAGE_COMMON(["dossier.dalail", "Dala'il — clinical signs"], ["dossier.diagnosis", "Tashkhees — diagnosis"], ["dossier.usool", "Usool-e-Ilaj — principles"], ["dossier.cds", "Decision support — medicines"], ["dossier.ghiza", "Ilaj-bil-Ghiza — diet"], ["dossier.dawa", "Ilaj-bil-Dawa — medicines"], ["dossier.tadbeer", "Ilaj-bil-Tadbeer — regimens"], ["dossier.handover", "Prognosis & handover"]) },
-  { key: "clinic.profile", app: "clinic", name: "Facility profile", route: "/facility/profile/overview", permission: ["settings"], related: ["clinic.fees", "clinic.staff"], targets: [...SHELL] },
+  { key: "clinic.profile", app: "clinic", name: "Facility profile", route: "/facility/profile", permission: ["settings"], related: ["clinic.fees", "clinic.staff"], targets: [...SHELL] },
   { key: "clinic.fees", app: "clinic", name: "Fees", route: "/facility/profile/fees", permission: ["settings"], related: ["clinic.payments", "clinic.staff"], targets: T(["fees.add", "Add fee button"], ["fees.list", "Fee list"]) },
   { key: "clinic.staff", app: "clinic", name: "Staff", route: "/facility/profile/staff", permission: ["staff.manage"], related: ["clinic.permissions", "clinic.reception"], targets: T(["staff.add", "Add Staff button"], ["staff.search", "Search box"], ["staff.list", "Staff list"]) },
   { key: "clinic.permissions", app: "clinic", name: "Permissions", route: "/facility/profile/permissions", permission: ["staff.manage"], related: ["clinic.staff", "clinic.activity", "clinic.reception"], targets: T(["permissions.roles", "Role permissions grid"], ["permissions.save", "Save permissions button"], ["permissions.people", "Per-person changes"]) },
   { key: "clinic.activity", app: "clinic", name: "Activity log", route: "/facility/profile/activity", permission: [], related: [], targets: [...SHELL] },
   { key: "clinic.learning", app: "clinic", name: "Learning & tutorials", route: "/facility/profile/learning", permission: [], related: [], targets: [...SHELL] },
+  { key: "clinic.visit-vitals", app: "clinic", name: "Visit — vital signs", route: "/facility/visits/[id]/vitals", permission: ["patients.view"], related: ["clinic.record", "clinic.reception"], targets: [...SHELL] },
+  { key: "clinic.visit-screening", app: "clinic", name: "Visit — screening", route: "/facility/visits/[id]/screening", permission: ["patients.view"], related: ["clinic.record"], targets: [...SHELL] },
+  { key: "clinic.visit-consultation", app: "clinic", name: "Visit — consultation", route: "/facility/visits/[id]/consultation", permission: ["patients.view"], related: ["clinic.prescriptions"], targets: [...SHELL] },
   // Admin panel
   { key: "admin.dashboard", app: "admin", name: "Admin dashboard", route: "/admin", permission: [], related: ["admin.facilities", "admin.guidance"], targets: ADMIN_SHELL },
   { key: "admin.facilities", app: "admin", name: "Facilities", route: "/admin/facilities", permission: [], related: ["admin.staff", "admin.payments"], targets: [{ id: "facilities.kpis", label: "Headline figures" }, { id: "facilities.insights", label: "Insights & engagement health" }, { id: "facilities.filters", label: "Search & filters" }, { id: "facilities.table", label: "Facilities table" }, ...ADMIN_SHELL] },
@@ -77,6 +80,10 @@ export const GUIDANCE_MODULES: GuidanceModuleDef[] = [
   { key: "admin.notifications", app: "admin", name: "Notifications", route: "/admin/notifications", permission: [], related: [], targets: ADMIN_SHELL },
   { key: "admin.languages", app: "admin", name: "Languages", route: "/admin/languages", permission: [], related: ["admin.guidance"], targets: ADMIN_SHELL },
   { key: "admin.guidance", app: "admin", name: "User guidance", route: "/admin/guidance", permission: [], related: ["admin.languages"], targets: [{ id: "guidance.settings", label: "Guidance settings" }, { id: "guidance.modules", label: "Modules, tours and tutorials" }, ...ADMIN_SHELL] },
+  { key: "admin.humor", app: "admin", name: "Humoral Matrix", route: "/admin/humor", permission: [], related: ["admin.meta"], targets: ADMIN_SHELL },
+  { key: "admin.pages", app: "admin", name: "Pages", route: "/admin/pages", permission: [], related: ["admin.languages"], targets: ADMIN_SHELL },
+  { key: "admin.history", app: "admin", name: "History", route: "/admin/history", permission: [], related: ["admin.dashboard"], targets: ADMIN_SHELL },
+  { key: "admin.profile", app: "admin", name: "Your profile & learning", route: "/admin/profile", permission: [], related: ["admin.guidance"], targets: ADMIN_SHELL },
 ];
 
 export const moduleDef = (key: string) => GUIDANCE_MODULES.find((m) => m.key === key);
