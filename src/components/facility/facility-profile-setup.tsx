@@ -15,12 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { FloatingField, FieldError } from "@/components/shared/floating-field";
+import { FloatingField, FieldError, FloatingMultiSelect } from "@/components/shared/floating-field";
 import {
   Building2, MapPin, MapPinned, Clock, Stethoscope, Sparkles, LogOut, ChevronLeft,
   ChevronRight, CheckCircle2, Loader2, Hospital, HeartPulse, Hash, Calendar,
   Phone, Globe, Landmark, BedDouble, Users, Siren, Ambulance, Gift, Lock,
-  ChevronDown, Search, Microscope, Baby, Leaf, ListChecks, X, Check,
+  Microscope, Baby, Leaf, ListChecks,
 } from "lucide-react";
 
 const DAYS: { value: number; label: string }[] = [
@@ -148,73 +148,29 @@ const GROUP_ICON: Record<string, typeof Stethoscope> = {
   specialization: Stethoscope, service_diagnostic: Microscope, service_emergency: Siren, service_maternal_child: Baby, service_other: Leaf,
 };
 
-/**
- * Many options in little space: a search across every group, groups that fold open,
- * a "3 / 13" count and All / None per group, and the chosen items shown as chips when folded.
- */
-function ServicesPicker({ groups, errorKeys }: { groups: PickGroup[]; errorKeys: string[] }) {
+/** One search-and-pick field per group (same field as allergies / chief complaints): type or click to see options, chosen ones show as chips. */
+function GroupMultiSelect({ group, error }: { group: PickGroup; error: boolean }) {
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<string[]>(() => [groups[0]?.key].filter(Boolean) as string[]);
   const q = query.trim().toLowerCase();
+  const Icon = GROUP_ICON[group.key] ?? ListChecks;
+  const results = group.options.filter((o) => !group.selected.includes(o) && (!q || o.toLowerCase().includes(q))).map((o) => ({ id: o, label: o }));
+  const chosen = group.options.filter((o) => group.selected.includes(o));
   return (
-    <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search specializations and services…"
-          className="h-10 w-full rounded-lg border border-input bg-background/60 pl-9 pr-9 text-sm outline-none focus:border-primary"
-        />
-        {query && <button type="button" onClick={() => setQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-4 w-4" /></button>}
-      </div>
-      <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-        {groups.map((g) => {
-          const Icon = GROUP_ICON[g.key] ?? ListChecks;
-          const shown = q ? g.options.filter((o) => o.toLowerCase().includes(q)) : g.options;
-          if (q && shown.length === 0) return null;
-          const chosen = g.options.filter((o) => g.selected.includes(o));
-          const isOpen = !!q || open.includes(g.key);
-          const hasError = errorKeys.includes(g.key);
-          return (
-            <section key={g.key} className={cn("bg-background/40", hasError && "bg-destructive/5")}>
-              <div className="flex items-center gap-2 px-3 py-2.5">
-                <button type="button" onClick={() => setOpen((o) => (o.includes(g.key) ? o.filter((x) => x !== g.key) : [...o, g.key]))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left" aria-expanded={isOpen}>
-                  <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", chosen.length ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}><Icon className="h-4 w-4" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{g.label}</span>
-                    {!isOpen && chosen.length > 0 && <span className="block truncate text-xs text-primary">{chosen.slice(0, 3).join(" · ")}{chosen.length > 3 ? ` +${chosen.length - 3}` : ""}</span>}
-                    {!isOpen && chosen.length === 0 && <span className={cn("block text-xs", hasError ? "text-destructive" : "text-muted-foreground")}>{hasError ? "Choose at least one" : "None selected"}</span>}
-                  </span>
-                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums", chosen.length ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>{chosen.length} / {g.options.length}</span>
-                  <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
-                </button>
-              </div>
-              {isOpen && (
-                <div className="px-3 pb-3">
-                  <div className="mb-2 flex justify-end gap-3 text-xs">
-                    <button type="button" className="font-medium text-primary hover:underline" onClick={() => g.setAll(shown, true)}>Select all{q ? " shown" : ""}</button>
-                    <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" onClick={() => g.setAll(shown, false)}>None</button>
-                  </div>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
-                    {shown.map((o) => {
-                      const on = g.selected.includes(o);
-                      return (
-                        <button key={o} type="button" onClick={() => g.toggle(o)} aria-pressed={on}
-                          className={cn("flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[13px] transition-colors",
-                            on ? "border-primary/50 bg-primary/10 font-medium text-primary" : "border-border bg-card hover:border-primary/40")}>
-                          <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded border", on ? "border-primary bg-primary text-primary-foreground" : "border-input")}>{on && <Check className="h-3 w-3" strokeWidth={3} />}</span>
-                          <span className="min-w-0 leading-snug">{o}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
-      {q && groups.every((g) => !g.options.some((o) => o.toLowerCase().includes(q))) && <p className="text-sm text-muted-foreground">Nothing matches &ldquo;{query}&rdquo;.</p>}
-    </div>
+    <FloatingMultiSelect
+      id={`pick-${group.key}`}
+      label={`${group.label}${chosen.length ? ` · ${chosen.length}` : ""}`}
+      labelIcon={Icon}
+      error={error}
+      selected={chosen.map((o) => ({ id: o, label: o }))}
+      onRemove={(id) => group.toggle(id)}
+      query={query}
+      onQueryChange={setQuery}
+      results={results}
+      onPick={(id) => { group.toggle(id); setQuery(""); }}
+      openOnFocus
+      emptyHint={results.length ? `${results.length} option${results.length === 1 ? "" : "s"} — type to narrow` : "All options chosen"}
+      placeholder="Type to search…"
+    />
   );
 }
 
@@ -723,9 +679,8 @@ export function FacilityProfileSetup() {
                             <p className="text-sm text-muted-foreground">
                               <b className="text-foreground">{form.specializations.length}</b> specialization{form.specializations.length === 1 ? "" : "s"} · <b className="text-foreground">{form.services.length}</b> service{form.services.length === 1 ? "" : "s"} selected
                             </p>
-                            <ServicesPicker
-                              errorKeys={[fieldErrors.specializations ? "specialization" : "", fieldErrors.services ? serviceGroups[0]?.[0] ?? "" : ""].filter(Boolean)}
-                              groups={[
+                            <div className="space-y-4">
+                            {([
                                 {
                                   key: "specialization", label: "Major medical specializations", options: specializationOptions, selected: form.specializations,
                                   toggle: (v) => toggleInList("specializations", v),
@@ -736,8 +691,10 @@ export function FacilityProfileSetup() {
                                   toggle: (v: string) => toggleInList("services", v),
                                   setAll: (vals: string[], on: boolean) => set("services", on ? [...new Set([...form.services, ...vals])] : form.services.filter((x) => !vals.includes(x))),
                                 })),
-                              ]}
-                            />
+                              ] as PickGroup[]).map((g) => (
+                                <GroupMultiSelect key={g.key} group={g} error={g.key === "specialization" ? !!fieldErrors.specializations : !!fieldErrors.services && form.services.length === 0} />
+                              ))}
+                            </div>
                             <FieldError message={fieldErrors.specializations || fieldErrors.services} />
                             <div className="grid gap-2 sm:grid-cols-2">
                               <ToggleRow icon={Siren} title="Emergency services" subtitle="Patients can come in an emergency" checked={form.emergencyServices} onCheckedChange={(v) => set("emergencyServices", v)} />
