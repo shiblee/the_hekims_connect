@@ -208,13 +208,15 @@ export function ProfileView({ section }: { section: string }) {
   const SaveButton = ({ onClick }: { onClick: () => void }) => (
     <>
     <NoticeSlot state={msg} />
-    <Button
-      className="self-end h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
-      disabled={saving}
-      onClick={onClick}
-    >
-      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
-    </Button>
+    <div className="flex justify-end border-t border-border pt-5">
+      <Button
+        className="h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
+        disabled={saving}
+        onClick={onClick}
+      >
+        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
+      </Button>
+    </div>
     </>
   );
 
@@ -435,7 +437,7 @@ export function ProfileView({ section }: { section: string }) {
                     </section>
                   );
                 })}
-                <section className="py-5">
+                <section className="pt-5">
                   <p className="mb-3 text-[15px] font-semibold">{EMERGENCY_QUESTION}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <ToggleRow title="Emergency services" checked={emergencyServices} onCheckedChange={setEmergencyServices} />
