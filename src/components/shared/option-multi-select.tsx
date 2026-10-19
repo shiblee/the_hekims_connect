@@ -31,6 +31,7 @@ export function OptionMultiSelect({ id, label, options, value, onChange, icon, p
       results={results}
       onPick={(v) => { onChange([...value, v]); setQuery(""); }}
       openOnFocus
+      inlineList
       emptyHint={results.length ? `${results.length} option${results.length === 1 ? "" : "s"} — type to narrow` : "All options chosen"}
       placeholder={placeholder}
     />

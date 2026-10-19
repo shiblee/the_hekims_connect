@@ -231,7 +231,7 @@ const TONES = {
 export function FloatingMultiSelect<T extends { id: string; label: string }>({
   id, label, required, error, selected, onRemove, query, onQueryChange, results, onPick,
   onCreate, createLabel = (q) => `Add "${q}"`, createOptions, tone = "primary", labelIcon: LabelIcon, itemIcon: ItemIcon,
-  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache", openOnFocus, describe, emptyHint, keepOrder,
+  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache", openOnFocus, describe, emptyHint, keepOrder, inlineList,
 }: {
   id: string;
   label: string;
@@ -263,6 +263,8 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
   placeholder?: string;
   /** Show results in the given order instead of A–Z (closest matches first). */
   keepOrder?: boolean;
+  /** Open the list inside the page flow (pushes content down) — for dialogs, where a floating list gets cut off. */
+  inlineList?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -335,7 +337,7 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
       </label>
 
       {(q || (openOnFocus && focused)) && (results.length > 0 || canCreate || (!allowsCreate && !!q)) && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-border/60 bg-card shadow-lg max-h-56 overflow-y-auto py-1">
+        <div className={cn("mt-1 rounded-lg border border-border/60 bg-card max-h-56 overflow-y-auto overscroll-contain py-1", inlineList ? "relative" : "absolute left-0 right-0 top-full z-20 shadow-lg")}>
           {!q && emptyHint && <p className="px-3 pt-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{emptyHint}</p>}
           {results.length === 0 && !canCreate ? (
             <p className="px-3 py-2 text-sm text-muted-foreground">No matches for &quot;{query}&quot;.</p>

@@ -43,7 +43,7 @@ export function FloatingCombobox({
 
   return (
     <div className="relative">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={setOpen} modal /* own scroll handling, so the list scrolls inside dialogs */>
         <PopoverTrigger asChild>
           <button
             id={id}
