@@ -121,6 +121,8 @@ model Facility {
   services               String?
   profileCompleted       Boolean   @default(false)
   profileCompletedAt     DateTime?
+  /// Clinic owner's switch for guided tours / tutorials in their clinic (content itself is platform-wide).
+  guidanceEnabled        Boolean   @default(true)
 
   appointments         Appointment[]
   mizajAssessments     MizajAssessment[]
@@ -2044,3 +2046,101 @@ model FacilityFee {
 
   @@index([facilityId])
 }
+
+// ── User guidance (guided tours + module tutorials) ─────────────────────────────
+// Content is platform-wide and managed by admins. Modules are registered in code
+// (src/lib/guidance/registry.ts) and mirrored here so admins can switch them on/off.
+
+model GuidanceModule {
+  key        String   @id // e.g. "clinic.reception"
+  app        String // "clinic" | "admin"
+  name       String
+  route      String
+  enabled    Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tours GuidanceTour[]
+  docs  GuidanceDoc[]
+}
+
+/// A step-by-step tour. `draft` is what admins edit; `published` is the frozen copy users see.
+model GuidanceTour {
+  id          String    @id @default(cuid())
+  moduleKey   String
+  name        String
+  /// JSON array: "owner", "staff", "role:<Staff role>", "admin"
+  audience    String    @default("[]")
+  trigger     String    @default("first_visit") // "first_login" | "first_visit" | "manual"
+  reoffer     Boolean   @default(false) // offer again to users who finished an older version
+  draft       String // JSON TourContent
+  published   String? // JSON TourContent snapshot
+  version     Int       @default(0)
+  status      String    @default("draft") // "draft" | "published" | "archived"
+  dirty       Boolean   @default(true) // draft differs from the published copy
+  publishedAt DateTime?
+  publishedBy String?
+  updatedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  module   GuidanceModule     @relation(fields: [moduleKey], references: [key], onDelete: Cascade)
+  progress GuidanceProgress[]
+
+  @@index([moduleKey])
+}
+
+/// A module's detailed tutorial (structured sections, per language).
+model GuidanceDoc {
+  id          String    @id @default(cuid())
+  moduleKey   String
+  name        String
+  audience    String    @default("[]")
+  draft       String // JSON DocContent
+  published   String?
+  version     Int       @default(0)
+  status      String    @default("draft")
+  dirty       Boolean   @default(true)
+  publishedAt DateTime?
+  publishedBy String?
+  updatedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  module GuidanceModule @relation(fields: [moduleKey], references: [key], onDelete: Cascade)
+
+  @@index([moduleKey])
+}
+
+/// Every published version, kept for history (never edited).
+model GuidanceVersion {
+  id          String   @id @default(cuid())
+  kind        String // "tour" | "doc"
+  entityId    String
+  version     Int
+  snapshot    String
+  publishedBy String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([kind, entityId, version])
+}
+
+/// One user's progress through one tour (separate from content; restarting never touches records).
+model GuidanceProgress {
+  id          String    @id @default(cuid())
+  userKey     String // "facility:<id>" | "staff:<id>" | "admin:<id>"
+  tourId      String
+  version     Int
+  state       String    @default("in_progress") // "in_progress" | "completed" | "skipped"
+  step        Int       @default(0)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  tour GuidanceTour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([userKey, tourId])
+}
+

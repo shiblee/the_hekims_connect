@@ -595,6 +595,7 @@ export async function seedDatabase() {
   await seedMetaCatalogs(db);
   await seedFacilityMeta(db);
   await (await import("@/lib/staff-meta-seed")).seedStaffMeta(db);
+  await (await import("@/lib/guidance/registry")).syncGuidanceModules(db);
   await seedEmailTemplates();
 
   // Check if already seeded
