@@ -45,6 +45,7 @@ interface Option {
   active: boolean;
   sortOrder: number;
   count: number;
+  updatedAt?: string;
 }
 
 type CountScope = "facility" | "staff" | "patient" | "payment" | "vitals" | "none";
@@ -2031,7 +2032,10 @@ export default function MetaSectionPage() {
             ) : (
               <>
                 <div>
-                  <h2 className="font-serif text-lg font-semibold">{selected.label}</h2>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                    <h2 className="font-serif text-lg font-semibold">{selected.label}</h2>
+                    {!loadingOptions && <LastUpdated rows={options} />}
+                  </div>
                   {!HIDE_STATS_KEYS.includes(selected.key) && (
                     <p className="text-sm text-muted-foreground mt-1">{total} {countNoun(countScope, total)} registered in total</p>
                   )}

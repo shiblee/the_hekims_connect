@@ -752,88 +752,54 @@ export function FacilityProfileSetup() {
                         </div>
                       )}
 
-                      {step === 4 && (
-                        <div>
-                          <StepHeader icon={Sparkles} title="Your Service Plan" />
-
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.96, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                          >
-                            <Card className="relative overflow-hidden p-6 border-primary/30 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent">
-                              <div className="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
-
-                              <div className="relative flex items-center justify-between mb-1">
-                                <Badge className="bg-primary text-primary-foreground text-sm px-3 py-1 shadow-sm">
-                                  <Gift className="h-3.5 w-3.5 mr-1.5" /> FREE — {meta?.subscription.trialMonths} Months
-                                </Badge>
-                                <motion.div
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.15 }}
-                                  className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center ring-1 ring-primary/30"
-                                >
-                                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                                </motion.div>
-                              </div>
-                              <p className="relative font-serif text-2xl font-bold mt-3">Your Trial is Active</p>
-                              <p className="relative text-sm text-muted-foreground mt-1">Full access to get started — completely on us.</p>
-
-                              <div className="relative grid grid-cols-2 gap-3 mt-5">
-                                <div className="rounded-xl bg-background/60 border border-border/50 p-3">
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Activated</p>
-                                  <p className="text-sm font-semibold mt-1">{planDates.start.toLocaleDateString()}</p>
-                                </div>
-                                <div className="rounded-xl bg-background/60 border border-border/50 p-3">
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Valid Until</p>
-                                  <p className="text-sm font-semibold mt-1">{planDates.end.toLocaleDateString()}</p>
-                                </div>
-                              </div>
-
-                              <div className="relative mt-5 space-y-2">
-                                {["Full dashboard & patient management", "Appointments & prescriptions", "Mizaj assessments & messaging"].map((f, i) => (
-                                  <motion.div
-                                    key={f}
-                                    initial={{ opacity: 0, x: -8 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.2 + i * 0.08 }}
-                                    className="flex items-center gap-2 text-sm"
-                                  >
-                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> {f}
-                                  </motion.div>
-                                ))}
-                              </div>
-
-                              <p className="relative text-xs text-muted-foreground mt-4 pt-4 border-t border-border/40">
-                                Your free service period automatically expires on the date above. You can renew or upgrade anytime after.
-                              </p>
-                            </Card>
-                          </motion.div>
-
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="mt-4"
-                          >
-                            <Card className="relative overflow-hidden p-6 border-dashed border-border/60 bg-card/40">
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <Lock className="h-4 w-4 text-muted-foreground" />
-                                    <p className="font-semibold text-muted-foreground">Premium</p>
+                      {step === 4 && (() => {
+                        const months = meta?.subscription.trialMonths ?? 3;
+                        const cur = meta?.subscription.currency ?? "INR";
+                        const money = (n: number) => (cur === "INR" ? `₹${n.toLocaleString("en-IN")}` : `${cur} ${n.toLocaleString()}`);
+                        const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+                        const included = ["Patient registration & reception desk", "Full Unani assessment — Mizaj to Tashkhees", "Prescriptions, payments & receipts", "Staff, permissions & activity log"];
+                        return (
+                          <div>
+                            <StepHeader icon={Sparkles} title="Your Service Plan" />
+                            <div className="grid gap-3 sm:grid-cols-[1.25fr_1fr]">
+                              {/* Free trial — what the clinic gets now */}
+                              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                                className="relative flex flex-col rounded-2xl border-2 border-primary bg-primary/[0.06] p-5">
+                                <span className="absolute -top-2.5 left-4 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">Your plan now</span>
+                                <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Gift className="h-4 w-4" /> Free trial</div>
+                                <p className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-bold tabular-nums">{money(0)}</span><span className="text-sm text-muted-foreground">for {months} months</span></p>
+                                {/* Trial timeline: today → end date */}
+                                <div className="mt-4">
+                                  <div className="relative h-1.5 rounded-full bg-primary/20">
+                                    <span className="absolute left-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-primary ring-2 ring-background" />
+                                    <span className="absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-primary bg-background" />
                                   </div>
-                                  <p className="text-xl font-bold mt-2">{meta?.subscription.currency} {meta?.subscription.price}<span className="text-sm font-normal text-muted-foreground">/month</span></p>
-                                  <p className="text-xs text-muted-foreground mt-1">Unlocks automatically once your free trial ends.</p>
+                                  <div className="mt-1.5 flex justify-between text-xs">
+                                    <span><b className="font-semibold">Today</b><span className="block text-muted-foreground">{fmt(planDates.start)}</span></span>
+                                    <span className="text-right"><b className="font-semibold">Trial ends</b><span className="block text-muted-foreground">{fmt(planDates.end)}</span></span>
+                                  </div>
                                 </div>
-                                <Badge variant="outline" className="text-muted-foreground shrink-0">Locked</Badge>
-                              </div>
-                              <Button disabled size="sm" variant="outline" className="mt-4 w-full">Available after Free Period</Button>
-                            </Card>
-                          </motion.div>
-                        </div>
-                      )}
+                                <ul className="mt-4 space-y-1.5 text-sm">
+                                  {included.map((f) => <li key={f} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{f}</li>)}
+                                </ul>
+                              </motion.div>
+
+                              {/* Premium — what follows */}
+                              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.08 }}
+                                className="flex flex-col rounded-2xl border border-input bg-card p-5">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Sparkles className="h-4 w-4" /> Premium</div>
+                                <p className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-bold tabular-nums">{money(meta?.subscription.price ?? 0)}</span><span className="text-sm text-muted-foreground">/ month</span></p>
+                                <p className="mt-4 rounded-lg bg-muted/60 px-3 py-2 text-xs">From <b className="font-semibold">{fmt(planDates.end)}</b>, after your trial</p>
+                                <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+                                  <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />Everything in the trial</li>
+                                  <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />No interruption — your data stays as it is</li>
+                                </ul>
+                              </motion.div>
+                            </div>
+                            <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> No payment details needed now. You can choose to continue when the trial ends.</p>
+                          </div>
+                        );
+                      })()}
 
                       {step === 5 && (
                         <div>
