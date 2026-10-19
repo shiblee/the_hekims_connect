@@ -285,9 +285,8 @@ export default function StaffListPage() {
                     {iv.sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                     Send verification code
                   </button>
-                ) : (
-                  <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} />
-                )}
+                ) : null}
+                <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} />
               </div>
             </div>
 

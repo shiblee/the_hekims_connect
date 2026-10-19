@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
   if (!contact) return NextResponse.json({ error: "Contact is required" }, { status: 400 });
 
   const { value: normalizedContact, isEmail } = normalizeContact(contact);
-  const clash = await findClinicContactClash(normalizedContact);
+  // When editing a staff member, their own current contact isn't a clash.
+  const clash = await findClinicContactClash(normalizedContact, body.staffId ? { staffId: String(body.staffId) } : {});
   if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
 
   const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);

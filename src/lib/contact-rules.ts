@@ -37,3 +37,17 @@ export function clinicClashMessage(c: ClinicContactClash): string {
     ? `This ${what} is already used by a clinic account. Each clinic and staff member needs their own ${what} to sign in.`
     : `This ${what} is already used by a staff member. Each clinic and staff member needs their own ${what} to sign in.`;
 }
+
+/** How long a confirmed staff verification code stays usable for adding / changing a contact. */
+export const STAFF_VERIFY_VALIDITY_MS = 30 * 60 * 1000;
+
+/** When this contact was last confirmed with a staff verification code (within the validity window), else null. */
+export async function recentStaffVerification(contact: string): Promise<Date | null> {
+  const { value } = normalizeContact(contact);
+  const otp = await db.otpCode.findFirst({
+    where: { identifier: value, purpose: "staff_verify", verifiedAt: { not: null } },
+    orderBy: { createdAt: "desc" },
+    select: { verifiedAt: true },
+  });
+  return otp?.verifiedAt && Date.now() - otp.verifiedAt.getTime() <= STAFF_VERIFY_VALIDITY_MS ? otp.verifiedAt : null;
+}

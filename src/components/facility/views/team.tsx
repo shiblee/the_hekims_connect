@@ -85,8 +85,13 @@ export function TeamView() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
-  const iv = useInlineContactVerify(api, "/api/facility/staff/otp/send", "/api/facility/staff/otp/verify");
+  const iv = useInlineContactVerify(api, "/api/facility/staff/otp/send", "/api/facility/staff/otp/verify", editingId ? { staffId: editingId } : undefined);
   const editingStaff = staff.find((s) => s.id === editingId) || null;
+  // Adding always needs a verified contact; editing needs one when the contact is changed.
+  const originalContact = editingStaff ? editingStaff.email || editingStaff.phone || "" : "";
+  const contactChanged = !!editingId && form.contact.trim().toLowerCase() !== originalContact.toLowerCase();
+  const needsVerify = !editingId || contactChanged;
+  const alreadyVerified = !!editingId && !contactChanged && !!editingStaff?.contactVerifiedAt;
 
   const load = async () => {
     setLoading(true);
@@ -140,7 +145,7 @@ export function TeamView() {
   const save = async () => {
     const missing = [!form.name.trim() && "Name", !form.contact.trim() && "Email or phone", !form.employeeType && "Employee type"].filter(Boolean);
     if (missing.length) { dialogMsg.warning(`Fill in: ${missing.join(", ")}`, "These are required for every staff member."); return; }
-    if (!editingId && iv.stage !== "verified") { dialogMsg.warning("Verify the email or phone first", "Send the code and enter it above — staff can only be added with a verified contact."); return; }
+    if (needsVerify && iv.stage !== "verified") { dialogMsg.warning(editingId ? "Verify the new email or phone first" : "Verify the email or phone first", editingId ? "Send the code to the new contact and enter it above — a changed contact must be verified before saving." : "Send the code and enter it above — staff can only be added with a verified contact."); return; }
 
     setSaving(true);
     try {
@@ -295,33 +300,33 @@ export function TeamView() {
                   id="staffContact"
                   label="Email or phone"
                   value={form.contact}
-                  disabled={!editingId && iv.stage === "verified"}
+                  disabled={iv.stage === "verified"}
                   onChange={(e) => {
                     setForm((f) => ({ ...f, contact: e.target.value }));
                     if (iv.stage !== "idle") iv.reset();
                   }}
                 />
-                {!editingId && (
-                  iv.stage === "idle" ? (
-                    <button
-                      type="button"
-                      onClick={() => iv.send(form.contact, form.name)}
-                      disabled={!form.contact.trim() || iv.sending}
-                      className="mt-2 text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1.5"
-                    >
-                      {iv.sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-                      Send verification code
-                    </button>
-                  ) : (
+                {alreadyVerified ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><ShieldCheck className="h-3.5 w-3.5" /> Verified {formatDateTime(editingStaff!.contactVerifiedAt!)}</p>
+                ) : iv.stage === "idle" ? (
+                  <>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <button
+                        type="button"
+                        onClick={() => iv.send(form.contact, form.name)}
+                        disabled={!form.contact.trim() || iv.sending}
+                        className="text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1.5"
+                      >
+                        {iv.sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                        Send verification code
+                      </button>
+                      {contactChanged && <span className="text-xs font-medium text-amber-600 dark:text-amber-400">New contact — verify it to save</span>}
+                      {editingId && !contactChanged && <span className="text-xs text-muted-foreground">Not verified yet (optional)</span>}
+                    </div>
                     <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} />
-                  )
-                )}
-                {editingId && editingStaff && (
-                  editingStaff.contactVerifiedAt && form.contact === (editingStaff.email || editingStaff.phone) ? (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><ShieldCheck className="h-3.5 w-3.5" /> Verified {formatDateTime(editingStaff.contactVerifiedAt)}</p>
-                  ) : (
-                    <p className="mt-2 text-xs text-muted-foreground">Not OTP-verified — changing the contact here skips verification.</p>
-                  )
+                  </>
+                ) : (
+                  <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} />
                 )}
               </div>
             </div>
@@ -377,7 +382,7 @@ export function TeamView() {
           <NoticeSlot state={dialogMsg} />
           <DialogFooter className="border-t border-border pt-4">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={save} disabled={saving || (!editingId && iv.stage !== "verified")}>
+            <Button onClick={save} disabled={saving || (needsVerify && iv.stage !== "verified")}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {editingId ? "Save changes" : "Add staff member"}
             </Button>
           </DialogFooter>

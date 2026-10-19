@@ -17,7 +17,7 @@ interface ApiClient {
  * so it can point at any send/verify endpoint pair (e.g. facility- or admin-authenticated
  * staff-contact verification) rather than only the public precheck routes.
  */
-export function useInlineContactVerify(client: ApiClient, sendUrl: string, verifyUrl: string) {
+export function useInlineContactVerify(client: ApiClient, sendUrl: string, verifyUrl: string, extraBody?: Record<string, unknown>) {
   const [stage, setStage] = useState<"idle" | "sent" | "verified">("idle");
   const [devOtp, setDevOtp] = useState("");
   const [code, setCode] = useState("");
@@ -36,7 +36,7 @@ export function useInlineContactVerify(client: ApiClient, sendUrl: string, verif
     setError("");
     setSending(true);
     try {
-      const res = await client.post<{ devOtp?: string; contact: string }>(sendUrl, { contact, name });
+      const res = await client.post<{ devOtp?: string; contact: string }>(sendUrl, { contact, name, ...extraBody });
       setDevOtp(res.devOtp ?? "");
       setCode(res.devOtp ?? "");
       setStage("sent");

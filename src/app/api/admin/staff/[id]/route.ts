@@ -5,7 +5,7 @@ import { getClientIp } from "@/lib/request-info";
 import { isEmailLike } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
-import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
+import { findClinicContactClash, clinicClashMessage, recentStaffVerification } from "@/lib/contact-rules";
 
 const PHONE_PATTERN = /^\+?[0-9]{7,15}$/;
 
@@ -57,13 +57,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     const newEmail = isEmail ? trimmedContact.toLowerCase() : null;
     const newPhone = isEmail ? null : trimmedContact;
+    const verifiedAt = await recentStaffVerification(trimmedContact);
     if (newEmail !== existing.email || newPhone !== existing.phone) {
       const clash = await findClinicContactClash(trimmedContact, { staffId: id });
       if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
+      // A new contact must be verified with a code first, same as when adding staff.
+      if (!verifiedAt) return NextResponse.json({ error: "Verify the new email or phone first — send the code and enter it." }, { status: 400 });
       data.email = newEmail;
       data.phone = newPhone;
-      // Contact actually changed — the stored verification no longer applies to it.
-      data.contactVerifiedAt = null;
+      data.contactVerifiedAt = verifiedAt;
+    } else if (verifiedAt) {
+      // Same contact, just verified now (it wasn't before).
+      data.contactVerifiedAt = verifiedAt;
     }
   }
   if (body.employeeType !== undefined) {

@@ -19,6 +19,7 @@ import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { OptionMultiSelect } from "@/components/shared/option-multi-select";
 import { ListChecks } from "lucide-react";
 import { FloatingCombobox } from "@/components/shared/combobox";
+import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inline-contact-verify";
 
 interface StaffDetail {
   id: string; staffCode: string; name: string; photo: string | null; email: string | null; phone: string | null;
@@ -113,7 +114,12 @@ export default function StaffDetailPage() {
   };
 
 
+  const iv = useInlineContactVerify(adminApi, "/api/admin/staff/otp/send", "/api/admin/staff/otp/verify", { staffId: id });
+  const originalContact = staff ? staff.email || staff.phone || "" : "";
+  const contactChanged = !!staff && contact.trim().toLowerCase() !== originalContact.toLowerCase();
+
   const save = async () => {
+    if (contactChanged && iv.stage !== "verified") { toast.error("Verify the new email or phone first — send the code and enter it."); return; }
     setSaving(true);
     try {
       const res = await adminApi.patch<{ staff: StaffDetail }>(`/api/admin/staff/${id}`, {
@@ -121,6 +127,7 @@ export default function StaffDetailPage() {
         registrationNumber, experience, role, responsibilities,
       });
       setStaff(res.staff);
+      iv.reset();
       toast.success("Changes saved");
     } catch (err: any) {
       toast.error(err.message || "Could not save changes");
@@ -194,12 +201,24 @@ export default function StaffDetailPage() {
             <h2 className="font-serif text-lg font-semibold mb-4">Personal Information</h2>
             <div className="space-y-6">
               <FloatingField id="name" label="Staff name" value={name} onChange={(e) => setName(e.target.value)} />
-              <FloatingField id="contact" label="Email or phone" value={contact} onChange={(e) => setContact(e.target.value)} />
-              {staff.contactVerifiedAt ? (
-                <p className="flex items-center gap-1.5 text-xs text-primary"><ShieldCheck className="h-3.5 w-3.5" /> Contact verified {formatDateTime(staff.contactVerifiedAt)}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">Contact not OTP-verified (edited since, or added before verification was required)</p>
-              )}
+              <div>
+                <FloatingField id="contact" label="Email or phone" value={contact} disabled={iv.stage === "verified"} onChange={(e) => { setContact(e.target.value); if (iv.stage !== "idle") iv.reset(); }} />
+                {!contactChanged && staff.contactVerifiedAt ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><ShieldCheck className="h-3.5 w-3.5" /> Contact verified {formatDateTime(staff.contactVerifiedAt)}</p>
+                ) : (
+                  <>
+                    {iv.stage === "idle" && (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <button type="button" onClick={() => iv.send(contact, name)} disabled={!contact.trim() || iv.sending} className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline">
+                          {iv.sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />} Send verification code
+                        </button>
+                        <span className={cn("text-xs", contactChanged ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>{contactChanged ? "New contact — verify it to save" : "Not verified yet (optional)"}</span>
+                      </div>
+                    )}
+                    <InlineVerifyBox iv={iv} contact={contact} name={name} />
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">Registered {formatDate(staff.createdAt)}</p>
