@@ -3,7 +3,9 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useListFormat } from "@/lib/i18n/use-date-locale";
 import { cn } from "@/lib/utils";
 import { PERMISSIONS, defaultsFor, effectivePermissions, type PermissionKey } from "@/lib/staff-permissions";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +18,8 @@ interface RoleRow { role: string; permissions: PermissionKey[]; customised: bool
 interface StaffPerm { id: string; name: string; staffCode: string; role: string; designation: string | null; active: boolean; grants: PermissionKey[]; revokes: PermissionKey[]; effective: PermissionKey[]; self: boolean }
 
 const GROUPS = [...new Set(PERMISSIONS.map((p) => p.group))];
+/** Translation key of a permission ("patients.view" → "patients_view"). */
+const pk = (key: string) => key.replace(/\./g, "_");
 
 /** Facility → Profile → Permissions: what each role, and each person, may do in the clinic app. */
 export function PermissionsView() {
@@ -27,6 +31,9 @@ export function PermissionsView() {
   const [saving, setSaving] = useState(false);
   const [person, setPerson] = useState<{ s: StaffPerm; on: PermissionKey[] } | null>(null);
   const msg = useNotice();
+  const t = useTranslations("clinic.permissions");
+  const tc = useTranslations("common");
+  const list = useListFormat();
 
   const load = () => api.get<{ roles: RoleRow[]; staff: StaffPerm[] }>("/api/facility/staff-permissions")
     .then((r) => {
@@ -34,7 +41,7 @@ export function PermissionsView() {
       setDraft(Object.fromEntries(r.roles.map((x) => [x.role, x.permissions])));
       return r;
     })
-    .catch((e) => { msg.error("Permissions couldn't be loaded", `${e.message || "Network error"}.`, { retry: load }); return null; });
+    .catch((e) => { msg.error(t("load_failed"), `${e.message || tc("network_error")}.`, { retry: load }); return null; });
   useEffect(() => {
     load().then((r) => {
       const id = params.get("staff");
@@ -50,14 +57,14 @@ export function PermissionsView() {
     setSaving(true);
     try {
       for (const r of changedRoles) await api.put("/api/facility/staff-permissions", { role: r.role, permissions: draft[r.role] });
-      msg.success("Permissions saved", `${changedRoles.map((r) => r.role).join(", ")} updated. Staff in these roles get the change on their next action.`);
+      msg.success(t("saved"), t("saved_detail", { roles: list(changedRoles.map((r) => r.role)) }));
       await load();
-    } catch (e: any) { msg.error("Permissions weren't saved", `${e.message || "Network error"}.`, { retry: saveRoles }); }
+    } catch (e: any) { msg.error(t("not_saved"), `${e.message || tc("network_error")}.`, { retry: saveRoles }); }
     finally { setSaving(false); }
   };
   const resetRole = async (role: string) => {
-    try { await api.put("/api/facility/staff-permissions", { role, reset: true }); msg.success(`${role} reset to the standard permissions`); await load(); }
-    catch (e: any) { msg.error("Couldn't reset", `${e.message || "Network error"}.`); }
+    try { await api.put("/api/facility/staff-permissions", { role, reset: true }); msg.success(t("reset_done", { role })); await load(); }
+    catch (e: any) { msg.error(t("reset_failed"), `${e.message || tc("network_error")}.`); }
   };
 
   const savePerson = async () => {
@@ -68,23 +75,23 @@ export function PermissionsView() {
     setSaving(true);
     try {
       await api.put("/api/facility/staff-permissions", { staffId: person.s.id, grants, revokes });
-      msg.success(`${person.s.name}'s permissions saved`);
+      msg.success(t("person_saved", { name: person.s.name }));
       setPerson(null); await load();
-    } catch (e: any) { msg.error("Not saved", `${e.message || "Network error"}.`); }
+    } catch (e: any) { msg.error(tc("not_saved"), `${e.message || tc("network_error")}.`); }
     finally { setSaving(false); }
   };
 
-  if (!roles) return <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+  if (!roles) return <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}</div>;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-serif text-xl font-bold flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" /> Permissions</h2>
-          <p className="text-sm text-muted-foreground">What staff can see and do when they sign in. Set it per role; adjust a person if needed. You (the clinic owner) always have full access.</p>
+          <h2 className="font-serif text-xl font-bold flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" /> {t("title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5">
-          {([["roles", "By role", Users], ["people", "By person", UserRound]] as const).map(([k, l, Icon]) => (
+          {([["roles", t("by_role"), Users], ["people", t("by_person"), UserRound]] as const).map(([k, l, Icon]) => (
             <button key={k} type="button" onClick={() => setTab(k)}
               className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
               <Icon className="h-3.5 w-3.5" /> {l}
@@ -100,11 +107,11 @@ export function PermissionsView() {
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-muted/40 text-xs">
                 <tr>
-                  <th className="sticky start-0 z-[2] bg-card shadow-[1px_0_0_var(--border)] min-w-[13rem] px-3 py-2.5 text-start font-semibold uppercase tracking-wide text-muted-foreground"><span className="absolute inset-0 -z-10 bg-muted/40" />Permission</th>
+                  <th className="sticky start-0 z-[2] bg-card shadow-[1px_0_0_var(--border)] min-w-[13rem] px-3 py-2.5 text-start font-semibold uppercase tracking-wide text-muted-foreground"><span className="absolute inset-0 -z-10 bg-muted/40" />{t("col_permission")}</th>
                   {roles.map((r) => (
                     <th key={r.role} className="min-w-[6.5rem] px-2 py-2.5 text-center font-semibold">
                       <span className="block">{r.role}</span>
-                      <span className="block text-[10px] font-normal text-muted-foreground">{people.filter((p) => p.role === r.role).length} staff{r.customised ? " · custom" : ""}</span>
+                      <span className="block text-[10px] font-normal text-muted-foreground">{t("n_staff", { count: people.filter((p) => p.role === r.role).length })}{r.customised ? ` · ${t("custom")}` : ""}</span>
                     </th>
                   ))}
                 </tr>
@@ -112,13 +119,13 @@ export function PermissionsView() {
               <tbody className="divide-y divide-border">
                 {GROUPS.map((g) => (
                   <Fragment key={g}>
-                    <tr className="bg-muted/20"><td colSpan={roles.length + 1} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span className="sticky start-3">{g}</span></td></tr>
+                    <tr className="bg-muted/20"><td colSpan={roles.length + 1} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span className="sticky start-3">{t(`g_${g}`)}</span></td></tr>
                     {PERMISSIONS.filter((p) => p.group === g).map((p) => (
                       <tr key={p.key} className="hover:bg-muted/20">
-                        <td className="sticky start-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2"><p className="font-medium">{p.label}</p><p className="text-xs text-muted-foreground">{p.hint}</p></td>
+                        <td className="sticky start-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2"><p className="font-medium">{t(pk(p.key))}</p><p className="text-xs text-muted-foreground">{t(`${pk(p.key)}_hint`)}</p></td>
                         {roles.map((r) => (
                           <td key={r.role} className="px-2 py-2 text-center">
-                            <Checkbox checked={(draft[r.role] || []).includes(p.key)} onCheckedChange={() => toggleRole(r.role, p.key)} aria-label={`${r.role}: ${p.label}`} />
+                            <Checkbox checked={(draft[r.role] || []).includes(p.key)} onCheckedChange={() => toggleRole(r.role, p.key)} aria-label={`${r.role}: ${t(pk(p.key))}`} />
                           </td>
                         ))}
                       </tr>
@@ -126,10 +133,10 @@ export function PermissionsView() {
                   </Fragment>
                 ))}
                 <tr>
-                  <td className="sticky start-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2 text-xs text-muted-foreground">Standard permissions</td>
+                  <td className="sticky start-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2 text-xs text-muted-foreground">{t("standard")}</td>
                   {roles.map((r) => (
                     <td key={r.role} className="px-2 py-2 text-center">
-                      {r.customised && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => resetRole(r.role)}><RotateCcw className="h-3 w-3" /> Reset</Button>}
+                      {r.customised && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => resetRole(r.role)}><RotateCcw className="h-3 w-3" /> {t("reset")}</Button>}
                     </td>
                   ))}
                 </tr>
@@ -137,33 +144,33 @@ export function PermissionsView() {
             </table>
           </div>
           <div className="flex items-center justify-end gap-3">
-            {changedRoles.length > 0 && <span className="text-xs text-muted-foreground">Unsaved changes: {changedRoles.map((r) => r.role).join(", ")}</span>}
-            <Button data-tour="permissions.save" onClick={saveRoles} disabled={saving || changedRoles.length === 0}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save permissions</Button>
+            {changedRoles.length > 0 && <span className="text-xs text-muted-foreground">{t("unsaved", { roles: list(changedRoles.map((r) => r.role)) })}</span>}
+            <Button data-tour="permissions.save" onClick={saveRoles} disabled={saving || changedRoles.length === 0}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("save")}</Button>
           </div>
         </>
       ) : (
         <div data-tour="permissions.people" className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <tr><th className="px-3 py-2.5">Staff</th><th className="px-3 py-2.5">Role</th><th className="px-3 py-2.5">Can do</th><th className="px-3 py-2.5 text-end">Actions</th></tr>
+              <tr><th className="px-3 py-2.5">{t("col_staff")}</th><th className="px-3 py-2.5">{t("col_role")}</th><th className="px-3 py-2.5">{t("col_can_do")}</th><th className="px-3 py-2.5 text-end">{t("col_actions")}</th></tr>
             </thead>
             <tbody className="divide-y divide-border">
               {people.map((s) => (
                 <tr key={s.id} className={cn("hover:bg-muted/30", !s.active && "opacity-60")}>
-                  <td className="px-3 py-2.5"><p className="font-medium">{s.name}</p><p className="text-xs text-muted-foreground">{s.staffCode}{s.designation ? ` · ${s.designation}` : ""}{!s.active ? " · inactive" : ""}</p></td>
+                  <td className="px-3 py-2.5"><p className="font-medium">{s.name}</p><p className="text-xs text-muted-foreground">{s.staffCode}{s.designation ? ` · ${s.designation}` : ""}{!s.active ? ` · ${t("inactive")}` : ""}</p></td>
                   <td className="px-3 py-2.5"><Badge variant="outline">{s.role}</Badge></td>
                   <td className="px-3 py-2.5 text-xs">
-                    <span className="font-medium">{s.effective.length} of {PERMISSIONS.length}</span>
-                    {(s.grants.length > 0 || s.revokes.length > 0) && <span className="ms-2 text-amber-700 dark:text-amber-400">adjusted for this person (+{s.grants.length} / −{s.revokes.length})</span>}
+                    <span className="font-medium">{t("n_of", { count: s.effective.length, total: PERMISSIONS.length })}</span>
+                    {(s.grants.length > 0 || s.revokes.length > 0) && <span className="ms-2 text-amber-700 dark:text-amber-400">{t("adjusted", { added: s.grants.length, removed: s.revokes.length })}</span>}
                   </td>
                   <td className="px-3 py-2.5 text-end">
-                    <Button size="sm" variant="ghost" className="h-8 px-2" disabled={s.self} title={s.self ? "You can't change your own permissions" : undefined} onClick={() => setPerson({ s, on: s.effective })}>
-                      <KeyRound className="h-3.5 w-3.5" /> Set permissions
+                    <Button size="sm" variant="ghost" className="h-8 px-2" disabled={s.self} title={s.self ? t("not_own") : undefined} onClick={() => setPerson({ s, on: s.effective })}>
+                      <KeyRound className="h-3.5 w-3.5" /> {t("set")}
                     </Button>
                   </td>
                 </tr>
               ))}
-              {people.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No staff yet.</td></tr>}
+              {people.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">{t("no_staff")}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -171,36 +178,36 @@ export function PermissionsView() {
 
       <Dialog open={!!person} onOpenChange={(o) => { if (!o) setPerson(null); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{person?.s.name} · permissions</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("person_title", { name: person?.s.name ?? "" })}</DialogTitle></DialogHeader>
           {person && (() => {
             const base = roles.find((r) => r.role === person.s.role)?.permissions ?? defaultsFor(person.s.role);
             return (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Starts from the <b className="text-foreground">{person.s.role}</b> role. Ticks that differ from the role are marked.</p>
+                <p className="text-sm text-muted-foreground">{t.rich("starts_from", { role: person.s.role, b: (c) => <b className="text-foreground">{c}</b> })}</p>
                 {GROUPS.map((g) => (
                   <div key={g}>
-                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{g}</p>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t(`g_${g}`)}</p>
                     <div className="space-y-1">
                       {PERMISSIONS.filter((p) => p.group === g).map((p) => {
                         const on = person.on.includes(p.key); const fromRole = base.includes(p.key);
                         return (
                           <label key={p.key} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border px-3 py-2 hover:bg-muted/30">
                             <Checkbox checked={on} onCheckedChange={() => setPerson((x) => x && { ...x, on: on ? x.on.filter((k) => k !== p.key) : [...x.on, p.key] })} />
-                            <span className="flex-1 text-sm">{p.label}</span>
-                            {on !== fromRole && <Badge variant="outline" className={on ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-red-500/40 text-red-600 dark:text-red-400"}>{on ? "added" : "removed"}</Badge>}
+                            <span className="flex-1 text-sm">{t(pk(p.key))}</span>
+                            {on !== fromRole && <Badge variant="outline" className={on ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-red-500/40 text-red-600 dark:text-red-400"}>{on ? t("added") : t("removed")}</Badge>}
                           </label>
                         );
                       })}
                     </div>
                   </div>
                 ))}
-                <p className="text-xs text-muted-foreground">Effective now: {effectivePermissions(base, person.on.filter((k) => !base.includes(k)), base.filter((k) => !person.on.includes(k))).length} permissions.</p>
+                <p className="text-xs text-muted-foreground">{t("effective", { count: effectivePermissions(base, person.on.filter((k) => !base.includes(k)), base.filter((k) => !person.on.includes(k))).length })}</p>
               </div>
             );
           })()}
           <DialogFooter>
-            <Button variant="outline" onClick={() => person && setPerson({ ...person, on: roles.find((r) => r.role === person.s.role)?.permissions ?? defaultsFor(person.s.role) })}><RotateCcw className="h-4 w-4" /> Same as role</Button>
-            <Button onClick={savePerson} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save</Button>
+            <Button variant="outline" onClick={() => person && setPerson({ ...person, on: roles.find((r) => r.role === person.s.role)?.permissions ?? defaultsFor(person.s.role) })}><RotateCcw className="h-4 w-4" /> {t("same_as_role")}</Button>
+            <Button onClick={savePerson} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {tc("save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

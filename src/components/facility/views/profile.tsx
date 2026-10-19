@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
-import { savedAt } from "@/lib/flash";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,22 +22,18 @@ import { ActivityLogView } from "./activity-log";
 import { FeesView } from "./fees";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { useAppStore } from "@/lib/store";
-import { groupQuestion, EMERGENCY_QUESTION } from "@/lib/facility-services";
 import { LearningCenter } from "@/components/guidance/learning-center";
 
-const DAY_LABELS: Record<number, string> = {
-  0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday",
-};
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 const SECTIONS = [
-  { key: "overview", label: "Overview", icon: LayoutGrid },
-  { key: "location", label: "Location", icon: MapPin },
-  { key: "capacity", label: "Capacity & Schedule", icon: Gauge },
-  { key: "services", label: "Services", icon: Stethoscope },
-  { key: "fees", label: "Fees", icon: IndianRupee },
+  { key: "overview", icon: LayoutGrid },
+  { key: "location", icon: MapPin },
+  { key: "capacity", icon: Gauge },
+  { key: "services", icon: Stethoscope },
+  { key: "fees", icon: IndianRupee },
 ];
-const STAFF_SECTIONS = [{ key: "staff", label: "Staff", icon: UserCog }, { key: "permissions", label: "Permissions", icon: KeyRound }, { key: "activity", label: "Activity log", icon: History }, { key: "learning", label: "Learning & tutorials", icon: GraduationCap }];
+const STAFF_SECTIONS = [{ key: "staff", icon: UserCog }, { key: "permissions", icon: KeyRound }, { key: "activity", icon: History }, { key: "learning", icon: GraduationCap }];
 
 interface OperatingHourRow {
   dayOfWeek: number;
@@ -99,13 +96,19 @@ export function ProfileView({ section }: { section: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const msg = useNotice(); // shown right above each section's Save button
   const [meta, setMeta] = useState<MetaSections>({});
+  const t = useTranslations("clinic.profile");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
+  // 7 Jan 2024 was a Sunday, so day d of the week is 7 + d.
+  const dayName = (d: number) => new Date(2024, 0, 7 + d).toLocaleDateString(dl, { weekday: "long" });
+  const groupQuestion = (key: string, label: string) => (t.has(`q_${key}`) ? t(`q_${key}`) : t("q_generic", { label: label.toLowerCase() }));
 
   const load = () => {
     setLoading(true);
     setLoadError(null);
     api.get<{ facility: FacilityProfile }>("/api/facility/profile")
       .then((res) => setFacility(res.facility))
-      .catch((e) => setLoadError(e.message || "Network error"))
+      .catch((e) => setLoadError(e.message || tc("network_error")))
       .finally(() => setLoading(false));
   };
 
@@ -198,9 +201,9 @@ export function ProfileView({ section }: { section: string }) {
     try {
       const res = await api.patch<{ facility: FacilityProfile }>("/api/facility/profile", payload);
       setFacility(res.facility);
-      msg.success("Changes saved", savedAt());
+      msg.success(tc("saved"), t("saved_at", { time: new Date().toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) }));
     } catch (err: any) {
-      msg.error("Your changes weren't saved", `${err.message || "Network error"}. They're still filled in — try again.`, { retry: () => save(payload), retryLabel: "Save again" });
+      msg.error(tc("not_saved"), t("still_filled", { error: err.message || tc("network_error") }), { retry: () => save(payload), retryLabel: t("save_again") });
     } finally {
       setSaving(false);
     }
@@ -215,17 +218,17 @@ export function ProfileView({ section }: { section: string }) {
         disabled={saving}
         onClick={onClick}
       >
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
+        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {tc("save_changes")}
       </Button>
     </div>
     </>
   );
 
-  if (!loading && loadError) return <LoadFailed what="your facility profile" detail={loadError} onRetry={load} />;
+  if (!loading && loadError) return <LoadFailed what={t("what")} detail={loadError} onRetry={load} />;
   if (loading || !facility) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-12">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
       </div>
     );
   }
@@ -233,7 +236,7 @@ export function ProfileView({ section }: { section: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-serif text-xl font-bold">Facility Profile</h2>
+        <h2 className="font-serif text-xl font-bold">{t("title")}</h2>
       </div>
 
       <div className="grid md:grid-cols-[260px_minmax(0,1fr)] gap-6">
@@ -252,7 +255,7 @@ export function ProfileView({ section }: { section: string }) {
                     )}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{s.label}</span>
+                    <span className="truncate">{t(`s_${s.key}`)}</span>
                   </button>
                 );
               })}
@@ -271,7 +274,7 @@ export function ProfileView({ section }: { section: string }) {
                   )}
                 >
                   <s.icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{s.label}</span>
+                  <span className="truncate">{t(`s_${s.key}`)}</span>
                 </button>
               ))}
             </div>
@@ -281,26 +284,26 @@ export function ProfileView({ section }: { section: string }) {
         {section === "overview" && (
           <Card className="p-6 border-border/50 bg-card/60">
             <div>
-              <h2 className="font-serif text-lg font-semibold mb-4">Facility Identity</h2>
+              <h2 className="font-serif text-lg font-semibold mb-4">{t("identity")}</h2>
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
-                <FloatingField id="facilityName" label="Facility name" value={facilityName} onChange={(e) => setFacilityName(e.target.value)} />
+                <FloatingField id="facilityName" label={t("facility_name")} value={facilityName} onChange={(e) => setFacilityName(e.target.value)} />
                 {meta.facility_type ? (
-                  <FloatingSelect id="facilityType" label="Facility type" value={facilityType} onValueChange={setFacilityType} placeholder="Select type">
+                  <FloatingSelect id="facilityType" label={t("facility_type")} value={facilityType} onValueChange={setFacilityType} placeholder={t("select_type")}>
                     {meta.facility_type.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                   </FloatingSelect>
                 ) : (
-                  <FloatingField id="facilityType" label="Facility type" value={facilityType} onChange={(e) => setFacilityType(e.target.value)} />
+                  <FloatingField id="facilityType" label={t("facility_type")} value={facilityType} onChange={(e) => setFacilityType(e.target.value)} />
                 )}
                 {facility?.hfrNumber ? (
                   <div>
-                    <FloatingField id="hfrNumber" label="HFR number" value={hfrNumber} readOnly aria-readonly className="cursor-not-allowed bg-muted/50 text-muted-foreground focus:border-input" endAdornment={<Lock className="pointer-events-none absolute end-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />} />
-                    <p className="mt-1.5 text-xs text-muted-foreground">Locked once saved. To correct it, contact support.</p>
+                    <FloatingField id="hfrNumber" label={t("hfr")} value={hfrNumber} readOnly aria-readonly className="cursor-not-allowed bg-muted/50 text-muted-foreground focus:border-input" endAdornment={<Lock className="pointer-events-none absolute end-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />} />
+                    <p className="mt-1.5 text-xs text-muted-foreground">{t("hfr_locked")}</p>
                   </div>
                 ) : (
-                  <FloatingField id="hfrNumber" label="HFR number" value={hfrNumber} onChange={(e) => setHfrNumber(e.target.value.toUpperCase())} />
+                  <FloatingField id="hfrNumber" label={t("hfr")} value={hfrNumber} onChange={(e) => setHfrNumber(e.target.value.toUpperCase())} />
                 )}
-                <FloatingField id="establishmentDate" type="month" label="Establishment date" value={establishmentDate} max={new Date().toISOString().slice(0, 7)} onChange={(e) => setEstablishmentDate(e.target.value)} />
-                <FloatingField id="alternateContactNumber" label="Alternate contact number" value={alternateContactNumber} onChange={(e) => setAlternateContactNumber(e.target.value)} />
+                <FloatingField id="establishmentDate" type="month" label={t("established")} value={establishmentDate} max={new Date().toISOString().slice(0, 7)} onChange={(e) => setEstablishmentDate(e.target.value)} />
+                <FloatingField id="alternateContactNumber" label={t("alt_contact")} value={alternateContactNumber} onChange={(e) => setAlternateContactNumber(e.target.value)} />
               </div>
             </div>
 
@@ -311,16 +314,16 @@ export function ProfileView({ section }: { section: string }) {
         {section === "location" && (
           <Card className="p-6 border-border/50 bg-card/60">
             <div>
-              <h2 className="font-serif text-lg font-semibold mb-4">Facility Address</h2>
+              <h2 className="font-serif text-lg font-semibold mb-4">{t("address")}</h2>
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
-                <FloatingField id="addressLine1" label="Address line 1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
-                <FloatingField id="addressLine2" label="Address line 2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
-                <FloatingField id="locality" label="Locality" value={locality} onChange={(e) => setLocality(e.target.value)} />
-                <FloatingField id="city" label="City" value={city} onChange={(e) => setCity(e.target.value)} />
-                <FloatingField id="district" label="District" value={district} onChange={(e) => setDistrict(e.target.value)} />
-                <FloatingField id="state" label="State" value={state} onChange={(e) => setState(e.target.value)} />
-                <FloatingField id="country" label="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
-                <FloatingField id="pincode" label="PIN code" value={pincode} onChange={(e) => setPincode(e.target.value)} />
+                <FloatingField id="addressLine1" label={t("address1")} value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
+                <FloatingField id="addressLine2" label={t("address2")} value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
+                <FloatingField id="locality" label={t("locality")} value={locality} onChange={(e) => setLocality(e.target.value)} />
+                <FloatingField id="city" label={t("city")} value={city} onChange={(e) => setCity(e.target.value)} />
+                <FloatingField id="district" label={t("district")} value={district} onChange={(e) => setDistrict(e.target.value)} />
+                <FloatingField id="state" label={t("state")} value={state} onChange={(e) => setState(e.target.value)} />
+                <FloatingField id="country" label={t("country")} value={country} onChange={(e) => setCountry(e.target.value)} />
+                <FloatingField id="pincode" label={t("pincode")} value={pincode} onChange={(e) => setPincode(e.target.value)} />
               </div>
             </div>
             <SaveButton onClick={() => save({ addressLine1, addressLine2, locality, city, district, state, country, pincode })} />
@@ -330,32 +333,32 @@ export function ProfileView({ section }: { section: string }) {
         {section === "capacity" && (
           <Card className="p-6 border-border/50 bg-card/60">
             <div>
-              <h2 className="font-serif text-lg font-semibold mb-4">Capacity</h2>
+              <h2 className="font-serif text-lg font-semibold mb-4">{t("capacity")}</h2>
               <div className="grid sm:grid-cols-3 gap-x-4 gap-y-6">
-                <FloatingField id="bedCapacity" type="number" label="Bed capacity" value={bedCapacity} onChange={(e) => setBedCapacity(e.target.value)} />
-                <FloatingField id="dailyOpdCount" type="number" label="Average daily OPD" value={dailyOpdCount} onChange={(e) => setDailyOpdCount(e.target.value)} />
+                <FloatingField id="bedCapacity" type="number" label={t("beds")} value={bedCapacity} onChange={(e) => setBedCapacity(e.target.value)} />
+                <FloatingField id="dailyOpdCount" type="number" label={t("daily_opd")} value={dailyOpdCount} onChange={(e) => setDailyOpdCount(e.target.value)} />
               </div>
             </div>
 
             <div>
-              <h2 className="font-serif text-lg font-semibold mb-4">Operating Hours</h2>
+              <h2 className="font-serif text-lg font-semibold mb-4">{t("hours")}</h2>
               <div className="space-y-4">
-                <ToggleRow title="Open 24×7 (hides the weekly schedule below)" checked={is24x7} onCheckedChange={setIs24x7} />
+                <ToggleRow title={t("open_247")} checked={is24x7} onCheckedChange={setIs24x7} />
                 {!is24x7 && (
                   <div className="overflow-x-auto overflow-y-visible">
                     <table className="w-full text-sm min-w-[640px]">
                       <thead>
                         <tr className="border-b border-border/50 text-start text-muted-foreground">
-                          <th rowSpan={2} className="py-2 font-medium align-bottom">Day</th>
-                          <th rowSpan={2} className="py-2 font-medium align-bottom">Open</th>
-                          <th colSpan={2} className="py-2 font-medium text-center">Shift 1</th>
-                          <th colSpan={2} className="py-2 font-medium text-center">Shift 2 (optional)</th>
+                          <th rowSpan={2} className="py-2 font-medium align-bottom">{t("day")}</th>
+                          <th rowSpan={2} className="py-2 font-medium align-bottom">{t("open")}</th>
+                          <th colSpan={2} className="py-2 font-medium text-center">{t("shift1")}</th>
+                          <th colSpan={2} className="py-2 font-medium text-center">{t("shift2")}</th>
                         </tr>
                         <tr className="border-b border-border/50 text-start text-muted-foreground">
-                          <th className="py-1.5 font-medium">Opening</th>
-                          <th className="py-1.5 font-medium">Closing</th>
-                          <th className="py-1.5 font-medium">Opening</th>
-                          <th className="py-1.5 font-medium">Closing</th>
+                          <th className="py-1.5 font-medium">{t("opening")}</th>
+                          <th className="py-1.5 font-medium">{t("closing")}</th>
+                          <th className="py-1.5 font-medium">{t("opening")}</th>
+                          <th className="py-1.5 font-medium">{t("closing")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -363,7 +366,7 @@ export function ProfileView({ section }: { section: string }) {
                           const row = hours[d] || { isOpen: false, open: "", close: "", open2: "", close2: "" };
                           return (
                             <tr key={d} className="border-b border-border/30 last:border-0">
-                              <td className="py-2 pe-2 whitespace-nowrap">{DAY_LABELS[d]}</td>
+                              <td className="py-2 pe-2 whitespace-nowrap">{dayName(d)}</td>
                               <td className="py-2 pe-2">
                                 <Switch checked={row.isOpen} onCheckedChange={(v) => setHours((h) => ({ ...h, [d]: { ...row, isOpen: v } }))} />
                               </td>
@@ -405,10 +408,10 @@ export function ProfileView({ section }: { section: string }) {
 
         {section === "services" && (() => {
           const groups: { key: string; label: string; options: string[]; selected: string[]; toggle: (v: string) => void }[] = [
-            { key: "specialization", label: "Specializations", options: meta.specialization?.options || specializations, selected: specializations, toggle: (v) => toggleInList(specializations, setSpecializations, v) },
+            { key: "specialization", label: t("specializations"), options: meta.specialization?.options || specializations, selected: specializations, toggle: (v) => toggleInList(specializations, setSpecializations, v) },
             ...(serviceGroups.length
               ? serviceGroups.map(([key, group]) => ({ key, label: group.label, options: group.options, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }))
-              : [{ key: "services", label: "services", options: services, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }]),
+              : [{ key: "services", label: t("services_word"), options: services, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }]),
           ];
           return (
             <Card className="p-6 border-border/50 bg-card/60">
@@ -419,7 +422,7 @@ export function ProfileView({ section }: { section: string }) {
                     <section key={g.key} className="py-5 first:pt-0">
                       <div className="mb-3 flex items-baseline justify-between gap-3">
                         <p className="text-[15px] font-semibold">{groupQuestion(g.key, g.label)}</p>
-                        <span className={cn("shrink-0 text-xs font-medium", count ? "text-primary" : "text-muted-foreground")}>{count ? `${count} selected` : "None selected"}</span>
+                        <span className={cn("shrink-0 text-xs font-medium", count ? "text-primary" : "text-muted-foreground")}>{count ? tc("n_selected", { count }) : t("none_selected")}</span>
                       </div>
                       <div className="gap-2 sm:columns-2 xl:columns-3 [&>label]:mb-2">
                         {g.options.map((item) => {
@@ -439,10 +442,10 @@ export function ProfileView({ section }: { section: string }) {
                   );
                 })}
                 <section className="pt-5">
-                  <p className="mb-3 text-[15px] font-semibold">{EMERGENCY_QUESTION}</p>
+                  <p className="mb-3 text-[15px] font-semibold">{t("q_emergency")}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <ToggleRow title="Emergency services" checked={emergencyServices} onCheckedChange={setEmergencyServices} />
-                    <ToggleRow title="Ambulance available" checked={ambulanceAvailable} onCheckedChange={setAmbulanceAvailable} />
+                    <ToggleRow title={t("emergency")} checked={emergencyServices} onCheckedChange={setEmergencyServices} />
+                    <ToggleRow title={t("ambulance")} checked={ambulanceAvailable} onCheckedChange={setAmbulanceAvailable} />
                   </div>
                 </section>
               </div>

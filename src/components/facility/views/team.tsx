@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useListFormat } from "@/lib/i18n/use-date-locale";
 import { cn, formatDateTime } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +87,9 @@ export function TeamView() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  const t = useTranslations("clinic.team");
+  const tc = useTranslations("common");
+  const list = useListFormat();
   const iv = useInlineContactVerify(api, "/api/facility/staff/otp/send", "/api/facility/staff/otp/verify", editingId ? { staffId: editingId } : undefined);
   const editingStaff = staff.find((s) => s.id === editingId) || null;
   // Adding always needs a verified contact; editing needs one when the contact is changed.
@@ -99,7 +104,7 @@ export function TeamView() {
       const res = await api.get<{ staff: StaffRow[] }>(`/api/facility/staff${search ? `?search=${encodeURIComponent(search)}` : ""}`);
       setStaff(res.staff || []);
     } catch (e: any) {
-      msg.error("Couldn't load the team", `${e.message || "Network error"}.`, { retry: load });
+      msg.error(t("load_failed"), `${e.message || tc("network_error")}.`, { retry: load });
     } finally {
       setLoading(false);
     }
@@ -143,9 +148,9 @@ export function TeamView() {
   };
 
   const save = async () => {
-    const missing = [!form.name.trim() && "Name", !form.contact.trim() && "Email or phone", !form.employeeType && "Employee type"].filter(Boolean);
-    if (missing.length) { dialogMsg.warning(`Fill in: ${missing.join(", ")}`, "These are required for every staff member."); return; }
-    if (needsVerify && iv.stage !== "verified") { dialogMsg.warning(editingId ? "Verify the new email or phone first" : "Verify the email or phone first", editingId ? "Send the code to the new contact and enter it above — a changed contact must be verified before saving." : "Send the code and enter it above — staff can only be added with a verified contact."); return; }
+    const missing = [!form.name.trim() && t("f_name"), !form.contact.trim() && t("f_contact"), !form.employeeType && t("f_type")].filter(Boolean) as string[];
+    if (missing.length) { dialogMsg.warning(t("fill_in", { items: list(missing) }), t("fill_in_hint")); return; }
+    if (needsVerify && iv.stage !== "verified") { dialogMsg.warning(editingId ? t("verify_new") : t("verify"), editingId ? t("verify_new_hint") : t("verify_hint")); return; }
 
     setSaving(true);
     try {
@@ -164,15 +169,15 @@ export function TeamView() {
       };
       if (editingId) {
         await api.patch(`/api/facility/staff/${editingId}`, payload);
-        msg.success(`${form.name.trim()} updated`);
+        msg.success(t("updated", { name: form.name.trim() }));
       } else {
         await api.post("/api/facility/staff", payload);
-        msg.success(`${form.name.trim()} added to the team`);
+        msg.success(t("added", { name: form.name.trim() }));
       }
       setDialogOpen(false);
       load();
     } catch (e: any) {
-      dialogMsg.error(editingId ? "The changes weren't saved" : "The staff member wasn't added", `${e.message || "Network error"}. Everything is still filled in — try again.`, { retry: save });
+      dialogMsg.error(editingId ? t("not_saved") : t("not_added"), t("still_filled", { error: e.message || tc("network_error") }), { retry: save });
     } finally {
       setSaving(false);
     }
@@ -183,7 +188,7 @@ export function TeamView() {
       await api.patch(`/api/facility/staff/${s.id}`, { active: !s.active });
       setStaff((list) => list.map((x) => x.id === s.id ? { ...x, active: !x.active } : x));
     } catch (e: any) {
-      msg.error(`${s.name} wasn't ${s.active ? "deactivated" : "activated"}`, `${e.message || "Network error"}.`, { retry: () => toggleActive(s) });
+      msg.error(t(s.active ? "not_deactivated" : "not_activated", { name: s.name }), `${e.message || tc("network_error")}.`, { retry: () => toggleActive(s) });
     }
   };
 
@@ -197,38 +202,38 @@ export function TeamView() {
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="font-serif text-xl font-bold">Staff</h2>
+          <h2 className="font-serif text-xl font-bold">{t("title")}</h2>
         </div>
         <Button data-tour="staff.add" onClick={openAdd} className="shrink-0">
-          <Plus className="h-4 w-4" /> Add Staff
+          <Plus className="h-4 w-4" /> {t("add")}
         </Button>
       </div>
 
       <div className="relative">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} data-tour="staff.search" placeholder="Search by name, staff ID, email or phone…" className="ps-9 bg-background/60 max-w-md" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} data-tour="staff.search" placeholder={t("search")} className="ps-9 bg-background/60 max-w-md" />
       </div>
       <NoticeSlot state={msg} />
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> Loading…</div>
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline me-2" /> {tc("loading")}</div>
       ) : staff.length === 0 ? (
         <Card className="p-10 border-border/50 bg-card/60 text-center">
           <UserCog className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">No staff added yet.</p>
+          <p className="text-sm text-muted-foreground">{t("none")}</p>
         </Card>
       ) : (
         <div data-tour="staff.list" className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-3 py-2.5">Staff</th>
-                <th className="px-3 py-2.5">Type &amp; designation</th>
-                <th className="px-3 py-2.5">Role</th>
-                <th className="px-3 py-2.5">Contact</th>
-                <th className="px-3 py-2.5">Last login</th>
-                <th className="px-3 py-2.5 text-center">Active</th>
-                <th className="px-3 py-2.5 text-end">Actions</th>
+                <th className="px-3 py-2.5">{t("col_staff")}</th>
+                <th className="px-3 py-2.5">{t("col_type")}</th>
+                <th className="px-3 py-2.5">{t("col_role")}</th>
+                <th className="px-3 py-2.5">{t("col_contact")}</th>
+                <th className="px-3 py-2.5">{t("col_last_login")}</th>
+                <th className="px-3 py-2.5 text-center">{t("col_active")}</th>
+                <th className="px-3 py-2.5 text-end">{t("col_actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -251,17 +256,17 @@ export function TeamView() {
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">
                     {s.email && <div className="flex items-center gap-1.5 truncate max-w-[14rem]"><Mail className="h-3 w-3 shrink-0" /> {s.email}</div>}
                     {s.phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3 shrink-0" /> {s.phone}</div>}
-                    {s.contactVerifiedAt && <div className="flex items-center gap-1 text-primary"><ShieldCheck className="h-3 w-3" /> Verified</div>}
+                    {s.contactVerifiedAt && <div className="flex items-center gap-1 text-primary"><ShieldCheck className="h-3 w-3" /> {t("verified")}</div>}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{s.lastLoginAt ? formatDateTime(s.lastLoginAt) : "Never"}</td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{s.lastLoginAt ? formatDateTime(s.lastLoginAt) : t("never")}</td>
                   <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                    <Switch checked={s.active} onCheckedChange={() => toggleActive(s)} aria-label={s.active ? `Deactivate ${s.name}` : `Activate ${s.name}`} />
+                    <Switch checked={s.active} onCheckedChange={() => toggleActive(s)} aria-label={t(s.active ? "deactivate" : "activate", { name: s.name })} />
                   </td>
                   <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
-                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /> {tc("edit")}</Button>
                       <Button size="sm" variant="ghost" className="h-8 px-2" asChild>
-                        <Link href={`/facility/profile/permissions?staff=${s.id}`}><KeyRound className="h-3.5 w-3.5" /> Permissions</Link>
+                        <Link href={`/facility/profile/permissions?staff=${s.id}`}><KeyRound className="h-3.5 w-3.5" /> {t("permissions")}</Link>
                       </Button>
                     </div>
                   </td>
@@ -275,7 +280,7 @@ export function TeamView() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Staff Member" : "Add Staff Member"}</DialogTitle>
+            <DialogTitle>{editingId ? t("edit_title") : t("add_title")}</DialogTitle>
           </DialogHeader>
 
           {editingId && editingStaff && (
@@ -283,7 +288,7 @@ export function TeamView() {
               type="button"
               onClick={() => setPhotoDialogOpen(true)}
               className="group relative mx-auto h-20 w-20 rounded-full"
-              aria-label="Change staff photo"
+              aria-label={t("change_photo")}
             >
               <EntityAvatar name={editingStaff.name} photo={editingStaff.photo} size="lg" />
               <span className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
@@ -294,11 +299,11 @@ export function TeamView() {
 
           <div className="space-y-5 py-2">
             <div className="space-y-4">
-              <FloatingField id="staffName" label="Staff name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+              <FloatingField id="staffName" label={t("staff_name")} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
               <div>
                 <FloatingField
                   id="staffContact"
-                  label="Email or phone"
+                  label={t("f_contact")}
                   value={form.contact}
                   disabled={iv.stage === "verified"}
                   onChange={(e) => {
@@ -307,7 +312,7 @@ export function TeamView() {
                   }}
                 />
                 {alreadyVerified ? (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><ShieldCheck className="h-3.5 w-3.5" /> Verified {formatDateTime(editingStaff!.contactVerifiedAt!)}</p>
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-primary"><ShieldCheck className="h-3.5 w-3.5" /> {t("verified_at", { date: formatDateTime(editingStaff!.contactVerifiedAt!) })}</p>
                 ) : iv.stage === "idle" ? (
                   <>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -318,10 +323,10 @@ export function TeamView() {
                         className="text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1.5"
                       >
                         {iv.sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-                        Send verification code
+                        {t("send_code")}
                       </button>
-                      {contactChanged && <span className="text-xs font-medium text-amber-600 dark:text-amber-400">New contact — verify it to save</span>}
-                      {editingId && !contactChanged && <span className="text-xs text-muted-foreground">Not verified yet (optional)</span>}
+                      {contactChanged && <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{t("new_contact")}</span>}
+                      {editingId && !contactChanged && <span className="text-xs text-muted-foreground">{t("not_verified")}</span>}
                     </div>
                     <InlineVerifyBox iv={iv} contact={form.contact} name={form.name} />
                   </>
@@ -332,48 +337,48 @@ export function TeamView() {
             </div>
 
             {meta.staff_employee_type ? (
-              <FloatingCombobox id="employeeType" label="Employee type" value={form.employeeType} onValueChange={(v) => setForm((f) => ({ ...f, employeeType: v }))} options={meta.staff_employee_type.options} placeholder="Select employee type" />
+              <FloatingCombobox id="employeeType" label={t("f_type")} value={form.employeeType} onValueChange={(v) => setForm((f) => ({ ...f, employeeType: v }))} options={meta.staff_employee_type.options} placeholder={t("select_type")} />
             ) : (
-              <FloatingField id="employeeType" label="Employee type" value={form.employeeType} onChange={(e) => setForm((f) => ({ ...f, employeeType: e.target.value }))} />
+              <FloatingField id="employeeType" label={t("f_type")} value={form.employeeType} onChange={(e) => setForm((f) => ({ ...f, employeeType: e.target.value }))} />
             )}
 
             {form.employeeType && (
               <div className="grid sm:grid-cols-2 gap-4">
                 {visibleFields.includes("specialization") && (
                   meta.staff_specialization ? (
-                    <FloatingCombobox id="specialization" label="Specialization" value={form.specialization} onValueChange={(v) => setForm((f) => ({ ...f, specialization: v }))} options={meta.staff_specialization.options} placeholder="Select specialization" />
+                    <FloatingCombobox id="specialization" label={t("specialization")} value={form.specialization} onValueChange={(v) => setForm((f) => ({ ...f, specialization: v }))} options={meta.staff_specialization.options} placeholder={t("select_specialization")} />
                   ) : null
                 )}
                 {visibleFields.includes("qualification") && (
                   meta.staff_qualification ? (
-                    <FloatingCombobox id="qualification" label="Qualification" value={form.qualification} onValueChange={(v) => setForm((f) => ({ ...f, qualification: v }))} options={meta.staff_qualification.options} placeholder="Select qualification" />
+                    <FloatingCombobox id="qualification" label={t("qualification")} value={form.qualification} onValueChange={(v) => setForm((f) => ({ ...f, qualification: v }))} options={meta.staff_qualification.options} placeholder={t("select_qualification")} />
                   ) : null
                 )}
                 {visibleFields.includes("registrationNumber") && (
-                  <FloatingField id="registrationNumber" label="Registration number" value={form.registrationNumber} onChange={(e) => setForm((f) => ({ ...f, registrationNumber: e.target.value }))} />
+                  <FloatingField id="registrationNumber" label={t("registration_number")} value={form.registrationNumber} onChange={(e) => setForm((f) => ({ ...f, registrationNumber: e.target.value }))} />
                 )}
                 {visibleFields.includes("designation") && (
                   meta.staff_designation ? (
-                    <FloatingCombobox id="designation" label="Designation" value={form.designation} onValueChange={(v) => setForm((f) => ({ ...f, designation: v }))} options={meta.staff_designation.options} placeholder="Select designation" />
+                    <FloatingCombobox id="designation" label={t("designation")} value={form.designation} onValueChange={(v) => setForm((f) => ({ ...f, designation: v }))} options={meta.staff_designation.options} placeholder={t("select_designation")} />
                   ) : null
                 )}
                 {visibleFields.includes("experience") && (
-                  <FloatingField id="experience" type="number" min={0} label="Years of experience" value={form.experience} onChange={(e) => setForm((f) => ({ ...f, experience: e.target.value }))} />
+                  <FloatingField id="experience" type="number" min={0} label={t("experience")} value={form.experience} onChange={(e) => setForm((f) => ({ ...f, experience: e.target.value }))} />
                 )}
               </div>
             )}
 
             {meta.staff_role && (
-              <FloatingCombobox id="role" label="Role" value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))} options={meta.staff_role.options} placeholder="Select role" />
+              <FloatingCombobox id="role" label={t("role")} value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))} options={meta.staff_role.options} placeholder={t("select_role")} />
             )}
 
             {meta.staff_responsibility && (
-              <OptionMultiSelect id="responsibilities" label="Responsibilities" icon={ListChecks} options={meta.staff_responsibility.options} value={form.responsibilities} onChange={(v) => setForm((f) => ({ ...f, responsibilities: v }))} />
+              <OptionMultiSelect id="responsibilities" label={t("responsibilities")} icon={ListChecks} options={meta.staff_responsibility.options} value={form.responsibilities} onChange={(v) => setForm((f) => ({ ...f, responsibilities: v }))} />
             )}
 
             {editingId && (
               <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/60 px-4 py-3.5">
-                <p className="text-sm font-medium">Active</p>
+                <p className="text-sm font-medium">{t("active")}</p>
                 <Switch checked={form.active} onCheckedChange={(v) => setForm((f) => ({ ...f, active: v }))} />
               </div>
             )}
@@ -381,9 +386,9 @@ export function TeamView() {
 
           <NoticeSlot state={dialogMsg} />
           <DialogFooter className="border-t border-border pt-4">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{tc("cancel")}</Button>
             <Button onClick={save} disabled={saving || (needsVerify && iv.stage !== "verified")}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {editingId ? "Save changes" : "Add staff member"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {editingId ? tc("save_changes") : t("add_member")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -394,7 +399,7 @@ export function TeamView() {
           open={photoDialogOpen}
           onOpenChange={setPhotoDialogOpen}
           currentPhoto={editingStaff.photo}
-          title="Change staff photo"
+          title={t("change_photo")}
           onSave={(dataUrl) => savePhoto(dataUrl)}
           onRemove={() => savePhoto(null)}
         />
