@@ -68,6 +68,7 @@ export function requiredPermission(path: string, method: string): Need {
   if (R("/api/facility/activity").test(path)) return read ? "allow" : "deny"; // the route scopes it: own history unless "activity"
   if (/^\/api\/facility\/staff(\/|$)/.test(path)) return read ? "allow" : ["staff.manage"];
   if (R("/api/facility/stats").test(path)) return ["dashboard"];
+  if (R("/api/facility/reception").test(path)) return ["dashboard", "patients.view"];
   if (R("/api/facility/payments").test(path)) return ["payments"];
   if (R("/api/facility/patients/search").test(path)) return ["patients.view"];
   if (R("/api/facility/patients/[^/]+/vitals-insight").test(path)) return ["triage"];

@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
     db.appointment.count({ where: { facilityId: auth.id } }),
     db.appointment.count({ where: { facilityId: auth.id, date: today } }),
     db.appointment.count({ where: { facilityId: auth.id, status: "completed" } }),
-    db.patient.count(),
+    // This clinic's patients only (a visit or appointment here) — not every patient on the platform.
+    db.patient.count({ where: { OR: [{ visits: { some: { facilityId: auth.id } } }, { appointments: { some: { facilityId: auth.id } } }] } }),
     db.appointment.findMany({
       where: { facilityId: auth.id },
       select: { patientId: true },

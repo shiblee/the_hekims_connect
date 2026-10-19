@@ -61,7 +61,11 @@ export function PatientsView() {
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("all");
+  // ?filter=today|progress|done|referred opens the list pre-filtered (dashboard drill-downs).
+  const [filter, setFilter] = useState<FilterKey>(() => {
+    const f = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("filter") : null;
+    return FILTERS.some((x) => x.key === f) ? (f as FilterKey) : "all";
+  });
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = async () => {

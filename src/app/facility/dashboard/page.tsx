@@ -2,10 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { Overview } from "@/components/facility/views/overview";
+import { ReceptionDashboard } from "@/components/facility/views/reception-dashboard";
 import { useFacilityStats } from "@/components/facility/facility-shell";
 
 export default function FacilityDashboardPage() {
   const router = useRouter();
   const stats = useFacilityStats();
-  return <Overview stats={stats} onNavigate={(tab: string) => router.push(`/facility/${tab}`)} />;
+  return (
+    <div className="space-y-8">
+      <ReceptionDashboard />
+      <Overview stats={stats} onNavigate={(tab: string) => router.push(`/facility/${tab}`)} />
+    </div>
+  );
 }
