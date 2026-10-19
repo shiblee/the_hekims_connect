@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { type VisitVitals } from "@/lib/vitals-trend";
@@ -29,6 +30,7 @@ export function useStagePatient(patientId: string) {
   const [visits, setVisits] = useState<StageVisit[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  const tc = useTranslations("common");
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +39,7 @@ export function useStagePatient(patientId: string) {
       api.get<{ visits: StageVisit[] }>(`/api/facility/visits?patientId=${patientId}`),
     ])
       .then(([p, v]) => { if (!cancelled) { setLoadError(null); setPatient(p.patient); setVisits(v.visits || []); } })
-      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); })
+      .catch((e) => { if (!cancelled) setLoadError(e.message || tc("network_error")); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [patientId, reloadTick]);
@@ -54,7 +56,6 @@ export function useStagePatient(patientId: string) {
 }
 
 type StageKey = "mizaj" | "asbab" | "handover";
-const STAGE_TITLES: Record<StageKey, string> = { mizaj: "Mizaj & Morphometry", asbab: "Asbab-e-Sittah Review", handover: "Tashkhees & Handover Dossier" };
 
 /**
  * Shared top of the doctor stages (3 onward): back link, title, stage tracker
@@ -72,6 +73,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
   onEditReferral?: () => void;
 }) {
   const router = useRouter();
+  const t = useTranslations("clinic.stage");
   const [photoOpen, setPhotoOpen] = useState(false);
   const recordUrl = `/facility/patients/${patientId}/record`;
   const stageUrls: Record<string, string> = {
@@ -83,10 +85,10 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
   const order = PATIENT_JOURNEY_STEPS.map((s) => s.key);
   const completed = order.slice(0, order.indexOf(stage));
   const back = stage === "mizaj"
-    ? { href: recordUrl, label: "Back to Clinical Record" }
+    ? { href: recordUrl, label: t("back_record") }
     : stage === "asbab"
-      ? { href: stageUrls.mizaj, label: "Back to Mizaj & Morphometry" }
-      : { href: stageUrls.asbab, label: "Back to Asbab-e-Sittah Review" };
+      ? { href: stageUrls.mizaj, label: t("back_mizaj") }
+      : { href: stageUrls.asbab, label: t("back_asbab") };
 
   const savePhoto = async (dataUrl: string | null) => {
     const res = await api.patch<{ patient: StagePatient }>(`/api/facility/patients/${patientId}`, { photo: dataUrl });
@@ -100,7 +102,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
         <ChevronLeft className="h-4 w-4" /> {back.label}
       </button>
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
-        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">{STAGE_TITLES[stage]}</h1>
+        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">{t(`t_${stage}`)}</h1>
       </div>
 
       <div data-tour="stage.tracker"><PatientStageTracker
@@ -121,7 +123,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
           visits={sortedVisits}
           action={
             <button onClick={() => router.push(recordUrl)} className="inline-flex items-center gap-1 text-[13px] text-primary hover:underline">
-              <Pencil className="h-3 w-3" /> Edit in Clinical Record
+              <Pencil className="h-3 w-3" /> {t("edit_in_record")}
             </button>
           }
         />
@@ -143,7 +145,7 @@ export function StageHeader({ stage, patientId, patient, onPatientChange, visits
         open={photoOpen}
         onOpenChange={setPhotoOpen}
         currentPhoto={patient.photo}
-        title="Change patient photo"
+        title={t("change_photo")}
         onSave={(dataUrl) => savePhoto(dataUrl)}
         onRemove={() => savePhoto(null)}
       />

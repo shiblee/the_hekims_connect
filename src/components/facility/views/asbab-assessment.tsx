@@ -1,6 +1,7 @@
 "use client";
 
 import { createElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -30,6 +31,8 @@ export function useAsbabAssessment(visitId: string | undefined, framework: "asba
   const [reloadTick, setReloadTick] = useState(0);
   // Save/validation messages, shown by the page beside its action bar.
   const msg = useNotice();
+  const t = useTranslations("clinic.asbab");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     if (!visitId) return;
@@ -44,7 +47,7 @@ export function useAsbabAssessment(visitId: string | undefined, framework: "asba
         setPillars(c.pillars);
         if (a.assessment) { setAnswers(a.assessment.answers); setArchived(a.assessment.archived); setStatus(a.assessment.status); }
       })
-      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); });
+      .catch((e) => { if (!cancelled) setLoadError(e.message || tc("network_error")); });
     return () => { cancelled = true; };
   }, [visitId, framework, reloadTick]);
   const reload = () => { setLoadError(null); setReloadTick((t) => t + 1); };
@@ -86,9 +89,9 @@ export function useAsbabAssessment(visitId: string | undefined, framework: "asba
       return true;
     } catch (e: any) {
       msg.error(
-        complete ? "The assessment wasn't completed" : "The draft wasn't saved",
-        `${e.message || "Network error"}. Your answers are still on screen — nothing was lost.`,
-        { retry: () => save(complete), retryLabel: "Try again" },
+        complete ? t("not_completed") : t("draft_not_saved"),
+        t("answers_on_screen", { error: e.message || tc("network_error") }),
+        { retry: () => save(complete), retryLabel: tc("retry") },
       );
       return false;
     } finally {
@@ -124,6 +127,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
   /** Render as a row inside a pillar card instead of its own card. */
   bare?: boolean;
 }) {
+  const t = useTranslations("clinic.asbab");
   const choice = q.type === "single_select" || q.type === "multi_select";
   const selected = Array.isArray(value) ? value : [];
   const toggle = (label: string) => {
@@ -138,7 +142,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
         <span className={cn(
           "h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold",
           answered ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground",
-        )} aria-label={`Question ${index + 1} of ${count}${answered ? ", answered" : ""}`}>{index + 1}</span>
+        )} aria-label={`${t("question_n", { n: index + 1, count })}${answered ? t("answered_suffix") : ""}`}>{index + 1}</span>
         <div className="min-w-0 flex-1">
           {pillarKey && (
             <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
@@ -151,7 +155,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
           </p>
           {q.helpText && <p className="text-[13px] text-muted-foreground mt-0.5">{q.helpText}</p>}
         </div>
-        {q.required && !answered && <Badge variant="outline" className="shrink-0 text-[11px] font-normal border-amber-500/40 text-amber-700 dark:text-amber-400">Required</Badge>}
+        {q.required && !answered && <Badge variant="outline" className="shrink-0 text-[11px] font-normal border-amber-500/40 text-amber-700 dark:text-amber-400">{t("required")}</Badge>}
       </div>
 
       {choice ? (
@@ -165,7 +169,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
                 type="button"
                 onClick={() => toggle(o.label)}
                 aria-pressed={on}
-                title={hint ? `Suggested — recorded earlier: ${hint}` : undefined}
+                title={hint ? t("suggested_title", { hint }) : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-xl border px-3 py-2 text-start transition-colors",
                   on ? "border-emerald-500/40 bg-emerald-500/10" : hint ? "border-dashed border-primary/50 bg-primary/5 hover:border-primary" : "border-border/50 bg-background/40 hover:border-primary/30",
@@ -180,7 +184,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
                   {o.description && <span className="block text-[13px] text-muted-foreground leading-snug">{o.description}</span>}
                   {hint && !on && (
                     <span className="mt-0.5 flex items-center gap-1 text-xs font-medium text-primary">
-                      <Sparkles className="h-3 w-3 shrink-0" /> <span className="truncate">Suggested · {hint}</span>
+                      <Sparkles className="h-3 w-3 shrink-0" /> <span className="truncate">{t("suggested", { hint })}</span>
                     </span>
                   )}
                 </span>
@@ -193,10 +197,10 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
         </div>
       ) : q.type === "numeric" ? (
         <div className="max-w-xs">
-          <FloatingField id={`asbab-${q.id}`} label="Answer (number)" type="number" min={0} step="any" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
+          <FloatingField id={`asbab-${q.id}`} label={t("answer_number")} type="number" min={0} step="any" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
         </div>
       ) : (
-        <FloatingTextarea id={`asbab-${q.id}`} label="Answer" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} rows={2} />
+        <FloatingTextarea id={`asbab-${q.id}`} label={t("answer")} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} rows={2} />
       )}
     </Wrap>
   );
@@ -224,8 +228,9 @@ function useRecordedFindings(visitId: string | undefined) {
 
 const MODE_KEY = "hekims-asbab-view";
 
-// Short names for the one-line pillar strip (full names show on hover). Pillars
-// added later in Admin fall back to their own label and English name.
+// Short names for the one-line pillar strip (full names show on hover; the
+// translated English word comes from clinic.asbab.short_*). Pillars added
+// later in Admin fall back to their own label and English name.
 const SHORT: Record<string, [string, string]> = {
   hawa: ["Hawa", "Air"], makool: ["Makool", "Food"], harkat_badani: ["Badani", "Body"],
   harkat_nafsani: ["Nafsani", "Mind"], naum: ["Naum", "Sleep"], ihtibas: ["Ihtibas", "Excretion"],
@@ -246,6 +251,8 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
   });
   const setView = (v: "all" | "key") => { setViewState(v); try { localStorage.setItem(MODE_KEY, v); } catch { /* per-viewer convenience only */ } };
   const findings = useRecordedFindings(visitId);
+  const t = useTranslations("clinic.asbab");
+  const shortEn = (p: AsbabPillarCfg) => (t.has(`short_${p.key}`) ? t(`short_${p.key}`) : p.english);
   const [inView, setInView] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   // Floating mini jump bar: shown once the header card (with the full strip)
@@ -284,11 +291,11 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
   }, [pillars, view]);
 
   if (!pillars) {
-    if (state.loadError) return <LoadFailed what="the Asbab-e-Sittah assessment" detail={state.loadError} onRetry={state.reload} />;
-    return <Card className="p-5 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading Asbab-e-Sittah…</div></Card>;
+    if (state.loadError) return <LoadFailed what={t("the_assessment")} detail={state.loadError} onRetry={state.reload} />;
+    return <Card className="p-5 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}</div></Card>;
   }
   if (!pillars.length) {
-    return <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No Asbab-e-Sittah pillars are enabled — configure them in Admin → Meta → Asbab-e-Sittah.</Card>;
+    return <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{t("no_pillars")}</Card>;
   }
 
   // Key questions: those marked Required; a pillar with none uses its first question.
@@ -311,14 +318,14 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
     <div className="space-y-4">
       {floatBox && (
         <div className="fixed top-3 z-20 flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/95 px-2 py-1.5 shadow-lg backdrop-blur"
-          style={{ left: floatBox.left, width: floatBox.width }} role="navigation" aria-label="Jump to pillar">
+          style={{ left: floatBox.left, width: floatBox.width }} role="navigation" aria-label={t("jump")}>
           {pillars.map((p) => {
             const qs = qsFor(p);
             const a = qs.filter((q) => isAnswered(answers[q.id])).length;
             const done = qs.length > 0 && a === qs.length;
             const on = inView === p.key;
             return (
-              <button key={p.key} type="button" onClick={() => jump(p.key)} title={`${p.label} — ${p.english} · ${a}/${qs.length}`}
+              <button key={p.key} type="button" onClick={() => jump(p.key)} title={`${p.label} — ${shortEn(p)} · ${a}/${qs.length}`}
                 className={cn("flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors",
                   on ? "bg-primary text-primary-foreground" : done ? "text-emerald-700 dark:text-emerald-400 hover:bg-muted" : "text-muted-foreground hover:bg-muted")}>
                 <PillarIcon pillarKey={p.key} className="h-3.5 w-3.5 shrink-0" />
@@ -333,20 +340,20 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
       <Card ref={headerRef} className="p-5 border-border/50 bg-card/60 gap-0">
         <SectionHeading
           icon={Wind}
-          title="Asbab-e-Sittah Zarooriya"
+          title={t("title")}
           right={
             <span className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {status === "completed" && <Badge variant="outline" className="text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Completed</Badge>}
-              <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label="Which questions to show">
-                {([["all", `All · ${allTotal}`], ["key", `Key only · ${keyTotal}`]] as const).map(([m, label]) => (
+              {status === "completed" && <Badge variant="outline" className="text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{t("completed")}</Badge>}
+              <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label={t("which")}>
+                {([["all", t("view_all", { count: allTotal })], ["key", t("view_key", { count: keyTotal })]] as const).map(([m, label]) => (
                   <button key={m} type="button" onClick={() => setView(m)} aria-pressed={view === m}
-                    title={m === "key" ? "Only each pillar's key question — enough to complete this stage" : "Every question, all pillars on one screen"}
+                    title={m === "key" ? t("view_key_title") : t("view_all_title")}
                     className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", view === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
                     {label}
                   </button>
                 ))}
               </span>
-              <Badge variant="outline" className="tabular-nums">{answeredN} of {all.length} answered</Badge>
+              <Badge variant="outline" className="tabular-nums">{t("n_of_answered", { n: answeredN, total: all.length })}</Badge>
             </span>
           }
         />
@@ -359,17 +366,17 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
           {pillars.map((p, i) => {
             const qs = qsFor(p);
             const a = qs.filter((q) => isAnswered(answers[q.id])).length;
-            const t = qs.length;
-            const done = t > 0 && a === t;
+            const tot = qs.length;
+            const done = tot > 0 && a === tot;
             const on = inView === p.key;
             const missing = keyQs(p).some((q) => q.required && !isAnswered(answers[q.id]));
-            const pct = t ? a / t : 0;
+            const pct = tot ? a / tot : 0;
             return (
               <button
                 key={p.key}
                 type="button"
                 onClick={() => jump(p.key)}
-                title={`${i + 1}. ${p.label} — ${p.english} · ${a}/${t} answered`}
+                title={t("pillar_title", { i: i + 1, label: p.label, english: shortEn(p), a, t: tot })}
                 className={cn(
                   "flex min-w-[6.5rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1 @3xl:gap-1.5 rounded-xl border px-1 @3xl:px-1.5 py-1.5 text-start transition-colors",
                   on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/40",
@@ -384,11 +391,11 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
                   <span className={cn("absolute inset-0 flex items-center justify-center", done ? "text-emerald-600 dark:text-emerald-400" : on ? "text-primary" : "text-muted-foreground")}>
                     <PillarIcon pillarKey={p.key} className="h-4 w-4" />
                   </span>
-                  {missing && <span className="absolute -end-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-amber-500" aria-label="Required question unanswered" />}
+                  {missing && <span className="absolute -end-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-amber-500" aria-label={t("missing_dot")} />}
                 </span>
                 <span className="min-w-0">
                   <span className={cn("block truncate text-xs @3xl:text-[13px] font-semibold leading-tight", on && "text-primary")}>{SHORT[p.key]?.[0] ?? p.label}</span>
-                  <span className={cn("block truncate text-[11px] @3xl:text-xs leading-tight", done ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>{SHORT[p.key]?.[1] ?? p.english}</span>
+                  <span className={cn("block truncate text-[11px] @3xl:text-xs leading-tight", done ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>{shortEn(p)}</span>
                 </span>
               </button>
             );
@@ -399,7 +406,7 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
       {hintCount > 0 && (
         <p className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-[13px] text-foreground/90">
           <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-          <span><b>{hintCount} {hintCount === 1 ? "question has" : "questions have"} a suggested answer</b> from what&apos;s already recorded (complaints, onset, other symptoms). Tap a suggestion to confirm it.</span>
+          <span>{t.rich("hints", { count: hintCount, b: (c) => <b>{c}</b> })}</span>
         </p>
       )}
 
@@ -419,13 +426,13 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
                     <PillarIcon pillarKey={p.key} className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pillar {i + 1} of {pillars.length}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("pillar_n", { i: i + 1, total: pillars.length })}</p>
                     <h3 className="font-serif text-lg font-semibold leading-tight">{p.label} <span className="text-sm font-sans font-normal text-muted-foreground">· {p.english}</span></h3>
                   </div>
                 </div>
                 <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums",
                   done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>
-                  {done ? "✓ Done" : `${a}/${qs.length}`}
+                  {done ? t("done") : `${a}/${qs.length}`}
                 </span>
               </div>
               <div>
@@ -436,7 +443,7 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
               </div>
               {archivedHere.length > 0 && (
                 <div className="mt-2 rounded-lg border border-border/50 bg-background/40 p-3 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorded earlier (question since switched off)</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("archived")}</p>
                   {archivedHere.map((x, n) => (
                     <p key={n} className="text-sm"><span className="text-muted-foreground">{x.question}:</span> {Array.isArray(x.value) ? x.value.join(", ") : x.value}</p>
                   ))}
@@ -452,11 +459,11 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
         firstOpen ? "border-dashed border-border/60 bg-card/40" : "border-emerald-500/40 bg-emerald-500/5")}>
         <p className="text-[13px] text-muted-foreground">
           {firstOpen
-            ? <>{all.length - answeredN} {all.length - answeredN === 1 ? "question is" : "questions are"} still open{view === "key" ? "" : " — only the key questions are required"}.</>
-            : <span className="font-medium text-emerald-700 dark:text-emerald-400">All {all.length} questions answered — Save Draft or proceed to Stage 5 below.</span>}
+            ? <>{t("open_n", { count: all.length - answeredN })}{view === "key" ? "" : t("only_key")}.</>
+            : <span className="font-medium text-emerald-700 dark:text-emerald-400">{t("all_answered", { count: all.length })}</span>}
         </p>
         {firstOpen && (
-          <Button size="sm" variant="outline" onClick={() => jump(firstOpen.p.key)}>Go to next open question <ArrowRight className="h-3.5 w-3.5" /></Button>
+          <Button size="sm" variant="outline" onClick={() => jump(firstOpen.p.key)}>{t("next_open")} <ArrowRight className="h-3.5 w-3.5" /></Button>
         )}
       </div>
     </div>
@@ -466,6 +473,7 @@ export function AsbabAssessmentPanel({ state, visitId }: { state: AsbabState; vi
 /** Right column: live humoral drift from the Asbab-e-Sittah answers. */
 export function AsbabDriftCard({ state }: { state: AsbabState }) {
   const { drift, pillars } = state;
+  const t = useTranslations("clinic.asbab");
   if (!drift || !pillars) return null;
   const dominant = drift.dominant ? AKHLAT.find((h) => h.key === drift.dominant) : null;
   const hasPoints = AKHLAT.some((h) => drift.total[h.key] > 0);
@@ -474,16 +482,16 @@ export function AsbabDriftCard({ state }: { state: AsbabState }) {
     <Card className="p-4 border-border/50 bg-card/60 gap-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="font-serif text-base font-semibold flex items-center gap-2">
-          <span className="h-7 w-7 rounded-lg flex items-center justify-center bg-primary/10 text-primary"><Activity className="h-4 w-4" /></span> Humoral Drift
+          <span className="h-7 w-7 rounded-lg flex items-center justify-center bg-primary/10 text-primary"><Activity className="h-4 w-4" /></span> {t("drift")}
         </p>
-        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Live</Badge>
+        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{t("live")}</Badge>
       </div>
       {!hasPoints ? (
-        <p className="text-sm text-muted-foreground">Answer the Asbab-e-Sittah questions to see which Akhlat the patient&apos;s lifestyle is pushing towards.</p>
+        <p className="text-sm text-muted-foreground">{t("drift_empty")}</p>
       ) : (
         <>
           {dominant && (
-            <p className="text-sm">Leaning towards <span className={cn("font-semibold", dominant.text)}>{dominant.label}</span> <span className="text-muted-foreground">({dominant.english} · {dominant.quality})</span></p>
+            <p className="text-sm">{t.rich("leaning", { label: dominant.label, b: (c) => <span className={cn("font-semibold", dominant.text)}>{c}</span> })} <span className="text-muted-foreground">({t(`h_${dominant.key}_en`)} · {t(`h_${dominant.key}_q`)})</span></p>
           )}
           <div className="space-y-2">
             {AKHLAT.map((h) => (
@@ -507,7 +515,7 @@ export function AsbabDriftCard({ state }: { state: AsbabState }) {
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">Weighted from each answer&apos;s humoral points (set in Admin). A guide for the Hakim, not a diagnosis.</p>
+          <p className="text-xs text-muted-foreground">{t("drift_note")}</p>
         </>
       )}
     </Card>

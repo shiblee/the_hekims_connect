@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { BODY_ZONES, LIMB_PATHS, type BodyView } from "@/lib/body-zones";
 import { regionIcon } from "@/lib/anatomical-region-icons";
@@ -50,6 +51,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
   onViewChange: (v: BodyView) => void;
   onToggle: (label: string) => void;
 }) {
+  const t = useTranslations("clinic.stage3");
   const uid = useId().replace(/:/g, "");
   const onView = items.filter((i) => i.zone && BODY_ZONES[i.zone]?.[view]);
   const selectedIn = (v: BodyView) => items.filter((i) => i.selected && i.zone && BODY_ZONES[i.zone]?.[v]).length;
@@ -68,7 +70,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
         <TabsList className="w-full">
           {(["front", "back"] as const).map((v) => (
             <TabsTrigger key={v} value={v} className="flex-1 min-w-0 px-1.5 text-[13px] gap-1">
-              {v === "front" ? "Anterior" : "Posterior"}
+              {v === "front" ? t("anterior") : t("posterior")}
               {selectedIn(v) > 0 && (
                 <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/20 px-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{selectedIn(v)}</span>
               )}
@@ -124,7 +126,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
                   <button
                     type="button"
                     onClick={() => onToggle(i.label)}
-                    aria-label={`${i.selected ? "Deselect" : "Select"} ${i.label}`}
+                    aria-label={t(i.selected ? "deselect" : "select", { label: i.label })}
                     aria-pressed={i.selected}
                     className="absolute -translate-x-1/2 -translate-y-1/2 focus-visible:outline-none group"
                     style={{ left: `calc(${(m.x / VIEW_W) * 100}% + ${offset}px)`, top: `${(m.y / VIEW_H) * 100}%`, zIndex: i.selected ? (i.primary ? 3 : 2) : 1 }}
@@ -147,7 +149,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
                 <TooltipContent side="right">
                   <p className="font-medium">{i.label}</p>
                   {i.localTerms && <p className="text-xs opacity-80">{i.localTerms}</p>}
-                  <p className="text-xs opacity-80">{i.primary ? "Primary region" : i.selected ? "Selected — click to remove" : "Click to select"}</p>
+                  <p className="text-xs opacity-80">{i.primary ? t("primary_region") : i.selected ? t("selected_click") : t("click_select")}</p>
                 </TooltipContent>
               </Tooltip>
             );
@@ -156,9 +158,9 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
       </div>
 
       <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Primary</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border border-emerald-500/60 bg-card" /> Selected</span>
-        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-muted-foreground/50" /> Available</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> {t("primary")}</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border border-emerald-500/60 bg-card" /> {t("selected")}</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-muted-foreground/50" /> {t("available")}</span>
       </div>
     </div>
   );
@@ -176,6 +178,7 @@ export function BodyFigure({ view, items, width = 120, screen }: {
   /** On-screen use: silhouette follows the theme instead of the fixed print grey. */
   screen?: boolean;
 }) {
+  const t = useTranslations("clinic.stage3");
   const uid = useId().replace(/:/g, "");
   const onView = items.filter((i) => i.zone && BODY_ZONES[i.zone]?.[view]);
   const groups = new Map<string, typeof onView>();
@@ -235,7 +238,7 @@ export function BodyFigure({ view, items, width = 120, screen }: {
           }),
         )}
       </div>
-      <figcaption className={cn("mt-1 uppercase tracking-wide", screen ? "text-[11px] text-muted-foreground" : "text-[8.5pt] text-[#6b7280]")}>{view === "front" ? "Front · Muqaddam" : "Back · Mu'akhkhar"}</figcaption>
+      <figcaption className={cn("mt-1 uppercase tracking-wide", screen ? "text-[11px] text-muted-foreground" : "text-[8.5pt] text-[#6b7280]")}>{view === "front" ? t("front_fig") : t("back_fig")}</figcaption>
     </figure>
   );
 }

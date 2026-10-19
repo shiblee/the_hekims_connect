@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { History } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
@@ -21,6 +23,8 @@ interface Assessment {
 /** The patient's earlier Mizaj assessments (right column of Stages 3–4); hidden when there are none. */
 export function MizajHistoryCard({ patientId }: { patientId: string }) {
   const [history, setHistory] = useState<Assessment[]>([]);
+  const t = useTranslations("clinic.stage");
+  const dl = useDateLocale();
   useEffect(() => {
     let cancelled = false;
     api.get<{ assessments: Assessment[] }>(`/api/mizaj?patientId=${patientId}`)
@@ -34,21 +38,21 @@ export function MizajHistoryCard({ patientId }: { patientId: string }) {
     <Card className="p-5 border-border/50 bg-card/60">
       <div className="flex items-center gap-2 mb-3">
         <History className="h-4 w-4 text-primary" />
-        <h3 className="font-serif text-base font-semibold">Mizaj History</h3>
+        <h3 className="font-serif text-base font-semibold">{t("history")}</h3>
       </div>
       <div className="space-y-3">
         {history.map((a) => (
           <div key={a.id} className="rounded-lg bg-background/40 p-3 border border-border/30">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[13px] font-semibold text-primary">{a.result.split(" — ")[0]}</p>
-              <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
+              <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString(dl)}</span>
             </div>
             <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mb-2">
               {AKHLAT.map((k) => (
                 <div key={k.key} style={{ width: `${a[k.key]}%`, background: k.color }} />
               ))}
             </div>
-            {a.pulse && <p className="text-xs text-muted-foreground">Pulse: {a.pulse}</p>}
+            {a.pulse && <p className="text-xs text-muted-foreground">{t("pulse", { value: a.pulse })}</p>}
           </div>
         ))}
       </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -24,10 +26,6 @@ export interface OnsetChronologyPanelHandle {
   save: () => Promise<void>;
 }
 
-const unitLabel = (u: string) => DURATION_UNITS.find((x) => x.value === u)?.label.split(" (")[0].toLowerCase() ?? u;
-const fmt = (v: number, u: string) => `${v} ${v === 1 ? unitLabel(u).replace(/s$/, "") : unitLabel(u)}`;
-
-const longDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
 
 /**
@@ -50,6 +48,11 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
     const [loadError, setLoadError] = useState<string | null>(null);
     const [reloadTick, setReloadTick] = useState(0);
     const msg = useNotice();
+    const t3 = useTranslations("clinic.stage3");
+    const tc = useTranslations("common");
+    const dl = useDateLocale();
+    const fmt = (v: number, u: string) => (DURATION_UNITS.some((x) => x.value === u) ? t3(`n_${u}`, { count: v }) : `${v} ${u}`);
+    const longDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(dl, { day: "numeric", month: "short", year: "numeric" });
 
     useEffect(() => {
       let cancelled = false;
@@ -72,7 +75,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
             }
           }
         })
-        .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); })
+        .catch((e) => { if (!cancelled) setLoadError(e.message || tc("network_error")); })
         .finally(() => { if (!cancelled) setLoading(false); });
       return () => { cancelled = true; };
     }, [visitId, reloadTick]);
@@ -99,7 +102,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
           });
           msg.clear();
         } catch (e: any) {
-          msg.error("Onset & chronology weren't saved", `${e.message || "Network error"}. Your entries are still shown above.`, { retry: () => { save().catch(() => {}); } });
+          msg.error(t3("chrono_not_saved"), t3("entries_shown", { error: e.message || tc("network_error") }), { retry: () => { save().catch(() => {}); } });
           throw e;
         }
       },
@@ -130,12 +133,12 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
     const withDurations = (complaintDurations || []).filter((d) => d.value != null);
     const course = courseFor(shown.value, shown.unit);
 
-    if (loadError) return <LoadFailed what="onset & chronology" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+    if (loadError) return <LoadFailed what={t3("the_chrono")} detail={loadError} onRetry={() => { setLoading(true); setReloadTick((n) => n + 1); }} />;
     if (loading) {
       return (
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading onset &amp; chronology…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t3("chrono_loading")}
           </div>
         </Card>
       );
@@ -143,24 +146,24 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
 
     return (
       <Card className="p-5 border-border/50 bg-card/60">
-        <SectionHeading icon={Hourglass} title="Onset & Chronology" />
+        <SectionHeading icon={Hourglass} title={t3("chrono_title")} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="@container min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-sm font-medium">How did it start, and when is it worse?</p>
-              {selected.length > 0 && <Badge variant="outline" className="text-[11px] font-normal shrink-0">{selected.length} selected</Badge>}
+              <p className="text-sm font-medium">{t3("how_start")}</p>
+              {selected.length > 0 && <Badge variant="outline" className="text-[11px] font-normal shrink-0">{t3("n_selected", { count: selected.length })}</Badge>}
             </div>
             <div className="pt-1.5">
               <FloatingMultiSelect
                 id="onsetPatternSearch"
-                label="Search onset & rhythm"
-                placeholder="Type — e.g. sudden, gradual, night, after meals…"
+                label={t3("pattern_search")}
+                placeholder={t3("pattern_ph")}
                 openOnFocus
-                emptyHint={patterns.length > 6 ? `Common patterns · type to search all ${patterns.length}` : "Onset & rhythm patterns"}
+                emptyHint={patterns.length > 6 ? t3("pattern_common", { count: patterns.length }) : t3("patterns")}
                 selected={selected.map((label) => {
                   const pt = patterns.find((x) => x.label === label);
-                  return { id: label, label, description: pt ? pt.description : "Added by doctor" };
+                  return { id: label, label, description: pt ? pt.description : t3("added_by_doctor") };
                 })}
                 onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))}
                 query={patternQuery}
@@ -170,17 +173,17 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                 renderIcon={(pt) => { const Icon = patternIcon(pt.label); return <Icon className="h-3.5 w-3.5 shrink-0" />; }}
                 onPick={(label) => toggle(label)}
                 onCreate={addOtherPattern}
-                createLabel={(q) => `Add "${q}" as another pattern`}
+                createLabel={(q) => t3("add_pattern", { q })}
               />
             </div>
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-sm font-medium">How long has it been going on?</p>
+              <p className="text-sm font-medium">{t3("how_long")}</p>
               {shown.value && (
                 <Badge variant="outline" className={cn("text-[11px] font-normal shrink-0", source === "auto" ? "border-primary/40 text-primary" : "text-muted-foreground")}>
-                  {source === "auto" ? "From chief complaints" : "Set by you"}
+                  {source === "auto" ? t3("from_complaints") : t3("set_by_you")}
                 </Badge>
               )}
             </div>
@@ -203,12 +206,12 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                     "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
                   )}
                 >
-                  Duration
+                  {t3("duration")}
                 </label>
                 <div className="h-8 w-px bg-border/70" aria-hidden />
                 <Select value={shown.unit} onValueChange={(u) => editDuration(shown.value, u)}>
                   <SelectTrigger className="h-full border-0 shadow-none focus-visible:ring-0 w-44 shrink-0 bg-transparent"><SelectValue /></SelectTrigger>
-                  <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{t3(`du_${u.value}`)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
@@ -217,8 +220,8 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
             {course && (
               <div className={cn("mt-3 rounded-xl border px-3.5 py-3", course.style.border, course.style.bg)}>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className={cn("text-sm font-semibold", course.style.text)}>{course.label} <span className="font-normal opacity-80">({course.unani})</span></span>
-                  {shown.date && <span className="text-xs text-muted-foreground">Started around <span className="font-medium text-foreground">{longDate(shown.date)}</span></span>}
+                  <span className={cn("text-sm font-semibold", course.style.text)}>{t3(`course_${course.key}`)} <span className="font-normal opacity-80">({course.unani})</span></span>
+                  {shown.date && <span className="text-xs text-muted-foreground">{t3.rich("started_around", { date: longDate(shown.date), b: (c) => <span className="font-medium text-foreground">{c}</span> })}</span>}
                 </div>
                 <div className="mt-2.5 relative">
                   <div className="flex h-1.5 overflow-hidden rounded-full">
@@ -227,23 +230,23 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
                   <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
                 </div>
                 <div className="mt-1.5 grid grid-cols-3 text-[11px] text-muted-foreground">
-                  {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>{c.range}</span>)}
+                  {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>{t3(`course_${c.key}_range`)}</span>)}
                 </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">{course.hint}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">{t3(`course_${course.key}_hint`)}</p>
               </div>
             )}
 
             <div className="mt-2 space-y-1.5 text-[13px] text-muted-foreground">
               {source === "auto" && longest ? (
-                <p>Taken from the longest chief complaint — <span className="font-medium text-foreground/80">{longest.label}</span>.</p>
+                <p>{t3.rich("from_longest", { label: longest.label, b: (c) => <span className="font-medium text-foreground/80">{c}</span> })}</p>
               ) : source === "manual" && longest ? (
                 <p className="flex items-center gap-1.5 flex-wrap">
                   <button type="button" onClick={() => setSource("auto")} className="inline-flex items-center gap-1 text-primary hover:underline">
-                    <RotateCcw className="h-3 w-3" /> Use chief-complaint duration ({fmt(longest.value!, longest.unit)})
+                    <RotateCcw className="h-3 w-3" /> {t3("use_complaint", { value: fmt(longest.value!, longest.unit) })}
                   </button>
                 </p>
               ) : !longest && !shown.value ? (
-                <p>Fills in automatically from the chief complaints&apos; durations, or enter one above.</p>
+                <p>{t3("fills_auto")}</p>
               ) : null}
               {withDurations.length > 1 && (
                 <p className="flex flex-wrap gap-1.5">

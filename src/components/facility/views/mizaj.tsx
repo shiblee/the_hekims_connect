@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
@@ -17,7 +19,6 @@ import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
-import { savedAt } from "@/lib/flash";
 import { ArrowRight, Loader2, Printer, ShieldAlert } from "lucide-react";
 import { MizajHistoryCard } from "@/components/facility/views/mizaj-history-card";
 
@@ -35,6 +36,7 @@ export function MizajView({ initialPatientId }: { initialPatientId?: string } = 
 }
 
 function PatientPicker({ onPick }: { onPick: (id: string) => void }) {
+  const t = useTranslations("clinic.stage");
   const [patients, setPatients] = useState<{ id: string; name: string; mizaj: string | null }[]>([]);
   useEffect(() => {
     api.get<{ patients: any[] }>("/api/facility/patients").then((r) => setPatients(r.patients || [])).catch(() => {});
@@ -42,13 +44,13 @@ function PatientPicker({ onPick }: { onPick: (id: string) => void }) {
   return (
     <div className="max-w-2xl space-y-5">
       <div>
-        <h2 className="font-serif text-xl font-bold">Mizaj & Morphometry</h2>
-        <p className="text-sm text-muted-foreground">Choose a patient to open their Stage 3 assessment.</p>
+        <h2 className="font-serif text-xl font-bold">{t("t_mizaj")}</h2>
+        <p className="text-sm text-muted-foreground">{t("choose", { n: 3 })}</p>
       </div>
       <Card className="p-5 border-border/50 bg-card/60">
-        <Label className="text-[13px] uppercase tracking-wide text-muted-foreground">Select Patient</Label>
+        <Label className="text-[13px] uppercase tracking-wide text-muted-foreground">{t("select_patient")}</Label>
         <Select value="" onValueChange={onPick}>
-          <SelectTrigger className="mt-1.5 bg-background/60"><SelectValue placeholder="Choose a patient…" /></SelectTrigger>
+          <SelectTrigger className="mt-1.5 bg-background/60"><SelectValue placeholder={t("choose_ph")} /></SelectTrigger>
           <SelectContent>
             {patients.map((p) => (
               <SelectItem key={p.id} value={p.id}>{p.name} {p.mizaj ? `· ${p.mizaj}` : ""}</SelectItem>
@@ -64,6 +66,10 @@ function MizajStage({ patientId }: { patientId: string }) {
   const router = useRouter();
   const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload, refreshVisits } = useStagePatient(patientId);
   const msg = useNotice();
+  const t = useTranslations("clinic.stage");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
+  const list = useListFormat();
   const [saving, setSaving] = useState<"draft" | "proceed" | null>(null);
   const chiefComplaintRef = useRef<ChiefComplaintMatrixHandle>(null);
   const regionRef = useRef<AnatomicalRegionSelectorHandle>(null);
@@ -84,7 +90,7 @@ function MizajStage({ patientId }: { patientId: string }) {
 
   /** Saves the anatomical regions, the senior doctor's chief-complaint edits and the clinical note. */
   const saveEdits = async () => {
-    const sections = ["Anatomical Region", "Main Complaints", "Onset & Chronology", "Resident Clinical Note"];
+    const sections = [t("sec_regions"), t("sec_complaints"), t("sec_chronology"), t("sec_note")];
     const results = await Promise.allSettled([
       regionRef.current?.save(), chiefComplaintRef.current?.save(), chronologyRef.current?.save(), residentNoteRef.current?.save(),
     ]);
@@ -94,8 +100,8 @@ function MizajStage({ patientId }: { patientId: string }) {
     if (failed.length) {
       // Each section shows its own error in place; this sums it up by the buttons.
       msg.error(
-        failed.length === 1 ? `${failed[0]} wasn't saved` : `${failed.length} sections weren't saved`,
-        `${failed.length === 1 ? "See the message in that section above." : `${failed.join(", ")} — see the message in each section above.`} Everything else was saved, and nothing you entered was lost.`,
+        failed.length === 1 ? t("one_not_saved", { section: failed[0] }) : t("n_not_saved", { count: failed.length }),
+        failed.length === 1 ? t("one_not_saved_hint") : t("n_not_saved_hint", { sections: list(failed) }),
       );
       return false;
     }
@@ -106,7 +112,7 @@ function MizajStage({ patientId }: { patientId: string }) {
   const saveDraft = async () => {
     setSaving("draft");
     try {
-      if (await saveEdits()) msg.success("Draft saved", savedAt());
+      if (await saveEdits()) msg.success(t("draft_saved"), t("saved_at", { time: new Date().toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) }));
     } finally {
       setSaving(null);
     }
@@ -140,9 +146,9 @@ function MizajStage({ patientId }: { patientId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+    return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}</div>;
   }
-  if (!patient) return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
+  if (!patient) return loadError ? <LoadFailed what={t("this_patient")} detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">{t("not_found")}</p>;
 
   return (
     <div className="w-full">
@@ -155,7 +161,7 @@ function MizajStage({ patientId }: { patientId: string }) {
           {latestVisit ? (
             <div data-tour="stage.complaints"><ChiefComplaintMatrix ref={chiefComplaintRef} visitId={latestVisit.id} intakeComplaints={intakeComplaints} onDurationsChange={setComplaintDurations} /></div>
           ) : (
-            <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete Stage 2 first.</Card>
+            <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{t("no_visit")}</Card>
           )}
           {latestVisit && <div data-tour="mizaj.chronology"><OnsetChronologyPanel ref={chronologyRef} visitId={latestVisit.id} complaintDurations={complaintDurations} /></div>}
         </div>
@@ -182,20 +188,20 @@ function MizajStage({ patientId }: { patientId: string }) {
       <Card data-tour="stage.actions" className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
         <div className="flex items-center gap-2 shrink-0 flex-wrap ms-auto">
           {latestVisit && (
-            <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report (opens in a new tab; shows saved data — Save Draft first to include new edits)">
+            <Button size="sm" variant="ghost" onClick={openReport} title={t("print_title")}>
               <Printer className="h-3.5 w-3.5" />
             </Button>
           )}
           {latestVisit && (
             <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/60 dark:border-destructive/40 dark:hover:bg-destructive/20 dark:hover:text-destructive" onClick={referPatient} disabled={saving !== null}>
-              <ShieldAlert className="h-3.5 w-3.5" /> {latestVisit.referral ? "Edit Referral" : "Refer Patient"}
+              <ShieldAlert className="h-3.5 w-3.5" /> {latestVisit.referral ? t("edit_referral") : t("refer")}
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={saveDraft} disabled={saving !== null}>
-            {saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft
+            {saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} {t("save_draft")}
           </Button>
           <Button size="sm" onClick={proceedToAsbab} disabled={saving !== null || !latestVisit}>
-            {saving === "proceed" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Proceed to Asbab-e-Sittah Review (Stage 4) <ArrowRight className="h-3.5 w-3.5" />
+            {saving === "proceed" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} {t("to_asbab")} <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </Card>

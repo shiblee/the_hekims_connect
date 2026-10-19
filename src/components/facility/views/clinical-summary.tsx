@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DURATION_UNITS } from "@/lib/chronology";
@@ -35,11 +37,6 @@ interface Summary {
   } | null;
 }
 
-const unitName = (u: string | null, n: number | null) => {
-  const label = (DURATION_UNITS.find((x) => x.value === u)?.label.split(" (")[0] ?? u ?? "").toLowerCase();
-  return n === 1 ? label.replace(/s$/, "") : label;
-};
-const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null);
 
 /** Compact card in the right-rail style (Clinical Routing / Humoral Clues). */
 function Block({ icon: Icon, title, aside, children }: { icon: typeof Activity; title: string; aside?: ReactNode; children: ReactNode }) {
@@ -69,7 +66,10 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-const Empty = ({ children = "Not recorded" }: { children?: ReactNode }) => <p className="text-sm text-muted-foreground">{children}</p>;
+function Empty({ children }: { children?: ReactNode }) {
+  const t = useTranslations("clinic.stage5");
+  return <p className="text-sm text-muted-foreground">{children ?? t("not_recorded")}</p>;
+}
 
 function Chips({ items, tone = "neutral" }: { items: string[]; tone?: "neutral" | "red" | "green" | "primary" }) {
   return (
@@ -95,9 +95,9 @@ const HUMOURS = [
 ] as const;
 
 const RED_FLAG_OUTCOME: Record<string, { label: string; className: string }> = {
-  cleared: { label: "Cleared", className: "text-emerald-600 dark:text-emerald-400 border-emerald-500/40" },
-  referred: { label: "Referred", className: "text-destructive border-destructive/40" },
-  continued_ama: { label: "Continued (declined referral)", className: "text-amber-600 dark:text-amber-400 border-amber-500/40" },
+  cleared: { label: "cleared", className: "text-emerald-600 dark:text-emerald-400 border-emerald-500/40" },
+  referred: { label: "referred", className: "text-destructive border-destructive/40" },
+  continued_ama: { label: "continued_ama", className: "text-amber-600 dark:text-amber-400 border-amber-500/40" },
 };
 
 /**
@@ -113,18 +113,25 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
 }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("clinic.stage5");
+  const ta = useTranslations("clinic.asbab");
+  const t3 = useTranslations("clinic.stage3");
+  const dl = useDateLocale();
+  // "3 days" in the viewer's language; anything unexpected is shown as stored.
+  const dur = (n: number, u: string | null) => (u && DURATION_UNITS.some((x) => x.value === u) ? t3(`n_${u}`, { count: n }) : `${n} ${u ?? ""}`);
+  const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString(dl, { day: "numeric", month: "short", year: "numeric" }) : null);
 
   useEffect(() => {
     let cancelled = false;
     api.get<{ summary: Summary }>(`/api/facility/visits/${visitId}/clinical-summary`)
       .then((r) => { if (!cancelled) setSummary(r.summary); })
-      .catch((e) => { if (!cancelled) setError(e.message || "Could not load the clinical summary"); });
+      .catch((e) => { if (!cancelled) setError(e.message || t("load_failed")); });
     return () => { cancelled = true; };
   }, [visitId]);
 
   if (error) return <Card className="p-4 border-border/50 bg-card/60 text-sm text-destructive">{error}</Card>;
   if (!summary) {
-    return <Card className="p-4 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading clinical summary…</div></Card>;
+    return <Card className="p-4 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}</div></Card>;
   }
 
   const s = summary;
@@ -133,23 +140,23 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
   return (
     <div className="space-y-4">
       <div className="px-1">
-        <h2 className="font-serif text-lg font-semibold">Assessment So Far</h2>
-        <p className="text-xs text-muted-foreground">Everything recorded for this visit, grouped by who assessed it.</p>
+        <h2 className="font-serif text-lg font-semibold">{t("so_far")}</h2>
+        <p className="text-xs text-muted-foreground">{t("so_far_hint")}</p>
       </div>
 
       {showAsbab && (
-        <Group title="Asbab-e-Sittah · Stage 4">
+        <Group title={t("g_asbab")}>
           {!s.asbab || s.asbab.pillars.length === 0 ? (
-            <Block icon={Wind} title="Six Essential Factors"><Empty /></Block>
+            <Block icon={Wind} title={t("six_factors")}><Empty /></Block>
           ) : (
             <>
-              <Block icon={Activity} title="Lifestyle Humoral Drift"
-                aside={<Badge variant="outline" className={cn("text-[10px]", s.asbab.status === "completed" ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/40" : "text-amber-600 dark:text-amber-400 border-amber-500/40")}>{s.asbab.status === "completed" ? "Completed" : "Draft"}</Badge>}>
+              <Block icon={Activity} title={t("lifestyle_drift")}
+                aside={<Badge variant="outline" className={cn("text-[10px]", s.asbab.status === "completed" ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/40" : "text-amber-600 dark:text-amber-400 border-amber-500/40")}>{s.asbab.status === "completed" ? ta("completed") : ta("draft")}</Badge>}>
                 {s.asbab.drift?.percent ? (
                   <div className="space-y-2">
                     {s.asbab.drift.dominant && (() => {
                       const h = AKHLAT.find((x) => x.key === s.asbab!.drift!.dominant);
-                      return h ? <p className="text-sm">Leaning towards <span className={cn("font-semibold", h.text)}>{h.label}</span> <span className="text-muted-foreground">({h.quality})</span></p> : null;
+                      return h ? <p className="text-sm">{ta.rich("leaning", { label: h.label, b: (c) => <span className={cn("font-semibold", h.text)}>{c}</span> })} <span className="text-muted-foreground">({ta(`h_${h.key}_q`)})</span></p> : null;
                     })()}
                     {AKHLAT.map((h) => (
                       <div key={h.key} className="grid grid-cols-[64px_1fr_36px] items-center gap-2 text-xs">
@@ -159,7 +166,7 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
                       </div>
                     ))}
                   </div>
-                ) : <Empty>Not computed</Empty>}
+                ) : <Empty>{t("not_computed")}</Empty>}
               </Block>
               {s.asbab.pillars.map((p) => (
                 <Block key={p.key} icon={pillarIcon(p.key)} title={p.label}>
@@ -179,25 +186,25 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
         </Group>
       )}
 
-      <Group title="Doctor's Assessment · Stage 3">
+      <Group title={t("g_doctor")}>
       {/* Chief complaints — the heart of the summary */}
-      <Block icon={BriefcaseMedical} title="Chief Complaints" aside={s.complaints.length > 0 && <Badge variant="outline" className="text-[10px]">{s.complaints.length}</Badge>}>
+      <Block icon={BriefcaseMedical} title={t("chief")} aside={s.complaints.length > 0 && <Badge variant="outline" className="text-[10px]">{s.complaints.length}</Badge>}>
         {s.complaints.length === 0 ? <Empty /> : (
           <div className="space-y-3">
             {s.complaints.map((c, i) => (
               <div key={c.label} className={cn("rounded-lg border px-3 py-2.5 space-y-2", i === 0 ? "border-primary/30 bg-primary/5" : "border-border/50 bg-background/40")}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-semibold">{c.label}</p>
-                  {i === 0 && <Badge variant="outline" className="text-[10px] shrink-0 border-primary/40 text-primary">Primary</Badge>}
+                  {i === 0 && <Badge variant="outline" className="text-[10px] shrink-0 border-primary/40 text-primary">{t("primary")}</Badge>}
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>Duration: <span className="text-foreground font-medium">{c.durationValue != null ? `${c.durationValue} ${unitName(c.durationUnit, c.durationValue)}` : "—"}</span></span>
-                  <span>Severity: <span className={cn("font-medium", (c.severity ?? 0) >= 7 ? "text-destructive" : (c.severity ?? 0) >= 4 ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
+                  <span>{t("duration")} <span className="text-foreground font-medium">{c.durationValue != null ? dur(c.durationValue, c.durationUnit) : "—"}</span></span>
+                  <span>{t("severity")} <span className={cn("font-medium", (c.severity ?? 0) >= 7 ? "text-destructive" : (c.severity ?? 0) >= 4 ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
                     {c.severity != null ? `${c.severity}/10${c.severityLabel ? ` · ${c.severityLabel}` : ""}` : "—"}
                   </span></span>
                 </div>
-                {c.aggravating.length > 0 && <div className="space-y-1"><p className="text-[11px] text-muted-foreground">Aggravated by (Muharrikat)</p><Chips items={c.aggravating} tone="red" /></div>}
-                {c.relieving.length > 0 && <div className="space-y-1"><p className="text-[11px] text-muted-foreground">Relieved by (Musakkinat)</p><Chips items={c.relieving} tone="green" /></div>}
+                {c.aggravating.length > 0 && <div className="space-y-1"><p className="text-[11px] text-muted-foreground">{t("aggravated")}</p><Chips items={c.aggravating} tone="red" /></div>}
+                {c.relieving.length > 0 && <div className="space-y-1"><p className="text-[11px] text-muted-foreground">{t("relieved")}</p><Chips items={c.relieving} tone="green" /></div>}
                 {c.notes && <p className="text-xs text-muted-foreground italic">{c.notes}</p>}
               </div>
             ))}
@@ -205,30 +212,30 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
         )}
       </Block>
 
-      <Block icon={PersonStanding} title="Anatomical Regions">
+      <Block icon={PersonStanding} title={t("regions")}>
         {s.regions.length === 0 ? <Empty /> : (
           <div className="flex flex-wrap gap-1.5">
             {s.regions.map((r, i) => (
               <span key={r} className={cn("rounded-full border px-2.5 py-0.5 text-xs", i === 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 font-medium" : "bg-background/40 border-border/60")}>
-                {r}{i === 0 && " · Primary"}
+                {r}{i === 0 && ` · ${t("primary")}`}
               </span>
             ))}
           </div>
         )}
       </Block>
 
-      <Block icon={Hourglass} title="Onset & Chronology">
+      <Block icon={Hourglass} title={t3("chrono_title")}>
         {!s.chronology || (!s.chronology.patterns.length && s.chronology.durationValue == null && !s.chronology.note) ? <Empty /> : (
           <div className="space-y-2">
             {s.chronology.patterns.length > 0 && <Chips items={s.chronology.patterns} tone="primary" />}
             {s.chronology.durationValue != null && (
               <p className="text-sm">
-                <span className="font-semibold">{s.chronology.durationValue} {unitName(s.chronology.durationUnit, s.chronology.durationValue)}</span>
-                {s.chronology.onsetDate && <span className="text-muted-foreground"> · since {fmtDate(s.chronology.onsetDate)}</span>}
+                <span className="font-semibold">{dur(s.chronology.durationValue, s.chronology.durationUnit)}</span>
+                {s.chronology.onsetDate && <span className="text-muted-foreground"> · {t("since", { date: fmtDate(s.chronology.onsetDate) ?? "" })}</span>}
               </p>
             )}
             {s.chronology.source === "auto" && s.chronology.sourceComplaint && (
-              <p className="text-[11px] text-muted-foreground">Longest chief-complaint duration — {s.chronology.sourceComplaint}</p>
+              <p className="text-[11px] text-muted-foreground">{t("longest", { label: s.chronology.sourceComplaint })}</p>
             )}
             {s.chronology.note && <p className="text-xs text-muted-foreground italic">{s.chronology.note}</p>}
           </div>
@@ -237,27 +244,27 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
 
       </Group>
 
-      <Group title="Triage & Junior Doctor · Stage 2">
-      <Block icon={ShieldAlert} title="Red Flag Screening"
-        aside={s.redFlags && RED_FLAG_OUTCOME[s.redFlags.outcome] && <Badge variant="outline" className={cn("text-[10px]", RED_FLAG_OUTCOME[s.redFlags.outcome].className)}>{RED_FLAG_OUTCOME[s.redFlags.outcome].label}</Badge>}>
-        {!s.redFlags ? <Empty>Not screened</Empty> : s.redFlags.present.length === 0
-          ? <p className="text-sm text-muted-foreground">None of the {s.redFlags.checked} emergency criteria present.</p>
+      <Group title={t("g_triage")}>
+      <Block icon={ShieldAlert} title={t("red_flags")}
+        aside={s.redFlags && RED_FLAG_OUTCOME[s.redFlags.outcome] && <Badge variant="outline" className={cn("text-[10px]", RED_FLAG_OUTCOME[s.redFlags.outcome].className)}>{t(RED_FLAG_OUTCOME[s.redFlags.outcome].label)}</Badge>}>
+        {!s.redFlags ? <Empty>{t("not_screened")}</Empty> : s.redFlags.present.length === 0
+          ? <p className="text-sm text-muted-foreground">{t("none_of", { count: s.redFlags.checked })}</p>
           : <Chips items={s.redFlags.present} tone="red" />}
       </Block>
 
-      <Block icon={Activity} title="Other Symptoms">
-        {s.acuteSymptoms.length === 0 ? <Empty>None selected</Empty> : <Chips items={s.acuteSymptoms} />}
+      <Block icon={Activity} title={t("other_symptoms")}>
+        {s.acuteSymptoms.length === 0 ? <Empty>{t("none_selected")}</Empty> : <Chips items={s.acuteSymptoms} />}
       </Block>
 
-      <Block icon={NotebookPen} title="Triage & Resident Notes">
+      <Block icon={NotebookPen} title={t("notes")}>
         {!s.triage?.painNotes && !s.triage?.primaryFocusArea && !s.triage?.triageRemarks && s.residentNotes.length === 0 ? <Empty /> : (
           <div className="space-y-2 text-sm">
-            {s.triage?.primaryFocusArea && <p><span className="text-xs text-muted-foreground">Primary focus area: </span>{s.triage.primaryFocusArea}</p>}
-            {s.triage?.painNotes && <p><span className="text-xs text-muted-foreground">Pain notes: </span>{s.triage.painNotes}</p>}
-            {s.triage?.triageRemarks && <p><span className="text-xs text-muted-foreground">Triage remarks: </span>{s.triage.triageRemarks}</p>}
+            {s.triage?.primaryFocusArea && <p><span className="text-xs text-muted-foreground">{t("focus")} </span>{s.triage.primaryFocusArea}</p>}
+            {s.triage?.painNotes && <p><span className="text-xs text-muted-foreground">{t("pain")} </span>{s.triage.painNotes}</p>}
+            {s.triage?.triageRemarks && <p><span className="text-xs text-muted-foreground">{t("remarks")} </span>{s.triage.triageRemarks}</p>}
             {s.residentNotes.length > 0 && (
               <div>
-                <p className="text-[11px] text-muted-foreground mb-1">Resident clinical note</p>
+                <p className="text-[11px] text-muted-foreground mb-1">{t("resident")}</p>
                 <ul className="list-disc ps-5 space-y-0.5">{s.residentNotes.map((n, i) => <li key={i}>{n}</li>)}</ul>
               </div>
             )}
@@ -268,9 +275,9 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
       </Group>
 
 
-      <Group title="Computed Insights">
-      <Block icon={Droplets} title="Humoral Assessment" aside={dominant && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Dominant: {dominant}</Badge>}>
-        {!s.humoral ? <Empty>Not computed yet</Empty> : (
+      <Group title={t("g_computed")}>
+      <Block icon={Droplets} title={t("humoral")} aside={dominant && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{t("dominant", { name: dominant })}</Badge>}>
+        {!s.humoral ? <Empty>{t("not_computed_yet")}</Empty> : (
           <div className="space-y-2">
             {HUMOURS.map((h) => {
               const pct = Math.round(s.humoral![h.key]);
@@ -287,8 +294,8 @@ export function ClinicalSummaryColumn({ visitId, showAsbab = false }: {
         )}
       </Block>
 
-      <Block icon={Milestone} title="Clinical Routing">
-        {!s.routing ? <Empty>Not generated</Empty> : (
+      <Block icon={Milestone} title={t("routing")}>
+        {!s.routing ? <Empty>{t("not_generated")}</Empty> : (
           <div className="space-y-1.5">
             <div className="flex flex-wrap gap-1.5"><Chips items={[s.routing.priorityLevel, s.routing.triageStream]} tone="primary" /></div>
             <p className="text-xs text-muted-foreground">{s.routing.justification}</p>

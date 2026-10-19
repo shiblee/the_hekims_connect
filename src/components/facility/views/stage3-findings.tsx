@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Hourglass, Loader2, Pencil, PersonStanding } from "lucide-react";
 import { api } from "@/lib/api";
@@ -21,14 +23,10 @@ interface Findings {
   chronology: { patterns: string[]; value: number | null; unit: string; date: string | null; source: string; sourceComplaint: string | null } | null;
 }
 
-const unitWord = (v: number, u: string) => {
-  const w = DURATION_UNITS.find((x) => x.value === u)?.label.split(" (")[0].toLowerCase() ?? u;
-  return v === 1 ? w.replace(/s$/, "") : w;
-};
-const longDate = (d: string) => new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
 /** Card frame shared by the two Stage 3 cards: heading, a "Stage 3" tag and an edit link back to Stage 3. */
 function StageCard({ icon: Icon, title, editHref, children }: { icon: typeof Hourglass; title: string; editHref: string; children: React.ReactNode }) {
+  const t3 = useTranslations("clinic.stage3");
   return (
     <Card className="p-5 border-border/50 bg-card/60 gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -36,8 +34,8 @@ function StageCard({ icon: Icon, title, editHref, children }: { icon: typeof Hou
           <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><Icon className="h-4 w-4" /></div>
           <h3 className="font-serif text-base font-semibold leading-tight">{title}</h3>
         </div>
-        <Link href={editHref} className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline" title="Edit in Mizaj & Morphometry (Stage 3)">
-          <Pencil className="h-3 w-3" /> Stage 3
+        <Link href={editHref} className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline" title={t3("edit_stage3")}>
+          <Pencil className="h-3 w-3" /> {t3("stage3")}
         </Link>
       </div>
       {children}
@@ -54,6 +52,9 @@ export function Stage3FindingsCards({ visitId, patientId }: { visitId: string; p
   const [data, setData] = useState<Findings | null>(null);
   const [failed, setFailed] = useState(false);
   const editHref = `/facility/mizaj?patientId=${patientId}`;
+  const t3 = useTranslations("clinic.stage3");
+  const dl = useDateLocale();
+  const longDate = (d: string) => new Date(d).toLocaleDateString(dl, { day: "numeric", month: "short", year: "numeric" });
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +84,7 @@ export function Stage3FindingsCards({ visitId, patientId }: { visitId: string; p
 
   if (failed) return null; // the rest of the column still works; Stage 3 itself shows its own errors
   if (!data) {
-    return <Card className="p-5 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading Stage 3 findings…</div></Card>;
+    return <Card className="p-5 border-border/50 bg-card/60"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {t3("findings_loading")}</div></Card>;
   }
 
   const ch = data.chronology;
@@ -91,9 +92,9 @@ export function Stage3FindingsCards({ visitId, patientId }: { visitId: string; p
 
   return (
     <>
-      <StageCard icon={PersonStanding} title="Anatomical Region & Organ System" editHref={editHref}>
+      <StageCard icon={PersonStanding} title={t3("regions_title")} editHref={editHref}>
         {data.regions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No body regions selected at Stage 3.</p>
+          <p className="text-sm text-muted-foreground">{t3("no_regions_selected")}</p>
         ) : (
           <>
             <div className="flex justify-center gap-4 rounded-xl border border-border/40 bg-background/40 py-3">
@@ -110,28 +111,28 @@ export function Stage3FindingsCards({ visitId, patientId }: { visitId: string; p
                       <span className="block truncate text-[13px] font-semibold" title={r.label}>{r.label}</span>
                       {r.localTerms && <span className="block truncate text-xs text-muted-foreground" title={r.localTerms}>{r.localTerms}</span>}
                     </span>
-                    {r.primary && <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Primary</span>}
+                    {r.primary && <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{t3("primary")}</span>}
                   </li>
                 );
               })}
             </ul>
             {data.regions.every((r) => !r.zone) && (
-              <p className="text-xs text-muted-foreground">These regions aren&apos;t placed on the body map.</p>
+              <p className="text-xs text-muted-foreground">{t3("not_on_map")}</p>
             )}
           </>
         )}
       </StageCard>
 
-      <StageCard icon={Hourglass} title="Onset & Chronology" editHref={editHref}>
+      <StageCard icon={Hourglass} title={t3("chrono_title")} editHref={editHref}>
         {!ch || (ch.value == null && ch.patterns.length === 0) ? (
-          <p className="text-sm text-muted-foreground">Onset &amp; chronology not recorded at Stage 3.</p>
+          <p className="text-sm text-muted-foreground">{t3("chrono_none")}</p>
         ) : (
           <>
             {ch.value != null && (
               <div className={cn("rounded-xl border px-3.5 py-3", course ? cn(course.style.border, course.style.bg) : "border-border/50 bg-background/40")}>
                 <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                  <p className="text-xl font-bold leading-none tabular-nums">{ch.value} <span className="text-sm font-medium">{unitWord(ch.value, ch.unit)}</span></p>
-                  {course && <span className={cn("text-sm font-semibold", course.style.text)}>{course.label} <span className="font-normal opacity-80">({course.unani})</span></span>}
+                  <p className="text-xl font-bold leading-none tabular-nums">{DURATION_UNITS.some((x) => x.value === ch.unit) ? t3(`n_${ch.unit}`, { count: ch.value }) : `${ch.value} ${ch.unit}`}</p>
+                  {course && <span className={cn("text-sm font-semibold", course.style.text)}>{t3(`course_${course.key}`)} <span className="font-normal opacity-80">({course.unani})</span></span>}
                 </div>
                 {course && (
                   <>
@@ -142,19 +143,19 @@ export function Stage3FindingsCards({ visitId, patientId }: { visitId: string; p
                       <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
                     </div>
                     <div className="mt-1.5 grid grid-cols-3 text-[11px] text-muted-foreground">
-                      {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>{c.range}</span>)}
+                      {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>{t3(`course_${c.key}_range`)}</span>)}
                     </div>
                   </>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {ch.date && <>Started around <span className="font-medium text-foreground">{longDate(ch.date)}</span></>}
-                  {ch.source === "auto" && ch.sourceComplaint && <>{ch.date ? " · " : ""}from the longest complaint, {ch.sourceComplaint}</>}
+                  {ch.date && t3.rich("started_around", { date: longDate(ch.date), b: (c) => <span className="font-medium text-foreground">{c}</span> })}
+                  {ch.source === "auto" && ch.sourceComplaint && <>{ch.date ? " · " : ""}{t3("from_longest_short", { label: ch.sourceComplaint })}</>}
                 </p>
               </div>
             )}
             {ch.patterns.length > 0 && (
               <div>
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">How it started &amp; when it&apos;s worse</p>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t3("how_started_worse")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {ch.patterns.map((pt) => {
                     const Icon = patternIcon(pt);

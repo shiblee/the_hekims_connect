@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, Printer, ShieldAlert } from "lucide-react";
@@ -15,7 +17,6 @@ import { Stage3FindingsCards } from "@/components/facility/views/stage3-findings
 import { Stage4AsbabCard } from "@/components/facility/views/stage4-findings";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
-import { savedAt } from "@/lib/flash";
 import { TashkheesDossierPanel, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 
@@ -25,12 +26,14 @@ import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/compo
  * prognosis & handover); the right column holds the complete assessment.
  */
 export function TashkheesView({ patientId }: { patientId?: string }) {
+  const tr = useTranslations("clinic.stage5");
+  const ts = useTranslations("clinic.stage");
   if (!patientId) {
     return (
       <Card className="p-6 border-border/50 bg-card/60 max-w-xl">
-        <h2 className="font-serif text-lg font-semibold">Tashkhees &amp; Handover Dossier</h2>
+        <h2 className="font-serif text-lg font-semibold">{ts("t_handover")}</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Open a patient from <Link href="/facility/patients" className="text-primary hover:underline">Patients</Link> and continue through the earlier stages to reach this one.
+          {tr.rich("open_patient", { link: (c) => <Link href="/facility/patients" className="text-primary hover:underline">{c}</Link> })}
         </p>
       </Card>
     );
@@ -41,6 +44,13 @@ export function TashkheesView({ patientId }: { patientId?: string }) {
 function TashkheesStage({ patientId }: { patientId: string }) {
   const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload, refreshVisits } = useStagePatient(patientId);
   const t = useTashkhees(latestVisit?.id);
+  const tr = useTranslations("clinic.stage5");
+  const ts = useTranslations("clinic.stage");
+  const ta = useTranslations("clinic.asbab");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
+  const list = useListFormat();
+  const savedAt = () => ts("saved_at", { time: new Date().toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) });
   const router = useRouter();
   // Referral pop-up (shared with the earlier stages) — only its dialogs are rendered here.
   const referralRef = useRef<RedFlagScreeningPanelHandle>(null);
@@ -61,23 +71,23 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+    return <div className="flex items-center gap-2 text-muted-foreground text-sm py-12"><Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}</div>;
   }
-  if (!patient) return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
+  if (!patient) return loadError ? <LoadFailed what={ts("this_patient")} detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">{ts("not_found")}</p>;
 
   const finalized = t.dossier.status === "finalized";
   const saveDraft = async () => {
     const [ok, note] = await Promise.all([t.save(false), saveNote()]);
-    if (ok && note) t.msg.success("Draft saved", savedAt());
+    if (ok && note) t.msg.success(ts("draft_saved"), savedAt());
   };
   const finalize = async () => {
     if (!t.dossier.mizajAsli || !t.dossier.suMizajQuality) {
-      const missing = [!t.dossier.mizajAsli && "Mizaj-e-Asli", !t.dossier.suMizajQuality && "Su-e-Mizaj"].filter(Boolean).join(" and ");
-      t.msg.warning(`Record the ${missing} before finalising`, "Fill in the Tashkhees section above — the diagnosis is needed for the handover.");
+      const missing = list([!t.dossier.mizajAsli && "Mizaj-e-Asli", !t.dossier.suMizajQuality && "Su-e-Mizaj"].filter(Boolean) as string[]);
+      t.msg.warning(tr("need_diag", { items: missing }), tr("need_diag_hint"));
       return;
     }
     const [ok, note] = await Promise.all([t.save(true), saveNote()]);
-    if (ok && note) t.msg.success(finalized ? "Finalised dossier updated" : "Dossier finalised and handed over", savedAt());
+    if (ok && note) t.msg.success(finalized ? tr("final_updated") : tr("finalised"), savedAt());
   };
 
   return (
@@ -89,7 +99,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
         <div className="lg:col-span-2 min-w-0">
           {latestVisit
             ? <div data-tour="dossier.panel"><TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} /></div>
-            : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">No visit recorded yet — complete the earlier stages first.</Card>}
+            : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{ta("no_visit")}</Card>}
         </div>
         <div ref={spacerRef} className="relative min-w-0">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
@@ -108,18 +118,18 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       {latestVisit && (
         <Card data-tour="stage.actions" className="p-4 mb-6 flex flex-row items-center justify-between gap-3 flex-wrap border-emerald-500/30 bg-emerald-500/5">
           <div className="flex items-center gap-2 shrink-0 flex-wrap ms-auto">
-            <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report incl. this dossier (opens in a new tab; shows saved data — Save Draft first)">
+            <Button size="sm" variant="ghost" onClick={openReport} title={tr("print_title")}>
               <Printer className="h-3.5 w-3.5" />
             </Button>
             <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/60 dark:border-destructive/40 dark:hover:bg-destructive/20 dark:hover:text-destructive" onClick={referPatient} disabled={t.saving !== null}>
-              <ShieldAlert className="h-3.5 w-3.5" /> {latestVisit.referral ? "Edit Referral" : "Refer Patient"}
+              <ShieldAlert className="h-3.5 w-3.5" /> {latestVisit.referral ? ts("edit_referral") : ts("refer")}
             </Button>
             <Button size="sm" variant="outline" onClick={saveDraft} disabled={t.saving !== null || !t.options}>
-              {t.saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft
+              {t.saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} {ts("save_draft")}
             </Button>
             <Button size="sm" onClick={finalize} disabled={t.saving !== null || !t.options}>
               {t.saving === "finalize" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              {finalized ? "Update Finalised Dossier" : "Finalise Dossier & Hand Over"}
+              {finalized ? tr("update_final") : tr("finalise")}
             </Button>
           </div>
         </Card>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AKHLAT, isAnswered, questionVisible, type AsbabAnswer, type AsbabQuestionCfg, type HumourPoints } from "@/lib/asbab";
@@ -51,6 +53,8 @@ export function useTashkhees(visitId: string | undefined) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const msg = useNotice();
+  const td = useTranslations("clinic.dossier");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     if (!visitId) return;
@@ -65,10 +69,10 @@ export function useTashkhees(visitId: string | undefined) {
         setOptions(o.options); setHerbs(o.herbs);
         if (d.dossier) setDossier({ ...EMPTY, ...d.dossier, followUpDate: d.dossier.followUpDate ? d.dossier.followUpDate.slice(0, 10) : null });
       })
-      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); });
+      .catch((e) => { if (!cancelled) setLoadError(e.message || tc("network_error")); });
     return () => { cancelled = true; };
   }, [visitId, reloadTick]);
-  const reload = () => { setLoadError(null); setReloadTick((t) => t + 1); if (dalail.loadError) dalail.reload(); };
+  const reload = () => { setLoadError(null); setReloadTick((n) => n + 1); if (dalail.loadError) dalail.reload(); };
 
   const set = useCallback((patch: Partial<Dossier>) => { setDossier((d) => ({ ...d, ...patch })); setDirty(true); }, []);
 
@@ -84,16 +88,16 @@ export function useTashkhees(visitId: string | undefined) {
       setDirty(false);
       dalail.msg.clear();
       if (!dalailOk) {
-        msg.error("The dossier was saved, but the Dala'il examination answers weren't", "They're still on screen in the Dala'il tab — save again to keep them.", { retry: () => save(finalize), retryLabel: "Save again" });
+        msg.error(td("dalail_not_saved"), td("dalail_not_saved_hint"), { retry: () => save(finalize), retryLabel: td("save_again") });
         return false;
       }
       msg.clear();
       return true;
     } catch (e: any) {
       msg.error(
-        finalize ? "The dossier wasn't finalised" : "The draft wasn't saved",
-        `${e.message || "Network error"}. Everything you entered is still on screen — nothing was lost.`,
-        { retry: () => save(finalize), retryLabel: "Try again" },
+        finalize ? td("not_finalised") : td("draft_not_saved"),
+        td("on_screen", { error: e.message || tc("network_error") }),
+        { retry: () => save(finalize), retryLabel: tc("retry") },
       );
       return false;
     } finally {
@@ -180,6 +184,7 @@ function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
   tag?: "new" | "added" | "safety" | "earlier";
   onRemove?: () => void;
 }) {
+  const td = useTranslations("clinic.dossier");
   const sel = Array.isArray(value) ? value : [];
   const toggle = (l: string) => onChange(q.type === "multi_select" ? (sel.includes(l) ? sel.filter((x) => x !== l) : [...sel, l]) : (sel.includes(l) ? [] : [l]));
   return (
@@ -187,22 +192,22 @@ function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
       <div>
         <p className="text-[15px] font-medium">
           {q.label}{q.required && <span className="text-destructive"> *</span>}
-          {tag === "safety" && <span className="ms-1.5 align-middle rounded-full bg-destructive/10 border border-destructive/30 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-destructive">Safety</span>}
-          {tag === "new" && <span className="ms-1.5 align-middle rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">New</span>}
+          {tag === "safety" && <span className="ms-1.5 align-middle rounded-full bg-destructive/10 border border-destructive/30 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-destructive">{td("safety")}</span>}
+          {tag === "new" && <span className="ms-1.5 align-middle rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">{td("new")}</span>}
         </p>
         {q.labelLocal && <p className="text-[13px] text-muted-foreground">{q.labelLocal}</p>}
         {reason && (
           <p className="mt-0.5 flex items-start gap-1 text-xs text-primary/90"><Sparkles className="mt-0.5 h-3 w-3 shrink-0" /><span>{reason}</span></p>
         )}
         {tag === "added" && (
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">Added by you
-            {onRemove && <button type="button" onClick={onRemove} className="text-primary hover:underline">remove</button>}
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">{td("added_by_you")}
+            {onRemove && <button type="button" onClick={onRemove} className="text-primary hover:underline">{td("remove")}</button>}
           </p>
         )}
-        {tag === "earlier" && <p className="mt-0.5 text-xs text-muted-foreground">Recorded earlier on this visit</p>}
+        {tag === "earlier" && <p className="mt-0.5 text-xs text-muted-foreground">{td("earlier")}</p>}
       </div>
       {q.type === "text"
-        ? <FloatingField id={`dalail-${q.id}`} label="Describe the finding" maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
+        ? <FloatingField id={`dalail-${q.id}`} label={td("describe")} maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
         : <Chips items={q.options.map((o) => ({ label: o.label, tip: o.description }))} selected={sel} onToggle={toggle} />}
     </div>
   );
@@ -235,6 +240,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
   const [addOpen, setAddOpen] = useState(false);
   const [addQuery, setAddQuery] = useState("");
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
+  const td = useTranslations("clinic.dossier");
 
   const fetchSel = useCallback((refresh: boolean) =>
     api.get<{ selection: DalailSelectionData }>(`/api/facility/visits/${visitId}/dalail-selection${refresh ? "?refresh=1" : ""}`)
@@ -244,7 +250,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
   useEffect(() => { fetchSel(false); }, [fetchSel]);
 
   if (!pillars) return <Loading />;
-  if (!pillars.length) return <Card className="p-5 text-sm text-muted-foreground">No examination sections are enabled — configure them in Admin → Meta → Tashkhees &amp; Ilaj.</Card>;
+  if (!pillars.length) return <Card className="p-5 text-sm text-muted-foreground">{td("no_sections")}</Card>;
 
   const allQs = pillars.flatMap((p) => p.questions.filter((q) => questionVisible(q, answers)).map((q) => ({ p, q })));
   // Without a selection (still loading or it failed) fall back to every question, so the examination is never blocked.
@@ -276,12 +282,12 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
   const addable = allQs.filter(({ q }) => !visibleIds.has(q.id) && (!aq || q.label.toLowerCase().includes(aq) || q.options.some((o) => o.label.toLowerCase().includes(aq))));
 
   return (
-    <Panel icon={Stethoscope} tour="dossier.dalail" title="Dala'il — Clinical Signs"
+    <Panel icon={Stethoscope} tour="dossier.dalail" title={td("dalail_title")}
       aside={
         <span className="flex items-center gap-1.5 shrink-0 flex-wrap">
           {sel && !selError && (
-            <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label="Which signs to show">
-              {([["selected", `For this patient · ${sel.questionIds.length + sel.addedIds.filter((x) => !sel.questionIds.includes(x)).length}`], ["all", `All · ${allQs.length}`]] as const).map(([m, label]) => (
+            <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label={td("which_signs")}>
+              {([["selected", td("for_patient", { count: sel.questionIds.length + sel.addedIds.filter((x) => !sel.questionIds.includes(x)).length })], ["all", td("all_n", { count: allQs.length })]] as const).map(([m, label]) => (
                 <button key={m} type="button" onClick={() => setView(m)} aria-pressed={view === m}
                   className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", view === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
                   {label}
@@ -289,7 +295,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
               ))}
             </span>
           )}
-          <Badge variant="outline" className="tabular-nums">{answeredN} of {shown.length} recorded</Badge>
+          <Badge variant="outline" className="tabular-nums">{td("n_recorded", { n: answeredN, total: shown.length })}</Badge>
         </span>
       }>
 
@@ -297,9 +303,9 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
       {sel && !selError && mode === "selected" && (
         <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 space-y-2">
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <p className="text-[13px] font-semibold text-primary flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> Selected for this patient</p>
+            <p className="text-[13px] font-semibold text-primary flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {td("selected_for")}</p>
             <button type="button" onClick={() => load(true)} disabled={refreshing} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
-              {refreshing ? "Re-checking…" : "Re-check"}
+              {refreshing ? td("rechecking") : td("recheck")}
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -309,19 +315,19 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
             {sel.context.symptoms.map((x) => <span key={x} className="rounded-full border border-border/60 bg-background/50 px-2.5 py-0.5 text-xs">{x}</span>)}
             {sel.context.regions.map((x) => <span key={x} className="rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-xs text-muted-foreground">{x}</span>)}
             {sel.context.complaints.length + sel.context.symptoms.length + sel.context.regions.length === 0 && (
-              <span className="text-xs text-muted-foreground">No complaints or symptoms recorded yet — showing the core examination signs.</span>
+              <span className="text-xs text-muted-foreground">{td("no_context")}</span>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {sel.questionIds.length} of {sel.eligibleCount} relevant signs from a bank of {sel.bankSize}
-            {" · "}{sel.method === "ranked" ? "ordered by Hakeem Insight" : "chosen by clinical rules"}
-            {sel.method === "rules-fallback" && " (Hakeem Insight unavailable right now)"}
+            {td("sel_summary", { n: sel.questionIds.length, eligible: sel.eligibleCount, bank: sel.bankSize })}
+            {" · "}{sel.method === "ranked" ? td("by_insight") : td("by_rules")}
+            {sel.method === "rules-fallback" && td("insight_down")}
           </p>
         </div>
       )}
       {selError && (
         <p className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-[13px] text-amber-700 dark:text-amber-400">
-          The focused selection couldn&apos;t be loaded, so every examination sign is shown. <button type="button" onClick={() => load(false)} className="font-medium underline">Try again</button>
+          {td.rich("sel_failed", { retry: (c) => <button type="button" onClick={() => load(false)} className="font-medium underline">{c}</button> })}
         </p>
       )}
 
@@ -352,7 +358,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
                 className={cn("rounded-xl border border-s-4 bg-background/30 px-4 pt-3 pb-1", done ? "border-border/50 border-s-emerald-500/70" : "border-border/50 border-s-primary/40")}>
                 <div className="flex items-center justify-between gap-2 pb-1">
                   <p className="text-[15px] font-semibold">{p.label} <span className="text-[13px] font-normal text-muted-foreground">· {p.english}</span></p>
-                  <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-xs tabular-nums", done ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? "✓ Done" : `${a}/${qs.length}`}</span>
+                  <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-xs tabular-nums", done ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? td("done") : `${a}/${qs.length}`}</span>
                 </div>
                 {qs.map((q) => {
                   const tag = tagFor(q.id);
@@ -373,12 +379,12 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <Popover open={addOpen} onOpenChange={setAddOpen}>
             <PopoverTrigger asChild>
-              <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> Add a question</Button>
+              <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_question")}</Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-2" align="start">
-              <Input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)} placeholder="Search examination questions…" className="h-9 mb-2" />
+              <Input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)} placeholder={td("search_questions")} className="h-9 mb-2" />
               <div className="max-h-72 overflow-y-auto space-y-0.5">
-                {addable.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">{aq ? "No other question matches." : "Every approved question is already shown."}</p>}
+                {addable.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">{aq ? td("no_other") : td("all_shown")}</p>}
                 {addable.slice(0, 60).map(({ p, q }) => (
                   <button key={q.id} type="button" onClick={() => { changeAdded(q.id, true); setAddOpen(false); setAddQuery(""); }}
                     className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
@@ -388,13 +394,13 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
               </div>
             </PopoverContent>
           </Popover>
-          <button type="button" onClick={() => setView("all")} className="text-[13px] text-primary font-medium hover:underline">Show all {allQs.length} signs</button>
+          <button type="button" onClick={() => setView("all")} className="text-[13px] text-primary font-medium hover:underline">{td("show_all", { count: allQs.length })}</button>
         </div>
       )}
 
       {hasSigns && drift && (
         <div className="rounded-xl border border-border/50 bg-background/40 p-3">
-          <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Signs point towards</p>
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">{td("signs_point")}</p>
           <HumourBars pct={drift.percent} compact />
         </div>
       )}
@@ -433,6 +439,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   const [data, setData] = useState<{ suggestion: EngSuggestion; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
+  const td = useTranslations("clinic.dossier");
 
   const fetchEngine = useCallback(() =>
     api.get<{ suggestion: EngSuggestion; method: string }>(`/api/facility/visits/${visitId}/tashkhees-engine`)
@@ -469,7 +476,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   const canApplyAll = (!!asli?.label && !asliApplied) || (!!su?.label && !suApplied) || newOrgans.length > 0;
 
   const Conf = ({ c }: { c: "strong" | "moderate" | "weak" }) => (
-    <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize", CONF_STYLE[c])}>{c} evidence</span>
+    <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", CONF_STYLE[c])}>{td(`conf_${c}`)}</span>
   );
   const Ev = ({ items }: { items: { label: string; humour: string }[] }) => items.length ? (
     <ul className="mt-1.5 space-y-0.5">
@@ -479,22 +486,22 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
       })}
     </ul>
   ) : null;
-  const Apply = ({ applied, onClick, label = "Accept" }: { applied: boolean; onClick: () => void; label?: string }) => applied
-    ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Applied</span>
+  const Apply = ({ applied, onClick, label = td("accept") }: { applied: boolean; onClick: () => void; label?: string }) => applied
+    ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> {td("applied")}</span>
     : <Button size="sm" variant="outline" className="h-7" onClick={onClick}>{label}</Button>;
 
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Tashkhees Engine</p>
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("engine")}</p>
         <span className="flex items-center gap-2">
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-running…" : "Re-run"}</button>
-          {canApplyAll && <Button size="sm" className="h-7" onClick={applyAll}>Accept all</Button>}
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
+          {canApplyAll && <Button size="sm" className="h-7" onClick={applyAll}>{td("accept_all")}</Button>}
         </span>
       </div>
 
       {failed ? (
-        <p className="text-sm text-muted-foreground">The suggestion couldn&apos;t be loaded — fill in the diagnosis below as usual. <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">Try again</button></p>
+        <p className="text-sm text-muted-foreground">{td.rich("engine_failed", { retry: (c) => <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !s ? <Loading /> : (
         <>
           {/* The three humoral readings and how much each counts */}
@@ -502,7 +509,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
             {s.sources.map((r) => (
               <div key={r.key} className="rounded-lg border border-border/50 bg-background/50 p-2.5">
                 <p className="text-xs text-muted-foreground leading-snug">{r.label}</p>
-                <p className="text-[11px] text-muted-foreground/80 mb-1.5">{r.percent ? `counts ×${r.weight}` : "not recorded"}</p>
+                <p className="text-[11px] text-muted-foreground/80 mb-1.5">{r.percent ? td("counts", { w: r.weight }) : td("not_recorded")}</p>
                 {r.percent && <HumourBars pct={r.percent} compact />}
               </div>
             ))}
@@ -512,42 +519,42 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
           <div className="divide-y divide-border/40 rounded-lg border border-border/50 bg-background/50">
             <div className="flex items-start justify-between gap-3 p-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mizaj-e-Asli · constitution</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{td("asli_head")}</p>
                 {asli?.label ? (
                   <>
                     <p className="mt-0.5 flex flex-wrap items-center gap-2"><span className="text-base font-semibold">{asli.label}</span>{local(asli.label) && <span className="text-xs text-muted-foreground">{local(asli.label)}</span>}<Conf c={asli.confidence} /></p>
                     {asli.note && <p className="mt-1 text-xs text-muted-foreground">{asli.note}</p>}
                     <Ev items={asli.evidence} />
                   </>
-                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Mizaj-e-Asli")) || "No suggestion"}</p>}
+                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Mizaj-e-Asli")) || td("no_suggestion")}</p>}
               </div>
               {asli?.label && <Apply applied={asliApplied} onClick={applyAsli} />}
             </div>
 
             <div className="flex items-start justify-between gap-3 p-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Su-e-Mizaj · present dyscrasia</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{td("su_head")}</p>
                 {su?.label ? (
                   <>
                     <p className="mt-0.5 flex flex-wrap items-center gap-2">
-                      <span className="text-base font-semibold">{su.type} · {su.label}{su.darja ? ` · Darja ${su.darja}` : ""}</span>
+                      <span className="text-base font-semibold">{su.type} · {su.label}{su.darja ? ` · ${td("darja_n", { n: su.darja })}` : ""}</span>
                       {local(su.label) && <span className="text-xs text-muted-foreground">{local(su.label)}</span>}
                       <Conf c={su.confidence} />
                     </p>
                     {su.type === "Maddi" && su.maddiSigns.length > 0 && (
-                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Morbid-matter signs: {su.maddiSigns.slice(0, 3).join("; ")}</p>
+                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{td("maddi_signs", { items: su.maddiSigns.slice(0, 3).join("; ") })}</p>
                     )}
                     {su.note && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{su.note}</p>}
                     <Ev items={su.evidence} />
                   </>
-                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Su-e-Mizaj")) || "No suggestion"}</p>}
+                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Su-e-Mizaj")) || td("no_suggestion")}</p>}
               </div>
               {su?.label && <Apply applied={suApplied} onClick={applySu} />}
             </div>
 
             <div className="flex items-start justify-between gap-3 p-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Udw-e-Mutathir · organs</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{td("organs_head")}</p>
                 {s.organs.length ? (
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {s.organs.map((o) => {
@@ -559,14 +566,14 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
                       );
                     })}
                   </div>
-                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("organ")) || "No suggestion"}</p>}
-                {s.organs.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{s.organs[0].reason}{s.organs.length > 1 ? " · hover an organ for its reason" : ""}</p>}
+                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("organ")) || td("no_suggestion")}</p>}
+                {s.organs.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{s.organs[0].reason}{s.organs.length > 1 ? td("hover_organ") : ""}</p>}
               </div>
-              {s.organs.length > 0 && <Apply applied={newOrgans.length === 0} onClick={applyOrgans} label={`Add ${newOrgans.length}`} />}
+              {s.organs.length > 0 && <Apply applied={newOrgans.length === 0} onClick={applyOrgans} label={td("add_n", { count: newOrgans.length })} />}
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            A guide from the saved findings{data?.method === "ranked" ? " · organs ordered by Hakeem Insight" : ""} — the Hakim decides. Re-run after changing the examination to update it.
+            {td("engine_note", { ranked: data?.method === "ranked" ? td("organs_ranked") : "" })}
           </p>
         </>
       )}
@@ -577,28 +584,29 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
 function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
   const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, sub: o.localName || o.description }));
+  const td = useTranslations("clinic.dossier");
   return (
-    <Panel icon={FileSignature} tour="dossier.diagnosis" title="Tashkhees — Diagnosis" hint="Constitution, the present dyscrasia and the organs affected.">
+    <Panel icon={FileSignature} tour="dossier.diagnosis" title={td("tashkhees_title")}>
       <EngineCard state={state} visitId={visitId} />
-      <div><Label required>Mizaj-e-Asli (baseline temperament)</Label>
+      <div><Label required>{td("asli_label")}</Label>
         <Chips items={mizaj} selected={d.mizajAsli ? [d.mizajAsli] : []} onToggle={(l) => set({ mizajAsli: d.mizajAsli === l ? null : l })} /></div>
       <div className="space-y-3">
-        <Label required>Su-e-Mizaj (present dyscrasia)</Label>
+        <Label required>{td("su_label")}</Label>
         <div className="flex flex-wrap items-center gap-3">
           <Segmented value={d.suMizajType} options={SU_MIZAJ_TYPES.map((t) => ({ value: t.value, label: t.value }))} onChange={(v) => set({ suMizajType: v })} />
-          <span className="text-[13px] text-muted-foreground">{SU_MIZAJ_TYPES.find((t) => t.value === d.suMizajType)?.description ?? "Sada (simple) or Maddi (with morbid matter)"}</span>
+          <span className="text-[13px] text-muted-foreground">{d.suMizajType === "Sada" ? td("sada_desc") : d.suMizajType === "Maddi" ? td("maddi_desc") : td("su_default")}</span>
         </div>
         <Chips items={mizaj} selected={d.suMizajQuality ? [d.suMizajQuality] : []} onToggle={(l) => set({ suMizajQuality: d.suMizajQuality === l ? null : l })} />
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Darja (degree)</span>
+          <span className="text-sm text-muted-foreground">{td("darja")}</span>
           <Segmented value={d.suMizajGrade} options={DARJA.map((n) => ({ value: n, label: `${n}` }))} onChange={(v) => set({ suMizajGrade: v })} />
         </div>
       </div>
-      <div><Label>Udw-e-Mutathir (affected organs)</Label>
+      <div><Label>{td("organs_label")}</Label>
         <Chips items={(options?.organ || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.organs}
           onToggle={(l) => set({ organs: d.organs.includes(l) ? d.organs.filter((x) => x !== l) : [...d.organs, l] })} /></div>
-      <FloatingTextarea id="tashkhees-statement" label="Tashkhees statement" rows={3} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })}
-        title="e.g. Su-e-Mizaj Maddi Safrawi with Hararat-e-Meda (gastric heat) and secondary Sahar" />
+      <FloatingTextarea id="tashkhees-statement" label={td("statement")} rows={3} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })}
+        title={td("statement_eg")} />
     </Panel>
   );
 }
@@ -612,7 +620,6 @@ interface UsoolPlanData {
   basis: { suMizaj: string | null; type: string | null; darja: number | null; organs: string[]; fromEngine: boolean };
   plan: UsoolPlanItem[]; cautions: UsoolPlanItem[]; insufficient: string[];
 }
-const USOOL_PHASES: Record<number, string> = { 1: "Remove the cause", 2: "Concoction · Nuzj", 3: "Evacuation · Istifragh", 4: "Correct the temperament", 5: "Strengthen · Taqwiyat", 6: "Relieve symptoms" };
 
 /**
  * Suggested treatment plan — principles in the classical order, from the
@@ -625,6 +632,7 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
   const [data, setData] = useState<{ plan: UsoolPlanData; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
+  const td = useTranslations("clinic.dossier");
   const fetchPlan = useCallback(() =>
     api.get<{ plan: UsoolPlanData; method: string }>(`/api/facility/visits/${visitId}/usool-engine`)
       .then((r) => { setData(r); setFailed(false); })
@@ -646,20 +654,20 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Suggested treatment plan</p>
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("plan_title")}</p>
         <span className="flex items-center gap-2">
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-running…" : "Re-run"}</button>
-          {missing.length > 0 && <Button size="sm" className="h-7" onClick={() => add(missing)}>Accept plan ({missing.length})</Button>}
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
+          {missing.length > 0 && <Button size="sm" className="h-7" onClick={() => add(missing)}>{td("accept_plan", { count: missing.length })}</Button>}
         </span>
       </div>
       {failed ? (
-        <p className="text-sm text-muted-foreground">The plan couldn&apos;t be loaded — choose the principles below as usual. <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">Try again</button></p>
+        <p className="text-sm text-muted-foreground">{td.rich("plan_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !p ? <Loading /> : (
         <>
           <p className="text-xs text-muted-foreground">
-            Based on {b?.suMizaj ? <span className="font-medium text-foreground">Su-e-Mizaj {[b.type, b.suMizaj, b.darja ? `Darja ${b.darja}` : null].filter(Boolean).join(" · ")}</span> : "no diagnosis yet"}
-            {b && b.organs.length > 0 && <> · organs <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
-            {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400"> — the engine&apos;s suggested diagnosis; record the Tashkhees above for a firmer plan</span>}
+            {td("based_on")} {b?.suMizaj ? <span className="font-medium text-foreground">Su-e-Mizaj {[b.type, b.suMizaj, b.darja ? td("darja_n", { n: b.darja }) : null].filter(Boolean).join(" · ")}</span> : td("no_diagnosis")}
+            {b && b.organs.length > 0 && <> · {td("organs_word")} <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
+            {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("from_engine")}</span>}
           </p>
           {p.plan.length > 0 && (
             <ol className="space-y-1.5">
@@ -668,7 +676,7 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
                 const newPhase = i === 0 || p.plan[i - 1].phase !== x.phase;
                 return (
                   <li key={x.label}>
-                    {newPhase && <p className="mt-1 mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Step {x.phase} · {USOOL_PHASES[x.phase] ?? ""}</p>}
+                    {newPhase && <p className="mt-1 mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("step", { n: x.phase, phase: x.phase >= 1 && x.phase <= 6 ? td(`phase_${x.phase}`) : "" })}</p>}
                     <div className={cn("flex items-start justify-between gap-3 rounded-lg border px-3 py-2", on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/50")}>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold">{x.label}{x.localName && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{x.localName}</span>}</p>
@@ -676,8 +684,8 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
                         <p className="mt-0.5 text-xs text-primary/90 flex items-center gap-1"><Sparkles className="h-3 w-3 shrink-0" />{x.reason}</p>
                       </div>
                       {on
-                        ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Added</span>
-                        : <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={() => add([x.label])}>Add</Button>}
+                        ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> {td("added")}</span>
+                        : <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={() => add([x.label])}>{td("add")}</Button>}
                     </div>
                   </li>
                 );
@@ -686,17 +694,17 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
           )}
           {p.cautions.length > 0 && (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Use with caution — not included in the plan</p>
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {td("caution")}</p>
               {p.cautions.map((x) => (
                 <div key={x.label} className="flex items-start justify-between gap-3">
                   <p className="text-xs"><span className="font-semibold">{x.label}</span> <span className="text-muted-foreground">— {x.caution}</span></p>
-                  {!d.usool.includes(x.label) && <button type="button" onClick={() => add([x.label])} className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline">Add anyway</button>}
+                  {!d.usool.includes(x.label) && <button type="button" onClick={() => add([x.label])} className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline">{td("add_anyway")}</button>}
                 </div>
               ))}
             </div>
           )}
           {p.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
-          <p className="text-[11px] text-muted-foreground">A guide{data?.method === "ranked" ? " · ordered by Hakeem Insight" : ""} — the Hakim decides. Re-run after changing the diagnosis.</p>
+          <p className="text-[11px] text-muted-foreground">{td("guide_note", { ranked: data?.method === "ranked" ? td("ranked") : "" })}</p>
         </>
       )}
     </div>
@@ -705,8 +713,9 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
 
 function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
+  const td = useTranslations("clinic.dossier");
   return (
-    <Panel icon={ClipboardCheck} tour="dossier.usool" title="Usool-e-Ilaj — Principles of Treatment" hint="The strategy the treatment below will follow.">
+    <Panel icon={ClipboardCheck} tour="dossier.usool" title={td("usool_title")}>
       <UsoolEngineCard state={state} visitId={visitId} />
       <div className="grid sm:grid-cols-2 gap-2">
         {(options?.usool || []).map((o) => {
@@ -721,8 +730,8 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
           );
         })}
       </div>
-      <FloatingTextarea id="usool-note" label="Plan note" rows={2} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })}
-        title="e.g. Munzij for 7 days, then Mushil; cooling diet throughout" />
+      <FloatingTextarea id="usool-note" label={td("plan_note")} rows={2} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })}
+        title={td("plan_note_eg")} />
     </Panel>
   );
 }
@@ -732,14 +741,15 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
 function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string | null; label: string; forms: string[] }) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const td = useTranslations("clinic.dossier");
   const results = herbs.filter((h) => !q.trim() || h.label.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 60);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> Add medicine</Button>
+        <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_medicine")}</Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-2" align="start">
-        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search Unani medicines…" className="h-9 mb-2" />
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={td("search_medicines")} className="h-9 mb-2" />
         <div className="max-h-64 overflow-y-auto space-y-0.5">
           {results.map((h) => (
             <button key={h.id} type="button" onClick={() => { onPick({ id: h.id, label: h.label, forms: h.forms }); setOpen(false); setQ(""); }}
@@ -749,7 +759,7 @@ function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string
           ))}
           {q.trim() && !herbs.some((h) => h.label.toLowerCase() === q.trim().toLowerCase()) && (
             <button type="button" onClick={() => { onPick({ id: null, label: q.trim(), forms: [] }); setOpen(false); setQ(""); }}
-              className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60 text-primary">Add &quot;{q.trim()}&quot; (not in catalogue)</button>
+              className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60 text-primary">{td("add_not_catalogue", { q: q.trim() })}</button>
           )}
         </div>
       </PopoverContent>
@@ -780,6 +790,7 @@ function GhizaEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
   const [data, setData] = useState<{ plan: GhizaPlanData; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
+  const td = useTranslations("clinic.dossier");
   const fetchPlan = useCallback(() =>
     api.get<{ plan: GhizaPlanData; method: string }>(`/api/facility/visits/${visitId}/ghiza-engine`)
       .then((r) => { setData(r); setFailed(false); })
@@ -816,7 +827,7 @@ function GhizaEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
         <div className="shrink-0 self-center">
           {on
             ? <Check className={cn("h-4 w-4", kind === "rec" ? "text-emerald-600" : "text-destructive")} />
-            : <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => put([x.label], kind)}>{kind === "rec" ? "Add" : "Parhez"}</Button>}
+            : <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => put([x.label], kind)}>{kind === "rec" ? td("add") : td("parhez")}</Button>}
         </div>
       </div>
     );
@@ -825,36 +836,36 @@ function GhizaEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Diet for this patient</p>
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("diet_title")}</p>
         <span className="flex items-center gap-2">
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-running…" : "Re-run"}</button>
-          {(recLeft.length > 0 || avoidLeft.length > 0) && <Button size="sm" className="h-7" onClick={() => { put(recLeft, "rec"); put(avoidLeft, "avoid"); }}>Accept all</Button>}
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
+          {(recLeft.length > 0 || avoidLeft.length > 0) && <Button size="sm" className="h-7" onClick={() => { put(recLeft, "rec"); put(avoidLeft, "avoid"); }}>{td("accept_all")}</Button>}
         </span>
       </div>
       {failed ? (
-        <p className="text-sm text-muted-foreground">The diet advice couldn&apos;t be loaded — choose foods below as usual. <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">Try again</button></p>
+        <p className="text-sm text-muted-foreground">{td.rich("diet_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !p ? <Loading /> : (
         <>
           <p className="text-xs text-muted-foreground">
-            Based on {p.basis.suMizaj ? <span className="font-medium text-foreground">{p.basis.suMizaj}</span> : "no Su-e-Mizaj yet"}
-            {p.basis.fromEngine && <span className="text-amber-700 dark:text-amber-400"> (suggested)</span>}
-            {p.basis.conditions.length > 0 && <> · history: <span className="font-medium text-foreground">{p.basis.conditions.join(", ")}</span></>}
-            {p.basis.allergies.length > 0 && <> · allergies: <span className="font-medium text-destructive">{p.basis.allergies.join(", ")}</span></>}
+            {td("based_on")} {p.basis.suMizaj ? <span className="font-medium text-foreground">{p.basis.suMizaj}</span> : td("no_su")}
+            {p.basis.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("suggested")}</span>}
+            {p.basis.conditions.length > 0 && <> · {td("history")} <span className="font-medium text-foreground">{p.basis.conditions.join(", ")}</span></>}
+            {p.basis.allergies.length > 0 && <> · {td("allergies")} <span className="font-medium text-destructive">{p.basis.allergies.join(", ")}</span></>}
           </p>
           <div className="grid lg:grid-cols-2 gap-3">
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 flex items-center justify-between">Recommended · {p.recommended.length}
-                {recLeft.length > 0 && <button type="button" onClick={() => put(recLeft, "rec")} className="normal-case tracking-normal font-medium hover:underline">Add all</button>}</p>
-              {p.recommended.length ? p.recommended.map((x) => <Tile key={x.label} x={x} kind="rec" />) : <p className="text-xs text-muted-foreground">No clear recommendations yet.</p>}
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 flex items-center justify-between">{td("recommended_n", { count: p.recommended.length })}
+                {recLeft.length > 0 && <button type="button" onClick={() => put(recLeft, "rec")} className="normal-case tracking-normal font-medium hover:underline">{td("add_all")}</button>}</p>
+              {p.recommended.length ? p.recommended.map((x) => <Tile key={x.label} x={x} kind="rec" />) : <p className="text-xs text-muted-foreground">{td("no_recs")}</p>}
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-destructive flex items-center justify-between">Parhez (avoid) · {p.avoid.length}
-                {avoidLeft.length > 0 && <button type="button" onClick={() => put(avoidLeft, "avoid")} className="normal-case tracking-normal font-medium hover:underline">Add all</button>}</p>
-              {p.avoid.length ? p.avoid.map((x) => <Tile key={x.label} x={x} kind="avoid" />) : <p className="text-xs text-muted-foreground">Nothing specific to avoid.</p>}
+              <p className="text-xs font-semibold uppercase tracking-wide text-destructive flex items-center justify-between">{td("avoid_n", { count: p.avoid.length })}
+                {avoidLeft.length > 0 && <button type="button" onClick={() => put(avoidLeft, "avoid")} className="normal-case tracking-normal font-medium hover:underline">{td("add_all")}</button>}</p>
+              {p.avoid.length ? p.avoid.map((x) => <Tile key={x.label} x={x} kind="avoid" />) : <p className="text-xs text-muted-foreground">{td("nothing_avoid")}</p>}
             </div>
           </div>
           {p.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
-          <p className="text-[11px] text-muted-foreground">A guide{data?.method === "ranked" ? " · ordered by Hakeem Insight" : ""} — the Hakim decides. Food photos: Wikimedia Commons (hover a photo for its credit).</p>
+          <p className="text-[11px] text-muted-foreground">{td("diet_note", { ranked: data?.method === "ranked" ? td("ranked") : "" })}</p>
         </>
       )}
     </div>
@@ -891,6 +902,9 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
   const [running, setRunning] = useState(false);
   const [rejecting, setRejecting] = useState<{ tagId: string; reason: string } | null>(null);
   const [failed, setFailed] = useState(false);
+  const td = useTranslations("clinic.dossier");
+  const tc = useTranslations("common");
+  const vl = useValueLabel();
   const fetchCds = useCallback(() =>
     api.get<CdsData>(`/api/facility/visits/${visitId}/cds`)
       .then((r) => { setData(r); setFailed(false); })
@@ -927,9 +941,9 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
             <p className="text-xs text-muted-foreground">{[c.herbType, c.mizaj].filter(Boolean).join(" · ")}</p>
           </div>
           <div className="flex flex-wrap gap-1">
-            {c.evidence.traditional && <Badge variant="outline" className="text-[10px]">Traditional use</Badge>}
-            {c.evidence.clinical && <Badge variant="outline" className="text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">Clinical evidence</Badge>}
-            <Badge variant="outline" className={cn("text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? "Verified" : "Unverified"}</Badge>
+            {c.evidence.traditional && <Badge variant="outline" className="text-[10px]">{td("traditional")}</Badge>}
+            {c.evidence.clinical && <Badge variant="outline" className="text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">{td("clinical")}</Badge>}
+            <Badge variant="outline" className={cn("text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? td("verified") : td("unverified")}</Badge>
           </div>
         </div>
         <ul className="space-y-0.5">{c.reasons.map((x) => <li key={x} className="text-xs text-foreground/85">• {x}</li>)}</ul>
@@ -937,27 +951,27 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           <ul className="space-y-0.5 rounded-lg bg-background/60 px-2 py-1.5">
             {c.safety.map((n, i) => (
               <li key={i} className={cn("text-xs flex gap-1.5", NOTE_STYLE[n.level])}>
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /><span>{n.text}{!n.verified && <span className="opacity-70"> (unverified)</span>}</span>
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /><span>{n.text}{!n.verified && <span className="opacity-70">{td("unverified_paren")}</span>}</span>
               </li>
             ))}
           </ul>
         )}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-[11px] text-muted-foreground me-auto">Profile {c.completeness}% complete{dec ? ` · ${dec.action === "added_to_prescription" ? "added to prescription" : dec.action === "accepted" ? "accepted for evaluation" : dec.action}` : ""}</span>
+          <span className="text-[11px] text-muted-foreground me-auto">{td("profile_pct", { pct: c.completeness })}{dec ? ` · ${dec.action === "added_to_prescription" ? td("dec_rx") : dec.action === "accepted" ? td("dec_accepted") : dec.action === "considered" ? td("dec_considered") : dec.action === "rejected" ? td("dec_rejected") : dec.action}` : ""}</span>
           {rejecting?.tagId === c.tagId ? (
             <span className="flex items-center gap-1.5">
-              <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder="Reason for rejecting" className="h-7 w-48 text-xs" />
-              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!rejecting.reason.trim()} onClick={() => { act(c, "rejected", rejecting.reason); setRejecting(null); }}>Reject</Button>
-              <button type="button" className="text-xs text-muted-foreground" onClick={() => setRejecting(null)}>Cancel</button>
+              <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder={td("reject_reason")} className="h-7 w-48 text-xs" />
+              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!rejecting.reason.trim()} onClick={() => { act(c, "rejected", rejecting.reason); setRejecting(null); }}>{td("reject")}</Button>
+              <button type="button" className="text-xs text-muted-foreground" onClick={() => setRejecting(null)}>{tc("cancel")}</button>
             </span>
           ) : (
             <>
-              {!dec && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => act(c, "considered")}>Considered</Button>}
-              {dec?.action !== "accepted" && dec?.action !== "added_to_prescription" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => act(c, "accepted")}>Accept for evaluation</Button>}
-              {dec?.action !== "rejected" && <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })}>Reject…</Button>}
+              {!dec && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => act(c, "considered")}>{td("considered")}</Button>}
+              {dec?.action !== "accepted" && dec?.action !== "added_to_prescription" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => act(c, "accepted")}>{td("accept_eval")}</Button>}
+              {dec?.action !== "rejected" && <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })}>{td("reject_more")}</Button>}
               {(dec?.action === "accepted" || dec?.action === "added_to_prescription") && (
-                inRx ? <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Check className="h-3.5 w-3.5" /> In prescription</span>
-                  : <Button size="sm" className="h-7 text-xs" onClick={() => addToRx(c)}><Plus className="h-3 w-3" /> Add to prescription</Button>
+                inRx ? <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Check className="h-3.5 w-3.5" /> {td("in_rx")}</span>
+                  : <Button size="sm" className="h-7 text-xs" onClick={() => addToRx(c)}><Plus className="h-3 w-3" /> {td("add_rx")}</Button>
               )}
             </>
           )}
@@ -968,59 +982,59 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
 
   const counts = { unani: r?.unani.length ?? 0, supplements: r?.supplements.length ?? 0, safety: (r?.excluded.length ?? 0), info: r?.infoNeeded.length ?? 0 };
   return (
-    <Panel icon={ShieldAlert} tour="dossier.cds" title="Clinical Decision Support — Medicines & Supplements"
+    <Panel icon={ShieldAlert} tour="dossier.cds" title={td("cds_title")}
       aside={
         <span className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Pilot · data under review</Badge>
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? "Re-checking…" : "Re-check"}</button>
+          <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">{td("pilot")}</Badge>
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rechecking") : td("recheck")}</button>
         </span>
       }>
       {failed || !r ? (
-        failed ? <p className="text-sm text-muted-foreground">Decision support couldn&apos;t be loaded — the prescription below works as usual. <button type="button" onClick={() => fetchCds()} className="text-primary font-medium hover:underline">Try again</button></p> : <Loading />
+        failed ? <p className="text-sm text-muted-foreground">{td.rich("cds_failed", { retry: (c) => <button type="button" onClick={() => fetchCds()} className="text-primary font-medium hover:underline">{c}</button> })}</p> : <Loading />
       ) : (
         <>
           {r.urgent.map((u) => (
             <p key={u} className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />{u}</p>
           ))}
           <p className="text-xs text-muted-foreground">
-            For <span className="font-medium text-foreground">{r.basis.complaints.join(", ") || "no complaints recorded"}</span>
+            {td("for_label")} <span className="font-medium text-foreground">{r.basis.complaints.join(", ") || td("no_complaints")}</span>
             {r.basis.suMizaj && <> · Su-e-Mizaj {r.basis.suMizaj}</>}
-            {r.basis.conditions.length > 0 && <> · history: {r.basis.conditions.join(", ")}</>}
-            {r.basis.allergies.length > 0 && <> · allergies: <span className="text-destructive">{r.basis.allergies.join(", ")}</span></>}
-            {r.basis.age != null && <> · {r.basis.age} yrs{r.basis.sex ? `, ${r.basis.sex}` : ""}</>}
-            {data?.changed && <span className="text-primary"> · updated after new findings</span>}
+            {r.basis.conditions.length > 0 && <> · {td("history")} {r.basis.conditions.join(", ")}</>}
+            {r.basis.allergies.length > 0 && <> · {td("allergies")} <span className="text-destructive">{r.basis.allergies.join(", ")}</span></>}
+            {r.basis.age != null && <> · {td("yrs", { age: r.basis.age })}{r.basis.sex ? `, ${vl(r.basis.sex)}` : ""}</>}
+            {data?.changed && <span className="text-primary">{td("updated_after")}</span>}
           </p>
           <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
-            {([["unani", `Unani medicines · ${counts.unani}`], ["supplements", `Supplements · ${counts.supplements}`], ["safety", `Safety & exclusions · ${counts.safety}`], ["info", `More information needed · ${counts.info}`]] as const).map(([k, l]) => (
+            {([["unani", td("tab_unani", { count: counts.unani })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
                 className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? (k === "safety" ? "bg-destructive text-white" : k === "info" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>{l}</button>
             ))}
           </div>
 
-          {tab === "unani" && (r.unani.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.unani.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">No eligible Unani medicine found for the recorded findings.</p>)}
-          {tab === "supplements" && (r.supplements.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.supplements.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">No supplement candidates.</p>)}
+          {tab === "unani" && (r.unani.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.unani.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">{td("no_unani")}</p>)}
+          {tab === "supplements" && (r.supplements.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.supplements.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">{td("no_supp")}</p>)}
           {tab === "safety" && (
             <div className="space-y-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Current medicines (allopathic shown for safety only)</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{td("current_meds")}</p>
                 {r.currentMeds.length ? (
-                  <div className="flex flex-wrap gap-1.5">{r.currentMeds.map((m) => <span key={m.label} className={cn("rounded-full border px-2.5 py-0.5 text-xs", m.matched ? "border-border/60" : "border-amber-500/50 text-amber-700 dark:text-amber-400")} title={m.matched ? "Found in the database — interactions checked" : "Not found in the database — interactions not checked"}>{m.label}{!m.matched && " ⚠"}</span>)}</div>
-                ) : <p className="text-xs text-muted-foreground">None recorded.</p>}
+                  <div className="flex flex-wrap gap-1.5">{r.currentMeds.map((m) => <span key={m.label} className={cn("rounded-full border px-2.5 py-0.5 text-xs", m.matched ? "border-border/60" : "border-amber-500/50 text-amber-700 dark:text-amber-400")} title={m.matched ? td("med_matched") : td("med_unmatched")}>{m.label}{!m.matched && " ⚠"}</span>)}</div>
+                ) : <p className="text-xs text-muted-foreground">{td("none_recorded")}</p>}
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Excluded for safety ({r.excluded.length})</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{td("excluded", { count: r.excluded.length })}</p>
                 {r.excluded.length ? (
                   <ul className="space-y-1">{r.excluded.map((e) => (
-                    <li key={e.tagId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs"><span className="font-semibold">{e.label}</span> <span className="text-destructive">— {e.reason}</span>{!e.verified && <span className="text-muted-foreground"> (unverified)</span>}</li>
+                    <li key={e.tagId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs"><span className="font-semibold">{e.label}</span> <span className="text-destructive">— {e.reason}</span>{!e.verified && <span className="text-muted-foreground">{td("unverified_paren")}</span>}</li>
                   ))}</ul>
-                ) : <p className="text-xs text-muted-foreground">Nothing excluded.</p>}
+                ) : <p className="text-xs text-muted-foreground">{td("nothing_excluded")}</p>}
               </div>
             </div>
           )}
-          {tab === "info" && (r.infoNeeded.length ? <ul className="space-y-1.5">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</ul> : <p className="text-sm text-muted-foreground">Nothing missing for this check.</p>)}
+          {tab === "info" && (r.infoNeeded.length ? <ul className="space-y-1.5">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</ul> : <p className="text-sm text-muted-foreground">{td("nothing_missing")}</p>)}
 
           <p className="text-[11px] text-muted-foreground border-t border-border/40 pt-2">
-            Decision support for the treating doctor — not a prescription. Candidates come only from the clinic&apos;s database; indications and safety data are still being clinically reviewed and are marked &ldquo;Unverified&rdquo; until verified. Safety checks run before anything is shown and can&apos;t be overridden by ranking{data?.method === "ranked" ? " (order assisted by Hakeem Insight)" : ""}. No doses are suggested.
+            {td("cds_note", { ranked: data?.method === "ranked" ? td("cds_ranked") : "" })}
           </p>
         </>
       )}
@@ -1033,6 +1047,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
   const [warnings, setWarnings] = useState<Record<string, Warn[]>>({});
   const tagKey = d.prescriptions.map((p) => p.tagId).filter(Boolean).join(",");
   const reqRef = useRef(0);
+  const td = useTranslations("clinic.dossier");
 
   // Safety check whenever the set of catalogue medicines changes.
   useEffect(() => {
@@ -1062,12 +1077,12 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
   return (
     <div className="space-y-5">
       {/* Ilaj-bil-Ghiza */}
-      <Panel icon={Utensils} tour="dossier.ghiza" title="Ilaj-bil-Ghiza — Diet" hint="Foods to recommend and Parhez (restrictions), with meal guidance."
-        aside={<Badge variant="outline" className="mt-1 shrink-0">{d.ghizaRecommended.length} advised · {d.ghizaAvoid.length} Parhez</Badge>}>
+      <Panel icon={Utensils} tour="dossier.ghiza" title={td("ghiza_title")}
+        aside={<Badge variant="outline" className="mt-1 shrink-0">{td("advised_parhez", { rec: d.ghizaRecommended.length, avoid: d.ghizaAvoid.length })}</Badge>}>
         <GhizaEngineCard state={state} visitId={visitId} />
         {(d.ghizaRecommended.length > 0 || d.ghizaAvoid.length > 0) && (
           <div className="grid sm:grid-cols-2 gap-3">
-            {([["rec", "Recommended", d.ghizaRecommended], ["avoid", "Parhez (avoid)", d.ghizaAvoid]] as const).map(([k, title, list]) => (
+            {([["rec", td("recommended"), d.ghizaRecommended], ["avoid", td("parhez_avoid"), d.ghizaAvoid]] as const).map(([k, title, list]) => (
               <div key={k} className={cn("rounded-xl border p-3", k === "rec" ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5")}>
                 <p className={cn("text-[13px] font-semibold mb-1.5", k === "rec" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>{title} · {list.length}</p>
                 {list.length ? (
@@ -1075,21 +1090,21 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                     {list.map((l) => (
                       <span key={l} className={cn("inline-flex items-center gap-1 rounded-full border ps-2.5 pe-1 py-0.5 text-[13px]", k === "rec" ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300" : "border-destructive/40 text-destructive")}>
                         {l}
-                        <button type="button" onClick={() => setFood(l, k)} aria-label={`Remove ${l}`} className="rounded-full p-0.5 hover:bg-muted"><X className="h-3 w-3" /></button>
+                        <button type="button" onClick={() => setFood(l, k)} aria-label={td("remove_x", { label: l })} className="rounded-full p-0.5 hover:bg-muted"><X className="h-3 w-3" /></button>
                       </span>
                     ))}
                   </div>
-                ) : <p className="text-[13px] text-muted-foreground">None yet</p>}
+                ) : <p className="text-[13px] text-muted-foreground">{td("none_yet")}</p>}
               </div>
             ))}
           </div>
         )}
         <div className="relative">
           <Search className="absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input value={foodQuery} onChange={(e) => setFoodQuery(e.target.value)} placeholder={`Search ${options?.ghiza?.length ?? 0} foods — e.g. barley, milk, dates…`} className="h-11 ps-10 bg-background/60" aria-label="Search foods" />
+          <Input value={foodQuery} onChange={(e) => setFoodQuery(e.target.value)} placeholder={td("search_foods", { count: options?.ghiza?.length ?? 0 })} className="h-11 ps-10 bg-background/60" aria-label={td("search_foods_aria")} />
         </div>
         <div className="rounded-xl border border-border/50 divide-y divide-border/40 max-h-[340px] overflow-y-auto">
-          {foods.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">No food matches &quot;{foodQuery}&quot;.</p>}
+          {foods.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{td("no_food", { q: foodQuery })}</p>}
           {foods.map((f) => {
             const rec = d.ghizaRecommended.includes(f.label);
             const avoid = d.ghizaAvoid.includes(f.label);
@@ -1100,24 +1115,24 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                   <div className="min-w-0"><p className="text-sm font-medium">{f.label}{f.foodMizaj && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{f.foodMizaj}</span>}</p>{f.description && <p className="text-[13px] text-muted-foreground">{f.description}</p>}</div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <button type="button" onClick={() => setFood(f.label, "rec")} className={cn("rounded-md border px-2.5 py-1 text-xs", rec ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "border-border/60 text-muted-foreground hover:text-foreground")}>Recommend</button>
-                  <button type="button" onClick={() => setFood(f.label, "avoid")} className={cn("rounded-md border px-2.5 py-1 text-xs", avoid ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-border/60 text-muted-foreground hover:text-foreground")}>Parhez</button>
+                  <button type="button" onClick={() => setFood(f.label, "rec")} className={cn("rounded-md border px-2.5 py-1 text-xs", rec ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "border-border/60 text-muted-foreground hover:text-foreground")}>{td("recommend")}</button>
+                  <button type="button" onClick={() => setFood(f.label, "avoid")} className={cn("rounded-md border px-2.5 py-1 text-xs", avoid ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-border/60 text-muted-foreground hover:text-foreground")}>{td("parhez")}</button>
                 </div>
               </div>
             );
           })}
         </div>
-        <FloatingTextarea id="ghiza-note" label="Meal timing & hydration guidance" rows={2} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })}
-          title="e.g. 4 small meals, no iced water after meals" />
+        <FloatingTextarea id="ghiza-note" label={td("meal_note")} rows={2} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })}
+          title={td("meal_note_eg")} />
       </Panel>
 
       {/* Clinical decision support — doctors only, pilot switch in Admin */}
       <CdsPanel state={state} visitId={visitId} />
 
       {/* Ilaj-bil-Dawa */}
-      <Panel icon={Pill} tour="dossier.dawa" title="Ilaj-bil-Dawa — Medicines" hint="Formulations from Unani Medicine. Doses are the Hakim's own entry."
+      <Panel icon={Pill} tour="dossier.dawa" title={td("dawa_title")}
         aside={<HerbPicker herbs={herbs} onPick={(h) => set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] })} />}>
-        {d.prescriptions.length === 0 ? <p className="text-sm text-muted-foreground">No medicines added yet.</p> : (
+        {d.prescriptions.length === 0 ? <p className="text-sm text-muted-foreground">{td("no_meds")}</p> : (
           <div className="space-y-3">
             {d.prescriptions.map((p, i) => {
               const w = p.tagId ? warnings[p.tagId] || [] : [];
@@ -1125,27 +1140,27 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
               return (
                 <div key={i} className={cn("rounded-xl border p-3 space-y-2.5", w.some((x) => x.level === "high") ? "border-destructive/40 bg-card" : "border-border/50 bg-card")}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[15px] font-semibold flex items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">not in catalogue</Badge>}</p>
-                    <button type="button" onClick={() => set({ prescriptions: d.prescriptions.filter((_, n) => n !== i) })} aria-label={`Remove ${p.name}`} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <p className="text-[15px] font-semibold flex items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">{td("not_catalogue")}</Badge>}</p>
+                    <button type="button" onClick={() => set({ prescriptions: d.prescriptions.filter((_, n) => n !== i) })} aria-label={td("remove_x", { label: p.name })} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                   {/* One line where there's room (six fields), otherwise three per row. */}
                   <div className="@container"><div className="grid grid-cols-2 @min-[28rem]:grid-cols-3 @min-[34rem]:grid-cols-[0.9fr_0.75fr_1.3fr_0.95fr_0.95fr_1.2fr] gap-x-2 gap-y-4 pt-2">
-                    <FloatingSelect id={`rx-form-${i}`} label="Form" value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })} placeholder="Choose">
+                    <FloatingSelect id={`rx-form-${i}`} label={td("form")} value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })} placeholder={td("choose")}>
                       {sortLabels(formOptions).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                     </FloatingSelect>
-                    <FloatingField id={`rx-dose-${i}`} label="Dose" value={p.dose} onChange={(e) => updRx(i, { dose: e.target.value })} title="e.g. 5 g" />
-                    <FloatingSelect id={`rx-timing-${i}`} label="Timing" value={p.timing || ""} onValueChange={(v) => updRx(i, { timing: v })} placeholder="Choose">
+                    <FloatingField id={`rx-dose-${i}`} label={td("dose")} value={p.dose} onChange={(e) => updRx(i, { dose: e.target.value })} title={td("dose_eg")} />
+                    <FloatingSelect id={`rx-timing-${i}`} label={td("timing")} value={p.timing || ""} onValueChange={(v) => updRx(i, { timing: v })} placeholder={td("choose")}>
                       {timings.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </FloatingSelect>
-                    <FloatingField id={`rx-duration-${i}`} label="Duration" value={p.duration} onChange={(e) => updRx(i, { duration: e.target.value })} title="e.g. 14 days" />
-                    <FloatingField id={`rx-with-${i}`} label="Badraqa" value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title="Badraqa / take with — e.g. lukewarm water" />
-                    <FloatingField id={`rx-instr-${i}`} label="Instructions" maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} title={p.instructions || "Instructions"} />
+                    <FloatingField id={`rx-duration-${i}`} label={td("duration")} value={p.duration} onChange={(e) => updRx(i, { duration: e.target.value })} title={td("duration_eg")} />
+                    <FloatingField id={`rx-with-${i}`} label={td("badraqa")} value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title={td("badraqa_eg")} />
+                    <FloatingField id={`rx-instr-${i}`} label={td("instructions")} maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} title={p.instructions || td("instructions")} />
                   </div></div>
                   {w.length > 0 && (
                     <div className="space-y-1">
                       {w.map((x, n) => (
                         <p key={n} className={cn("text-[13px] flex items-start gap-1.5", x.level === "high" ? "text-destructive" : x.level === "caution" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
-                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>{x.text}{!x.verified && <span className="opacity-70"> (from the herb&apos;s reference profile — unverified)</span>}</span>
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>{x.text}{!x.verified && <span className="opacity-70">{td("ref_unverified")}</span>}</span>
                         </p>
                       ))}
                     </div>
@@ -1153,31 +1168,31 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                 </div>
               );
             })}
-            <p className="text-xs text-muted-foreground">Safety notes compare each herb&apos;s reference profile with this patient&apos;s recorded allergies, current medicines, sex and age. They are prompts to check — the Hakim decides.</p>
+            <p className="text-xs text-muted-foreground">{td("safety_note")}</p>
           </div>
         )}
       </Panel>
 
       {/* Ilaj-bil-Tadbeer */}
-      <Panel icon={HeartPulse} tour="dossier.tadbeer" title="Ilaj-bil-Tadbeer — Regimenal Therapy" hint="Hijama, Dalk, Hammam and other regimens."
+      <Panel icon={HeartPulse} tour="dossier.tadbeer" title={td("tadbeer_title")}
         aside={
           <Select value="" onValueChange={(v) => set({ tadbeer: [...d.tadbeer, { label: v, frequency: "", duration: "", notes: "" }] })}>
-            <SelectTrigger className="h-9 w-48 bg-background/60"><SelectValue placeholder="+ Add regimen" /></SelectTrigger>
+            <SelectTrigger className="h-9 w-48 bg-background/60"><SelectValue placeholder={td("add_regimen")} /></SelectTrigger>
             <SelectContent>{(options?.tadbeer || []).filter((o) => !d.tadbeer.some((t) => t.label === o.label)).map((o) => <SelectItem key={o.id} value={o.label}>{o.label}{o.description ? ` — ${o.description}` : ""}</SelectItem>)}</SelectContent>
           </Select>
         }>
-        {d.tadbeer.length === 0 ? <p className="text-sm text-muted-foreground">No regimens added yet.</p> : (
+        {d.tadbeer.length === 0 ? <p className="text-sm text-muted-foreground">{td("no_regimens")}</p> : (
           <div className="space-y-2">
             {d.tadbeer.map((t, i) => (
               <div key={t.label} className="rounded-xl border border-border/50 bg-card p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[15px] font-semibold">{t.label} <span className="text-[13px] font-normal text-muted-foreground">{options?.tadbeer?.find((o) => o.label === t.label)?.description}</span></p>
-                  <button type="button" onClick={() => set({ tadbeer: d.tadbeer.filter((_, n) => n !== i) })} aria-label={`Remove ${t.label}`} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => set({ tadbeer: d.tadbeer.filter((_, n) => n !== i) })} aria-label={td("remove_x", { label: t.label })} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
                 </div>
                 <div className="grid sm:grid-cols-3 gap-2 pt-2">
-                  <FloatingField id={`td-freq-${i}`} label="Frequency" value={t.frequency} onChange={(e) => updTd(i, { frequency: e.target.value })} title="e.g. weekly" />
-                  <FloatingField id={`td-dur-${i}`} label="Duration" value={t.duration} onChange={(e) => updTd(i, { duration: e.target.value })} title="e.g. 3 sessions" />
-                  <FloatingField id={`td-notes-${i}`} label="Site / notes" value={t.notes} onChange={(e) => updTd(i, { notes: e.target.value })} />
+                  <FloatingField id={`td-freq-${i}`} label={td("frequency")} value={t.frequency} onChange={(e) => updTd(i, { frequency: e.target.value })} title={td("frequency_eg")} />
+                  <FloatingField id={`td-dur-${i}`} label={td("duration")} value={t.duration} onChange={(e) => updTd(i, { duration: e.target.value })} title={td("sessions_eg")} />
+                  <FloatingField id={`td-notes-${i}`} label={td("site_notes")} value={t.notes} onChange={(e) => updTd(i, { notes: e.target.value })} />
                 </div>
               </div>
             ))}
@@ -1192,10 +1207,12 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
 
 function HandoverTab({ state }: { state: TashkheesState }) {
   const { dossier: d, set, options } = state;
+  const td = useTranslations("clinic.dossier");
+  const dl = useDateLocale();
   return (
-    <Panel icon={CalendarDays} tour="dossier.handover" title="Prognosis & Handover" hint="Expected course, follow-up and the handover note."
-      aside={d.status === "finalized" ? <Badge variant="outline" className="mt-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Finalised</Badge> : undefined}>
-      <div><Label>Prognosis (Inzar)</Label>
+    <Panel icon={CalendarDays} tour="dossier.handover" title={td("handover_title")}
+      aside={d.status === "finalized" ? <Badge variant="outline" className="mt-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}</Badge> : undefined}>
+      <div><Label>{td("prognosis")}</Label>
         <Chips items={(options?.prognosis || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.prognosis ? [d.prognosis] : []}
           onToggle={(l) => set({ prognosis: d.prognosis === l ? null : l })} /></div>
       <div className="grid sm:grid-cols-[220px_1fr] gap-3 pt-1">
@@ -1204,19 +1221,19 @@ function HandoverTab({ state }: { state: TashkheesState }) {
           <input id="followup-date" type="date" value={d.followUpDate ?? ""} onChange={(e) => set({ followUpDate: e.target.value || null })}
             className="peer h-full flex-1 min-w-0 bg-transparent ps-2.5 pe-3 text-base font-medium outline-none" />
           {/* A date box always shows its dd/mm/yyyy mask, so the label sits on the border. */}
-          <label htmlFor="followup-date" className="pointer-events-none absolute start-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">Follow-up date</label>
+          <label htmlFor="followup-date" className="pointer-events-none absolute start-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">{td("followup_date")}</label>
         </div>
-        <FloatingField id="followup-note" label="Follow-up plan" maxLength={500} value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })}
-          title="e.g. Re-assess Nabz, tongue coating and bowel habit" />
+        <FloatingField id="followup-note" label={td("followup_plan")} maxLength={500} value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })}
+          title={td("followup_eg")} />
       </div>
-      <div><Label>Priority</Label>
-        <Segmented value={d.priority} options={PRIORITIES} onChange={(v) => set({ priority: v ?? "routine" })} /></div>
-      <FloatingTextarea id="urgent-directives" label="🚨 Urgent directives for the patient" rows={2} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })}
-        title="Warning signs that need immediate attention — e.g. vomiting blood, severe abdominal pain" />
-      <FloatingTextarea id="handover-note" label="Handover note" rows={4} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })}
-        title="Summary for the treating / senior Hakim — presentation, key findings, diagnosis and plan" />
+      <div><Label>{td("priority")}</Label>
+        <Segmented value={d.priority} options={PRIORITIES.map((o) => ({ value: o.value, label: td(`pr_${o.value}`) }))} onChange={(v) => set({ priority: v ?? "routine" })} /></div>
+      <FloatingTextarea id="urgent-directives" label={td("urgent_directives")} rows={2} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })}
+        title={td("urgent_eg")} />
+      <FloatingTextarea id="handover-note" label={td("handover_note")} rows={4} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })}
+        title={td("handover_eg")} />
       {d.status === "finalized" && d.finalizedByName && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-emerald-500" /> Finalised by {d.finalizedByName}{d.finalizedAt && ` · ${new Date(d.finalizedAt).toLocaleString()}`}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-emerald-500" /> {td("finalised_by", { name: d.finalizedByName })}{d.finalizedAt && ` · ${new Date(d.finalizedAt).toLocaleString(dl)}`}</p>
       )}
     </Panel>
   );
@@ -1225,7 +1242,8 @@ function HandoverTab({ state }: { state: TashkheesState }) {
 // ---------------------------------------------------------------- shell
 
 function Loading() {
-  return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+  const tc = useTranslations("common");
+  return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}</div>;
 }
 
 const TABS = [
@@ -1244,6 +1262,11 @@ const TABS = [
  */
 export function TashkheesDossierPanel({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const d = state.dossier;
+  const td = useTranslations("clinic.dossier");
+  // Unani step names stay as they are; their plain-language descriptions are translated.
+  const tabLabel = (k: string, label: string) => (k === "handover" ? td("tab_prognosis") : label);
+  const tabSub = (k: string) => td(`sub_${k}`);
+  const tabShort2 = (k: string) => (k === "ilaj" || k === "handover" ? td(`short2_${k}`) : td(`sub_${k}`));
   const done: Record<string, boolean> = {
     // Adaptive selection means not every question is shown — any recorded finding counts.
     dalail: state.dalail.progress.answered > 0,
@@ -1281,7 +1304,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
   }, [ready]);
 
   if (!state.options) {
-    if (state.loadError) return <LoadFailed what="the dossier" detail={state.loadError} onRetry={state.reload} />;
+    if (state.loadError) return <LoadFailed what={td("the_dossier")} detail={state.loadError} onRetry={state.reload} />;
     return <Card className="p-5 border-border/50 bg-card/60"><Loading /></Card>;
   }
 
@@ -1295,15 +1318,15 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
     <div className="space-y-5">
       {floatBox && (
         <div className="fixed top-3 z-20 flex items-center gap-1 rounded-xl border border-border/60 bg-card/95 px-2 py-1.5 shadow-lg backdrop-blur"
-          style={{ left: floatBox.left, width: floatBox.width }} role="navigation" aria-label="Jump to step">
+          style={{ left: floatBox.left, width: floatBox.width }} role="navigation" aria-label={td("jump")}>
           {TABS.map((t, i) => {
             const on = inView === t.key;
             return (
-              <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${t.label} — ${t.sub}`}
+              <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${tabLabel(t.key, t.label)} — ${tabSub(t.key)}`}
                 className={cn("flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors",
                   on ? "bg-primary text-primary-foreground" : done[t.key] ? "text-emerald-700 dark:text-emerald-400 hover:bg-muted" : "text-muted-foreground hover:bg-muted")}>
                 <t.icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate hidden sm:inline">{t.short}</span>
+                <span className="truncate hidden sm:inline">{tabLabel(t.key, t.short)}</span>
                 {done[t.key] && <Check className="h-3 w-3 shrink-0" />}
               </button>
             );
@@ -1315,13 +1338,13 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
       <Card ref={headerRef} className="p-5 border-border/50 bg-card/60 gap-0">
         <SectionHeading
           icon={FileSignature}
-          title="Tashkhees & Handover Dossier"
+          title={td("title")}
           right={
             <span className="flex items-center gap-1.5 shrink-0">
-              <Badge variant="outline">{doneCount} of {TABS.length} steps</Badge>
+              <Badge variant="outline">{td("n_steps", { n: doneCount, total: TABS.length })}</Badge>
               {d.status === "finalized"
-                ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Finalised</Badge>
-                : <Badge variant="outline">Draft</Badge>}
+                ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}</Badge>
+                : <Badge variant="outline">{td("draft")}</Badge>}
             </span>
           }
         />
@@ -1334,17 +1357,17 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
             const on = inView === t.key;
             const ok = done[t.key];
             return (
-              <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${t.label} — ${t.sub}${ok ? " · recorded" : ""}`}
+              <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${tabLabel(t.key, t.label)} — ${tabSub(t.key)}${ok ? td("recorded_suffix") : ""}`}
                 className={cn("flex min-w-[7rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1.5 @3xl:gap-2 rounded-xl border px-1.5 @3xl:px-2 py-1.5 text-start transition-colors",
                   on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/40")}>
                 <span className={cn("relative h-8 w-8 @3xl:h-9 @3xl:w-9 shrink-0 rounded-full border-2 flex items-center justify-center",
                   ok ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : on ? "border-primary text-primary" : "border-muted text-muted-foreground")}>
                   <t.icon className="h-4 w-4" />
-                  {ok && <span className="absolute -end-1 -top-1 h-3.5 w-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center border-2 border-card" aria-label="Recorded"><Check className="h-2 w-2" /></span>}
+                  {ok && <span className="absolute -end-1 -top-1 h-3.5 w-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center border-2 border-card" aria-label={td("recorded")}><Check className="h-2 w-2" /></span>}
                 </span>
                 <span className="min-w-0">
-                  <span className={cn("block truncate text-xs @3xl:text-[13px] font-semibold leading-tight", on && "text-primary")}>{t.short}</span>
-                  <span className={cn("block truncate text-[11px] @3xl:text-xs leading-tight", ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>{"short2" in t ? t.short2 : t.sub}</span>
+                  <span className={cn("block truncate text-xs @3xl:text-[13px] font-semibold leading-tight", on && "text-primary")}>{tabLabel(t.key, t.short)}</span>
+                  <span className={cn("block truncate text-[11px] @3xl:text-xs leading-tight", ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>{tabShort2(t.key)}</span>
                 </span>
               </button>
             );
@@ -1363,10 +1386,10 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
         firstOpen ? "border-dashed border-border/60 bg-card/40" : "border-emerald-500/40 bg-emerald-500/5")}>
         <p className="text-[13px] text-muted-foreground">
           {firstOpen
-            ? <>{TABS.length - doneCount} {TABS.length - doneCount === 1 ? "step is" : "steps are"} still open — next: <span className="font-medium text-foreground">{firstOpen.label}</span>.</>
-            : <span className="font-medium text-emerald-700 dark:text-emerald-400">All five steps recorded — Save Draft or Finalise &amp; hand over below.</span>}
+            ? td.rich("open_steps", { count: TABS.length - doneCount, next: tabLabel(firstOpen.key, firstOpen.label), b: (c) => <span className="font-medium text-foreground">{c}</span> })
+            : <span className="font-medium text-emerald-700 dark:text-emerald-400">{td("all_recorded")}</span>}
         </p>
-        {firstOpen && <Button size="sm" variant="outline" onClick={() => jump(firstOpen.key)}>Go to {firstOpen.label} <ArrowRight className="h-3.5 w-3.5" /></Button>}
+        {firstOpen && <Button size="sm" variant="outline" onClick={() => jump(firstOpen.key)}>{td("go_to", { label: tabLabel(firstOpen.key, firstOpen.label) })} <ArrowRight className="h-3.5 w-3.5" /></Button>}
       </div>
     </div>
   );

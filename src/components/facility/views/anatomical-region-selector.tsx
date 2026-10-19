@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,8 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
     const [loadError, setLoadError] = useState<string | null>(null);
     const [reloadTick, setReloadTick] = useState(0);
     const msg = useNotice();
+    const t3 = useTranslations("clinic.stage3");
+    const tc = useTranslations("common");
     // Show the "scroll for more" hint only when the list really overflows.
     const listRef = useRef<HTMLDivElement>(null);
     const [overflows, setOverflows] = useState(false);
@@ -58,7 +61,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
           setRegions(r.regions || []);
           try { setSelected(JSON.parse(s.selection?.regions || "[]")); } catch { setSelected([]); }
         })
-        .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); })
+        .catch((e) => { if (!cancelled) setLoadError(e.message || tc("network_error")); })
         .finally(() => { if (!cancelled) setLoading(false); });
       return () => { cancelled = true; };
     }, [visitId, reloadTick]);
@@ -71,7 +74,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
           await api.post(`/api/facility/visits/${visitId}/anatomical-regions`, { regions: selected });
           msg.clear();
         } catch (e: any) {
-          msg.error("The anatomical regions weren't saved", `${e.message || "Network error"}. Your selection is still shown above.`, { retry: () => { save().catch(() => {}); } });
+          msg.error(t3("regions_not_saved"), t3("selection_shown", { error: e.message || tc("network_error") }), { retry: () => { save().catch(() => {}); } });
           throw e;
         }
       },
@@ -96,12 +99,12 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
     const hiddenCount = regions.length - visible.length;
     const cards: Region[] = [...visible, ...orphaned.map((l) => ({ id: `orphan:${l}`, label: l, localTerms: null, icon: "activity", gender: "all", bodyZone: null }))];
 
-    if (loadError) return <LoadFailed what="the anatomical regions" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+    if (loadError) return <LoadFailed what={t3("the_regions")} detail={loadError} onRetry={() => { setLoading(true); setReloadTick((n) => n + 1); }} />;
     if (loading) {
       return (
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading anatomical regions…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t3("regions_loading")}
           </div>
         </Card>
       );
@@ -111,12 +114,12 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
       <Card className="p-5 border-border/50 bg-card/60">
         <SectionHeading
           icon={PersonStanding}
-          title="Anatomical Region & Organ System"
-          right={<Badge variant="outline" className="shrink-0">{selected.length} selected</Badge>}
+          title={t3("regions_title")}
+          right={<Badge variant="outline" className="shrink-0">{t3("n_selected", { count: selected.length })}</Badge>}
         />
 
         {cards.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No regions configured yet — add them in Admin → Meta → Patient.</p>
+          <p className="text-sm text-muted-foreground">{t3("no_regions")}</p>
         ) : (
           <div className="grid lg:grid-cols-[190px_1fr] gap-5 items-start">
           <div className="rounded-xl border border-border/50 bg-background/40 p-3">
@@ -161,7 +164,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
                   </span>
                   <span className="flex flex-col items-center shrink-0">
                     {checked ? <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" /> : <Circle className="h-4.5 w-4.5 text-muted-foreground/40" />}
-                    {idx === 0 && <span className="text-[10px] font-medium leading-tight text-emerald-600 dark:text-emerald-400">Primary</span>}
+                    {idx === 0 && <span className="text-[10px] font-medium leading-tight text-emerald-600 dark:text-emerald-400">{t3("primary")}</span>}
                   </span>
                 </button>
               );
