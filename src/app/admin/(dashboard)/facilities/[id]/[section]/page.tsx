@@ -7,19 +7,19 @@ import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 import { cn, formatDateTime } from "@/lib/utils";
+import { groupQuestion, EMERGENCY_QUESTION } from "@/lib/facility-services";
+import { OverviewDashboard } from "../overview-dashboard";
 import {
   useFacilityDetail, DAY_LABELS, DAY_ORDER, parseList,
 } from "../facility-detail-context";
 
-const SECTION_KEYS = ["overview", "location", "capacity", "services", "plan"];
+const SECTION_KEYS = ["overview", "details", "location", "capacity", "services", "plan"];
 
 interface MetaSections {
   [key: string]: { label: string; options: string[] };
@@ -174,22 +174,34 @@ export default function FacilitySectionPage() {
   };
 
   const SaveButton = ({ onClick }: { onClick: () => void }) => (
-    <Button
-      className="self-start h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
-      disabled={saving}
-      onClick={onClick}
-    >
-      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
-    </Button>
+    <div className="flex justify-end border-t border-border pt-5">
+      <Button
+        className="h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
+        disabled={saving}
+        onClick={onClick}
+      >
+        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
+      </Button>
+    </div>
+  );
+
+  const Header = ({ title, text }: { title: string; text: string }) => (
+    <div className="-mb-1">
+      <h2 className="font-serif text-xl font-semibold">{title}</h2>
+      <p className="text-sm text-muted-foreground">{text}</p>
+    </div>
   );
 
   if (!SECTION_KEYS.includes(section)) return null;
 
-  if (section === "overview") {
+  if (section === "overview") return <OverviewDashboard />;
+
+  if (section === "details") {
     return (
-      <Card className="p-6 border-border/50 bg-card/60">
+      <Card className="p-6 border-border bg-card/60">
+        <Header title="Identity & contact" text="How the clinic signs in and how it appears across the platform. Admin can correct the HFR number here." />
         <div>
-          <h2 className="font-serif text-lg font-semibold mb-4">Contact Information</h2>
+          <h3 className="text-[15px] font-semibold mb-4">Contact information</h3>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             <FloatingField id="contact" label="Email or phone" value={contact} onChange={(e) => setContact(e.target.value)} />
             <FloatingField id="alternateContactNumber" label="Alternate contact number" value={alternateContactNumber} onChange={(e) => setAlternateContactNumber(e.target.value)} />
@@ -203,7 +215,7 @@ export default function FacilitySectionPage() {
         </div>
 
         <div>
-          <h2 className="font-serif text-lg font-semibold mb-4">Facility Identity</h2>
+          <h3 className="text-[15px] font-semibold mb-4">Facility identity</h3>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             <FloatingField id="facilityName" label="Facility name" value={facilityName} onChange={(e) => setFacilityName(e.target.value)} />
             {meta.facility_type ? (
@@ -230,9 +242,9 @@ export default function FacilitySectionPage() {
 
   if (section === "location") {
     return (
-      <Card className="p-6 border-border/50 bg-card/60">
+      <Card className="p-6 border-border bg-card/60">
+        <Header title="Location" text="The clinic's address as patients and the platform see it." />
         <div>
-          <h2 className="font-serif text-lg font-semibold mb-4">Facility Address</h2>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             <FloatingField id="addressLine1" label="Address line 1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
             <FloatingField id="addressLine2" label="Address line 2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
@@ -251,9 +263,10 @@ export default function FacilitySectionPage() {
 
   if (section === "capacity") {
     return (
-      <Card className="p-6 border-border/50 bg-card/60">
+      <Card className="p-6 border-border bg-card/60">
+        <Header title="Capacity & schedule" text="Beds, daily outpatient load and weekly opening hours." />
         <div>
-          <h2 className="font-serif text-lg font-semibold mb-4">Capacity</h2>
+          <h3 className="text-[15px] font-semibold mb-4">Capacity</h3>
           <div className="grid sm:grid-cols-3 gap-x-4 gap-y-6">
             <FloatingField id="bedCapacity" type="number" label="Bed capacity" value={bedCapacity} onChange={(e) => setBedCapacity(e.target.value)} />
             <FloatingField id="dailyOpdCount" type="number" label="Average daily OPD" value={dailyOpdCount} onChange={(e) => setDailyOpdCount(e.target.value)} />
@@ -261,7 +274,7 @@ export default function FacilitySectionPage() {
         </div>
 
         <div>
-          <h2 className="font-serif text-lg font-semibold mb-4">Operating Hours</h2>
+          <h3 className="text-[15px] font-semibold mb-4">Opening hours</h3>
           <div className="space-y-4">
             <ToggleRow title="Open 24×7 (hides the weekly schedule below)" checked={is24x7} onCheckedChange={setIs24x7} />
             {!is24x7 && (
@@ -328,61 +341,54 @@ export default function FacilitySectionPage() {
   }
 
   if (section === "services") {
+    const groups: { key: string; label: string; options: string[]; selected: string[]; toggle: (v: string) => void }[] = [
+      { key: "specialization", label: "Specializations", options: meta.specialization?.options || specializations, selected: specializations, toggle: (v) => toggleInList(specializations, setSpecializations, v) },
+      ...(serviceGroups.length
+        ? serviceGroups.map(([key, group]) => ({ key, label: group.label, options: group.options, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }))
+        : [{ key: "services", label: "services", options: services, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }]),
+    ];
+    // Saved values no longer in the Meta lists still show (ticked) so nothing is hidden.
+    const known = new Set(groups.flatMap((g) => g.options));
+    const legacySpecs = specializations.filter((x) => !(meta.specialization?.options || specializations).includes(x));
+    const legacyServices = serviceGroups.length ? services.filter((x) => !known.has(x)) : [];
+    if (legacySpecs.length) groups[0] = { ...groups[0], options: [...groups[0].options, ...legacySpecs] };
+    if (legacyServices.length) groups.push({ key: "legacy", label: "Other services on record", options: legacyServices, selected: services, toggle: (v) => toggleInList(services, setServices, v) });
     return (
-      <Card className="p-6 border-border/50 bg-card/60">
-        <div>
-          <h2 className="font-serif text-lg font-semibold mb-4">Specializations</h2>
-          <div className="flex flex-wrap gap-2">
-            {(meta.specialization?.options || specializations).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleInList(specializations, setSpecializations, s)}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
-                  specializations.includes(s) ? "bg-primary text-primary-foreground border-primary" : "border-border/60 bg-background/60 text-foreground"
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <Separator className="bg-border/50" />
-
-        <div>
-          <h2 className="font-serif text-lg font-semibold mb-4">Services</h2>
-          <div className="space-y-5">
-            {serviceGroups.length === 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {services.map((s) => <Badge key={s} variant="outline">{s}</Badge>)}
-              </div>
-            ) : serviceGroups.map(([key, group]) => (
-              <div key={key}>
-                <p className="text-sm font-semibold mb-2">{group.label}</p>
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {group.options.map((item) => {
-                    const checked = services.includes(item);
+      <Card className="p-6 border-border bg-card/60">
+        <Header title="Services" text={`${specializations.length} specialization${specializations.length === 1 ? "" : "s"} and ${services.length} service${services.length === 1 ? "" : "s"} selected — the same questions the clinic answers in profile setup.`} />
+        <div className="divide-y divide-border">
+          {groups.map((g) => {
+            const count = g.options.filter((o) => g.selected.includes(o)).length;
+            return (
+              <section key={g.key} className="py-5 first:pt-0">
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <p className="text-[15px] font-semibold">{g.key === "legacy" ? "Other services on record (no longer in the Meta lists)" : groupQuestion(g.key, g.label)}</p>
+                  <span className={cn("shrink-0 text-xs font-medium", count ? "text-primary" : "text-muted-foreground")}>{count ? `${count} selected` : "None selected"}</span>
+                </div>
+                <div className="gap-2 sm:columns-2 xl:columns-3 [&>label]:mb-2">
+                  {g.options.map((item) => {
+                    const checked = g.selected.includes(item);
                     return (
                       <label key={item} className={cn(
-                        "flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border cursor-pointer transition-colors",
-                        checked ? "border-primary/40 bg-primary/5" : "border-border/60 bg-background/60"
+                        "flex break-inside-avoid items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm font-medium leading-snug cursor-pointer transition-colors",
+                        checked ? "border-primary/50 bg-primary/5" : "border-input bg-background/60 hover:border-primary/30"
                       )}>
-                        <Checkbox checked={checked} onCheckedChange={() => toggleInList(services, setServices, item)} />
-                        {item}
+                        <Checkbox className="mt-0.5" checked={checked} onCheckedChange={() => g.toggle(item)} />
+                        <span className="min-w-0">{item}</span>
                       </label>
                     );
                   })}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <ToggleRow title="Emergency services" checked={emergencyServices} onCheckedChange={setEmergencyServices} />
-          <ToggleRow title="Ambulance available" checked={ambulanceAvailable} onCheckedChange={setAmbulanceAvailable} />
+              </section>
+            );
+          })}
+          <section className="pt-5">
+            <p className="mb-3 text-[15px] font-semibold">{EMERGENCY_QUESTION}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <ToggleRow title="Emergency services" checked={emergencyServices} onCheckedChange={setEmergencyServices} />
+              <ToggleRow title="Ambulance available" checked={ambulanceAvailable} onCheckedChange={setAmbulanceAvailable} />
+            </div>
+          </section>
         </div>
 
         <SaveButton onClick={() => save({ specializations, services, emergencyServices, ambulanceAvailable })} />
@@ -391,22 +397,43 @@ export default function FacilitySectionPage() {
   }
 
   // plan
+  const extend = (months: number) => {
+    const base = endDate && new Date(endDate) > new Date() ? new Date(endDate) : new Date();
+    base.setMonth(base.getMonth() + months);
+    setEndDate(base.toISOString().slice(0, 10));
+    if (status !== "ACTIVE") setStatus("ACTIVE");
+  };
+  const left = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000) : null;
   return (
-    <Card className="p-6 border-border/50 bg-card/60">
+    <Card className="p-6 border-border bg-card/60">
+      <Header title="Plan" text="The clinic's subscription. Changes apply immediately — the clinic sees the new dates in their profile." />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["Current plan", plan === "FREE" ? "Free trial" : "Premium"],
+          ["Status", status.charAt(0) + status.slice(1).toLowerCase()],
+          ["Ends", endDate ? `${new Date(endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}${left !== null ? ` · ${left < 0 ? "expired" : `${left} days left`}` : ""}` : "Not set"],
+        ].map(([k, v]) => (
+          <div key={k} className="rounded-xl border border-border bg-background/50 px-4 py-3"><p className="text-xs text-muted-foreground">{k}</p><p className="font-semibold">{v}</p></div>
+        ))}
+      </div>
       <div>
-        <h2 className="font-serif text-lg font-semibold mb-4">Subscription Plan</h2>
+        <h3 className="text-[15px] font-semibold mb-4">Change plan</h3>
         <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
           <FloatingSelect id="plan" label="Plan" value={plan} onValueChange={setPlan}>
-            <SelectItem value="FREE">FREE</SelectItem>
-            <SelectItem value="PAID">PAID</SelectItem>
+            <SelectItem value="FREE">Free trial</SelectItem>
+            <SelectItem value="PAID">Premium</SelectItem>
           </FloatingSelect>
           <FloatingSelect id="status" label="Status" value={status} onValueChange={setStatus}>
-            <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-            <SelectItem value="EXPIRED">EXPIRED</SelectItem>
-            <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="EXPIRED">Expired</SelectItem>
+            <SelectItem value="CANCELLED">Cancelled</SelectItem>
           </FloatingSelect>
           <FloatingField id="startDate" type="date" label="Start date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <FloatingField id="endDate" type="date" label="Expires on" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <FloatingField id="endDate" type="date" label="Ends on" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Quick extend:</span>
+          {[1, 3, 6, 12].map((n) => <Button key={n} type="button" size="sm" variant="outline" onClick={() => extend(n)}>+{n} month{n === 1 ? "" : "s"}</Button>)}
         </div>
       </div>
       <SaveButton onClick={() => save({ subscription: { plan, status, startDate, endDate } })} />

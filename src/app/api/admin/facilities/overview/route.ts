@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { netAmount } from "@/lib/payments";
+import { scoreFacility } from "@/lib/facility-health";
 
 const DAY = 86_400_000;
 const WEEKS = 8;
-
-export type HealthBand = "thriving" | "steady" | "at_risk" | "dormant";
 
 /**
  * Every facility with its activity figures and an engagement score, for the
@@ -69,21 +68,10 @@ export async function GET(req: NextRequest) {
     const daysSinceActivity = lastActivity ? Math.floor((now - lastActivity) / DAY) : null;
     const staffActive = f.staff.filter((s) => s.active).length;
 
-    // Engagement score (0–100): recent use weighs most, then setup quality.
-    const reasons: { text: string; good: boolean }[] = [];
-    let score = 0;
-    const recency = daysSinceActivity === null ? 0 : daysSinceActivity <= 3 ? 30 : daysSinceActivity <= 7 ? 24 : daysSinceActivity <= 14 ? 15 : daysSinceActivity <= 30 ? 8 : 0;
-    score += recency;
-    reasons.push(daysSinceActivity === null ? { text: "Never used yet", good: false } : { text: daysSinceActivity === 0 ? "Active today" : `Last active ${daysSinceActivity} day${daysSinceActivity === 1 ? "" : "s"} ago`, good: daysSinceActivity <= 7 });
-    const vol = Math.min(30, Math.round((a.visits30 / 20) * 30));
-    score += vol;
-    reasons.push({ text: `${a.visits30} visit${a.visits30 === 1 ? "" : "s"} in 30 days`, good: a.visits30 >= 5 });
-    if (f.profileCompleted) score += 15; reasons.push({ text: f.profileCompleted ? "Profile complete" : "Profile not completed", good: f.profileCompleted });
-    if (f.verified) score += 10; reasons.push({ text: f.verified ? "Verified" : "Not verified", good: f.verified });
-    if (a.revenue30 > 0) score += 10; reasons.push({ text: a.revenue30 > 0 ? "Recording payments" : "No payments recorded in 30 days", good: a.revenue30 > 0 });
-    if (staffActive > 0) score += 5; reasons.push({ text: staffActive ? `${staffActive} active staff` : "No staff added", good: staffActive > 0 });
-    if (!f.active) score = Math.min(score, 10);
-    const health: HealthBand = score >= 75 ? "thriving" : score >= 50 ? "steady" : score >= 25 ? "at_risk" : "dormant";
+    const { score, health, reasons } = scoreFacility({
+      active: f.active, verified: f.verified, profileCompleted: f.profileCompleted,
+      daysSinceActivity, visits30: a.visits30, revenue30: a.revenue30, staffActive,
+    });
 
     return {
       id: f.id, facilityName: f.facilityName, email: f.email, phone: f.phone, avatarColor: f.avatarColor,

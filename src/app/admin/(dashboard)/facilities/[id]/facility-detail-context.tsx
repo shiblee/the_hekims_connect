@@ -54,10 +54,38 @@ export function parseList(json: string | null): string[] {
   }
 }
 
+export type HealthBand = "thriving" | "steady" | "at_risk" | "dormant";
+
+export interface FacilityInsights {
+  metrics: {
+    patients: number; newPatients30: number; visits: number; visits30: number; visitsPrev30: number; weekly: number[];
+    revenue: number; revenue30: number; revenuePrev30: number; refunds: number; payments: number;
+    byMode: { mode: string; amount: number }[];
+    appointments: number; upcoming: number; prescriptions: number; assessments: number;
+    firstVisitAt: string | null; lastActivityAt: string | null; daysSinceActivity: number | null;
+  };
+  score: number; health: HealthBand;
+  reasons: { key: string; text: string; good: boolean; points: number; max: number }[];
+  checklist: { key: string; label: string; done: boolean }[];
+  locked: boolean; failedLoginAttempts: number;
+  staff: { id: string; name: string; role: string | null; designation: string | null; employeeType: string; active: boolean; lastLoginAt: string | null; createdAt: string }[];
+  events: { id: string; actorType: string; actorName: string; action: string; summary: string; outcome: string; createdAt: string }[];
+  logins: { id: string; displayName: string; status: string; browser: string | null; os: string | null; device: string | null; ip: string | null; staffId: string | null; createdAt: string }[];
+}
+
+export const HEALTH_STYLE: Record<HealthBand, { label: string; text: string; ring: string; bg: string; dot: string }> = {
+  thriving: { label: "Thriving", text: "text-emerald-600 dark:text-emerald-400", ring: "stroke-emerald-500", bg: "bg-emerald-500/10", dot: "bg-emerald-500" },
+  steady: { label: "Steady", text: "text-sky-600 dark:text-sky-400", ring: "stroke-sky-500", bg: "bg-sky-500/10", dot: "bg-sky-500" },
+  at_risk: { label: "At risk", text: "text-amber-600 dark:text-amber-400", ring: "stroke-amber-500", bg: "bg-amber-500/10", dot: "bg-amber-500" },
+  dormant: { label: "Dormant", text: "text-rose-600 dark:text-rose-400", ring: "stroke-rose-500", bg: "bg-rose-500/10", dot: "bg-rose-500" },
+};
+
 export interface FacilityDetailContextValue {
   facility: FacilityDetail;
   setFacility: (f: FacilityDetail) => void;
   reload: () => void;
+  insights: FacilityInsights | null;
+  reloadInsights: () => void;
 }
 
 export const FacilityDetailContext = createContext<FacilityDetailContextValue | null>(null);
