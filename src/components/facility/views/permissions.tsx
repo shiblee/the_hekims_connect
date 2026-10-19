@@ -100,9 +100,9 @@ export function PermissionsView() {
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-muted/40 text-xs">
                 <tr>
-                  <th className="px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-muted-foreground">Permission</th>
+                  <th className="sticky left-0 z-[2] bg-card shadow-[1px_0_0_var(--border)] min-w-[13rem] px-3 py-2.5 text-left font-semibold uppercase tracking-wide text-muted-foreground"><span className="absolute inset-0 -z-10 bg-muted/40" />Permission</th>
                   {roles.map((r) => (
-                    <th key={r.role} className="px-2 py-2.5 text-center font-semibold">
+                    <th key={r.role} className="min-w-[6.5rem] px-2 py-2.5 text-center font-semibold">
                       <span className="block">{r.role}</span>
                       <span className="block text-[10px] font-normal text-muted-foreground">{people.filter((p) => p.role === r.role).length} staff{r.customised ? " · custom" : ""}</span>
                     </th>
@@ -112,10 +112,10 @@ export function PermissionsView() {
               <tbody className="divide-y divide-border">
                 {GROUPS.map((g) => (
                   <Fragment key={g}>
-                    <tr className="bg-muted/20"><td colSpan={roles.length + 1} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{g}</td></tr>
+                    <tr className="bg-muted/20"><td colSpan={roles.length + 1} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span className="sticky left-3">{g}</span></td></tr>
                     {PERMISSIONS.filter((p) => p.group === g).map((p) => (
                       <tr key={p.key} className="hover:bg-muted/20">
-                        <td className="px-3 py-2"><p className="font-medium">{p.label}</p><p className="text-xs text-muted-foreground">{p.hint}</p></td>
+                        <td className="sticky left-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2"><p className="font-medium">{p.label}</p><p className="text-xs text-muted-foreground">{p.hint}</p></td>
                         {roles.map((r) => (
                           <td key={r.role} className="px-2 py-2 text-center">
                             <Checkbox checked={(draft[r.role] || []).includes(p.key)} onCheckedChange={() => toggleRole(r.role, p.key)} aria-label={`${r.role}: ${p.label}`} />
@@ -126,7 +126,7 @@ export function PermissionsView() {
                   </Fragment>
                 ))}
                 <tr>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">Standard permissions</td>
+                  <td className="sticky left-0 z-[1] bg-card shadow-[1px_0_0_var(--border)] px-3 py-2 text-xs text-muted-foreground">Standard permissions</td>
                   {roles.map((r) => (
                     <td key={r.role} className="px-2 py-2 text-center">
                       {r.customised && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => resetRole(r.role)}><RotateCcw className="h-3 w-3" /> Reset</Button>}
