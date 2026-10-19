@@ -7,6 +7,7 @@ import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
 import { getClientIp, parseUserAgent } from "@/lib/request-info";
+import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
 
 const PRECHECK_VALIDITY_MS = 30 * 60 * 1000;
 
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
+    const clash = await findClinicContactClash(normalizedContact);
+    if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
 
     const precheck = await db.otpCode.findFirst({
       where: { identifier: normalizedContact, purpose: "precheck", role: "facility", verifiedAt: { not: null } },

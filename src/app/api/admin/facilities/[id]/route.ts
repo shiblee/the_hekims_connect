@@ -6,6 +6,7 @@ import { normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
+import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
 
 // ABDM Health Facility Registry ID format: "IN" followed by 10 digits (e.g. IN0123456789).
 const HFR_PATTERN = /^IN\d{10}$/i;
@@ -92,6 +93,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (conflict) {
       return NextResponse.json({ error: "Another Facility already uses this email or phone" }, { status: 409 });
     }
+    const clash = await findClinicContactClash(normalized, { facilityId: id });
+    if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
     contactUpdate = isEmail ? { email: normalized, phone: null } : { email: null, phone: normalized };
   }
 

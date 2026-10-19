@@ -5,6 +5,7 @@ import { getAuthUser } from "@/lib/api-auth";
 import { generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
 
 /** Sends a code to verify a staff member's email/phone before they're added — no Staff row exists yet. */
 export async function POST(req: NextRequest) {
@@ -18,6 +19,8 @@ export async function POST(req: NextRequest) {
   if (!contact) return NextResponse.json({ error: "Contact is required" }, { status: 400 });
 
   const { value: normalizedContact, isEmail } = normalizeContact(contact);
+  const clash = await findClinicContactClash(normalizedContact);
+  if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
 
   const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
   const lastOtp = await db.otpCode.findFirst({

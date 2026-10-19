@@ -5,6 +5,7 @@ import { getAuthUser } from "@/lib/api-auth";
 import { isEmailLike } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
 
 const PHONE_PATTERN = /^\+?[0-9]{7,15}$/;
 
@@ -66,6 +67,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const newEmail = isEmail ? trimmedContact.toLowerCase() : null;
     const newPhone = isEmail ? null : trimmedContact;
     if (newEmail !== existing.email || newPhone !== existing.phone) {
+      const clash = await findClinicContactClash(trimmedContact, { staffId: id });
+      if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
       data.email = newEmail;
       data.phone = newPhone;
       // Contact actually changed (edit mode doesn't re-run OTP verification) — the

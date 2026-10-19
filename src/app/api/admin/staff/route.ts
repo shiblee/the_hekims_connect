@@ -5,6 +5,7 @@ import { getClientIp } from "@/lib/request-info";
 import { isEmailLike, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
 
 const PHONE_PATTERN = /^\+?[0-9]{7,15}$/;
 const VERIFY_VALIDITY_MS = 30 * 60 * 1000;
@@ -116,6 +117,9 @@ export async function POST(req: NextRequest) {
   if (!verifiedOtp || Date.now() - new Date(verifiedOtp.verifiedAt!).getTime() > VERIFY_VALIDITY_MS) {
     return NextResponse.json({ error: "Please verify this email or phone before adding the staff member" }, { status: 400 });
   }
+
+  const clash = await findClinicContactClash(normalizedContact);
+  if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
 
   const staffCode = await nextStaffCode();
 

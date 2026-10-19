@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
+import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
 
 /**
  * Sends a code to verify ownership of an email/phone BEFORE an account exists —
@@ -28,6 +29,11 @@ export async function POST(req: NextRequest) {
         { error: `An account with this ${isEmail ? "email" : "phone"} already exists` },
         { status: 409 }
       );
+    }
+    // Clinics share their sign-in group with staff; patients are separate (same contact allowed).
+    if (role === "facility") {
+      const clash = await findClinicContactClash(normalizedContact);
+      if (clash) return NextResponse.json({ error: clinicClashMessage(clash) }, { status: 409 });
     }
 
     const cooldownSeconds = parseInt(await getSetting("verification", "otp_resend_cooldown_seconds", "30"), 10);
