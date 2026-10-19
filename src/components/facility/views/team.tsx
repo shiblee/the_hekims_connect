@@ -375,7 +375,7 @@ export function TeamView() {
           </div>
 
           <NoticeSlot state={dialogMsg} />
-          <DialogFooter>
+          <DialogFooter className="border-t border-border pt-4">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving || (!editingId && iv.stage !== "verified")}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {editingId ? "Save changes" : "Add staff member"}
