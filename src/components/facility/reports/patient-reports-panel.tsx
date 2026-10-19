@@ -55,7 +55,7 @@ export function PatientReportsPanel() {
       .then((r) => setLoaded({ patientId, reports: r.reports }))
       // A failed load must not look like "no reports" — say so, with a retry.
       .catch((e) => setLoaded({ patientId, reports: null, error: e.message || tc("network_error") }));
-  }, [patientId]);
+  }, [patientId, tc]);
 
   useEffect(() => { load(); }, [load]);
 
