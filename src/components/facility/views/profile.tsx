@@ -8,10 +8,8 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
@@ -23,6 +21,7 @@ import { ActivityLogView } from "./activity-log";
 import { FeesView } from "./fees";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { useAppStore } from "@/lib/store";
+import { groupQuestion, EMERGENCY_QUESTION } from "@/lib/facility-services";
 
 const DAY_LABELS: Record<number, string> = {
   0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday",
@@ -401,66 +400,54 @@ export function ProfileView({ section }: { section: string }) {
           </Card>
         )}
 
-        {section === "services" && (
-          <Card className="p-6 border-border/50 bg-card/60">
-            <div>
-              <h2 className="font-serif text-lg font-semibold mb-4">Specializations</h2>
-              <div className="flex flex-wrap gap-2">
-                {(meta.specialization?.options || specializations).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => toggleInList(specializations, setSpecializations, s)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
-                      specializations.includes(s) ? "bg-primary text-primary-foreground border-primary" : "border-border/60 bg-background/60 text-foreground"
-                    )}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Separator className="bg-border/50" />
-
-            <div>
-              <h2 className="font-serif text-lg font-semibold mb-4">Services</h2>
-              <div className="space-y-5">
-                {serviceGroups.length === 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {services.map((s) => <Badge key={s} variant="outline">{s}</Badge>)}
+        {section === "services" && (() => {
+          const groups: { key: string; label: string; options: string[]; selected: string[]; toggle: (v: string) => void }[] = [
+            { key: "specialization", label: "Specializations", options: meta.specialization?.options || specializations, selected: specializations, toggle: (v) => toggleInList(specializations, setSpecializations, v) },
+            ...(serviceGroups.length
+              ? serviceGroups.map(([key, group]) => ({ key, label: group.label, options: group.options, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }))
+              : [{ key: "services", label: "services", options: services, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }]),
+          ];
+          return (
+            <Card className="p-6 border-border/50 bg-card/60">
+              <div className="divide-y divide-border">
+                {groups.map((g) => {
+                  const count = g.options.filter((o) => g.selected.includes(o)).length;
+                  return (
+                    <section key={g.key} className="py-5 first:pt-0">
+                      <div className="mb-3 flex items-baseline justify-between gap-3">
+                        <p className="text-[15px] font-semibold">{groupQuestion(g.key, g.label)}</p>
+                        <span className={cn("shrink-0 text-xs font-medium", count ? "text-primary" : "text-muted-foreground")}>{count ? `${count} selected` : "None selected"}</span>
+                      </div>
+                      <div className="gap-2 sm:columns-2 xl:columns-3 [&>label]:mb-2">
+                        {g.options.map((item) => {
+                          const checked = g.selected.includes(item);
+                          return (
+                            <label key={item} className={cn(
+                              "flex break-inside-avoid items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm font-medium leading-snug cursor-pointer transition-colors",
+                              checked ? "border-primary/50 bg-primary/5" : "border-input bg-background/60 hover:border-primary/30"
+                            )}>
+                              <Checkbox className="mt-0.5" checked={checked} onCheckedChange={() => g.toggle(item)} />
+                              <span className="min-w-0">{item}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+                <section className="py-5">
+                  <p className="mb-3 text-[15px] font-semibold">{EMERGENCY_QUESTION}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <ToggleRow title="Emergency services" checked={emergencyServices} onCheckedChange={setEmergencyServices} />
+                    <ToggleRow title="Ambulance available" checked={ambulanceAvailable} onCheckedChange={setAmbulanceAvailable} />
                   </div>
-                ) : serviceGroups.map(([key, group]) => (
-                  <div key={key}>
-                    <p className="text-sm font-semibold mb-2">{group.label}</p>
-                    <div className="grid sm:grid-cols-2 gap-2">
-                      {group.options.map((item) => {
-                        const checked = services.includes(item);
-                        return (
-                          <label key={item} className={cn(
-                            "flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border cursor-pointer transition-colors",
-                            checked ? "border-primary/40 bg-primary/5" : "border-border/60 bg-background/60"
-                          )}>
-                            <Checkbox checked={checked} onCheckedChange={() => toggleInList(services, setServices, item)} />
-                            {item}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                </section>
               </div>
-            </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <ToggleRow title="Emergency services" checked={emergencyServices} onCheckedChange={setEmergencyServices} />
-              <ToggleRow title="Ambulance available" checked={ambulanceAvailable} onCheckedChange={setAmbulanceAvailable} />
-            </div>
-
-            <SaveButton onClick={() => save({ specializations, services, emergencyServices, ambulanceAvailable })} />
-          </Card>
-        )}
+              <SaveButton onClick={() => save({ specializations, services, emergencyServices, ambulanceAvailable })} />
+            </Card>
+          );
+        })()}
 
         {section === "staff" && (
           <Card className="p-6 border-border/50 bg-card/60">

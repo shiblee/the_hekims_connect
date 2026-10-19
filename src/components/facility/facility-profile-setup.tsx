@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { FloatingField, FieldError, FloatingMultiSelect } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
+import { groupQuestion, EMERGENCY_QUESTION } from "@/lib/facility-services";
 import {
   Building2, MapPin, MapPinned, Clock, Stethoscope, Sparkles, LogOut, ChevronLeft,
   ChevronRight, CheckCircle2, Loader2, Hospital, HeartPulse, Hash, Calendar,
@@ -148,14 +149,6 @@ function ToggleRow({ icon: Icon, title, subtitle, checked, onCheckedChange }: { 
 }
 
 interface PickGroup { key: string; label: string; options: string[]; selected: string[]; toggle: (v: string) => void; setAll: (vals: string[], on: boolean) => void }
-/** The question shown above each group's field (same style as the other steps' questions). */
-const GROUP_QUESTION: Record<string, string> = {
-  specialization: "Which medical specializations are available?",
-  service_diagnostic: "Which diagnostic & examination services do you offer?",
-  service_emergency: "Which emergency services do you offer?",
-  service_maternal_child: "Which maternal & child health services do you offer?",
-  service_other: "Which other Unani services do you offer?",
-};
 const GROUP_ICON: Record<string, typeof Stethoscope> = {
   specialization: Stethoscope, service_diagnostic: Microscope, service_emergency: Siren, service_maternal_child: Baby, service_other: Leaf,
 };
@@ -768,14 +761,14 @@ export function FacilityProfileSetup() {
                                 })),
                               ] as PickGroup[]).map((g) => (
                                 <div key={g.key}>
-                                  <p className="text-[15px] font-semibold mb-3.5">{GROUP_QUESTION[g.key] ?? `Which ${g.label.toLowerCase()} do you offer?`}</p>
+                                  <p className="text-[15px] font-semibold mb-3.5">{groupQuestion(g.key, g.label)}</p>
                                   <GroupMultiSelect group={g} error={g.key === "specialization" ? !!fieldErrors.specializations : !!fieldErrors.services && form.services.length === 0} />
                                 </div>
                               ))}
                             </div>
                             <FieldError message={fieldErrors.specializations || fieldErrors.services} />
                             <div>
-                            <p className="text-[15px] font-semibold mb-2">Do you provide emergency care or an ambulance?</p>
+                            <p className="text-[15px] font-semibold mb-2">{EMERGENCY_QUESTION}</p>
                             <div className="grid gap-2 sm:grid-cols-2">
                               <ToggleRow icon={Siren} title="Emergency services" subtitle="Patients can come in an emergency" checked={form.emergencyServices} onCheckedChange={(v) => set("emergencyServices", v)} />
                               <ToggleRow icon={Ambulance} title="Ambulance" subtitle="The facility runs an ambulance" checked={form.ambulanceAvailable} onCheckedChange={(v) => set("ambulanceAvailable", v)} />
