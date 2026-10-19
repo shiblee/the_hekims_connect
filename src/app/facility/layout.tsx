@@ -6,6 +6,7 @@ import { useRequireFacility } from "@/lib/use-require-session";
 import { FacilityShell } from "@/components/facility/facility-shell";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { GuidanceProvider } from "@/components/guidance/guidance-provider";
+import { HelpButton, HelpPanel } from "@/components/guidance/help-panel";
 import { api } from "@/lib/api";
 
 function LoadingScreen() {
@@ -38,7 +39,7 @@ export default function FacilityLayout({ children }: { children: React.ReactNode
   if (!facility.profileCompleted && !isSetupPage) return <LoadingScreen />;
   if (facility.profileCompleted && isSetupPage) return <LoadingScreen />;
 
-  if (isSetupPage) return <GuidanceProvider client={api}>{children}</GuidanceProvider>;
+  if (isSetupPage) return <GuidanceProvider client={api} renderHelp={() => <HelpPanel />}>{children}<HelpButton floating /></GuidanceProvider>;
 
-  return <GuidanceProvider client={api}><FacilityShell>{children}</FacilityShell></GuidanceProvider>;
+  return <GuidanceProvider client={api} renderHelp={() => <HelpPanel />}><FacilityShell>{children}</FacilityShell></GuidanceProvider>;
 }

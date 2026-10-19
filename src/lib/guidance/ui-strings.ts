@@ -6,6 +6,9 @@ export interface GuideUi {
   onOtherPage: (page: string) => string; openPage: (page: string) => string;
   help: string; helpTitle: string; tours: string; startTour: string; resumeTour: string; restartTour: string;
   noHelp: string; related: string; questions: string; updated: (d: string) => string; version: (v: number) => string;
+  finished: string; skipped: string; inProgress: string; updatedTour: string; openTutorial: string;
+  /** Tutorial section headings (keys of DOC_SECTIONS). */
+  sections: Record<string, string>;
 }
 
 const en: GuideUi = {
@@ -20,6 +23,12 @@ const en: GuideUi = {
   help: "Help", helpTitle: "Help & tutorial", tours: "Guided tours", startTour: "Start tour", resumeTour: "Resume", restartTour: "Restart",
   noHelp: "There's no tutorial for this page yet.",
   related: "Related", questions: "Questions", updated: (d) => `Updated ${d}`, version: (v) => `Version ${v}`,
+  finished: "Finished", skipped: "Skipped", inProgress: "In progress", updatedTour: "Updated since you saw it", openTutorial: "Tutorial",
+  sections: {
+    overview: "Overview", purpose: "Purpose", access: "Who can use it", permissions: "Permissions needed", controls: "Sections & controls",
+    workflow: "Step-by-step", fields: "Fields and what they mean", tasks: "Common tasks", behaviour: "What happens next",
+    validation: "Rules & common errors", troubleshooting: "Troubleshooting", security: "Privacy & security", next: "Next steps",
+  },
 };
 
 const UI: Record<string, GuideUi> = { en };

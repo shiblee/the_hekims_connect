@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { PatientReportsPanel } from "@/components/facility/reports/patient-reports-panel";
 import { FlashNotice } from "@/components/shared/flash-notice";
 import { canOpenPage } from "@/lib/staff-permissions";
+import { HelpButton } from "@/components/guidance/help-panel";
 import {
   LayoutDashboard, Activity, Pill, CalendarDays, Users, MessageSquare,
   FilePlus2, LogOut, Search, Bell, Stethoscope, Lock, ClipboardList, Wallet,
@@ -172,6 +173,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search patients…" className="pl-9 h-9 bg-background/60" onClick={() => go("patients")} readOnly />
             </div>
+            <HelpButton />
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />

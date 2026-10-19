@@ -1,6 +1,7 @@
 "use client";
 
 import { GuidanceProvider } from "@/components/guidance/guidance-provider";
+import { HelpButton, HelpPanel } from "@/components/guidance/help-panel";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -73,6 +74,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   if (!checked || !admin) return <LoadingScreen />;
 
   return (
+    <GuidanceProvider client={adminApi} renderHelp={() => <HelpPanel />}>
     <div className="min-h-screen flex flex-col bg-background text-[15px] font-medium">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
@@ -85,6 +87,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
             </Link>
 
             <div className="flex items-center gap-2 shrink-0">
+              <HelpButton className="h-9 w-9 text-muted-foreground" />
               <DropdownMenu>
                 <DropdownMenuTrigger className="relative flex items-center justify-center h-9 w-9 rounded-lg hover:bg-card transition-colors outline-none text-muted-foreground hover:text-foreground">
                   <Bell className="h-4.5 w-4.5" />
@@ -166,7 +169,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           </nav>
         </div>
       </header>
-      <main className="flex-1"><GuidanceProvider client={adminApi}>{children}</GuidanceProvider></main>
+      <main className="flex-1">{children}</main>
     </div>
+    </GuidanceProvider>
   );
 }
