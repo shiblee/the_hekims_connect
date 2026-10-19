@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee,
+  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee, Lock,
 } from "lucide-react";
 import { TeamView } from "./team";
 import { PermissionsView } from "./permissions";
@@ -289,7 +289,14 @@ export function ProfileView({ section }: { section: string }) {
                 ) : (
                   <FloatingField id="facilityType" label="Facility type" value={facilityType} onChange={(e) => setFacilityType(e.target.value)} />
                 )}
-                <FloatingField id="hfrNumber" label="HFR number" value={hfrNumber} onChange={(e) => setHfrNumber(e.target.value.toUpperCase())} />
+                {facility?.hfrNumber ? (
+                  <div>
+                    <FloatingField id="hfrNumber" label="HFR number" value={hfrNumber} readOnly aria-readonly className="cursor-not-allowed bg-muted/50 text-muted-foreground focus:border-input" endAdornment={<Lock className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />} />
+                    <p className="mt-1.5 text-xs text-muted-foreground">Locked once saved. To correct it, contact support.</p>
+                  </div>
+                ) : (
+                  <FloatingField id="hfrNumber" label="HFR number" value={hfrNumber} onChange={(e) => setHfrNumber(e.target.value.toUpperCase())} />
+                )}
                 <FloatingField id="establishmentDate" type="month" label="Establishment date" value={establishmentDate} max={new Date().toISOString().slice(0, 7)} onChange={(e) => setEstablishmentDate(e.target.value)} />
                 <FloatingField id="alternateContactNumber" label="Alternate contact number" value={alternateContactNumber} onChange={(e) => setAlternateContactNumber(e.target.value)} />
               </div>

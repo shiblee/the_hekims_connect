@@ -46,6 +46,16 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
 
+  if (body.hfrNumber !== undefined) {
+    // HFR number is locked once saved: it can be added once, never changed or cleared here.
+    const current = await db.facility.findUnique({ where: { id: auth.id }, select: { hfrNumber: true } });
+    if (current?.hfrNumber) {
+      if (String(body.hfrNumber || "").toUpperCase() !== current.hfrNumber.toUpperCase()) {
+        return NextResponse.json({ error: "HFR Number can't be changed once saved. Please contact support to correct it." }, { status: 400 });
+      }
+      delete body.hfrNumber;
+    }
+  }
   if (body.hfrNumber && !HFR_PATTERN.test(body.hfrNumber)) {
     return NextResponse.json({ error: "HFR Number should be IN followed by 10 digits (e.g. IN0123456789)" }, { status: 400 });
   }
