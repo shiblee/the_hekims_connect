@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
 import { formatAge, daysAgo } from "@/lib/age";
 import { type VisitVitals } from "@/lib/vitals-trend";
 import { cn } from "@/lib/utils";
@@ -20,7 +22,6 @@ import { ReferralLine } from "@/components/facility/views/visit-findings";
 import { useStickyRail } from "@/hooks/use-sticky-rail";
 import { Card } from "@/components/ui/card";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
-import { savedAt } from "@/lib/flash";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +78,10 @@ export function PatientDetail({ patientId }: { patientId: string }) {
   // Messages for the bottom action bar (save results, print problems) — shown right above it.
   const msg = useNotice();
   const [loadError, setLoadError] = useState<string | null>(null);
+  const t = useTranslations("clinic.record");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
+  const list = useListFormat();
 
   const load = async () => {
     setLoading(true);
@@ -89,7 +94,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       setPatient(p.patient);
       setVisits(v.visits || []);
     } catch (e: any) {
-      setLoadError(e.message || "Network error");
+      setLoadError(e.message || tc("network_error"));
     } finally {
       setLoading(false);
     }
@@ -106,7 +111,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       const v = await api.get<{ visits: VisitRow[] }>(`/api/facility/visits?patientId=${patientId}`);
       setVisits(v.visits || []);
     } catch (e: any) {
-      msg.warning("The reading was saved, but this page couldn't refresh", `${e.message || "Network error"}. Reload the page to see the latest vitals.`, { retry: () => window.location.reload(), retryLabel: "Reload" });
+      msg.warning(t("refresh_failed"), t("refresh_failed_hint", { error: e.message || tc("network_error") }), { retry: () => window.location.reload(), retryLabel: tc("reload") });
     }
   };
 
@@ -132,12 +137,12 @@ export function PatientDetail({ patientId }: { patientId: string }) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-12">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
       </div>
     );
   }
   if (!patient) {
-    return loadError ? <LoadFailed what="this patient" detail={loadError} onRetry={load} /> : <p className="text-muted-foreground text-sm">Patient not found.</p>;
+    return loadError ? <LoadFailed what={t("this_patient")} detail={loadError} onRetry={load} /> : <p className="text-muted-foreground text-sm">{t("not_found")}</p>;
   }
 
   // Patient journey step state — each flag is derived from a real record,
@@ -179,13 +184,13 @@ export function PatientDetail({ patientId }: { patientId: string }) {
     // server-side — the clues panel has no other way to learn its tile
     // percentages just went stale, since it only fetches once on mount.
     humoralCluesRef.current?.refresh();
-    const sections = ["Main Complaints", "Other Symptoms", "Resident Clinical Note", "Emergency Warning Signs"];
+    const sections = [t("sec_complaints"), t("sec_symptoms"), t("sec_note"), t("sec_redflags")];
     const failed = sections.filter((_, i) => results[i].status === "rejected");
     if (failed.length) {
       // Each section shows its own error in place; this sums it up by the buttons.
       msg.error(
-        failed.length === 1 ? `${failed[0]} wasn't saved` : `${failed.length} sections weren't saved`,
-        `${failed.length === 1 ? "See the message in that section above." : `${failed.join(", ")} — see the message in each section above.`} Everything else was saved, and nothing you entered was lost.`,
+        failed.length === 1 ? t("one_not_saved", { section: failed[0] }) : t("n_not_saved", { count: failed.length }),
+        failed.length === 1 ? t("one_not_saved_hint") : t("n_not_saved_hint", { sections: list(failed) }),
       );
       return false;
     }
@@ -197,7 +202,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
     setSavingStage(true);
     try {
       const allSaved = await saveStageDrafts();
-      if (allSaved) msg.success("Draft saved", savedAt());
+      if (allSaved) msg.success(t("draft_saved"), t("saved_at", { time: new Date().toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) }));
     } finally {
       setSavingStage(false);
     }
@@ -222,16 +227,16 @@ export function PatientDetail({ patientId }: { patientId: string }) {
   return (
     <div className="w-full">
       <button onClick={() => router.push("/facility/patients")} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
-        <ChevronLeft className="h-4 w-4" /> Back to Patients
+        <ChevronLeft className="h-4 w-4" /> {t("back")}
       </button>
 
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
-        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">Clinical Record</h1>
+        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">{t("title")}</h1>
         <button
           onClick={() => router.push(`/facility/patients/${patientId}`)}
           className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
         >
-          Edit Registration <ArrowRight className="h-3.5 w-3.5" />
+          {t("edit_registration")} <ArrowRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -258,7 +263,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         open={photoDialogOpen}
         onOpenChange={setPhotoDialogOpen}
         currentPhoto={patient.photo}
-        title="Change patient photo"
+        title={t("change_photo")}
         onSave={(dataUrl) => savePhoto(dataUrl)}
         onRemove={() => savePhoto(null)}
       />
@@ -277,15 +282,15 @@ export function PatientDetail({ patientId }: { patientId: string }) {
               <ShieldQuestion className="h-4 w-4" />
             </div>
             <p className="text-sm font-semibold text-foreground">
-              Declined Referral — Continued Against Medical Advice {amaVisits.length > 1 && `(${amaVisits.length})`}
+              {t("ama_title")} {amaVisits.length > 1 && `(${amaVisits.length})`}
             </p>
           </div>
           <div className="space-y-2">
             {amaVisits.map((v) => (
               <div key={v.id} className="rounded-lg border border-amber-500/20 bg-background/60 p-3 text-sm">
-                <p className="font-medium mb-1">{v.visitCode ? `Visit ${v.visitCode}` : "Visit"} · {daysAgo(v.amaDecline!.createdAt)}</p>
-                <p><span className="text-muted-foreground">Referral recommended for:</span> {v.amaDecline!.reason}</p>
-                {v.amaDecline!.patientReason && <p><span className="text-muted-foreground">Patient&apos;s reason:</span> {v.amaDecline!.patientReason}</p>}
+                <p className="font-medium mb-1">{v.visitCode ? t("visit_code", { code: v.visitCode }) : t("visit")} · {daysAgo(v.amaDecline!.createdAt)}</p>
+                <p><span className="text-muted-foreground">{t("ama_reason")}</span> {v.amaDecline!.reason}</p>
+                {v.amaDecline!.patientReason && <p><span className="text-muted-foreground">{t("patient_reason")}</span> {v.amaDecline!.patientReason}</p>}
               </div>
             ))}
           </div>
@@ -328,20 +333,20 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       )}>
         <div className="flex items-center gap-2 shrink-0 flex-wrap ms-auto">
           {latestVisit && (
-            <Button size="sm" variant="ghost" onClick={openReport} title="Print assessment report (opens in a new tab; shows saved data)">
+            <Button size="sm" variant="ghost" onClick={openReport} title={t("print_title")}>
               <Printer className="h-3.5 w-3.5" />
             </Button>
           )}
           {latestVisit && (
             <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/60 dark:border-destructive/40 dark:hover:bg-destructive/20 dark:hover:text-destructive" onClick={referPatient} disabled={savingStage}>
-              <ShieldAlert className="h-3.5 w-3.5" /> Refer Patient
+              <ShieldAlert className="h-3.5 w-3.5" /> {t("refer")}
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={saveDraft} disabled={savingStage}>
-            {savingStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save Draft
+            {savingStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} {t("save_draft")}
           </Button>
           <Button size="sm" onClick={proceedToStage2} disabled={savingStage || !checkInComplete}>
-            {savingStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Proceed to Mizaj Morphometry (Stage 3) <ArrowRight className="h-3.5 w-3.5" />
+            {savingStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} {t("proceed")} <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </Card>
