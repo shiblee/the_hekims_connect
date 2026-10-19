@@ -148,6 +148,14 @@ function ToggleRow({ icon: Icon, title, subtitle, checked, onCheckedChange }: { 
 }
 
 interface PickGroup { key: string; label: string; options: string[]; selected: string[]; toggle: (v: string) => void; setAll: (vals: string[], on: boolean) => void }
+/** The question shown above each group's field (same style as the other steps' questions). */
+const GROUP_QUESTION: Record<string, string> = {
+  specialization: "Which medical specializations are available?",
+  service_diagnostic: "Which diagnostic & examination services do you offer?",
+  service_emergency: "Which emergency services do you offer?",
+  service_maternal_child: "Which maternal & child health services do you offer?",
+  service_other: "Which other Unani services do you offer?",
+};
 const GROUP_ICON: Record<string, typeof Stethoscope> = {
   specialization: Stethoscope, service_diagnostic: Microscope, service_emergency: Siren, service_maternal_child: Baby, service_other: Leaf,
 };
@@ -162,7 +170,7 @@ function GroupMultiSelect({ group, error }: { group: PickGroup; error: boolean }
   return (
     <FloatingMultiSelect
       id={`pick-${group.key}`}
-      label={`${group.label}${chosen.length ? ` · ${chosen.length}` : ""}`}
+      label={chosen.length ? `${chosen.length} selected` : "Search and select"}
       labelIcon={Icon}
       error={error}
       selected={chosen.map((o) => ({ id: o, label: o }))}
@@ -713,7 +721,7 @@ export function FacilityProfileSetup() {
                             <p className="text-sm text-muted-foreground">
                               <b className="text-foreground">{form.specializations.length}</b> specialization{form.specializations.length === 1 ? "" : "s"} · <b className="text-foreground">{form.services.length}</b> service{form.services.length === 1 ? "" : "s"} selected
                             </p>
-                            <div className="space-y-4">
+                            <div className="space-y-5">
                             {([
                                 {
                                   key: "specialization", label: "Major medical specializations", options: specializationOptions, selected: form.specializations,
@@ -726,13 +734,19 @@ export function FacilityProfileSetup() {
                                   setAll: (vals: string[], on: boolean) => set("services", on ? [...new Set([...form.services, ...vals])] : form.services.filter((x) => !vals.includes(x))),
                                 })),
                               ] as PickGroup[]).map((g) => (
-                                <GroupMultiSelect key={g.key} group={g} error={g.key === "specialization" ? !!fieldErrors.specializations : !!fieldErrors.services && form.services.length === 0} />
+                                <div key={g.key}>
+                                  <p className="text-[15px] font-semibold mb-3.5">{GROUP_QUESTION[g.key] ?? `Which ${g.label.toLowerCase()} do you offer?`}</p>
+                                  <GroupMultiSelect group={g} error={g.key === "specialization" ? !!fieldErrors.specializations : !!fieldErrors.services && form.services.length === 0} />
+                                </div>
                               ))}
                             </div>
                             <FieldError message={fieldErrors.specializations || fieldErrors.services} />
+                            <div>
+                            <p className="text-[15px] font-semibold mb-2">Do you provide emergency care or an ambulance?</p>
                             <div className="grid gap-2 sm:grid-cols-2">
                               <ToggleRow icon={Siren} title="Emergency services" subtitle="Patients can come in an emergency" checked={form.emergencyServices} onCheckedChange={(v) => set("emergencyServices", v)} />
                               <ToggleRow icon={Ambulance} title="Ambulance" subtitle="The facility runs an ambulance" checked={form.ambulanceAvailable} onCheckedChange={(v) => set("ambulanceAvailable", v)} />
+                            </div>
                             </div>
                           </div>
                         </div>
