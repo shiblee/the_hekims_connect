@@ -209,7 +209,7 @@ export function ProfileView({ section }: { section: string }) {
     <>
     <NoticeSlot state={msg} />
     <Button
-      className="self-start h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
+      className="self-end h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
       disabled={saving}
       onClick={onClick}
     >
