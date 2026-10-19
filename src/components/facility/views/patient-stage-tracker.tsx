@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Check, ChevronRight, Lock, TriangleAlert } from "lucide-react";
 
@@ -39,20 +40,23 @@ export function PatientStageTracker({
   onNavigate?: (href: string) => void;
 }) {
   const router = useRouter();
+  const t = useTranslations("clinic.journey");
+  // Journey steps are named by key, so every language gets its own wording.
+  const named = (s: StageTrackerStep) => (t.has(s.key) ? { ...s, label: t(s.key), subtitle: t(`${s.key}_sub`), description: t(`${s.key}_desc`) } : s);
   const activeIndex = Math.max(0, steps.findIndex((s) => s.key === activeKey));
   const go = (href: string) => (onNavigate ? onNavigate(href) : router.push(href));
 
   return (
-    <nav aria-label="Visit progress" className="mb-5 rounded-xl border border-border/50 bg-card/60 px-3 py-2">
+    <nav aria-label={t("nav")} className="mb-5 rounded-xl border border-border/50 bg-card/60 px-3 py-2">
       <ol className="flex items-center">
-        {steps.map((s, i) => {
+        {steps.map(named).map((s, i) => {
           const isComplete = completedKeys.includes(s.key);
           const variant = s.variant ?? (isComplete ? "complete" : s.key === activeKey ? "active" : "pending");
           const isNext = variant === "pending" && i === activeIndex + 1;
           const status = s.variantLabel
-            ?? (variant === "complete" ? "Done" : variant === "active" ? "You are here" : variant === "warning" ? "Needs attention" : isNext ? "Up next" : "Later");
+            ?? t(variant === "complete" ? "done" : variant === "active" ? "here" : variant === "warning" ? "attention" : isNext ? "next" : "later");
           const clickable = !!s.href && variant !== "active";
-          const hint = clickable ? "Click to open this step" : variant === "active" ? "You're working on this step" : variant === "pending" ? "Opens once the earlier steps are done" : null;
+          const hint = clickable ? t("hint_click") : variant === "active" ? t("hint_active") : variant === "pending" ? t("hint_pending") : null;
           const last = i === steps.length - 1;
 
           return (
@@ -105,7 +109,7 @@ export function PatientStageTracker({
                   )}
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-foreground">Step {i + 1} · {s.label}</span>
+                    <span className="text-sm font-semibold text-foreground">{t("step_n", { n: i + 1, label: s.label })}</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">{status}</span>
                   </span>
                   {s.subtitle && <span className="block text-[13px] font-medium text-emerald-700 dark:text-emerald-400 mt-0.5">{s.subtitle}</span>}
@@ -130,7 +134,7 @@ export function PatientStageTracker({
           );
         })}
         <li className="hidden lg:block shrink-0 ps-3 ms-1 border-s border-border/60 text-[13px] text-muted-foreground whitespace-nowrap">
-          Step <span className="font-semibold text-foreground">{activeIndex + 1}</span>/{steps.length}
+          {t.rich("step_of", { n: activeIndex + 1, total: steps.length, b: (c) => <span className="font-semibold text-foreground">{c}</span> })}
         </li>
       </ol>
     </nav>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
@@ -68,18 +70,18 @@ interface QuickField { key: string; label: string; unit: string; bound?: [number
 // separate from the full vitals form so recording just this one metric
 // never requires touching (or even seeing) every other field. A function of
 // the (admin-configurable) entry bounds rather than a static table.
-function buildQuickFields(entryBounds: Record<string, [number, number]>): Record<string, QuickField[]> {
+function buildQuickFields(entryBounds: Record<string, [number, number]>, t: (key: string) => string): Record<string, QuickField[]> {
   return {
-    pulse: [{ key: "pulse", label: "Pulse", unit: "bpm", bound: entryBounds.pulse }],
+    pulse: [{ key: "pulse", label: t("pulse"), unit: "bpm", bound: entryBounds.pulse }],
     bpSystolic: [
-      { key: "bpSystolic", label: "Systolic", unit: "mmHg", bound: entryBounds.bpSystolic },
-      { key: "bpDiastolic", label: "Diastolic", unit: "mmHg", bound: entryBounds.bpDiastolic },
+      { key: "bpSystolic", label: t("systolic"), unit: "mmHg", bound: entryBounds.bpSystolic },
+      { key: "bpDiastolic", label: t("diastolic"), unit: "mmHg", bound: entryBounds.bpDiastolic },
     ],
     spo2: [{ key: "spo2", label: "SpO₂", unit: "%", bound: entryBounds.spo2 }],
-    temperatureF: [{ key: "temperatureF", label: "Temperature", unit: "°F", bound: entryBounds.temperatureF }],
+    temperatureF: [{ key: "temperatureF", label: t("temperature"), unit: "°F", bound: entryBounds.temperatureF }],
     heightCm: [
-      { key: "heightCm", label: "Height", unit: "cm" },
-      { key: "weightKg", label: "Weight", unit: "kg" },
+      { key: "heightCm", label: t("height"), unit: "cm" },
+      { key: "weightKg", label: t("weight"), unit: "kg" },
     ],
   };
 }
@@ -168,7 +170,12 @@ export function VitalsPanel({
   currentVisitId?: string | null;
 }) {
   const { normalRanges, entryBounds } = useVitalsRangeConfig(apiClient);
-  const QUICK_FIELDS = useMemo(() => buildQuickFields(entryBounds), [entryBounds]);
+  const t = useTranslations("clinic.vitals");
+  const tr = t; // for spots where `t` is a tile
+  const tc = useTranslations("common");
+  const ts = useTranslations("clinic.vital_status");
+  const dl = useDateLocale();
+  const QUICK_FIELDS = useMemo(() => buildQuickFields(entryBounds, t), [entryBounds, t]);
   const [detailKey, setDetailKey] = useState<keyof TrendPoint | null>(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickValues, setQuickValues] = useState<Record<string, string>>({});
@@ -231,7 +238,7 @@ export function VitalsPanel({
     const visit = findLatestVisitFor(visitsWithVitals, metric.key as keyof VisitVitals);
     msg.clear();
     if (!visit) {
-      msg.info(`No ${metric.label} reading recorded yet`, "Use Add Reading to record the first one.");
+      msg.info(t("no_reading", { metric: metric.label }), t("no_reading_hint"));
       return;
     }
     setShowQuickAdd(true);
@@ -243,7 +250,7 @@ export function VitalsPanel({
     try {
       const res = await apiClient.get<{ vitals: VisitVitals | null; locked: boolean }>(`/api/facility/visits/${visit.id}/vitals`);
       if (!res.vitals || res.locked) {
-        msg.warning("This reading can no longer be edited", "It's outside the edit window set by the admin. Add a new reading instead — the earlier one stays in the history.");
+        msg.warning(t("locked"), t("locked_hint"));
         setShowQuickAdd(false);
         return;
       }
@@ -256,7 +263,7 @@ export function VitalsPanel({
       }
       setQuickValues(prefill);
     } catch (e: any) {
-      msg.error("The last reading couldn't be loaded", `${e.message || "Network error"}.`, { retry: () => openEditLastReading(metric), retryLabel: "Try again" });
+      msg.error(t("last_failed"), `${e.message || tc("network_error")}.`, { retry: () => openEditLastReading(metric), retryLabel: tc("retry") });
       setShowQuickAdd(false);
     } finally {
       setCheckingEditable(false);
@@ -270,16 +277,16 @@ export function VitalsPanel({
     for (const f of fields) {
       const raw = quickValues[f.key] ?? "";
       if (raw === "") {
-        errors[f.key] = "Required";
+        errors[f.key] = t("required");
         continue;
       }
       const num = toStored(f.key, raw, units);
       if (num == null || num <= 0 && f.key !== "temperatureF") {
-        errors[f.key] = f.key === "heightCm" && units.height === "ft + in" ? "Write feet and inches with a space, e.g. 5 7" : "Must be a number";
+        errors[f.key] = f.key === "heightCm" && units.height === "ft + in" ? t("ft_in_hint") : t("must_number");
         continue;
       }
       if (f.bound && (num < f.bound[0] || num > f.bound[1])) {
-        errors[f.key] = `Must be between ${showIn(f.key, f.bound[0], units)} and ${showIn(f.key, f.bound[1], units)}`;
+        errors[f.key] = t("between", { min: showIn(f.key, f.bound[0], units), max: showIn(f.key, f.bound[1], units) });
         continue;
       }
       // Always stored in °F / cm / kg.
@@ -287,7 +294,7 @@ export function VitalsPanel({
     }
     // The lower number can never be above the upper one — almost always a swapped entry.
     if (metric.key === "bpSystolic" && !errors.bpSystolic && !errors.bpDiastolic && parseFloat(body.bpDiastolic) >= parseFloat(body.bpSystolic)) {
-      errors.bpDiastolic = "Must be lower than systolic — check the two numbers aren't swapped";
+      errors.bpDiastolic = t("dia_lower");
     }
     if (Object.keys(errors).length > 0) {
       setQuickErrors(errors);
@@ -316,7 +323,7 @@ export function VitalsPanel({
         visitId = res.visit.id;
       }
       await apiClient.post<{ vitals: VisitVitals }>(`/api/facility/visits/${visitId}/vitals`, postBody);
-      msg.success(`${metric.label} reading ${editingVisitId ? "updated" : "saved"}`, "The chart and latest value above now include it.");
+      msg.success(t(editingVisitId ? "updated" : "saved", { metric: metric.label }), t("saved_hint"));
       // Saving (Enter or the Save/Update button) closes the quick-add card
       // back down — the chart/latest value refreshes via onSaved to show
       // what was just recorded.
@@ -327,7 +334,7 @@ export function VitalsPanel({
       setEditingVitals(null);
       await onSaved?.();
     } catch (e: any) {
-      msg.error("This reading wasn't saved", `${e.message || "Network error"}. The values are still in the form — try again.`, { retry: () => saveQuickReading(metric), retryLabel: "Save again" });
+      msg.error(t("not_saved"), t("not_saved_hint", { error: e.message || tc("network_error") }), { retry: () => saveQuickReading(metric), retryLabel: t("save_again") });
     } finally {
       setAddingReading(false);
     }
@@ -339,10 +346,10 @@ export function VitalsPanel({
     return [...visitsWithVitals]
       .reverse()
       .map((v) => ({
-        date: `${new Date(v.visitDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}, ${new Date(v.visitDate).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })}`,
-        fullDate: new Date(v.visitDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+        date: `${new Date(v.visitDate).toLocaleDateString(dl, { month: "short", day: "numeric" })}, ${new Date(v.visitDate).toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit", hour12: true })}`,
+        fullDate: new Date(v.visitDate).toLocaleDateString(dl, { month: "short", day: "numeric", year: "numeric" }),
         relativeDate: daysAgo(v.visitDate),
-        time: new Date(v.visitDate).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true }),
+        time: new Date(v.visitDate).toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit", hour12: true }),
         heartRate: v.vitalSigns?.heartRate ?? null,
         pulse: v.vitalSigns?.pulse ?? null,
         bpSystolic: v.vitalSigns?.bpSystolic ?? null,
@@ -353,23 +360,23 @@ export function VitalsPanel({
         heightCm: v.vitalSigns?.heightCm ?? null,
         bmi: calculateBmi(v.vitalSigns?.heightCm ?? null, v.vitalSigns?.weightKg ?? null),
       }));
-  }, [visitsWithVitals]);
+  }, [visitsWithVitals, dl]);
 
   const METRICS: MetricConfig[] = [
-    { key: "bpSystolic", secondaryKey: "bpDiastolic", label: "Blood Pressure", unani: "Dabao-e-Khoon", primaryLabel: "Systolic", secondaryLabel: "Diastolic", icon: Gauge, unit: "mmHg", color: "#f97316", secondaryColor: "#8b5cf6", range: normalRanges.bpSystolic, secondaryRange: normalRanges.bpDiastolic },
-    { key: "pulse", label: "Pulse", unani: "Nabz", icon: HeartPulse, unit: "bpm", color: "#ef4444", range: normalRanges.pulse },
-    { key: "spo2", label: "Oxygen", unani: "SpO₂ saturation", icon: Droplets, unit: "%", color: "#3b82f6", range: normalRanges.spo2 },
-    { key: "temperatureF", label: "Temperature", unani: "Hararat", icon: Thermometer, unit: units.temp, color: "#f59e0b", range: normalRanges.temperatureF },
-    { key: "heightCm", secondaryKey: "weightKg", label: "Height & Weight", unani: "Qad / Wazan", primaryLabel: "Height (cm)", secondaryLabel: "Weight (kg)", icon: Ruler, unit: "", color: "#0ea5e9", secondaryColor: "#14b8a6" },
-    { key: "bmi", lookupKey: "heightCm", label: "BMI", unani: "Body mass index", icon: Scale, unit: "kg/m²", color: "#14b8a6", isComputed: true, formula: "Weight (kg) ÷ height (m)², from the latest height and weight." },
+    { key: "bpSystolic", secondaryKey: "bpDiastolic", label: t("bp"), unani: "Dabao-e-Khoon", primaryLabel: t("systolic"), secondaryLabel: t("diastolic"), icon: Gauge, unit: "mmHg", color: "#f97316", secondaryColor: "#8b5cf6", range: normalRanges.bpSystolic, secondaryRange: normalRanges.bpDiastolic },
+    { key: "pulse", label: t("pulse"), unani: "Nabz", icon: HeartPulse, unit: "bpm", color: "#ef4444", range: normalRanges.pulse },
+    { key: "spo2", label: t("oxygen"), unani: t("spo2_sat"), icon: Droplets, unit: "%", color: "#3b82f6", range: normalRanges.spo2 },
+    { key: "temperatureF", label: t("temperature"), unani: "Hararat", icon: Thermometer, unit: units.temp, color: "#f59e0b", range: normalRanges.temperatureF },
+    { key: "heightCm", secondaryKey: "weightKg", label: t("height_weight"), unani: "Qad / Wazan", primaryLabel: t("height_cm"), secondaryLabel: t("weight_kg"), icon: Ruler, unit: "", color: "#0ea5e9", secondaryColor: "#14b8a6" },
+    { key: "bmi", lookupKey: "heightCm", label: "BMI", unani: t("bmi_name"), icon: Scale, unit: "kg/m²", color: "#14b8a6", isComputed: true, formula: t("bmi_formula") },
   ];
 
   const statusFor = (key: keyof TrendPoint, p: { bpSystolic?: number | null; bpDiastolic?: number | null; pulse?: number | null; spo2?: number | null; temperatureF?: number | null; bmi?: number | null }) =>
-    key === "bpSystolic" ? bpStatus(p.bpSystolic ?? null, p.bpDiastolic ?? null, normalRanges)
-      : key === "pulse" ? pulseStatus(p.pulse ?? null, normalRanges)
-        : key === "spo2" ? spo2Status(p.spo2 ?? null, normalRanges)
-          : key === "temperatureF" ? temperatureStatus(p.temperatureF ?? null, normalRanges)
-            : key === "bmi" || key === "heightCm" ? bmiStatus(p.bmi ?? null)
+    key === "bpSystolic" ? bpStatus(p.bpSystolic ?? null, p.bpDiastolic ?? null, normalRanges, ts)
+      : key === "pulse" ? pulseStatus(p.pulse ?? null, normalRanges, ts)
+        : key === "spo2" ? spo2Status(p.spo2 ?? null, normalRanges, ts)
+          : key === "temperatureF" ? temperatureStatus(p.temperatureF ?? null, normalRanges, ts)
+            : key === "bmi" || key === "heightCm" ? bmiStatus(p.bmi ?? null, ts)
               : null;
 
   const formatValue = (key: keyof TrendPoint, p: TrendPoint | VisitVitals) => {
@@ -402,10 +409,10 @@ export function VitalsPanel({
   const whenShort = (iso: string) => {
     const d = new Date(iso);
     return d.toDateString() === new Date().toDateString()
-      ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })
+      ? d.toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit", hour12: true })
       : daysAgo(iso);
   };
-  const when = (iso: string) => `${daysAgo(iso)}, ${new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })}`;
+  const when = (iso: string) => `${daysAgo(iso)}, ${new Date(iso).toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit", hour12: true })}`;
 
   const renderTile = (t: (typeof tiles)[number]) => {
     const tone = t.status ? TONE_STYLES[t.status.tone] : null;
@@ -435,7 +442,7 @@ export function VitalsPanel({
             </div>
           </div>
           {t.cardTrend.length >= 2 && (
-            <div className="w-12 h-7 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" title="Trend">
+            <div className="w-12 h-7 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" title={tr("trend")}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={t.cardTrend}>
                   <Line type="monotone" dataKey={t.key} stroke={t.color} strokeWidth={1.75} dot={false} connectNulls isAnimationActive={false} />
@@ -447,10 +454,10 @@ export function VitalsPanel({
 
         {empty ? (
           <div className="flex-1 flex flex-col items-start justify-center gap-2 py-1">
-            <p className="text-sm text-muted-foreground">{t.isComputed ? "Needs height and weight" : "Not recorded yet"}</p>
+            <p className="text-sm text-muted-foreground">{t.isComputed ? tr("needs_hw") : tr("not_recorded")}</p>
             {showNewVisitButton && !t.isComputed && (
               <Button size="sm" variant="outline" className="h-7 text-[13px]" onClick={(e) => { e.stopPropagation(); openDetail(t.key); openQuickAdd(); }}>
-                <Plus className="h-3 w-3" /> Add reading
+                <Plus className="h-3 w-3" /> {tr("add_reading")}
               </Button>
             )}
           </div>
@@ -464,14 +471,14 @@ export function VitalsPanel({
                 </span>
                 {t.key === "temperatureF" ? (
                   <>
-                    <UnitSelect label="Temperature unit" value={units.temp} options={TEMP_UNITS} onChange={(v) => setVitalUnit("temp", v as VitalUnits["temp"])} />
+                    <UnitSelect label={tr("temp_unit")} value={units.temp} options={TEMP_UNITS} onChange={(v) => setVitalUnit("temp", v as VitalUnits["temp"])} />
                     {t.latest!.temperatureF != null && <span className="text-[13px] text-muted-foreground">· {showIn("temperatureF", t.latest!.temperatureF, { ...units, temp: units.temp === "°F" ? "°C" : "°F" })}</span>}
                   </>
                 ) : t.unit && <span className="text-[13px] text-muted-foreground">{t.unit}</span>}
               </p>
               {t.delta != null && (
-                <span className="flex items-center gap-0.5 text-xs text-muted-foreground whitespace-nowrap" title="Change since the previous reading">
-                  {t.delta === 0 ? <><Minus className="h-3 w-3" /> same</> : <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{t.key === "temperatureF" ? (Math.abs(t.delta) * (units.temp === "°C" ? 5 / 9 : 1)).toFixed(1) : t.key === "heightCm" ? `${Number(cmToHeightNumber(Math.abs(t.delta), units.height).toFixed(1))} ${units.height === "ft + in" ? "in" : units.height}` : Math.abs(t.delta).toFixed(t.key === "bmi" ? 1 : 0)}</>}
+                <span className="flex items-center gap-0.5 text-xs text-muted-foreground whitespace-nowrap" title={tr("change_since")}>
+                  {t.delta === 0 ? <><Minus className="h-3 w-3" /> {tr("same")}</> : <>{t.delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{t.key === "temperatureF" ? (Math.abs(t.delta) * (units.temp === "°C" ? 5 / 9 : 1)).toFixed(1) : t.key === "heightCm" ? `${Number(cmToHeightNumber(Math.abs(t.delta), units.height).toFixed(1))} ${units.height === "ft + in" ? "in" : units.height}` : Math.abs(t.delta).toFixed(t.key === "bmi" ? 1 : 0)}</>}
                 </span>
               )}
             </div>
@@ -479,15 +486,15 @@ export function VitalsPanel({
             {/* Where the reading sits against normal */}
             {t.key === "bpSystolic" ? (
               <div className="grid grid-cols-2 gap-3">
-                <RangeBar label="S" value={t.latest!.bpSystolic} scale={GAUGE_SCALE.bpSystolic} normal={normalRanges.bpSystolic} tone={t.status?.tone} />
-                <RangeBar label="D" value={t.latest!.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={t.status?.tone} />
+                <RangeBar label={tr("sys_short")} value={t.latest!.bpSystolic} scale={GAUGE_SCALE.bpSystolic} normal={normalRanges.bpSystolic} tone={t.status?.tone} />
+                <RangeBar label={tr("dia_short")} value={t.latest!.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={t.status?.tone} />
               </div>
             ) : t.key === "heightCm" ? (
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[13px] text-muted-foreground">BMI {t.bmi != null ? t.bmi.toFixed(1) : "—"}</p>
                 <span className="flex items-center gap-1">
-                  <UnitSelect label="Height unit" value={units.height} options={HEIGHT_UNITS} onChange={(v) => setVitalUnit("height", v as VitalUnits["height"])} />
-                  <UnitSelect label="Weight unit" value={units.weight} options={WEIGHT_UNITS} onChange={(v) => setVitalUnit("weight", v as VitalUnits["weight"])} />
+                  <UnitSelect label={tr("height_unit")} value={units.height} options={HEIGHT_UNITS} onChange={(v) => setVitalUnit("height", v as VitalUnits["height"])} />
+                  <UnitSelect label={tr("weight_unit")} value={units.weight} options={WEIGHT_UNITS} onChange={(v) => setVitalUnit("weight", v as VitalUnits["weight"])} />
                 </span>
               </div>
             ) : GAUGE_SCALE[t.key] ? (
@@ -503,7 +510,7 @@ export function VitalsPanel({
                 </span>
               ) : <span />}
               {t.latestVisit && <span className="truncate text-end group-hover:hidden" title={when(t.latestVisit.visitDate)}>{whenShort(t.latestVisit.visitDate)}</span>}
-              <span className="hidden group-hover:flex items-center gap-0.5 text-primary font-medium whitespace-nowrap">View details <ChevronRight className="h-3 w-3" /></span>
+              <span className="hidden group-hover:flex items-center gap-0.5 text-primary font-medium whitespace-nowrap">{tr("view_details")} <ChevronRight className="h-3 w-3" /></span>
             </div>
           </>
         )}
@@ -516,19 +523,19 @@ export function VitalsPanel({
     <Card className="p-5 border-border bg-card/60 gap-4">
       <SectionHeading
         icon={Activity}
-        title="Vital Signs & Pulse (Nabz)"
+        title={t("title")}
         right={
         <div className="flex items-center gap-2 text-[13px]">
           {visitsWithVitals.length > 0 && (needAttention > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 font-semibold text-red-600 dark:text-red-400">
-              <AlertTriangle className="h-3 w-3" /> {needAttention} {needAttention === 1 ? "reading needs" : "readings need"} attention
+              <AlertTriangle className="h-3 w-3" /> {t("need_attention", { count: needAttention })}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-semibold text-emerald-700 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All readings normal
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("all_normal")}
             </span>
           ))}
-          {lastRecordedAt && <span className="text-muted-foreground">Last recorded {when(lastRecordedAt)}</span>}
+          {lastRecordedAt && <span className="text-muted-foreground">{t("last_recorded", { when: when(lastRecordedAt) })}</span>}
         </div>
         }
       />
@@ -557,10 +564,10 @@ export function VitalsPanel({
         const pair = (a: number | undefined, b: number | undefined, k1: keyof TrendPoint, k2?: keyof TrendPoint) =>
           a == null ? "—" : b != null && k2 ? `${one(a, k1)}${metric.key === "heightCm" ? " · " : "/"}${one(b, k2)}` : one(a, k1);
         const status = tile.status; const tone = status ? TONE_STYLES[status.tone] : null;
-        const bands = referenceBands(metric.key, normalRanges);
+        const bands = referenceBands(metric.key, normalRanges, ts);
         const deltaAbs = tile.delta == null ? 0 : metric.key === "temperatureF" ? `${(Math.abs(tile.delta) * (units.temp === "°C" ? 5 / 9 : 1)).toFixed(1)} ${units.temp}`
           : metric.key === "heightCm" ? `${Number(cmToHeightNumber(Math.abs(tile.delta), units.height).toFixed(1))} ${units.height === "ft + in" ? "in" : units.height}` : Math.abs(tile.delta).toFixed(dp(metric.key));
-        const deltaText = tile.delta == null ? "First reading" : tile.delta === 0 ? "No change" : `${tile.delta > 0 ? "+" : "−"}${deltaAbs}`;
+        const deltaText = tile.delta == null ? t("first_reading") : tile.delta === 0 ? t("no_change") : `${tile.delta > 0 ? "+" : "−"}${deltaAbs}`;
         // The chart plots in the chosen unit.
         const shownChart = chartData.map((r) => ({ ...r, temperatureF: numIn("temperatureF", r.temperatureF, units), heightCm: numIn("heightCm", r.heightCm, units), weightKg: numIn("weightKg", r.weightKg, units) }));
         const shownRange = metric.range && metric.key === "temperatureF" ? metric.range.map((x) => numIn("temperatureF", x, units)!) as [number, number] : metric.range;
@@ -589,17 +596,17 @@ export function VitalsPanel({
               {tile.latest ? (
                 <div className={cn("rounded-xl border p-4 grid gap-4 md:grid-cols-[auto_1fr] md:items-center", tone && status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border bg-muted/30")}>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest reading</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("latest_reading")}</p>
                     <p className="flex items-baseline gap-1.5 mt-1">
                       <span className={cn("text-4xl font-bold leading-none tracking-tight", tone && status!.tone !== "ok" && tone.text)}>{formatValue(metric.key, tile.latest)}</span>
                       {metric.key === "temperatureF" ? (
-                        <UnitSelect label="Temperature unit" value={units.temp} options={TEMP_UNITS} onChange={(v) => setVitalUnit("temp", v as VitalUnits["temp"])} />
+                        <UnitSelect label={tr("temp_unit")} value={units.temp} options={TEMP_UNITS} onChange={(v) => setVitalUnit("temp", v as VitalUnits["temp"])} />
                       ) : metric.unit && <span className="text-sm text-muted-foreground">{metric.unit}</span>}
                     </p>
                     {metric.key === "heightCm" && (
-                      <span className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">Show in
-                        <UnitSelect label="Height unit" value={units.height} options={HEIGHT_UNITS} onChange={(v) => setVitalUnit("height", v as VitalUnits["height"])} />
-                        <UnitSelect label="Weight unit" value={units.weight} options={WEIGHT_UNITS} onChange={(v) => setVitalUnit("weight", v as VitalUnits["weight"])} />
+                      <span className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">{t("show_in")}
+                        <UnitSelect label={tr("height_unit")} value={units.height} options={HEIGHT_UNITS} onChange={(v) => setVitalUnit("height", v as VitalUnits["height"])} />
+                        <UnitSelect label={tr("weight_unit")} value={units.weight} options={WEIGHT_UNITS} onChange={(v) => setVitalUnit("weight", v as VitalUnits["weight"])} />
                       </span>
                     )}
                     {tile.latestVisit && <p className="text-[13px] text-muted-foreground mt-1.5">{when(tile.latestVisit.visitDate)}</p>}
@@ -608,8 +615,8 @@ export function VitalsPanel({
                     {status && <p className="text-sm leading-relaxed">{status.detail}</p>}
                     {metric.key === "bpSystolic" ? (
                       <div className="space-y-1.5">
-                        <RangeBar label="Systolic" value={tile.latest.bpSystolic} scale={GAUGE_SCALE.bpSystolic} normal={normalRanges.bpSystolic} tone={status?.tone} large />
-                        <RangeBar label="Diastolic" value={tile.latest.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={status?.tone} large />
+                        <RangeBar label={t("systolic")} value={tile.latest.bpSystolic} scale={GAUGE_SCALE.bpSystolic} normal={normalRanges.bpSystolic} tone={status?.tone} large />
+                        <RangeBar label={t("diastolic")} value={tile.latest.bpDiastolic} scale={GAUGE_SCALE.bpDiastolic} normal={normalRanges.bpDiastolic} tone={status?.tone} large />
                       </div>
                     ) : GAUGE_SCALE[metric.key === "heightCm" ? "bmi" : metric.key] ? (
                       <RangeBar
@@ -626,8 +633,8 @@ export function VitalsPanel({
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border/70 p-6 text-center">
-                  <p className="text-sm font-medium">{metric.isComputed ? "BMI appears once height and weight are recorded" : `No ${metric.label.toLowerCase()} reading yet`}</p>
-                  {!metric.isComputed && showNewVisitButton && <p className="text-[13px] text-muted-foreground mt-1">Add the first reading below.</p>}
+                  <p className="text-sm font-medium">{metric.isComputed ? t("bmi_appears") : t("no_metric_yet", { metric: metric.label })}</p>
+                  {!metric.isComputed && showNewVisitButton && <p className="text-[13px] text-muted-foreground mt-1">{t("add_first")}</p>}
                 </div>
               )}
 
@@ -635,10 +642,10 @@ export function VitalsPanel({
               {readings.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { label: "Change vs last", value: deltaText },
-                    { label: "Average", value: pair(p1?.avg, p2?.avg, metric.key, metric.secondaryKey) },
-                    { label: "Lowest", value: pair(p1?.min, p2?.min, metric.key, metric.secondaryKey) },
-                    { label: "Highest", value: pair(p1?.max, p2?.max, metric.key, metric.secondaryKey) },
+                    { label: t("change_vs_last"), value: deltaText },
+                    { label: t("average"), value: pair(p1?.avg, p2?.avg, metric.key, metric.secondaryKey) },
+                    { label: t("lowest"), value: pair(p1?.min, p2?.min, metric.key, metric.secondaryKey) },
+                    { label: t("highest"), value: pair(p1?.max, p2?.max, metric.key, metric.secondaryKey) },
                   ].map((s) => (
                     <div key={s.label} className="rounded-lg border border-border bg-card px-3 py-2">
                       <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -652,10 +659,10 @@ export function VitalsPanel({
               {showNewVisitButton && !metric.isComputed && (showQuickAdd ? (
                 <Card className="relative px-3.5 pb-2.5 pt-3 border-primary/30 bg-primary/5 gap-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-[13px] font-semibold text-primary">{editingVisitId ? "Correct the last reading" : "New reading"}</p>
+                    <p className="text-[13px] font-semibold text-primary">{editingVisitId ? t("correct_last") : t("new_reading")}</p>
                     <button
                       type="button"
-                      aria-label="Close"
+                      aria-label={tc("close")}
                       onClick={() => { setShowQuickAdd(false); setQuickValues({}); setQuickErrors({}); setEditingVisitId(null); setEditingVitals(null); }}
                       className="text-muted-foreground hover:text-foreground"
                     >
@@ -683,7 +690,7 @@ export function VitalsPanel({
                                     type={f.key === "heightCm" && units.height === "ft + in" ? "text" : "number"}
                                     inputMode="decimal"
                                     step="any"
-                                    placeholder={f.key === "heightCm" && units.height === "ft + in" ? "e.g. 5 7" : undefined}
+                                    placeholder={f.key === "heightCm" && units.height === "ft + in" ? t("eg_ft_in") : undefined}
                                     value={f.raw}
                                     autoFocus={f === fields[0]}
                                     onChange={(e) => setQuickValue(f.key, e.target.value)}
@@ -716,9 +723,9 @@ export function VitalsPanel({
                                     <AlertTriangle className="h-3 w-3" /> {fieldError}
                                   </div>
                                 ) : f.bound ? (
-                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">Accepted {UNIT_FIELD[f.key] ? `${showIn(f.key, f.bound[0], units)} – ${showIn(f.key, f.bound[1], units)}` : `${f.bound[0]}–${f.bound[1]} ${f.unit}`}</p>
+                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">{t("accepted", { range: UNIT_FIELD[f.key] ? `${showIn(f.key, f.bound[0], units)} – ${showIn(f.key, f.bound[1], units)}` : `${f.bound[0]}–${f.bound[1]} ${f.unit}` })}</p>
                                 ) : f.key === "heightCm" && units.height === "ft + in" ? (
-                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">Feet, space, inches — e.g. 5 7</p>
+                                  <p className="mt-1 px-0.5 text-xs text-muted-foreground">{t("ft_in_help")}</p>
                                 ) : null}
                               </div>
                             );
@@ -726,7 +733,7 @@ export function VitalsPanel({
                         </div>
                         <Button className="h-11 shrink-0" onClick={() => saveQuickReading(metric)} disabled={addingReading || checkingEditable}>
                           {addingReading ? <Loader2 className="h-4 w-4 animate-spin" /> : editingVisitId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                          {editingVisitId ? "Update" : "Save"}
+                          {editingVisitId ? t("update") : tc("save")}
                         </Button>
                       </div>
                     );
@@ -735,11 +742,11 @@ export function VitalsPanel({
               ) : (
                 <div className="flex gap-2 flex-wrap">
                   <Button size="sm" onClick={openQuickAdd}>
-                    <Plus className="h-3.5 w-3.5" /> Add new reading
+                    <Plus className="h-3.5 w-3.5" /> {t("add_new")}
                   </Button>
                   {findLatestVisitFor(visitsWithVitals, metric.key as keyof VisitVitals) && (
                     <Button size="sm" variant="outline" onClick={() => openEditLastReading(metric)} disabled={checkingEditable}>
-                      {checkingEditable ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />} Correct last reading
+                      {checkingEditable ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />} {t("correct_btn")}
                     </Button>
                   )}
                 </div>
@@ -749,7 +756,7 @@ export function VitalsPanel({
               {/* Trend */}
               {chartData.length >= 2 ? (
                 <div className="rounded-xl border border-border bg-card p-4">
-                  <p className="text-sm font-semibold mb-2">Trend</p>
+                  <p className="text-sm font-semibold mb-2">{t("trend")}</p>
                   <ResponsiveContainer width="100%" height={240}>
                     <AreaChart data={shownChart} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                       <defs>
@@ -776,21 +783,21 @@ export function VitalsPanel({
                   </ResponsiveContainer>
                   {metric.range && (
                     <p className="text-xs text-muted-foreground flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
-                      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-4 rounded-sm bg-emerald-500/20" /> Normal zone</span>
-                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive" /> Outside normal</span>
+                      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-4 rounded-sm bg-emerald-500/20" /> {t("normal_zone")}</span>
+                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive" /> {t("outside_normal")}</span>
                     </p>
                   )}
                 </div>
               ) : readings.length === 1 ? (
                 <p className="text-[13px] text-muted-foreground flex items-center gap-1.5 px-1">
-                  <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" /> The trend chart appears once there are two or more readings.
+                  <Lightbulb className="h-3.5 w-3.5 text-primary shrink-0" /> {t("trend_needs_two")}
                 </p>
               ) : null}
 
               {/* Reading history */}
               {readings.length > 0 && (
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
-                  <p className="text-sm font-semibold px-4 pt-3 pb-2">Reading history <span className="text-muted-foreground font-normal">· {readings.length}</span></p>
+                  <p className="text-sm font-semibold px-4 pt-3 pb-2">{t("history")} <span className="text-muted-foreground font-normal">· {readings.length}</span></p>
                   <div className="divide-y divide-border/50 max-h-56 overflow-y-auto">
                     {readings.slice(0, 20).map((r, i) => {
                       const st = statusFor(metric.key, { ...r, bmi: r.bmi });
@@ -799,7 +806,7 @@ export function VitalsPanel({
                         <div key={i} className="flex items-center gap-3 px-4 py-2 text-sm">
                           <span className="w-32 shrink-0 text-[13px] text-muted-foreground">{r.fullDate}<span className="block">{r.time}</span></span>
                           <span className="font-semibold flex-1">{formatValue(metric.key, r)} <span className="text-[13px] font-normal text-muted-foreground">{metric.unit}</span></span>
-                          {i === 0 && <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Latest</span>}
+                          {i === 0 && <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("latest")}</span>}
                           {st && ts && <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap", ts.text, ts.bg, ts.border)}>{st.label}</span>}
                         </div>
                       );
@@ -812,7 +819,7 @@ export function VitalsPanel({
               {bands.length > 0 && (
                 <details className="group/ref rounded-xl border border-border bg-card px-4 py-3">
                   <summary className="text-sm font-semibold cursor-pointer list-none flex items-center justify-between">
-                    What&apos;s normal?
+                    {t("whats_normal")}
                     <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/ref:rotate-90" />
                   </summary>
                   <div className="mt-3 grid gap-y-1.5 max-w-md">
@@ -824,7 +831,7 @@ export function VitalsPanel({
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground mt-3">
-                    {metric.formula ?? "Normal ranges are set by your administrator. Guidance only — the doctor makes the clinical judgement."}
+                    {metric.formula ?? t("ranges_note")}
                   </p>
                 </details>
               )}
@@ -845,6 +852,7 @@ function RangeBar({ value, scale, normal, tone, label, large, fmt }: {
   /** Labels in the display unit (the bar itself works in the stored unit). */
   fmt?: (n: number) => string;
 }) {
+  const tr = useTranslations("clinic.vitals");
   const pct = (v: number) => Math.min(100, Math.max(0, ((v - scale[0]) / (scale[1] - scale[0])) * 100));
   const marker = value != null ? pct(value) : null;
   const off = value == null ? null : value < scale[0] ? "below" : value > scale[1] ? "above" : null;
@@ -852,27 +860,27 @@ function RangeBar({ value, scale, normal, tone, label, large, fmt }: {
   const fmtN = fmt ?? ((n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1)));
   // Scale ends in grey, normal bounds in green; a bound that coincides with (or crowds) an end replaces it.
   const ticks = large ? (() => {
-    const t: { v: number; at: number; normal: boolean; text: string }[] = [];
+    const t: { v: number; at: number; normal: boolean; text: string; off?: boolean }[] = [];
     for (const v of normal) t.push({ v, at: pct(v), normal: true, text: fmtN(v) });
     for (const [i, v] of scale.entries()) {
       const edge = i === 0 ? "below" : "above";
-      const text = off === edge ? `${edge} ${fmtN(v)}` : fmtN(v);
+      const text = off === edge ? `${tr(`off_${edge}`)} ${fmtN(v)}` : fmtN(v);
       const near = t.findIndex((x) => Math.abs(x.at - pct(v)) < 9);
-      if (near >= 0) { if (off === edge) t[near] = { ...t[near], text: `${edge} ${fmtN(v)}`, normal: false }; continue; }
-      t.push({ v, at: pct(v), normal: false, text });
+      if (near >= 0) { if (off === edge) t[near] = { ...t[near], text: `${tr(`off_${edge}`)} ${fmtN(v)}`, normal: false, off: true }; continue; }
+      t.push({ v, at: pct(v), normal: false, text, off: off === edge });
     }
     return t;
   })() : [];
   const Arrow = off === "below" ? ChevronsLeft : ChevronsRight;
   return (
-    <div className={cn("flex items-center gap-2", large && "pb-4")} title={`Normal ${fmtN(normal[0])}–${fmtN(normal[1])} · scale ${fmtN(scale[0])}–${fmtN(scale[1])}`}>
+    <div className={cn("flex items-center gap-2", large && "pb-4")} title={tr("range_title", { normal: `${fmtN(normal[0])}–${fmtN(normal[1])}`, scale: `${fmtN(scale[0])}–${fmtN(scale[1])}` })}>
       {label && <span className={cn("shrink-0 text-muted-foreground", large ? "w-16 text-[13px]" : "w-3 text-[11px] font-semibold")}>{label}</span>}
       <div className={cn("relative flex-1 rounded-full bg-muted", large ? "h-2.5" : "h-1.5")}>
         <div className="absolute inset-y-0 rounded-full bg-emerald-500/30" style={{ left: `${pct(normal[0])}%`, width: `${pct(normal[1]) - pct(normal[0])}%` }} />
         {marker != null && (off ? (
           <span
             className={cn("absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full ring-2 ring-background text-white", large ? "h-5 w-5" : "h-3.5 w-3.5", off === "below" ? "start-0 -translate-x-1/4" : "end-0 translate-x-1/4")}
-            style={{ background: color }} aria-label={`Reading ${off} the scale`}>
+            style={{ background: color }} aria-label={tr(off === "below" ? "reading_below" : "reading_above")}>
             <Arrow className={large ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} />
           </span>
         ) : (
@@ -885,7 +893,7 @@ function RangeBar({ value, scale, normal, tone, label, large, fmt }: {
           <span key={`${t.v}-${t.text}`}
             className={cn("absolute top-full mt-1.5 whitespace-nowrap text-[11px] tabular-nums leading-none",
               t.at <= 2 ? "" : t.at >= 98 ? "-translate-x-full" : "-translate-x-1/2",
-              t.normal ? "text-emerald-700 dark:text-emerald-400 font-medium" : off && t.text.startsWith(off) ? "font-semibold text-red-600 dark:text-red-400" : "text-muted-foreground")}
+              t.normal ? "text-emerald-700 dark:text-emerald-400 font-medium" : off && t.off ? "font-semibold text-red-600 dark:text-red-400" : "text-muted-foreground")}
             style={{ left: `${t.at}%` }}>{t.text}</span>
         ))}
       </div>

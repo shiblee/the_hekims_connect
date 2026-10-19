@@ -41,4 +41,7 @@ export const VALUE_LABELS = defineStrings("common.values", {
   Sachet: ["Sachet", "पाउच", "ساشے", "كيس", "ساشه"],
   Jar: ["Jar", "जार", "مرتبان", "برطمان", "شیشه"],
   Bottle: ["Bottle", "बोतल", "بوتل", "زجاجة", "بطری"],
+  Emergency: ["Emergency", "आपात", "ہنگامی", "طارئ", "اورژانسی"],
+  Urgent: ["Urgent", "ज़रूरी", "فوری", "عاجل", "فوری"],
+  Routine: ["Routine", "सामान्य", "معمول", "روتيني", "عادی"],
 });

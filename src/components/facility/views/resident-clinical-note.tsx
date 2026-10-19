@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { useTranslations } from "next-intl";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
@@ -19,6 +20,8 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const msg = useNotice();
+  const t = useTranslations("clinic.triage");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     api.get<{ note: { points: string } | null }>(`/api/facility/visits/${visitId}/resident-notes`)
@@ -26,7 +29,7 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
         setLoadError(null);
         try { setPoints(JSON.parse(res.note?.points || "[]")); } catch { setPoints([]); }
       })
-      .catch((e) => setLoadError(e.message || "Network error"))
+      .catch((e) => setLoadError(e.message || tc("network_error")))
       .finally(() => setLoading(false));
   }, [visitId, reloadTick]);
 
@@ -50,26 +53,26 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
       await api.post(`/api/facility/visits/${visitId}/resident-notes`, { points });
       msg.clear();
     } catch (e: any) {
-      msg.error("The clinical note wasn't saved", `${e.message || "Network error"}. Your points are still listed above.`, { retry: () => { save().catch(() => {}); } });
+      msg.error(t("note_not_saved"), t("note_not_saved_hint", { error: e.message || tc("network_error") }), { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
 
   useImperativeHandle(ref, () => ({ save }), [points, loading, loadError, msg]);
 
-  if (loadError) return <LoadFailed what="the resident clinical note" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+  if (loadError) return <LoadFailed what={t("the_note")} detail={loadError} onRetry={() => { setLoading(true); setReloadTick((n) => n + 1); }} />;
 
   if (loading) {
     return (
       <Card className="p-4 border-border/50 bg-card/60 flex items-center gap-2 text-muted-foreground text-sm">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
       </Card>
     );
   }
 
   return (
     <Card className="p-4 border-border/50 bg-card/60 gap-2.5">
-      <SectionHeading icon={NotebookPen} title="Resident Clinical Note" />
+      <SectionHeading icon={NotebookPen} title={t("note_title")} />
 
       {points.length > 0 && (
         <ul className="space-y-1.5">
@@ -89,7 +92,7 @@ export const ResidentClinicalNote = forwardRef<ResidentClinicalNoteHandle, { vis
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }}
-        placeholder="Type a point and press Enter…"
+        placeholder={t("note_ph")}
         className="bg-background/60"
       />
       <NoticeSlot state={msg} />

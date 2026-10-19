@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { daysAgo } from "@/lib/age";
@@ -13,23 +15,26 @@ import { ShieldAlert, ShieldCheck, ShieldQuestion, Pencil, ListChecks } from "lu
  */
 export function ReferralLine({ visits, onEdit, editHref, className }: { onEdit?: () => void; editHref?: string; className?: string; visits: { id: string; visitCode?: string; referral?: { reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string } | null }[] }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("clinic.referral_line");
+  const dl = useDateLocale();
+  const vl = useValueLabel();
   const row = (v: (typeof visits)[number], first: boolean) => {
     const r = v.referral!;
-    const when = `${daysAgo(r.createdAt)}, ${new Date(r.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
-    const full = `Referred (${r.urgency}) to ${r.referredTo}. Reason: ${r.reason}.${r.notes ? ` Notes: ${r.notes}.` : ""} ${v.visitCode ? `Visit ${v.visitCode}, ` : ""}${when}`;
+    const when = `${daysAgo(r.createdAt)}, ${new Date(r.createdAt).toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" })}`;
+    const full = `${t("full", { urgency: vl(r.urgency), to: r.referredTo, reason: r.reason })}${r.notes ? ` ${t("full_notes", { notes: r.notes })}` : ""} ${v.visitCode ? `${t("visit", { code: v.visitCode })}, ` : ""}${when}`;
     return (
       <div key={v.id} title={full} className="flex items-center gap-2 min-w-0 text-sm">
         {first ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-destructive text-white px-2 py-0.5 text-[13px] font-semibold shrink-0">
-            <ShieldAlert className="h-3 w-3" /> Referred · {r.urgency}
+            <ShieldAlert className="h-3 w-3" /> {t("referred", { urgency: vl(r.urgency) })}
           </span>
         ) : (
-          <span className="rounded-full border border-destructive/30 text-destructive px-2 py-0.5 text-xs font-medium shrink-0">{r.urgency}</span>
+          <span className="rounded-full border border-destructive/30 text-destructive px-2 py-0.5 text-xs font-medium shrink-0">{vl(r.urgency)}</span>
         )}
-        <span className="shrink-0"><span className="text-muted-foreground">to</span> <span className="font-semibold">{r.referredTo}</span></span>
+        <span className="shrink-0"><span className="text-muted-foreground">{t("to")}</span> <span className="font-semibold">{r.referredTo}</span></span>
         <span className="truncate min-w-0 text-muted-foreground">
           · <span className="text-foreground">{r.reason}</span>
-          {r.notes && <> · Notes: <span className="text-foreground">{r.notes}</span></>}
+          {r.notes && <> · {t("notes")} <span className="text-foreground">{r.notes}</span></>}
         </span>
         <span className="ms-auto shrink-0 text-[13px] text-muted-foreground whitespace-nowrap">{v.visitCode ? `${v.visitCode} · ` : ""}{when}</span>
       </div>
@@ -45,17 +50,17 @@ export function ReferralLine({ visits, onEdit, editHref, className }: { onEdit?:
             onClick={onEdit}
             className="shrink-0 inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-0.5 text-[13px] font-medium text-destructive hover:bg-destructive/10 transition-colors"
           >
-            <Pencil className="h-3 w-3" /> Edit
+            <Pencil className="h-3 w-3" /> {t("edit")}
           </button>
         )}
         {!onEdit && editHref && (
           <Link href={editHref} className="shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-destructive hover:underline">
-            <Pencil className="h-3 w-3" /> Edit in Clinical Record
+            <Pencil className="h-3 w-3" /> {t("edit_in_record")}
           </Link>
         )}
         {visits.length > 1 && (
           <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 text-[13px] font-medium text-destructive hover:underline">
-            {open ? "Hide" : `+${visits.length - 1} earlier`}
+            {open ? t("hide") : t("earlier", { count: visits.length - 1 })}
           </button>
         )}
       </div>
@@ -77,6 +82,7 @@ export function TriageFindingsLine({ visit, editHref, className }: {
   editHref?: string;
   className?: string;
 }) {
+  const t = useTranslations("clinic.referral_line");
   const ws = visit.redFlagScreening;
   const signs = (ws?.answers || []).filter((a) => a.present).map((a) => a.criterionLabel);
   let symptoms: string[] = [];
@@ -85,32 +91,32 @@ export function TriageFindingsLine({ visit, editHref, className }: {
 
   return (
     <div className={cn("rounded-xl border px-3 py-2 flex items-center gap-x-4 gap-y-1.5 flex-wrap text-sm", signs.length ? "border-destructive/30 bg-destructive/5" : "border-border/60 bg-card", className ?? "mb-6 -mt-3")}>
-      <span className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">From triage</span>
+      <span className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">{t("from_triage")}</span>
 
       <span className="flex items-center gap-1.5 min-w-0 flex-wrap">
         {signs.length ? <ShieldAlert className="h-4 w-4 text-destructive shrink-0" /> : decided ? <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" /> : <ShieldQuestion className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />}
-        <span className="text-muted-foreground">Warning signs:</span>
+        <span className="text-muted-foreground">{t("warning_signs")}</span>
         {signs.length ? signs.map((sgn) => (
           <span key={sgn} className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[13px] font-medium text-destructive">{sgn}</span>
         )) : (
-          <span className={decided ? "font-medium text-emerald-700 dark:text-emerald-400" : "font-medium text-amber-700 dark:text-amber-400"}>{ws ? (decided ? "None marked" : "Not yet decided") : "Not assessed"}</span>
+          <span className={decided ? "font-medium text-emerald-700 dark:text-emerald-400" : "font-medium text-amber-700 dark:text-amber-400"}>{ws ? (decided ? t("none_marked") : t("not_decided")) : t("not_assessed")}</span>
         )}
-        {visit.amaDecline && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[13px] font-medium text-amber-700 dark:text-amber-400">Declined referral</span>}
+        {visit.amaDecline && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[13px] font-medium text-amber-700 dark:text-amber-400">{t("declined")}</span>}
       </span>
 
       <span className="hidden sm:block h-4 w-px bg-border" aria-hidden />
 
       <span className="flex items-center gap-1.5 min-w-0 flex-wrap">
         <ListChecks className="h-4 w-4 text-primary shrink-0" />
-        <span className="text-muted-foreground">Other symptoms:</span>
+        <span className="text-muted-foreground">{t("other_symptoms")}</span>
         {symptoms.length ? symptoms.map((sy) => (
           <span key={sy} className="rounded-full border border-primary/25 bg-primary/5 px-2 py-0.5 text-[13px] font-medium text-primary">{sy}</span>
-        )) : <span className="font-medium text-muted-foreground">{visit.acuteSymptomAssessment ? "None noted" : "Not assessed"}</span>}
+        )) : <span className="font-medium text-muted-foreground">{visit.acuteSymptomAssessment ? t("none_noted") : t("not_assessed")}</span>}
       </span>
 
       {editHref && (
         <Link href={editHref} className="ms-auto shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">
-          <Pencil className="h-3 w-3" /> Edit in Clinical Record
+          <Pencil className="h-3 w-3" /> {t("edit_in_record")}
         </Link>
       )}
     </div>

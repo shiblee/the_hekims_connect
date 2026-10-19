@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Poppins, PT_Serif, Noto_Sans_Arabic } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
@@ -61,11 +62,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [locale, messages, languages] = await Promise.all([
+  const [locale, messages, languages, h] = await Promise.all([
     getLocale(),
     getMessages(),
     getEnabledLanguages(),
+    headers(),
   ]);
+  const area = h.get("x-hekim-area") === "admin" ? AREA_NAMESPACES.admin : AREA_NAMESPACES.public;
   const dir = languages.find((l) => l.code === locale)?.direction ?? "ltr";
 
   return (
@@ -73,7 +76,7 @@ export default async function RootLayout({
       <body
         className={`${poppins.variable} ${geistMono.variable} ${ptSerif.variable} ${notoSansArabic.variable} antialiased bg-background text-foreground min-h-screen`}
       >
-        <NextIntlClientProvider messages={pickNamespaces(messages, AREA_NAMESPACES.public)}>
+        <NextIntlClientProvider messages={pickNamespaces(messages, area)}>
           <ThemeProvider>
             <SessionBoundary>{children}</SessionBoundary>
           </ThemeProvider>

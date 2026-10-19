@@ -1,6 +1,8 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { useDateLocale, useListFormat, useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { InlineNotice, LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { setFlash } from "@/lib/flash";
@@ -73,6 +75,11 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   // `msg` sits in the panel; `dialogMsg` inside whichever decision dialog is open.
   const msg = useNotice();
   const dialogMsg = useNotice();
+  const t = useTranslations("clinic.redflag");
+  const tc = useTranslations("common");
+  const vl = useValueLabel();
+  const dl = useDateLocale();
+  const list = useListFormat();
 
   const [referDialogOpen, setReferDialogOpen] = useState(false);
   const [referReason, setReferReason] = useState("");
@@ -105,7 +112,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         setPresent(initial);
         setCustom(others);
       })
-      .catch((e) => setLoadError(e.message || "Network error"))
+      .catch((e) => setLoadError(e.message || tc("network_error")))
       .finally(() => setLoading(false));
   }, [visitId, reloadTick]);
 
@@ -114,7 +121,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
 
   const flaggedSummary = () => {
     const flaggedLabels = [...criteria.filter((c) => present[c.id]).map((c) => c.label), ...custom];
-    return flaggedLabels.length ? `Positive findings: ${flaggedLabels.join(", ")}` : "";
+    return flaggedLabels.length ? t("positive", { items: list(flaggedLabels) }) : "";
   };
 
   const anyPresentRef = () => Object.values(present).some(Boolean) || custom.length > 0;
@@ -169,16 +176,16 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         onReferralChange?.();
       } else if (outcome === "continued_ama") {
         setAmaDialogOpen(false);
-        msg.success("Recorded — continuing treatment against medical advice", "The patient's decision and acknowledgement are saved on this visit.");
+        msg.success(t("ama_saved"), t("ama_saved_hint"));
       } else {
         // Clearing happens on "Proceed", which then opens Stage 3 — say it there.
-        setFlash({ tone: "success", title: "Red flag screening cleared for Unani triage", detail: "No red flags were marked, so the visit continues to Mizaj & Morphometry." });
+        setFlash({ tone: "success", title: t("cleared"), detail: t("cleared_hint") });
       }
       return true;
     } catch (e: any) {
       const notice = [
-        outcome === "referred" ? "The referral wasn't saved" : outcome === "continued_ama" ? "The decision wasn't saved" : "The red flag screening wasn't saved",
-        `${e.message || "Network error"}. Nothing you entered was lost — try again.`,
+        outcome === "referred" ? t("ref_not_saved") : outcome === "continued_ama" ? t("decision_not_saved") : t("screen_not_saved"),
+        t("nothing_lost", { error: e.message || tc("network_error") }),
       ] as const;
       if (outcome === "cleared") msg.error(...notice);
       else dialogMsg.error(...notice);
@@ -196,7 +203,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       setReferDialogOpen(false);
       onReferralChange?.();
     } catch (e: any) {
-      dialogMsg.error("The referral wasn't updated", `${e.message || "Network error"}. Your changes are still here — try again.`, { retry: saveReferralEdit, retryLabel: "Save again" });
+      dialogMsg.error(t("ref_not_updated"), t("changes_here", { error: e.message || tc("network_error") }), { retry: saveReferralEdit, retryLabel: t("save_again") });
     } finally {
       setSaving(false);
     }
@@ -210,24 +217,24 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       setReferDialogOpen(false);
       setConfirmRemove(false);
       onReferralChange?.();
-      msg.info("Referral removed", anyPresentRef() ? "Warning signs are still marked — choose Refer Patient or continue against advice before moving on." : "The emergency check will be confirmed when you proceed.");
+      msg.info(t("ref_removed"), anyPresentRef() ? t("ref_removed_signs") : t("ref_removed_none"));
     } catch (e: any) {
-      dialogMsg.error("The referral wasn't removed", `${e.message || "Network error"}. Try again.`, { retry: removeReferral, retryLabel: "Try again" });
+      dialogMsg.error(t("ref_not_removed"), t("try_again", { error: e.message || tc("network_error") }), { retry: removeReferral, retryLabel: tc("retry") });
     } finally {
       setSaving(false);
     }
   };
 
   const submitReferral = () => {
-    if (!referReason.trim()) { dialogMsg.warning("Enter a reason for referral", "It's recorded on the referral and in the visit history."); document.getElementById("referReason")?.focus(); return; }
-    if (!referredTo.trim()) { dialogMsg.warning("Enter where the patient is being referred to", "For example Emergency Department or Cardiology."); document.getElementById("referredTo")?.focus(); return; }
+    if (!referReason.trim()) { dialogMsg.warning(t("need_reason"), t("need_reason_hint")); document.getElementById("referReason")?.focus(); return; }
+    if (!referredTo.trim()) { dialogMsg.warning(t("need_to"), t("need_to_hint")); document.getElementById("referredTo")?.focus(); return; }
     if (editingReferral) { saveReferralEdit(); return; }
     submitScreening("referred", { referral: { reason: referReason, referredTo, urgency, notes: referNotes || undefined } });
   };
 
   const submitAma = () => {
-    if (!amaReason.trim()) { dialogMsg.warning("Enter why referral was recommended", "This documents the advice the patient declined."); return; }
-    if (!amaAcknowledged) { dialogMsg.warning("Confirm the patient was informed of the risks", "Tick the acknowledgement box above to continue."); return; }
+    if (!amaReason.trim()) { dialogMsg.warning(t("need_ama_reason"), t("need_ama_reason_hint")); return; }
+    if (!amaAcknowledged) { dialogMsg.warning(t("need_ack"), t("need_ack_hint")); return; }
     submitScreening("continued_ama", { amaDecline: { reason: amaReason, patientReason: amaPatientReason || undefined, acknowledged: true } });
   };
 
@@ -253,7 +260,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       });
       setScreening(res.screening);
     } catch (e: any) {
-      msg.error("The warning signs weren't saved", `${e.message || "Network error"}. They're still marked above.`, { retry: () => { saveDraft().catch(() => {}); } });
+      msg.error(t("signs_not_saved"), t("signs_not_saved_hint", { error: e.message || tc("network_error") }), { retry: () => { saveDraft().catch(() => {}); } });
       throw e;
     }
   };
@@ -261,11 +268,11 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   useImperativeHandle(ref, () => ({ attemptResolve, openReferDialog, openEditReferral, save: saveDraft }), [anyPresent, screening, present, criteria, custom, loading, loadError]);
 
   if (dialogsOnly && (loading || loadError)) return null;
-  if (loadError) return <LoadFailed what="the emergency warning signs" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+  if (loadError) return <LoadFailed what={t("the_signs")} detail={loadError} onRetry={() => { setLoading(true); setReloadTick((n) => n + 1); }} />;
   if (loading) {
     return (
       <Card className="p-5 border-border/50 bg-card/60 flex items-center gap-2 text-muted-foreground text-sm">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
       </Card>
     );
   }
@@ -297,27 +304,27 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <span className="h-10 w-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0"><ShieldAlert className="h-5 w-5" /></span>
-              <span className="text-lg font-semibold leading-tight">{editingReferral ? "Edit referral" : "Refer patient"}</span>
+              <span className="text-lg font-semibold leading-tight">{editingReferral ? t("edit_ref") : t("refer")}</span>
             </DialogTitle>
           </DialogHeader>
 
           {/* What triggered it */}
           {flaggedLabels.length > 0 ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-destructive mb-1.5 flex items-center gap-1"><TriangleAlert className="h-3 w-3" /> Warning signs present</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-destructive mb-1.5 flex items-center gap-1"><TriangleAlert className="h-3 w-3" /> {t("signs_present")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {flaggedLabels.map((l) => <span key={l} className="rounded-full bg-destructive/10 border border-destructive/30 text-destructive px-2.5 py-0.5 text-[13px] font-medium">{l}</span>)}
               </div>
             </div>
           ) : (
-            <p className="text-[13px] text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-2">No emergency warning signs are marked — describe why the patient is being referred.</p>
+            <p className="text-[13px] text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-2">{t("no_signs")}</p>
           )}
 
-          <FloatingTextarea id="referReason" label="Reason for referral" required value={referReason} onChange={(e) => setReferReason(e.target.value)} rows={2} />
+          <FloatingTextarea id="referReason" label={t("reason")} required value={referReason} onChange={(e) => setReferReason(e.target.value)} rows={2} />
 
           {/* Destination with one-tap suggestions */}
           <div className="space-y-2">
-            <FloatingField id="referredTo" label="Refer to" required value={referredTo} onChange={(e) => setReferredTo(e.target.value)} />
+            <FloatingField id="referredTo" label={t("refer_to")} required value={referredTo} onChange={(e) => setReferredTo(e.target.value)} />
             <div className="flex flex-wrap gap-1.5">
               {destinationOptions.map((d) => (
                 <button
@@ -337,7 +344,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
 
           {/* Urgency as clear choices */}
           <div>
-            <p className="text-sm font-medium mb-2">How urgent?</p>
+            <p className="text-sm font-medium mb-2">{t("how_urgent")}</p>
             <div className="grid grid-cols-3 gap-2">
               {URGENCY.map((u) => (
                 <button
@@ -350,23 +357,23 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
                     urgency === u.value ? u.tone : "border-border/60 hover:border-border",
                   )}
                 >
-                  <span className="flex items-center gap-1.5 text-sm font-semibold"><span className={cn("h-2 w-2 rounded-full", u.dot)} />{u.label}</span>
-                  <span className="block text-xs text-muted-foreground mt-0.5">{u.when}</span>
+                  <span className="flex items-center gap-1.5 text-sm font-semibold"><span className={cn("h-2 w-2 rounded-full", u.dot)} />{vl(u.value)}</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{t(`urg_${u.value}_when`)}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <FloatingTextarea id="referNotes" label="Notes for the receiving doctor (optional)" value={referNotes} onChange={(e) => setReferNotes(e.target.value)} rows={2} />
+          <FloatingTextarea id="referNotes" label={t("notes")} value={referNotes} onChange={(e) => setReferNotes(e.target.value)} rows={2} />
 
           {/* What happens next */}
           <div className="rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] text-muted-foreground flex items-start gap-2">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
               {referredTo.trim()
-                ? <>Refer to <span className="font-semibold text-foreground">{referredTo.trim()}</span> · <span className="font-semibold text-foreground">{urgency}</span>. </>
+                ? <>{t.rich("summary", { to: referredTo.trim(), urgency: vl(urgency), b: (c) => <span className="font-semibold text-foreground">{c}</span> })} </>
                 : null}
-              {editingReferral ? "Saving updates this visit\u2019s referral record." : "Confirming saves the referral to this visit and closes today\u2019s Unani consultation for it."}
+              {editingReferral ? t("saving_updates") : t("confirming_closes")}
             </span>
           </div>
 
@@ -374,13 +381,13 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           {editingReferral && confirmRemove && (
             <InlineNotice
               tone="error"
-              title="Remove this referral?"
-              detail="The referral record is deleted and this visit goes back to needing an emergency decision. This can't be undone."
+              title={t("remove_q")}
+              detail={t("remove_hint")}
               action={
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(false)} disabled={saving}>Keep</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(false)} disabled={saving}>{tc("keep")}</Button>
                   <Button size="sm" variant="destructive" onClick={removeReferral} disabled={saving}>
-                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} {tc("remove")}
                   </Button>
                 </div>
               }
@@ -390,14 +397,14 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           <DialogFooter className="sm:justify-between gap-2">
             {editingReferral ? (
               <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 sm:me-auto" onClick={() => setConfirmRemove(true)} disabled={saving || confirmRemove}>
-                <Trash2 className="h-4 w-4" /> Remove referral
+                <Trash2 className="h-4 w-4" /> {t("remove_ref")}
               </Button>
             ) : <span />}
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setReferDialogOpen(false)}>Cancel</Button>
               <Button onClick={submitReferral} disabled={saving} className={URGENCY.find((u) => u.value === urgency)?.button}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingReferral ? <Pencil className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
-                {editingReferral ? "Save changes" : "Confirm referral & close case"}
+                {editingReferral ? tc("save_changes") : t("confirm_close")}
               </Button>
             </div>
           </DialogFooter>
@@ -407,15 +414,15 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       <Dialog open={amaDialogOpen} onOpenChange={setAmaDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Continue Against Medical Advice</DialogTitle>
+            <DialogTitle>{t("ama_title")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-              Referral is clinically recommended based on the flagged findings. Use this only when the patient has been informed and still declines referral.
+              {t("ama_info")}
             </div>
-            <FloatingField id="amaReason" label="Why referral was recommended" value={amaReason} onChange={(e) => setAmaReason(e.target.value)} />
+            <FloatingField id="amaReason" label={t("ama_reason")} value={amaReason} onChange={(e) => setAmaReason(e.target.value)} />
             <Textarea maxLength={500}
-              placeholder="Patient's stated reason for declining (optional)"
+              placeholder={t("ama_patient")}
               value={amaPatientReason}
               onChange={(e) => setAmaPatientReason(e.target.value)}
               className="bg-background/60"
@@ -424,7 +431,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
             <label className="flex items-start gap-2.5 cursor-pointer">
               <Checkbox checked={amaAcknowledged} onCheckedChange={(v) => setAmaAcknowledged(!!v)} className="mt-0.5" />
               <span className="text-sm">
-                I confirm the patient was informed of the risks of declining this referral, and they have chosen to continue treatment.
+                {t("ama_ack")}
               </span>
             </label>
           </div>
@@ -432,7 +439,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAmaDialogOpen(false)}>Cancel</Button>
             <Button onClick={submitAma} disabled={saving || !amaAcknowledged} className="bg-amber-600 hover:bg-amber-700 text-white">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Confirm &amp; Continue Treatment
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {t("ama_confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -452,14 +459,14 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       <SectionHeading
         icon={anyPresent ? ShieldAlert : ShieldCheck}
         tone={anyPresent ? "danger" : "success"}
-        title="Emergency Warning Signs"
+        title={t("title")}
         right={
           <span className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-semibold",
             anyPresent || locked ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
           )}>
             <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
-            {locked ? `Referred · ${presentCount ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"}` : "no signs marked"}` : anyPresent ? `${presentCount} ${presentCount === 1 ? "sign" : "signs"} present` : "All clear · none present"}
+            {locked ? t("referred_signs", { signs: presentCount ? t("n_signs", { count: presentCount }) : t("no_signs_marked") }) : anyPresent ? t("n_present", { count: presentCount }) : t("all_clear")}
           </span>
         }
       />
@@ -471,22 +478,22 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
               <TriangleAlert className="h-3 w-3" />{l}
             </span>
           ))}
-          {presentCount === 0 && <span className="text-sm text-muted-foreground">No warning signs were marked.</span>}
-          <span className="text-[13px] text-muted-foreground ms-auto">Locked after referral — to change, remove the referral (Edit on the referral line).</span>
+          {presentCount === 0 && <span className="text-sm text-muted-foreground">{t("none_were")}</span>}
+          <span className="text-[13px] text-muted-foreground ms-auto">{t("locked")}</span>
         </div>
       ) : (
       <FloatingMultiSelect
         id="warningSignSearch"
-        label="Search emergency warning signs"
+        label={t("search")}
         tone="destructive"
         labelIcon={TriangleAlert}
         itemIcon={TriangleAlert}
-        placeholder="Type a sign — e.g. chest pain, bleeding, breathless…"
+        placeholder={t("search_ph")}
         openOnFocus
-        emptyHint={criteria.length > 6 ? `Common signs · type to search all ${criteria.length}` : "Warning signs"}
+        emptyHint={criteria.length > 6 ? t("common", { count: criteria.length }) : t("signs")}
         selected={[
           ...criteria.filter((c) => present[c.id]).map((c) => ({ id: c.id, label: c.label, description: c.description })),
-          ...custom.map((label) => ({ id: `other:${label}`, label, description: "Added by staff" })),
+          ...custom.map((label) => ({ id: `other:${label}`, label, description: t("added_by_staff") })),
         ]}
         onRemove={(sid) => {
           if (sid.startsWith("other:")) setCustom((cur) => cur.filter((x) => `other:${x}` !== sid));
@@ -498,14 +505,16 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         describe={(c) => c.description}
         onPick={(cid) => setPresent((p) => ({ ...p, [cid]: true }))}
         onCreate={addCustomSign}
-        createLabel={(q) => `Add "${q}" as another warning sign`}
+        createLabel={(q) => t("add_other", { q })}
       />
       )}
 
       {anyPresent && !locked && screening?.outcome !== "continued_ama" && (
         <p className="text-[13px] text-destructive">
-          Referral recommended — use <span className="font-semibold">Refer Patient</span> at the bottom of the page, or{" "}
-          <button type="button" onClick={openAmaDialog} className="underline underline-offset-2 hover:text-destructive/80">continue against advice</button>.
+          {t.rich("recommended", {
+            b: (c) => <span className="font-semibold">{c}</span>,
+            ama: (c) => <button type="button" onClick={openAmaDialog} className="underline underline-offset-2 hover:text-destructive/80">{c}</button>,
+          })}
         </p>
       )}
 
@@ -513,10 +522,10 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px]">
           <ShieldQuestion className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-muted-foreground">
-            <span className="font-semibold text-amber-700 dark:text-amber-400">Continuing against medical advice</span>
+            <span className="font-semibold text-amber-700 dark:text-amber-400">{t("continuing_ama")}</span>
             {" · "}{screening.amaDecline.reason}
-            {screening.amaDecline.patientReason && <> · Patient: “{screening.amaDecline.patientReason}”</>}
-            {" · "}{new Date(screening.amaDecline.createdAt).toLocaleDateString()}
+            {screening.amaDecline.patientReason && <> · {t("patient_quote", { reason: screening.amaDecline.patientReason })}</>}
+            {" · "}{new Date(screening.amaDecline.createdAt).toLocaleDateString(dl)}
           </p>
         </div>
       )}

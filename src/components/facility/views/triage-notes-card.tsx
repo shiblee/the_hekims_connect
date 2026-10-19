@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 import { MessageSquareText, StickyNote, Target } from "lucide-react";
 
 interface TriageVisit {
@@ -17,6 +18,7 @@ export function TriageNotesCard({ visits }: { visits: TriageVisit[] }) {
     .filter((v) => v.vitalSigns && (v.vitalSigns.painNotes || v.vitalSigns.primaryFocusArea || v.vitalSigns.triageRemarks))
     .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0];
 
+  const t = useTranslations("clinic.triage");
   if (!latest || !latest.vitalSigns) return null;
   const v = latest.vitalSigns;
 
@@ -25,7 +27,7 @@ export function TriageNotesCard({ visits }: { visits: TriageVisit[] }) {
       {v.painNotes && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1.5">
-            <MessageSquareText className="h-3 w-3" /> Pain Notes
+            <MessageSquareText className="h-3 w-3" /> {t("pain_notes")}
           </p>
           <div className="rounded-lg bg-muted/40 p-2.5 text-sm text-foreground/90 leading-relaxed">{v.painNotes}</div>
         </div>
@@ -34,7 +36,7 @@ export function TriageNotesCard({ visits }: { visits: TriageVisit[] }) {
       {v.triageRemarks && (
         <div className={v.painNotes ? "pt-3 border-t border-border/30" : undefined}>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1.5">
-            <StickyNote className="h-3 w-3" /> Triage Remarks
+            <StickyNote className="h-3 w-3" /> {t("remarks")}
           </p>
           <div className="rounded-lg bg-muted/40 p-2.5 text-sm text-foreground/90 leading-relaxed">{v.triageRemarks}</div>
         </div>
@@ -42,7 +44,7 @@ export function TriageNotesCard({ visits }: { visits: TriageVisit[] }) {
 
       {v.primaryFocusArea && (
         <div className={(v.painNotes || v.triageRemarks) ? "flex items-center justify-between gap-2 text-sm pt-3 border-t border-border/30" : "flex items-center justify-between gap-2 text-sm"}>
-          <span className="text-muted-foreground flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Primary Focus Area</span>
+          <span className="text-muted-foreground flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> {t("focus")}</span>
           <span className="font-medium text-end">{v.primaryFocusArea}</span>
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
@@ -71,6 +72,8 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const msg = useNotice();
+  const t = useTranslations("clinic.complaints");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     Promise.all([
@@ -116,7 +119,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
         setComplaintLabels(unionLabels);
         setActiveLabel((cur) => (cur && unionLabels.includes(cur) ? cur : (unionLabels[0] || "")));
       })
-      .catch((e) => setLoadError(e.message || "Network error"))
+      .catch((e) => setLoadError(e.message || tc("network_error")))
       .finally(() => setLoading(false));
     // Depend on a joined string, not the array itself — intakeComplaints is
     // easy for a caller to pass as a fresh array on every render (e.g. an
@@ -185,7 +188,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
       });
       msg.clear();
     } catch (e: any) {
-      msg.error("The main complaints weren't saved", `${e.message || "Network error"}. Your entries are still shown above.`, { retry: () => { save().catch(() => {}); } });
+      msg.error(t("not_saved"), t("not_saved_hint", { error: e.message || tc("network_error") }), { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
@@ -201,7 +204,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
     }));
   }, [drafts, complaintLabels, loading, onDurationsChange]);
 
-  if (loadError) return <LoadFailed what="the main complaints" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+  if (loadError) return <LoadFailed what={t("the_complaints")} detail={loadError} onRetry={() => { setLoading(true); setReloadTick((n) => n + 1); }} />;
   if (loading) {
     return (
       <Card className="p-5 border-border/50 bg-card/60">
@@ -216,10 +219,10 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
     <Card className="p-5 border-border/50 bg-card">
       <SectionHeading
         icon={BriefcaseMedical}
-        title="Main Complaints"
+        title={t("title")}
         right={
           <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center gap-1">
-            <Flag className="h-3 w-3" /> Unani Triage Stage 1
+            <Flag className="h-3 w-3" /> {t("stage1")}
           </Badge>
         }
       />
@@ -228,7 +231,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
         <div className="grid sm:grid-cols-[3fr_2fr] gap-4">
           {/* Complaints — chips double as tabs: the one selected is what the fields below describe */}
           <div>
-            <FieldBox label="Primary reasons for visit" filled={complaintLabels.length > 0 || addComplaintOpen || !!complaintSearch} focused={addComplaintOpen}>
+            <FieldBox label={t("primary")} filled={complaintLabels.length > 0 || addComplaintOpen || !!complaintSearch} focused={addComplaintOpen}>
               {complaintLabels.map((label) => (
                 <span
                   key={label}
@@ -236,7 +239,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                   tabIndex={0}
                   onClick={() => setActiveLabel(label)}
                   onKeyDown={(e) => { if (e.key === "Enter") setActiveLabel(label); }}
-                  title={label === activeLabel ? "Details below are for this complaint" : "Click to fill in this complaint's details"}
+                  title={label === activeLabel ? t("details_for_this") : t("click_to_fill")}
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full border ps-2.5 pe-1 py-0.5 text-sm font-medium cursor-pointer transition-colors",
                     label === activeLabel
@@ -249,7 +252,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); removeComplaint(label); }}
                     className={cn("rounded-full p-0.5", label === activeLabel ? "hover:bg-white/20" : "hover:bg-primary/15")}
-                    aria-label={`Remove ${label}`}
+                    aria-label={t("remove", { label })}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -265,9 +268,9 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                     if (e.key === "Enter" && addComplaintResults[0]) { e.preventDefault(); addComplaint(addComplaintResults[0].label); }
                     if (e.key === "Escape") { setComplaintSearch(""); setAddComplaintOpen(false); }
                   }}
-                  placeholder={complaintLabels.length || addComplaintOpen ? "Add a complaint…" : ""}
+                  placeholder={complaintLabels.length || addComplaintOpen ? t("add_ph") : ""}
                   className="w-full bg-transparent text-sm outline-none py-1 placeholder:text-muted-foreground/70"
-                  aria-label="Add a complaint"
+                  aria-label={t("add_aria")}
                 />
                 {addComplaintOpen && (
                   <div className="absolute start-0 top-full mt-2 z-30 w-72 rounded-lg border border-border/60 bg-popover shadow-lg max-h-60 overflow-y-auto py-1">
@@ -282,15 +285,15 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                         <Plus className="h-3 w-3 text-muted-foreground shrink-0" /> {c.label}
                       </button>
                     ))}
-                    {addComplaintResults.length === 0 && <p className="text-[13px] text-muted-foreground px-3 py-1.5">No matching complaints</p>}
+                    {addComplaintResults.length === 0 && <p className="text-[13px] text-muted-foreground px-3 py-1.5">{t("no_match")}</p>}
                   </div>
                 )}
               </div>
             </FieldBox>
             <p className="text-xs text-muted-foreground mt-1.5 px-1">
               {complaintLabels.length > 1
-                ? <>Filling in details for <span className="font-semibold text-foreground">{activeLabel}</span> — click another complaint to switch.</>
-                : "From reception's intake — add or remove as the consultation reveals more."}
+                ? t.rich("filling_for", { label: activeLabel, b: (c) => <span className="font-semibold text-foreground">{c}</span> })
+                : t("from_intake")}
             </p>
           </div>
 
@@ -315,26 +318,26 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                     "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
                   )}
                 >
-                  How long has it lasted?
+                  {t("how_long")}
                 </label>
                 <div className="h-8 w-px bg-border/70" aria-hidden />
                 <Select value={active.onsetUnit} onValueChange={(v) => updateActive({ onsetUnit: v })}>
                   <SelectTrigger className="h-full border-0 shadow-none focus-visible:ring-0 w-28 bg-transparent"><SelectValue /></SelectTrigger>
-                  <SelectContent>{ONSET_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                  <SelectContent>{ONSET_UNITS.map((u) => <SelectItem key={u} value={u}>{t(`u_${u}`)}</SelectItem>)}</SelectContent>
                 </Select>
                 <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 me-3" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5 px-1">For <span className="font-medium text-foreground">{activeLabel}</span>{active.onsetValue ? ` · ${active.onsetValue} ${active.onsetUnit}` : ""}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 px-1">{t.rich("for_label", { label: activeLabel, b: (c) => <span className="font-medium text-foreground">{c}</span> })}{active.onsetValue ? ` · ${active.onsetValue} ${ONSET_UNITS.includes(active.onsetUnit) ? t(`u_${active.onsetUnit}`) : active.onsetUnit}` : ""}</p>
             </div>
           )}
         </div>
 
         {!active ? (
-          <p className="text-sm text-muted-foreground">Add a complaint above to begin capturing this visit&apos;s findings.</p>
+          <p className="text-sm text-muted-foreground">{t("add_first")}</p>
         ) : (
         <>
           {/* Severity */}
-          <FieldBox label="How severe? (Shiddat-e-Marad)" filled className="block py-3">
+          <FieldBox label={t("severity")} filled className="block py-3">
             <div className="flex items-center gap-4">
               <Slider
                 min={1} max={10} step={1}
@@ -350,17 +353,17 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
               </span>
             </div>
             <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground pe-1">
-              <span>1 · {severityAnchor(1) || "Mild"}</span>
-              <span>5 · {severityAnchor(5) || "Moderate"}</span>
-              <span>10 · {severityAnchor(10) || "Severe"}</span>
+              <span>1 · {severityAnchor(1) || t("mild")}</span>
+              <span>5 · {severityAnchor(5) || t("moderate")}</span>
+              <span>10 · {severityAnchor(10) || t("severe")}</span>
             </div>
           </FieldBox>
 
           {/* What makes it worse / better */}
           <div className="grid sm:grid-cols-2 gap-4">
             {([
-              { kind: "aggravatingFactors" as const, tagKind: "aggravating", title: "What makes it worse? (Muharrikat)", tone: "destructive" as const },
-              { kind: "relievingFactors" as const, tagKind: "relieving", title: "What makes it better? (Musakkinat)", tone: "emerald" as const },
+              { kind: "aggravatingFactors" as const, tagKind: "aggravating", title: t("worse"), tone: "destructive" as const },
+              { kind: "relievingFactors" as const, tagKind: "relieving", title: t("better"), tone: "emerald" as const },
             ]).map(({ kind, tagKind, title, tone }) => {
               const selected = active[kind];
               const available = factorTags.filter((f) => f.kind === tagKind && f.active && !selected.includes(f.label));
@@ -381,7 +384,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                         )}
                       >
                         {label}
-                        <button type="button" onClick={() => toggleFactor(kind, label, false)} className="rounded-full hover:bg-black/10 dark:hover:bg-white/10 p-0.5" aria-label={`Remove ${label}`}>
+                        <button type="button" onClick={() => toggleFactor(kind, label, false)} className="rounded-full hover:bg-black/10 dark:hover:bg-white/10 p-0.5" aria-label={t("remove", { label })}>
                           <X className="h-3 w-3" />
                         </button>
                       </span>
@@ -394,9 +397,9 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                             "inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors",
                             selected.length === 0 && "absolute inset-0 justify-end pe-3",
                           )}
-                          aria-label={`Add to ${title}`}
+                          aria-label={t("add_to", { title })}
                         >
-                          <Plus className="h-4 w-4" />{selected.length > 0 && <span className="text-[13px]">Add</span>}
+                          <Plus className="h-4 w-4" />{selected.length > 0 && <span className="text-[13px]">{t("add")}</span>}
                         </button>
                       </PopoverTrigger>
                     )}
@@ -404,9 +407,9 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                   <PopoverContent className="w-72 p-1.5" align="start">
                     <Input autoFocus value={factorQuery[kind] || ""} onChange={(e) => setFactorQuery((x) => ({ ...x, [kind]: e.target.value }))}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); const pick = shown[0]?.label || custom; if (pick) { toggleFactor(kind, pick, true); setFactorQuery((x) => ({ ...x, [kind]: "" })); } } }}
-                      placeholder={`Search ${available.length} factors…`} className="h-8 mb-1.5 text-sm" />
+                      placeholder={t("search_factors", { count: available.length })} className="h-8 mb-1.5 text-sm" />
                     <div className="flex flex-col max-h-64 overflow-y-auto">
-                      {shown.length === 0 && !custom && <p className="px-2.5 py-1.5 text-sm text-muted-foreground">No match</p>}
+                      {shown.length === 0 && !custom && <p className="px-2.5 py-1.5 text-sm text-muted-foreground">{t("no_factor")}</p>}
                       {shown.map((f) => (
                         <button
                           key={f.id}
@@ -420,7 +423,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
                       {custom && (
                         <button type="button" onClick={() => { toggleFactor(kind, custom, true); setFactorQuery((x) => ({ ...x, [kind]: "" })); }}
                           className="text-start px-2.5 py-1.5 text-sm rounded-md hover:bg-muted/60 transition-colors text-primary">
-                          <Plus className="inline h-3.5 w-3.5 me-1" />Add &quot;{custom}&quot;
+                          <Plus className="inline h-3.5 w-3.5 me-1" />{t("add_custom", { q: custom })}
                         </button>
                       )}
                     </div>

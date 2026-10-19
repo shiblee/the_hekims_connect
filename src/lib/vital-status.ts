@@ -4,7 +4,14 @@
 // contradict the review flags used elsewhere; the words outside that range
 // are standard triage wording. Decision support only, never a diagnosis.
 
+import { VITAL_STATUS } from "@/lib/i18n/app-strings/clinic-vitals";
+
 export type VitalTone = "ok" | "watch" | "alert" | "urgent" | "check";
+
+/** Translator for the words below (pass `useTranslations("clinic.vital_status")`); defaults to English. */
+export type VitalT = (key: string, values?: Record<string, string | number>) => string;
+const EN = Object.fromEntries(VITAL_STATUS.map((s) => [s.key.slice("clinic.vital_status.".length), s.en]));
+const english: VitalT = (key, values) => (EN[key] ?? key).replace(/\{(\w+)\}/g, (_, k) => String(values?.[k] ?? ""));
 
 export interface VitalStatus {
   tone: VitalTone;
@@ -30,102 +37,104 @@ export const GAUGE_SCALE: Record<string, [number, number]> = {
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 const rangeText = (r: [number, number], unit: string) => `${fmt(r[0])}–${fmt(r[1])} ${unit}`;
 
-export function bpStatus(sys: number | null, dia: number | null, ranges: Record<string, [number, number]>): VitalStatus | null {
+export function bpStatus(sys: number | null, dia: number | null, ranges: Record<string, [number, number]>, t: VitalT = english): VitalStatus | null {
   if (sys == null && dia == null) return null;
   if (sys != null && dia != null && dia >= sys) {
-    return { tone: "check", label: "Check reading", detail: `The lower number (diastolic ${dia}) can't be higher than the upper number (systolic ${sys}) — this is likely an entry mistake. Please re-check and correct it.` };
+    return { tone: "check", label: t("check"), detail: t("bp_check", { dia, sys }) };
   }
   const [sLo, sHi] = ranges.bpSystolic; const [dLo, dHi] = ranges.bpDiastolic;
-  const part = (name: string, v: number | null, lo: number, hi: number) =>
-    v == null ? null : v < lo ? `${name} ${v} is below normal` : v > hi ? `${name} ${v} is above normal` : `${name} ${v} is normal`;
-  const detail = [part("Systolic", sys, sLo, sHi), part("diastolic", dia, dLo, dHi)].filter(Boolean).join("; ")
-    + ` (normal ${fmt(sLo)}–${fmt(sHi)} / ${fmt(dLo)}–${fmt(dHi)} mmHg).`;
+  const part = (name: "sys" | "dia", v: number | null, lo: number, hi: number) =>
+    v == null ? null : t(`${name}_${v < lo ? "below" : v > hi ? "above" : "normal"}`, { v });
+  const detail = t("bp_detail", { parts: [part("sys", sys, sLo, sHi), part("dia", dia, dLo, dHi)].filter(Boolean).join("; "), range: `${fmt(sLo)}–${fmt(sHi)} / ${fmt(dLo)}–${fmt(dHi)}` });
   const high = (sys != null && sys > sHi) || (dia != null && dia > dHi);
   const low = (sys != null && sys < sLo) || (dia != null && dia < dLo);
-  if ((sys != null && sys >= 180) || (dia != null && dia >= 120)) return { tone: "urgent", label: "Very high", detail: `${detail} This level needs a doctor's attention now.` };
-  if (sys != null && sys < 80) return { tone: "urgent", label: "Very low", detail: `${detail} This level needs a doctor's attention now.` };
-  if ((sys != null && sys >= 140) || (dia != null && dia >= 90)) return { tone: "alert", label: "High", detail };
-  if (high && low) return { tone: "watch", label: "Uneven", detail };
-  if (high) return { tone: "watch", label: "Raised", detail };
-  if (low) return { tone: "watch", label: "Low", detail };
-  return { tone: "ok", label: "Normal", detail };
+  if ((sys != null && sys >= 180) || (dia != null && dia >= 120)) return { tone: "urgent", label: t("very_high"), detail: `${detail} ${t("urgent_now")}` };
+  if (sys != null && sys < 80) return { tone: "urgent", label: t("very_low"), detail: `${detail} ${t("urgent_now")}` };
+  if ((sys != null && sys >= 140) || (dia != null && dia >= 90)) return { tone: "alert", label: t("high"), detail };
+  if (high && low) return { tone: "watch", label: t("uneven"), detail };
+  if (high) return { tone: "watch", label: t("raised"), detail };
+  if (low) return { tone: "watch", label: t("low"), detail };
+  return { tone: "ok", label: t("normal"), detail };
 }
 
-export function pulseStatus(v: number | null, ranges: Record<string, [number, number]>): VitalStatus | null {
+export function pulseStatus(v: number | null, ranges: Record<string, [number, number]>, t: VitalT = english): VitalStatus | null {
   if (v == null) return null;
   const r = ranges.pulse;
-  const normal = `normal ${rangeText(r, "bpm")}`;
-  if (v < 40) return { tone: "urgent", label: "Very slow", detail: `${v} bpm is much slower than ${normal} — needs a doctor's attention now.` };
-  if (v > 130) return { tone: "urgent", label: "Very fast", detail: `${v} bpm is much faster than ${normal} — needs a doctor's attention now.` };
-  if (v < r[0]) return { tone: "watch", label: "Slow", detail: `${v} bpm is slower than ${normal}.` };
-  if (v > r[1]) return { tone: "alert", label: "Fast", detail: `${v} bpm is faster than ${normal}.` };
-  return { tone: "ok", label: "Normal", detail: `${v} bpm is within the ${normal}.` };
+  const range = rangeText(r, "bpm");
+  if (v < 40) return { tone: "urgent", label: t("very_slow"), detail: t("pulse_very_slow", { v, range }) };
+  if (v > 130) return { tone: "urgent", label: t("very_fast"), detail: t("pulse_very_fast", { v, range }) };
+  if (v < r[0]) return { tone: "watch", label: t("slow"), detail: t("pulse_slow", { v, range }) };
+  if (v > r[1]) return { tone: "alert", label: t("fast"), detail: t("pulse_fast", { v, range }) };
+  return { tone: "ok", label: t("normal"), detail: t("pulse_normal", { v, range }) };
 }
 
-export function spo2Status(v: number | null, ranges: Record<string, [number, number]>): VitalStatus | null {
+export function spo2Status(v: number | null, ranges: Record<string, [number, number]>, t: VitalT = english): VitalStatus | null {
   if (v == null) return null;
   const r = ranges.spo2;
-  if (v <= 90) return { tone: "urgent", label: "Very low oxygen", detail: `Oxygen at ${v}% is well below normal (${rangeText(r, "%")}) — needs a doctor's attention now.` };
-  if (v < r[0]) return { tone: "alert", label: "Low oxygen", detail: `Oxygen at ${v}% is below normal (${rangeText(r, "%")}).` };
-  return { tone: "ok", label: "Normal", detail: `Oxygen at ${v}% is within the normal range (${rangeText(r, "%")}).` };
+  const range = rangeText(r, "%");
+  if (v <= 90) return { tone: "urgent", label: t("very_low_oxygen"), detail: t("spo2_very_low", { v, range }) };
+  if (v < r[0]) return { tone: "alert", label: t("low_oxygen"), detail: t("spo2_low", { v, range }) };
+  return { tone: "ok", label: t("normal"), detail: t("spo2_normal", { v, range }) };
 }
 
-export function temperatureStatus(f: number | null, ranges: Record<string, [number, number]>): VitalStatus | null {
+export function temperatureStatus(f: number | null, ranges: Record<string, [number, number]>, t: VitalT = english): VitalStatus | null {
   if (f == null) return null;
   const r = ranges.temperatureF;
   const c = ((f - 32) * 5) / 9;
   const both = `${fmt(f)}°F (${c.toFixed(1)}°C)`;
-  if (f < 95) return { tone: "urgent", label: "Very low", detail: `${both} is far below normal (${rangeText(r, "°F")}) — needs a doctor's attention now.` };
-  if (f >= 104) return { tone: "urgent", label: "Very high fever", detail: `${both} is a very high fever — needs a doctor's attention now.` };
-  if (f >= 103) return { tone: "alert", label: "High fever", detail: `${both} is a high fever (normal ${rangeText(r, "°F")}).` };
-  if (f >= 100.4) return { tone: "alert", label: "Fever", detail: `${both} is a fever (normal ${rangeText(r, "°F")}).` };
-  if (f > r[1]) return { tone: "watch", label: "Slightly raised", detail: `${both} is a little above normal (${rangeText(r, "°F")}), below fever level (100.4°F).` };
-  if (f < r[0]) return { tone: "watch", label: "Low", detail: `${both} is a little below normal (${rangeText(r, "°F")}).` };
-  return { tone: "ok", label: "Normal", detail: `${both} is within the normal range (${rangeText(r, "°F")}).` };
+  const range = rangeText(r, "°F");
+  if (f < 95) return { tone: "urgent", label: t("very_low"), detail: t("temp_very_low", { v: both, range }) };
+  if (f >= 104) return { tone: "urgent", label: t("very_high_fever"), detail: t("temp_very_high", { v: both }) };
+  if (f >= 103) return { tone: "alert", label: t("high_fever"), detail: t("temp_high", { v: both, range }) };
+  if (f >= 100.4) return { tone: "alert", label: t("fever"), detail: t("temp_fever", { v: both, range }) };
+  if (f > r[1]) return { tone: "watch", label: t("slightly_raised"), detail: t("temp_slight", { v: both, range }) };
+  if (f < r[0]) return { tone: "watch", label: t("low"), detail: t("temp_low", { v: both, range }) };
+  return { tone: "ok", label: t("normal"), detail: t("temp_normal", { v: both, range }) };
 }
 
-export function bmiStatus(bmi: number | null): VitalStatus | null {
+export function bmiStatus(bmi: number | null, t: VitalT = english): VitalStatus | null {
   if (bmi == null) return null;
-  if (bmi < 18.5) return { tone: "watch", label: "Underweight", detail: `BMI ${bmi.toFixed(1)} is below the healthy range (18.5–24.9).` };
-  if (bmi < 25) return { tone: "ok", label: "Healthy weight", detail: `BMI ${bmi.toFixed(1)} is within the healthy range (18.5–24.9).` };
-  if (bmi < 30) return { tone: "watch", label: "Overweight", detail: `BMI ${bmi.toFixed(1)} is above the healthy range (18.5–24.9).` };
-  return { tone: "alert", label: "Obese", detail: `BMI ${bmi.toFixed(1)} is in the obese range (30 or more).` };
+  const v = bmi.toFixed(1);
+  if (bmi < 18.5) return { tone: "watch", label: t("underweight"), detail: t("bmi_under", { v }) };
+  if (bmi < 25) return { tone: "ok", label: t("healthy"), detail: t("bmi_healthy", { v }) };
+  if (bmi < 30) return { tone: "watch", label: t("overweight"), detail: t("bmi_over", { v }) };
+  return { tone: "alert", label: t("obese"), detail: t("bmi_obese", { v }) };
 }
 
 /** Reference bands for the pop-up's "What's normal?" section. */
-export function referenceBands(key: string, ranges: Record<string, [number, number]>): { label: string; range: string; tone: VitalTone }[] {
+export function referenceBands(key: string, ranges: Record<string, [number, number]>, t: VitalT = english): { label: string; range: string; tone: VitalTone }[] {
   switch (key) {
     case "bpSystolic": return [
-      { label: "Low", range: `below ${fmt(ranges.bpSystolic[0])} / ${fmt(ranges.bpDiastolic[0])}`, tone: "watch" },
-      { label: "Normal", range: `${fmt(ranges.bpSystolic[0])}–${fmt(ranges.bpSystolic[1])} / ${fmt(ranges.bpDiastolic[0])}–${fmt(ranges.bpDiastolic[1])}`, tone: "ok" },
-      { label: "Raised", range: `above ${fmt(ranges.bpSystolic[1])} / ${fmt(ranges.bpDiastolic[1])}`, tone: "watch" },
-      { label: "High", range: "140 / 90 or more", tone: "alert" },
-      { label: "Very high — urgent", range: "180 / 120 or more", tone: "urgent" },
+      { label: t("low"), range: t("below", { v: `${fmt(ranges.bpSystolic[0])} / ${fmt(ranges.bpDiastolic[0])}` }), tone: "watch" },
+      { label: t("normal"), range: `${fmt(ranges.bpSystolic[0])}–${fmt(ranges.bpSystolic[1])} / ${fmt(ranges.bpDiastolic[0])}–${fmt(ranges.bpDiastolic[1])}`, tone: "ok" },
+      { label: t("raised"), range: t("above", { v: `${fmt(ranges.bpSystolic[1])} / ${fmt(ranges.bpDiastolic[1])}` }), tone: "watch" },
+      { label: t("high"), range: t("or_more", { v: "140 / 90" }), tone: "alert" },
+      { label: t("very_high_urgent"), range: t("or_more", { v: "180 / 120" }), tone: "urgent" },
     ];
     case "pulse": return [
-      { label: "Very slow — urgent", range: "below 40", tone: "urgent" },
-      { label: "Slow", range: `40–${fmt(ranges.pulse[0] - 1)}`, tone: "watch" },
-      { label: "Normal", range: `${fmt(ranges.pulse[0])}–${fmt(ranges.pulse[1])}`, tone: "ok" },
-      { label: "Fast", range: `${fmt(ranges.pulse[1] + 1)}–130`, tone: "alert" },
-      { label: "Very fast — urgent", range: "above 130", tone: "urgent" },
+      { label: t("very_slow_urgent"), range: t("below", { v: 40 }), tone: "urgent" },
+      { label: t("slow"), range: `40–${fmt(ranges.pulse[0] - 1)}`, tone: "watch" },
+      { label: t("normal"), range: `${fmt(ranges.pulse[0])}–${fmt(ranges.pulse[1])}`, tone: "ok" },
+      { label: t("fast"), range: `${fmt(ranges.pulse[1] + 1)}–130`, tone: "alert" },
+      { label: t("very_fast_urgent"), range: t("above", { v: 130 }), tone: "urgent" },
     ];
     case "spo2": return [
-      { label: "Normal", range: `${fmt(ranges.spo2[0])}–${fmt(ranges.spo2[1])}%`, tone: "ok" },
-      { label: "Low oxygen", range: `91–${fmt(ranges.spo2[0] - 1)}%`, tone: "alert" },
-      { label: "Very low — urgent", range: "90% or less", tone: "urgent" },
+      { label: t("normal"), range: `${fmt(ranges.spo2[0])}–${fmt(ranges.spo2[1])}%`, tone: "ok" },
+      { label: t("low_oxygen"), range: `91–${fmt(ranges.spo2[0] - 1)}%`, tone: "alert" },
+      { label: t("very_low_urgent"), range: t("or_less", { v: "90%" }), tone: "urgent" },
     ];
     case "temperatureF": return [
-      { label: "Low", range: `below ${fmt(ranges.temperatureF[0])}°F`, tone: "watch" },
-      { label: "Normal", range: `${fmt(ranges.temperatureF[0])}–${fmt(ranges.temperatureF[1])}°F`, tone: "ok" },
-      { label: "Slightly raised", range: `up to 100.3°F`, tone: "watch" },
-      { label: "Fever", range: "100.4–102.9°F", tone: "alert" },
-      { label: "High fever", range: "103°F or more", tone: "urgent" },
+      { label: t("low"), range: t("below", { v: `${fmt(ranges.temperatureF[0])}°F` }), tone: "watch" },
+      { label: t("normal"), range: `${fmt(ranges.temperatureF[0])}–${fmt(ranges.temperatureF[1])}°F`, tone: "ok" },
+      { label: t("slightly_raised"), range: t("up_to", { v: "100.3°F" }), tone: "watch" },
+      { label: t("fever"), range: "100.4–102.9°F", tone: "alert" },
+      { label: t("high_fever"), range: t("or_more", { v: "103°F" }), tone: "urgent" },
     ];
     case "bmi": case "heightCm": return [
-      { label: "Underweight", range: "below 18.5", tone: "watch" },
-      { label: "Healthy weight", range: "18.5–24.9", tone: "ok" },
-      { label: "Overweight", range: "25–29.9", tone: "watch" },
-      { label: "Obese", range: "30 or more", tone: "alert" },
+      { label: t("underweight"), range: t("below", { v: 18.5 }), tone: "watch" },
+      { label: t("healthy"), range: "18.5–24.9", tone: "ok" },
+      { label: t("overweight"), range: "25–29.9", tone: "watch" },
+      { label: t("obese"), range: t("or_more", { v: 30 }), tone: "alert" },
     ];
     default: return [];
   }

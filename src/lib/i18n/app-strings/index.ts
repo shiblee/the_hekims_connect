@@ -10,17 +10,21 @@ import { CLINIC_PATIENTS } from "./clinic-patients";
 import { VALUE_LABELS } from "./values";
 import { CLINIC_REPORTS } from "./clinic-reports";
 import { CLINIC_PAYMENTS, CLINIC_RECEIPT } from "./clinic-payments";
+import { CLINIC_VITALS, VITAL_STATUS } from "./clinic-vitals";
+import { CLINIC_COMPLAINTS, CLINIC_INSIGHT, CLINIC_JOURNEY, CLINIC_REDFLAG, CLINIC_REFERRAL_LINE, CLINIC_SIGNATURE, CLINIC_TRIAGE } from "./clinic-stage2";
 import { ACTIVITY_LOG, CLINIC_FEES, CLINIC_PERMISSIONS, CLINIC_PROFILE, CLINIC_TEAM } from "./clinic-settings";
 import { CLINIC_APPOINTMENTS, CLINIC_MESSAGES, CLINIC_PHARMACY, CLINIC_PRESCRIPTIONS, CLINIC_RECORD } from "./clinic-pages";
 
 /** Every clinic / staff / patient app text. Add new files here. */
-export const APP_STRINGS: AppString[] = [...ACTIVITY_LOG, ...CLINIC_FEES, ...CLINIC_TEAM, ...CLINIC_PERMISSIONS, ...CLINIC_PROFILE, ...CLINIC_RECORD, ...CLINIC_APPOINTMENTS, ...CLINIC_MESSAGES, ...CLINIC_PHARMACY, ...CLINIC_PRESCRIPTIONS, ...CLINIC_PAYMENTS, ...CLINIC_RECEIPT, ...CLINIC_REPORTS, ...VALUE_LABELS, ...CLINIC_PATIENTS, ...CLINIC_DASHBOARD, ...CLINIC_OVERVIEW, ...CLINIC_STAGES, ...CLINIC_RECEPTION, ...SHARED_WIDGETS, ...COMMON, ...CLINIC_SHELL, ...PATIENT_SHELL, ...STAFF_PORTAL];
+export const APP_STRINGS: AppString[] = [...VITAL_STATUS, ...CLINIC_VITALS, ...CLINIC_JOURNEY, ...CLINIC_SIGNATURE, ...CLINIC_REFERRAL_LINE, ...CLINIC_TRIAGE, ...CLINIC_REDFLAG, ...CLINIC_COMPLAINTS, ...CLINIC_INSIGHT, ...ACTIVITY_LOG, ...CLINIC_FEES, ...CLINIC_TEAM, ...CLINIC_PERMISSIONS, ...CLINIC_PROFILE, ...CLINIC_RECORD, ...CLINIC_APPOINTMENTS, ...CLINIC_MESSAGES, ...CLINIC_PHARMACY, ...CLINIC_PRESCRIPTIONS, ...CLINIC_PAYMENTS, ...CLINIC_RECEIPT, ...CLINIC_REPORTS, ...VALUE_LABELS, ...CLINIC_PATIENTS, ...CLINIC_DASHBOARD, ...CLINIC_OVERVIEW, ...CLINIC_STAGES, ...CLINIC_RECEPTION, ...SHARED_WIDGETS, ...COMMON, ...CLINIC_SHELL, ...PATIENT_SHELL, ...STAFF_PORTAL];
 
 /** Message namespaces each app needs (the rest of the store — e.g. the public website — isn't sent). */
 export const AREA_NAMESPACES = {
   public: ["landing", "site_header", "site_footer", "guidance", "common", "auth"],
   clinic: ["site_header", "guidance", "common", "auth", "clinic"],
   patient: ["site_header", "guidance", "common", "auth", "patient"],
+  // Admin is always English; it reuses some clinic screens (vitals, asbab, activity log), so it gets their texts.
+  admin: ["guidance", "common", "auth", "clinic"],
 } as const;
 
 /** The code's own copy of a language's app texts — used for any key not (yet) in the translation store. */

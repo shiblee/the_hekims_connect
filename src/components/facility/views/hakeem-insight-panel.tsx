@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
+import { useTranslations } from "next-intl";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -30,13 +31,13 @@ const HUMORS = [
 /** "Priority Level 2: Standard Ambulatory Intake" → level 2 and its colour. */
 function priorityTone(label: string) {
   const level = Number(/level\s*(\d)/i.exec(label)?.[1] ?? /(\d)/.exec(label)?.[1] ?? NaN);
-  if (level === 1) return { level, ring: "border-red-500/40 bg-red-500/10", badge: "bg-red-500 text-white", text: "text-red-700 dark:text-red-400", word: "Urgent" };
-  if (level === 2) return { level, ring: "border-amber-500/40 bg-amber-500/10", badge: "bg-amber-500 text-white", text: "text-amber-700 dark:text-amber-400", word: "Soon" };
-  if (level >= 3) return { level, ring: "border-emerald-500/40 bg-emerald-500/10", badge: "bg-emerald-500 text-white", text: "text-emerald-700 dark:text-emerald-400", word: "Routine" };
+  if (level === 1) return { level, ring: "border-red-500/40 bg-red-500/10", badge: "bg-red-500 text-white", text: "text-red-700 dark:text-red-400", word: "urgent" };
+  if (level === 2) return { level, ring: "border-amber-500/40 bg-amber-500/10", badge: "bg-amber-500 text-white", text: "text-amber-700 dark:text-amber-400", word: "soon" };
+  if (level >= 3) return { level, ring: "border-emerald-500/40 bg-emerald-500/10", badge: "bg-emerald-500 text-white", text: "text-emerald-700 dark:text-emerald-400", word: "routine" };
   return { level: null, ring: "border-primary/30 bg-primary/5", badge: "bg-primary text-primary-foreground", text: "text-primary", word: "" };
 }
 
-const STEPS = ["Saving the latest findings", "Reading vitals, complaints & warning signs", "Weighing the four humours"];
+const STEPS = ["step_0", "step_1", "step_2"];
 
 export interface HakeemInsightPanelHandle {
   /** Re-fetch the humoral balance after the page saves the complaints (it's recomputed server-side). */
@@ -62,6 +63,8 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
   const [step, setStep] = useState<number | null>(null); // running: index into STEPS
   const [overriding, setOverriding] = useState(false);
   const msg = useNotice();
+  const t = useTranslations("clinic.insight");
+  const tc = useTranslations("common");
 
   const loadHumoral = useCallback(async () => {
     const ca = await api.get<{ humoralAssessment: Humoral | null }>(`/api/facility/visits/${visitId}/complaint-assessments`);
@@ -92,7 +95,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
     try {
       if (onBeforeGenerate) {
         try { await onBeforeGenerate(); } catch {
-          msg.warning("The main complaints need saving first", "They couldn't be saved — see the message in Main Complaints, then press Generate again.");
+          msg.warning(t("save_first"), t("save_first_hint"));
           setStep(null);
           return;
         }
@@ -110,23 +113,23 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       const cReason = c.status === "rejected" ? "error" : c.value.clue ? null : (c.value.reason || "unavailable");
       if (rReason === "off" || cReason === "off") {
         msg.info(
-          "Hakeem Insight is switched off",
-          "An administrator has turned off the AI service. Everything else on this page keeps working.",
+          t("off"),
+          t("off_hint"),
         );
       } else if (rReason === "quota" || cReason === "quota") {
         msg.warning(
-          "Hakeem Insight is paused — its AI credits have run out",
-          "The Google Gemini account behind Hakeem Insight has used up its prepaid credits. An administrator can top it up in Google AI Studio; everything else on this page keeps working.",
-          { retry: generate, retryLabel: "Try again" },
+          t("credits"),
+          t("credits_hint"),
+          { retry: generate, retryLabel: tc("retry") },
         );
       } else {
-        const failed = [rReason && "triage priority", cReason && cReason !== "no_data" && "humoral explanation"].filter(Boolean) as string[];
-        if (failed.length === 2) msg.error("Hakeem Insight isn't available right now", "Nothing was changed — try again in a moment.", { retry: generate, retryLabel: "Try again" });
-        else if (failed.length) msg.warning(`The ${failed[0]} couldn't be generated`, "The rest is shown below — try again to fill it in.", { retry: generate, retryLabel: "Try again" });
-        if (cReason === "no_data" && !rReason) msg.info("Fill in Main Complaints for the humoral reading", "The triage priority is ready; the humoral balance needs at least one assessed complaint.");
+        const failed = [rReason && t("f_triage"), cReason && cReason !== "no_data" && t("f_humoral")].filter(Boolean) as string[];
+        if (failed.length === 2) msg.error(t("unavailable"), t("unavailable_hint"), { retry: generate, retryLabel: tc("retry") });
+        else if (failed.length) msg.warning(t("part_failed", { part: failed[0] }), t("part_failed_hint"), { retry: generate, retryLabel: tc("retry") });
+        if (cReason === "no_data" && !rReason) msg.info(t("need_complaints"), t("need_complaints_hint"));
       }
     } catch (e: any) {
-      msg.error("Hakeem Insight couldn't run", `${e.message || "Network error"}.`, { retry: generate, retryLabel: "Try again" });
+      msg.error(t("failed"), `${e.message || tc("network_error")}.`, { retry: generate, retryLabel: tc("retry") });
     } finally {
       setStep(null);
     }
@@ -140,7 +143,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       await api.patch(`/api/facility/visits/${visitId}/humoral-assessment`, { dominantOverride: dominant });
       setHumoral((h) => (h ? { ...h, dominantOverride: dominant } : h));
     } catch (e: any) {
-      msg.error("The doctor's pick wasn't saved", `${e.message || "Network error"}. Try again.`);
+      msg.error(t("pick_not_saved"), t("try_again", { error: e.message || tc("network_error") }));
     } finally {
       setOverriding(false);
     }
@@ -161,18 +164,18 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
             <Sparkles className="h-4.5 w-4.5" />
           </div>
           <div className="min-w-0">
-            <h2 className="font-serif text-lg font-semibold leading-tight">Hakeem Insight</h2>
+            <h2 className="font-serif text-lg font-semibold leading-tight">{t("title")}</h2>
             <p className="text-xs text-muted-foreground leading-tight">
-              {generatedAt ? `Updated ${daysAgo(generatedAt)}` : "Triage & humoral reading"}
+              {generatedAt ? t("updated", { when: daysAgo(generatedAt) }) : t("subtitle")}
             </p>
           </div>
         </div>
-        <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 shrink-0">Preliminary</span>
+        <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 shrink-0">{t("preliminary")}</span>
       </div>
 
       <Button onClick={generate} disabled={running || !loaded} className="w-full">
         {running ? <Loader2 className="h-4 w-4 animate-spin" /> : hasAny ? <RefreshCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-        {running ? "Generating…" : hasAny ? "Regenerate insight" : "Generate insight"}
+        {running ? t("generating") : hasAny ? t("regenerate") : t("generate")}
       </Button>
 
       {/* Live progress */}
@@ -181,7 +184,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
           {STEPS.map((s, i) => (
             <li key={s} className={cn("flex items-center gap-2 text-[13px]", i < step! ? "text-foreground" : i === step ? "text-primary font-medium" : "text-muted-foreground")}>
               {i < step! ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : i === step ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Circle className="h-3.5 w-3.5" />}
-              {s}
+              {t(s)}
             </li>
           ))}
         </ol>
@@ -191,18 +194,18 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       {/* Before anything is generated: what you'll get, and whether the data is there */}
       {!running && !hasAny && loaded && (
         <div className="rounded-lg border border-dashed border-border/70 p-3 space-y-2.5">
-          <p className="text-sm font-semibold">One click gives you:</p>
+          <p className="text-sm font-semibold">{t("one_click")}</p>
           <ul className="space-y-1.5 text-[13px] text-muted-foreground">
-            <li className="flex items-center gap-2"><Milestone className="h-3.5 w-3.5 text-primary" /> Triage priority and the next step</li>
-            <li className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-primary" /> The four-humour balance (Akhlat)</li>
-            <li className="flex items-center gap-2"><Quote className="h-3.5 w-3.5 text-primary" /> A plain-language explanation</li>
+            <li className="flex items-center gap-2"><Milestone className="h-3.5 w-3.5 text-primary" /> {t("gives_triage")}</li>
+            <li className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-primary" /> {t("gives_balance")}</li>
+            <li className="flex items-center gap-2"><Quote className="h-3.5 w-3.5 text-primary" /> {t("gives_explain")}</li>
           </ul>
           <div className="border-t border-border/50 pt-2 space-y-1 text-xs">
             <p className={cn("flex items-center gap-1.5", hasVitals ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
-              {hasVitals ? <Check className="h-3 w-3" /> : <HeartPulse className="h-3 w-3" />} Vitals {hasVitals ? "recorded" : "not recorded yet"}
+              {hasVitals ? <Check className="h-3 w-3" /> : <HeartPulse className="h-3 w-3" />} {hasVitals ? t("vitals_yes") : t("vitals_no")}
             </p>
             <p className={cn("flex items-center gap-1.5", humoral ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
-              {humoral ? <Check className="h-3 w-3" /> : <ListChecks className="h-3 w-3" />} Main complaints {humoral ? "assessed" : "— fill in for the humoral balance"}
+              {humoral ? <Check className="h-3 w-3" /> : <ListChecks className="h-3 w-3" />} {humoral ? t("complaints_yes") : t("complaints_no")}
             </p>
           </div>
         </div>
@@ -213,16 +216,16 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
         <section className={cn("rounded-xl border p-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-300", tone.ring)}>
           <div className="flex items-start gap-2.5">
             <span className={cn("h-9 w-9 rounded-lg flex flex-col items-center justify-center shrink-0 leading-none", tone.badge)}>
-              {tone.level != null ? <><span className="text-[9px] font-semibold uppercase opacity-80">Level</span><span className="text-base font-bold">{tone.level}</span></> : <Milestone className="h-4 w-4" />}
+              {tone.level != null ? <><span className="text-[9px] font-semibold uppercase opacity-80">{t("level")}</span><span className="text-base font-bold">{tone.level}</span></> : <Milestone className="h-4 w-4" />}
             </span>
             <div className="min-w-0">
-              <p className={cn("text-[11px] font-semibold uppercase tracking-wide", tone.text)}>Triage priority{tone.word && ` · ${tone.word}`}</p>
+              <p className={cn("text-[11px] font-semibold uppercase tracking-wide", tone.text)}>{t("priority")}{tone.word && ` · ${t(tone.word)}`}</p>
               <p className="text-sm font-semibold leading-snug">{routing.priorityLevel.replace(/^priority\s*level\s*\d\s*[:\-–]\s*/i, "")}</p>
             </div>
           </div>
           <p className="flex items-start gap-1.5 text-[13px]">
             <ArrowRight className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-            <span><span className="text-muted-foreground">Next step:</span> <span className="font-medium">{routing.triageStream}</span></span>
+            <span><span className="text-muted-foreground">{t("next_step")}</span> <span className="font-medium">{routing.triageStream}</span></span>
           </p>
           <p className="text-[13px] text-muted-foreground leading-relaxed">{routing.justification}</p>
         </section>
@@ -232,7 +235,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       {humoral && (
         <section className="rounded-xl border border-border/50 bg-card p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-foreground flex items-center gap-1.5"><Scale className="h-4 w-4 text-primary" /> Humoral balance</p>
+            <p className="text-sm font-semibold text-foreground flex items-center gap-1.5"><Scale className="h-4 w-4 text-primary" /> {t("balance")}</p>
             {humoral.dominantOverride && <span className="text-[11px] text-muted-foreground">Doctor&apos;s pick · engine said {humoral.dominant}</span>}
           </div>
           <div className="space-y-1.5">
@@ -246,7 +249,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
                   type="button"
                   onClick={() => pickHumor(h.dominant)}
                   disabled={overriding}
-                  title={isTop ? "Current dominant humour" : `Set ${c?.unaniLabel || h.dominant} as the doctor's pick`}
+                  title={isTop ? t("dominant") : t("set_pick", { name: c?.unaniLabel || h.dominant })}
                   className={cn(
                     "group w-full rounded-lg border px-2.5 py-1.5 text-start transition-colors",
                     isTop ? h.soft : "border-transparent hover:border-border/60 hover:bg-muted/40",
@@ -267,7 +270,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
               );
             })}
           </div>
-          <p className="text-[11px] text-muted-foreground">Tap a humour to set your own pick.</p>
+          <p className="text-[11px] text-muted-foreground">{t("tap")}</p>
         </section>
       )}
 
@@ -280,7 +283,7 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
       )}
 
       {hasAny && (
-        <p className="text-[11px] text-muted-foreground italic">Decision support only — not a diagnosis. Confirm before acting.</p>
+        <p className="text-[11px] text-muted-foreground italic">{t("disclaimer")}</p>
       )}
     </Card>
   );

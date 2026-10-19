@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { useTranslations } from "next-intl";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
@@ -23,6 +24,8 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const msg = useNotice();
+  const tr = useTranslations("clinic.triage");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     Promise.all([
@@ -38,7 +41,7 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
           setSelected([]);
         }
       })
-      .catch((e) => setLoadError(e.message || "Network error"))
+      .catch((e) => setLoadError(e.message || tc("network_error")))
       .finally(() => setLoading(false));
   }, [visitId, reloadTick]);
 
@@ -57,20 +60,20 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
       await api.post(`/api/facility/visits/${visitId}/acute-symptoms`, { symptoms: selected });
       msg.clear();
     } catch (e: any) {
-      msg.error("The other symptoms weren't saved", `${e.message || "Network error"}. Your selection is still shown above.`, { retry: () => { save().catch(() => {}); } });
+      msg.error(tr("sym_not_saved"), tr("sym_not_saved_hint", { error: e.message || tc("network_error") }), { retry: () => { save().catch(() => {}); } });
       throw e;
     }
   };
 
   useImperativeHandle(ref, () => ({ save }), [selected, loading, loadError, msg]);
 
-  if (loadError) return <LoadFailed what="the other symptoms checklist" detail={loadError} onRetry={() => { setLoading(true); setReloadTick((t) => t + 1); }} />;
+  if (loadError) return <LoadFailed what={tr("the_symptoms")} detail={loadError} onRetry={() => { setLoading(true); setReloadTick((n) => n + 1); }} />;
 
   if (loading) {
     return (
       <Card className="p-5 border-border/50 bg-card/60">
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading accompanying acute symptoms…
+          <Loader2 className="h-4 w-4 animate-spin" /> {tr("sym_loading")}
         </div>
       </Card>
     );
@@ -92,26 +95,26 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
     <Card className="p-4 gap-3 border-border/50 bg-card">
       <SectionHeading
         icon={ListChecks}
-        title="Other Symptoms"
+        title={tr("sym_title")}
         right={
           <span className={cn(
             "rounded-full border px-2.5 py-1 text-[13px] font-semibold",
             selected.length ? "border-primary/30 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground",
           )}>
-            {selected.length ? `${selected.length} noted` : "None noted"}
+            {selected.length ? tr("n_noted", { count: selected.length }) : tr("none_noted")}
           </span>
         }
       />
 
       <FloatingMultiSelect
         id="otherSymptomSearch"
-        label="Search other symptoms"
-        placeholder="Type a symptom — e.g. thirst, nausea, insomnia…"
+        label={tr("sym_search")}
+        placeholder={tr("sym_ph")}
         openOnFocus
-        emptyHint={tags.length > 6 ? `Common symptoms · type to search all ${tags.length}` : "Symptoms"}
+        emptyHint={tags.length > 6 ? tr("sym_common", { count: tags.length }) : tr("symptoms")}
         selected={selected.map((label) => {
           const t = tags.find((x) => x.label === label);
-          return { id: label, label, description: t ? t.description : "Added by staff" };
+          return { id: label, label, description: t ? t.description : tr("added_by_staff") };
         })}
         onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))}
         query={query}
@@ -120,7 +123,7 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
         describe={(t) => t.description}
         onPick={(label) => toggle(label)}
         onCreate={addOther}
-        createLabel={(q) => `Add "${q}" as another symptom`}
+        createLabel={(q) => tr("add_other", { q })}
       />
       <NoticeSlot state={msg} />
     </Card>
