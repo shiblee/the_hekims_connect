@@ -20,6 +20,7 @@ import {
   Building2, MapPin, MapPinned, Clock, Stethoscope, Sparkles, LogOut, ChevronLeft,
   ChevronRight, CheckCircle2, Loader2, Hospital, HeartPulse, Hash, Calendar,
   Phone, Globe, Landmark, BedDouble, Users, Siren, Ambulance, Gift, Lock,
+  ChevronDown, Search, Microscope, Baby, Leaf, ListChecks, X, Check,
 } from "lucide-react";
 
 const DAYS: { value: number; label: string }[] = [
@@ -40,14 +41,6 @@ const STEPS = ["Facility", "Location", "Capacity", "Services", "Plan"];
 /** Each step has its own address: /facility/profile-setup?step=location … (step 1 has none). */
 const STEP_KEYS = ["facility", "location", "capacity", "services", "plan", "review"] as const;
 type StepKey = (typeof STEP_KEYS)[number];
-/** Why each step matters — one line under its heading. */
-const STEP_WHY = [
-  "Your clinic's identity — printed on reports and receipts.",
-  "Shown on receipts and reports, and helps patients find you.",
-  "Sets your opening hours and how many patients you see.",
-  "What you offer, so patients and referrals reach the right place.",
-  "Start free — no payment details needed.",
-];
 
 const FACILITY_TYPE_ICONS: Record<string, any> = {
   Hospital, Clinic: Stethoscope, "Nursing Home": HeartPulse, "Health Centre": Building2,
@@ -146,6 +139,81 @@ function ToggleRow({ icon: Icon, title, subtitle, checked, onCheckedChange }: { 
         </div>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
+
+interface PickGroup { key: string; label: string; options: string[]; selected: string[]; toggle: (v: string) => void; setAll: (vals: string[], on: boolean) => void }
+const GROUP_ICON: Record<string, typeof Stethoscope> = {
+  specialization: Stethoscope, service_diagnostic: Microscope, service_emergency: Siren, service_maternal_child: Baby, service_other: Leaf,
+};
+
+/**
+ * Many options in little space: a search across every group, groups that fold open,
+ * a "3 / 13" count and All / None per group, and the chosen items shown as chips when folded.
+ */
+function ServicesPicker({ groups, errorKeys }: { groups: PickGroup[]; errorKeys: string[] }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState<string[]>(() => [groups[0]?.key].filter(Boolean) as string[]);
+  const q = query.trim().toLowerCase();
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search specializations and services…"
+          className="h-10 w-full rounded-lg border border-input bg-background/60 pl-9 pr-9 text-sm outline-none focus:border-primary"
+        />
+        {query && <button type="button" onClick={() => setQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-4 w-4" /></button>}
+      </div>
+      <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+        {groups.map((g) => {
+          const Icon = GROUP_ICON[g.key] ?? ListChecks;
+          const shown = q ? g.options.filter((o) => o.toLowerCase().includes(q)) : g.options;
+          if (q && shown.length === 0) return null;
+          const chosen = g.options.filter((o) => g.selected.includes(o));
+          const isOpen = !!q || open.includes(g.key);
+          const hasError = errorKeys.includes(g.key);
+          return (
+            <section key={g.key} className={cn("bg-background/40", hasError && "bg-destructive/5")}>
+              <div className="flex items-center gap-2 px-3 py-2.5">
+                <button type="button" onClick={() => setOpen((o) => (o.includes(g.key) ? o.filter((x) => x !== g.key) : [...o, g.key]))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left" aria-expanded={isOpen}>
+                  <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", chosen.length ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}><Icon className="h-4 w-4" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{g.label}</span>
+                    {!isOpen && chosen.length > 0 && <span className="block truncate text-xs text-primary">{chosen.slice(0, 3).join(" · ")}{chosen.length > 3 ? ` +${chosen.length - 3}` : ""}</span>}
+                    {!isOpen && chosen.length === 0 && <span className={cn("block text-xs", hasError ? "text-destructive" : "text-muted-foreground")}>{hasError ? "Choose at least one" : "None selected"}</span>}
+                  </span>
+                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums", chosen.length ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>{chosen.length} / {g.options.length}</span>
+                  <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+                </button>
+              </div>
+              {isOpen && (
+                <div className="px-3 pb-3">
+                  <div className="mb-2 flex justify-end gap-3 text-xs">
+                    <button type="button" className="font-medium text-primary hover:underline" onClick={() => g.setAll(shown, true)}>Select all{q ? " shown" : ""}</button>
+                    <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" onClick={() => g.setAll(shown, false)}>None</button>
+                  </div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {shown.map((o) => {
+                      const on = g.selected.includes(o);
+                      return (
+                        <button key={o} type="button" onClick={() => g.toggle(o)} aria-pressed={on}
+                          className={cn("flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[13px] transition-colors",
+                            on ? "border-primary/50 bg-primary/10 font-medium text-primary" : "border-border bg-card hover:border-primary/40")}>
+                          <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded border", on ? "border-primary bg-primary text-primary-foreground" : "border-input")}>{on && <Check className="h-3 w-3" strokeWidth={3} />}</span>
+                          <span className="min-w-0 leading-snug">{o}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+      {q && groups.every((g) => !g.options.some((o) => o.toLowerCase().includes(q))) && <p className="text-sm text-muted-foreground">Nothing matches &ldquo;{query}&rdquo;.</p>}
     </div>
   );
 }
@@ -417,7 +485,7 @@ export function FacilityProfileSetup() {
                     >
                       {step === 0 && (
                         <div>
-                          <StepHeader icon={Building2} title="About Your Facility" subtitle={STEP_WHY[0]} />
+                          <StepHeader icon={Building2} title="About Your Facility" />
                           <div className="space-y-5">
                             <div>
                               <FloatingField
@@ -501,7 +569,7 @@ export function FacilityProfileSetup() {
 
                       {step === 1 && (
                         <div>
-                          <StepHeader icon={MapPin} title="Where Are You Located?" subtitle={STEP_WHY[1]} />
+                          <StepHeader icon={MapPin} title="Where Are You Located?" />
                           <div className="space-y-5">
                             <div className="grid sm:grid-cols-2 gap-4">
                               <div className="sm:col-span-2">
@@ -537,7 +605,7 @@ export function FacilityProfileSetup() {
 
                       {step === 2 && (
                         <div>
-                          <StepHeader icon={Clock} title="Capacity & Schedule" subtitle={STEP_WHY[2]} />
+                          <StepHeader icon={Clock} title="Capacity & Schedule" />
                           <div className="space-y-5">
                             <div className="grid sm:grid-cols-2 gap-4">
                               <div>
@@ -650,52 +718,38 @@ export function FacilityProfileSetup() {
 
                       {step === 3 && (
                         <div>
-                          <StepHeader icon={Stethoscope} title="Services & Specialization" subtitle={STEP_WHY[3]} />
-                          <div className="space-y-6">
-                            <div>
-                              <p className="text-[15px] font-semibold mb-2">Major medical specializations available</p>
-                              <div className={cn("flex flex-wrap gap-2 rounded-xl", fieldErrors.specializations && "ring-2 ring-destructive/50 p-2 -mx-2 -mt-2 mb-1")}>
-                                {specializationOptions.map((s) => (
-                                  <ToggleChip key={s} active={form.specializations.includes(s)} onClick={() => toggleInList("specializations", s)}>{s}</ToggleChip>
-                                ))}
-                              </div>
-                              <FieldError message={fieldErrors.specializations} />
+                          <StepHeader icon={Stethoscope} title="Services & Specialization" />
+                          <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                              <b className="text-foreground">{form.specializations.length}</b> specialization{form.specializations.length === 1 ? "" : "s"} · <b className="text-foreground">{form.services.length}</b> service{form.services.length === 1 ? "" : "s"} selected
+                            </p>
+                            <ServicesPicker
+                              errorKeys={[fieldErrors.specializations ? "specialization" : "", fieldErrors.services ? serviceGroups[0]?.[0] ?? "" : ""].filter(Boolean)}
+                              groups={[
+                                {
+                                  key: "specialization", label: "Major medical specializations", options: specializationOptions, selected: form.specializations,
+                                  toggle: (v) => toggleInList("specializations", v),
+                                  setAll: (vals, on) => set("specializations", on ? [...new Set([...form.specializations, ...vals])] : form.specializations.filter((x) => !vals.includes(x))),
+                                },
+                                ...serviceGroups.map(([key, group]) => ({
+                                  key, label: group.label, options: group.options, selected: form.services,
+                                  toggle: (v: string) => toggleInList("services", v),
+                                  setAll: (vals: string[], on: boolean) => set("services", on ? [...new Set([...form.services, ...vals])] : form.services.filter((x) => !vals.includes(x))),
+                                })),
+                              ]}
+                            />
+                            <FieldError message={fieldErrors.specializations || fieldErrors.services} />
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <ToggleRow icon={Siren} title="Emergency services" subtitle="Patients can come in an emergency" checked={form.emergencyServices} onCheckedChange={(v) => set("emergencyServices", v)} />
+                              <ToggleRow icon={Ambulance} title="Ambulance" subtitle="The facility runs an ambulance" checked={form.ambulanceAvailable} onCheckedChange={(v) => set("ambulanceAvailable", v)} />
                             </div>
-
-                            <Separator className="bg-border/50" />
-
-                            <div className={cn("space-y-6 rounded-xl", fieldErrors.services && "ring-2 ring-destructive/50 p-2 -mx-2 -mt-2 mb-1")}>
-                              {serviceGroups.map(([key, group]) => (
-                                <div key={key}>
-                                  <p className="text-[15px] font-semibold mb-2">{group.label}</p>
-                                  <div className="grid sm:grid-cols-2 gap-2">
-                                    {group.options.map((item) => {
-                                      const checked = form.services.includes(item);
-                                      return (
-                                        <label key={item} className={cn(
-                                          "flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border cursor-pointer transition-colors",
-                                          checked ? "border-primary/40 bg-primary/5" : "border-border/60 bg-background/60"
-                                        )}>
-                                          <Checkbox checked={checked} onCheckedChange={() => toggleInList("services", item)} />
-                                          {item}
-                                        </label>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ))}
-                              <FieldError message={fieldErrors.services} />
-                            </div>
-
-                            <ToggleRow icon={Siren} title="Does this facility provide emergency services?" checked={form.emergencyServices} onCheckedChange={(v) => set("emergencyServices", v)} />
-                            <ToggleRow icon={Ambulance} title="Does the facility have an ambulance service?" checked={form.ambulanceAvailable} onCheckedChange={(v) => set("ambulanceAvailable", v)} />
                           </div>
                         </div>
                       )}
 
                       {step === 4 && (
                         <div>
-                          <StepHeader icon={Sparkles} title="Your Service Plan" subtitle={STEP_WHY[4]} />
+                          <StepHeader icon={Sparkles} title="Your Service Plan" />
 
                           <motion.div
                             initial={{ opacity: 0, scale: 0.96, y: 10 }}
@@ -778,7 +832,7 @@ export function FacilityProfileSetup() {
 
                       {step === 5 && (
                         <div>
-                          <StepHeader icon={CheckCircle2} title="Review Facility Profile" subtitle="Confirm everything looks right before you finish." />
+                          <StepHeader icon={CheckCircle2} title="Review Facility Profile" />
                           <div className="space-y-5 text-sm">
                             <div>
                               <p className="font-medium mb-1.5">Facility Information</p>
