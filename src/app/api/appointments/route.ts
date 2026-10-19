@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
+import { checkNewPatientLink } from "@/lib/patient-link";
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser(req);
@@ -59,6 +60,8 @@ export async function POST(req: NextRequest) {
       if (!finalPatientId) {
         return NextResponse.json({ error: "Please select a patient" }, { status: 400 });
       }
+      const refused = await checkNewPatientLink(req, auth, finalPatientId, body.linkPass);
+      if (refused) return NextResponse.json({ error: refused }, { status: 403 });
     }
 
     const appointment = await db.appointment.create({

@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { logClinicEvent, changedFields } from "@/lib/clinic-audit";
 import { NextRequest, NextResponse } from "next/server";
 import { visitStage } from "@/lib/visit-stage";
+import { signPass } from "@/lib/session-token";
 import { db } from "@/lib/db";
 import { getAuthUser, fetchPatient } from "@/lib/api-auth";
 import { hashPassword, isEmailLike } from "@/lib/auth";
@@ -150,5 +151,6 @@ export async function POST(req: NextRequest) {
   });
   await logClinicEvent(req, auth, { action: "patient.registered", summary: `Registered ${created.patientCode} · ${created.name}`, entityType: "patient", entityId: created.id, entityLabel: `${created.patientCode} · ${created.name}` });
 
-  return NextResponse.json({ patient: await fetchPatient(created.id) });
+  // Lets the registration form start this patient's first visit here.
+  return NextResponse.json({ patient: await fetchPatient(created.id), linkPass: await signPass("link", [created.id, auth.id], 120) });
 }

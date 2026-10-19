@@ -11,9 +11,12 @@ export async function GET(req: NextRequest) {
   const patientId = searchParams.get("patientId");
 
   const where: any = {};
-  if (auth.type === "facility") where.facilityId = auth.id;
+  if (auth.type === "facility") {
+    where.facilityId = auth.id;
+    if (patientId) where.patientId = patientId;
+  }
+  // A patient only ever sees their own — a ?patientId= in the URL is ignored for them.
   if (auth.type === "patient") where.patientId = auth.id;
-  if (patientId) where.patientId = patientId;
 
   const prescriptions = await db.prescription.findMany({
     where,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logClinicEvent } from "@/lib/clinic-audit";
+import { checkNewPatientLink } from "@/lib/patient-link";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
 import { nextVisitCode } from "@/lib/codes";
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { patientId, doctorId, reasonForVisit, status } = await req.json();
+  const { patientId, doctorId, reasonForVisit, status, linkPass } = await req.json();
   if (!patientId) {
     return NextResponse.json({ error: "patientId is required" }, { status: 400 });
   }
@@ -84,6 +85,8 @@ export async function POST(req: NextRequest) {
 
   const firstHere = !(await db.visit.findFirst({ where: { patientId, facilityId: auth.id }, select: { id: true } }))
     && !(await db.appointment.findFirst({ where: { patientId, facilityId: auth.id }, select: { id: true } }));
+  const refused = await checkNewPatientLink(req, auth, patientId, linkPass);
+  if (refused) return NextResponse.json({ error: refused }, { status: 403 });
   const visitCode = await nextVisitCode();
   const visit = await db.visit.create({
     data: {

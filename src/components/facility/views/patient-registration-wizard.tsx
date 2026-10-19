@@ -62,6 +62,8 @@ interface Candidate {
   address: string | null; state: string | null; city: string | null;
   emergencyContact: string | null; emergencyContactName: string | null;
   lastVisitAt: string | null; matchScore?: number;
+  /** Registered at another clinic — found by exact match; linkPass lets this clinic start a visit. */
+  otherClinic?: boolean; linkPass?: string;
 }
 
 interface Doctor { id: string; name: string; staffCode: string; designation: string | null }
@@ -139,6 +141,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [lastVisitAt, setLastVisitAt] = useState<string | null>(null);
+  const [linkPass, setLinkPass] = useState<string | null>(null);
 
   // Patient details form
   const [titlePrefix, setTitlePrefix] = useState(emptyFormFields.titlePrefix);
@@ -532,7 +535,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
   const clearForm = () => {
     setFormOpen(false);
-    setEditingId(null); setEditingCode(null); setLastVisitAt(null);
+    setEditingId(null); setEditingCode(null); setLastVisitAt(null); setLinkPass(null);
     setTitlePrefix(emptyFormFields.titlePrefix); setName(emptyFormFields.name);
     setRelationship(emptyFormFields.relationship); setGender(emptyFormFields.gender);
     setApproxAge(emptyFormFields.approxAge); setAgeUnit(emptyFormFields.ageUnit);
@@ -609,6 +612,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setEditingId(c.id);
     setEditingCode(c.patientCode);
     setLastVisitAt(c.lastVisitAt);
+    setLinkPass(c.otherClinic ? c.linkPass ?? null : null);
     setTitlePrefix(c.titlePrefix || "");
     setName(c.name);
     setRelationship(c.relationship || "Self");
@@ -663,13 +667,19 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       let pid = editingId;
       let pLabel = "";
       let pCode = "";
-      if (pid) {
+      let newPass: string | null = linkPass;
+      if (pid && linkPass) {
+        // Registered at another clinic: link first (the visit), then save only what was filled in here.
+        pLabel = `${name} (${editingCode ?? ""})`;
+        pCode = editingCode ?? "";
+      } else if (pid) {
         const res = await api.patch<{ patient: { id: string; patientCode: string; name: string } }>(`/api/facility/patients/${pid}`, payload);
         pLabel = `${res.patient.name} (${res.patient.patientCode})`;
         pCode = res.patient.patientCode;
       } else {
-        const res = await api.post<{ patient: { id: string; patientCode: string; name: string } }>("/api/facility/patients", payload);
+        const res = await api.post<{ patient: { id: string; patientCode: string; name: string }; linkPass?: string }>("/api/facility/patients", payload);
         pid = res.patient.id;
+        newPass = res.linkPass ?? null;
         // If a later step fails, a retry must update this patient rather than create a duplicate.
         setEditingId(res.patient.id); setEditingCode(res.patient.patientCode);
         pLabel = `${res.patient.name} (${res.patient.patientCode})`;
@@ -677,8 +687,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       }
 
       const visitRes = await api.post<{ visit: { id: string; visitCode: string } }>("/api/facility/visits", {
-        patientId: pid, doctorId: doctorId || null, status: mode === "hold" ? "waiting" : "registered",
+        patientId: pid, doctorId: doctorId || null, status: mode === "hold" ? "waiting" : "registered", linkPass: newPass,
       });
+      if (editingId && linkPass) {
+        const filled = Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== null && v !== "" && v !== undefined));
+        await api.patch(`/api/facility/patients/${pid}`, filled).catch(() => {});
+        setLinkPass(null);
+      }
 
       let paymentRecorded: { amount: string; mode: string } | null = null;
       if (amount && paymentMode) {
@@ -969,6 +984,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{c.name}</p>
+                              {c.otherClinic && <p className="text-xs text-sky-700 dark:text-sky-400">Registered at another clinic — exact match</p>}
                               {c.patientCode && (
                                 <Badge className="mt-0.5 bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono text-sm">
                                   {c.patientCode}

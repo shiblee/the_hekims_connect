@@ -45,3 +45,22 @@ export async function readSessionToken(raw: string | null): Promise<TokenClaims 
   if ((type !== "facility" && type !== "patient" && type !== "staff") || !id || !sessionId || !Number.isFinite(exp)) return null;
   return { type, id, sessionId, exp, expired: exp < Date.now() };
 }
+
+// ---- Short-lived signed passes (same secret) ----
+
+/** A signed value that expires — e.g. permission to link a patient found by exact match. */
+export async function signPass(kind: string, parts: string[], minutes: number): Promise<string> {
+  const payload = Buffer.from([kind, ...parts, String(Date.now() + minutes * 60_000)].join("|"), "utf-8").toString("base64url");
+  return `${payload}.${sign(payload, await secret())}`;
+}
+
+/** True when `pass` was issued by signPass for exactly this kind and these parts, and hasn't expired. */
+export async function checkPass(pass: unknown, kind: string, parts: string[]): Promise<boolean> {
+  if (typeof pass !== "string" || !pass.includes(".")) return false;
+  const [payload, sig] = pass.split(".");
+  const want = Buffer.from(sign(payload, await secret())), got = Buffer.from(sig ?? "");
+  if (want.length !== got.length || !timingSafeEqual(want, got)) return false;
+  const fields = Buffer.from(payload, "base64url").toString("utf-8").split("|");
+  const exp = Number(fields.pop());
+  return Number.isFinite(exp) && exp > Date.now() && fields.join("|") === [kind, ...parts].join("|");
+}
