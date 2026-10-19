@@ -36,6 +36,14 @@ const DEFAULT_OPEN_DAYS = [1, 2, 3, 4, 5, 6];
 const HFR_PATTERN = /^IN\d{10}$/i;
 
 const STEPS = ["Facility", "Location", "Capacity", "Services", "Plan"];
+/** Why each step matters — one line under its heading. */
+const STEP_WHY = [
+  "Your clinic's identity — printed on reports and receipts.",
+  "Shown on receipts and reports, and helps patients find you.",
+  "Sets your opening hours and how many patients you see.",
+  "What you offer, so patients and referrals reach the right place.",
+  "Start free — no payment details needed.",
+];
 
 const FACILITY_TYPE_ICONS: Record<string, any> = {
   Hospital, Clinic: Stethoscope, "Nursing Home": HeartPulse, "Health Centre": Building2,
@@ -145,7 +153,12 @@ export function FacilityProfileSetup() {
   const logout = useAppStore((s) => s.logout);
   const onLogout = () => { logout(); router.push("/"); };
 
-  const [step, setStep] = useState(0);
+  // Answers are kept on this device if the page is refreshed or closed part-way.
+  const draftKey = `hekim-profile-setup:${facility?.id ?? "anon"}`;
+  const readDraft = (): { step?: number; form?: Partial<WizardForm> } => {
+    try { return JSON.parse(localStorage.getItem(draftKey) || "{}"); } catch { return {}; }
+  };
+  const [step, setStep] = useState(() => Math.min(Math.max(Number(readDraft().step) || 0, 0), 4));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -182,7 +195,11 @@ export function FacilityProfileSetup() {
     services: [],
     emergencyServices: false,
     ambulanceAvailable: false,
+    ...readDraft().form,
   }));
+  useEffect(() => {
+    try { localStorage.setItem(draftKey, JSON.stringify({ step: Math.min(step, 4), form })); } catch { /* private mode — nothing kept */ }
+  }, [draftKey, step, form]);
 
   const set = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -288,6 +305,7 @@ export function FacilityProfileSetup() {
         emergencyServices: form.emergencyServices,
         ambulanceAvailable: form.ambulanceAvailable,
       });
+      try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
       setFacility(res.facility);
       setFlash({ tone: "success", title: "Facility profile completed", detail: "Welcome aboard — your facility is ready. You can update these details any time under Profile." });
       router.push("/facility/dashboard");
@@ -318,13 +336,20 @@ export function FacilityProfileSetup() {
           <div className="w-full max-w-2xl">
             <div className="text-center mb-7">
               <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Complete Your Facility Profile</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">About 3 minutes · you can change any of this later in Facility Profile.</p>
             </div>
 
             {step < 5 && (
               <div className="flex items-center justify-center gap-1 mb-7 overflow-x-auto overflow-y-visible py-2 px-2">
                 {STEPS.map((label, i) => (
                   <div key={label} className="flex items-center shrink-0">
-                    <div className="flex flex-col items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={i >= step}
+                      onClick={() => { setFieldErrors({}); setStep(i); }}
+                      title={i < step ? `Back to ${label}` : undefined}
+                      className="group flex flex-col items-center gap-1.5 disabled:cursor-default"
+                    >
                       <motion.div
                         animate={{ scale: i === step ? 1.1 : 1 }}
                         transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -335,8 +360,8 @@ export function FacilityProfileSetup() {
                       >
                         {i < step ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
                       </motion.div>
-                      <span className={cn("text-[11px] whitespace-nowrap", i === step ? "font-semibold text-foreground" : "text-muted-foreground")}>{label}</span>
-                    </div>
+                      <span className={cn("text-[11px] whitespace-nowrap", i === step ? "font-semibold text-foreground" : i < step ? "text-primary group-hover:underline" : "text-muted-foreground")}>{label}</span>
+                    </button>
                     {i < STEPS.length - 1 && (
                       <div className="h-0.5 w-6 sm:w-10 mx-1 -mt-5 rounded-full bg-border overflow-hidden">
                         <motion.div
@@ -359,7 +384,12 @@ export function FacilityProfileSetup() {
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
                 </div>
               ) : (
-                <>
+                <div
+                  onKeyDown={(e) => {
+                    const t = e.target as HTMLElement;
+                    if (e.key === "Enter" && step < 5 && t.tagName === "INPUT" && (t as HTMLInputElement).type !== "checkbox") { e.preventDefault(); goNext(); }
+                  }}
+                >
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={step}
@@ -370,7 +400,7 @@ export function FacilityProfileSetup() {
                     >
                       {step === 0 && (
                         <div>
-                          <StepHeader icon={Building2} title="About Your Facility" />
+                          <StepHeader icon={Building2} title="About Your Facility" subtitle={STEP_WHY[0]} />
                           <div className="space-y-5">
                             <div>
                               <FloatingField
@@ -405,7 +435,8 @@ export function FacilityProfileSetup() {
                                       <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center shrink-0", active ? "bg-primary/20" : "bg-muted")}>
                                         <TypeIcon className="h-4 w-4" />
                                       </div>
-                                      {t}
+                                      <span className="flex-1">{t}</span>
+                                      {active && <CheckCircle2 className="h-4 w-4 shrink-0" />}
                                     </motion.button>
                                   );
                                 })}
@@ -424,8 +455,14 @@ export function FacilityProfileSetup() {
                               />
                               {fieldErrors.hfrNumber ? (
                                 <FieldError message={fieldErrors.hfrNumber} />
+                              ) : HFR_PATTERN.test(form.hfrNumber) ? (
+                                <p className="mt-1.5 ml-1 flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> Valid format</p>
                               ) : (
-                                <p className="text-xs text-muted-foreground mt-1.5 ml-1">Format: IN followed by 10 digits, e.g. IN0123456789</p>
+                                <p className="text-xs text-muted-foreground mt-1.5 ml-1">
+                                  IN followed by 10 digits, e.g. IN0123456789 ·{" "}
+                                  <a href="https://facility.abdm.gov.in/" target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">What&apos;s this?</a>{" "}
+                                  — your Health Facility Registry ID from ABDM
+                                </p>
                               )}
                             </div>
                             <div>
@@ -447,7 +484,7 @@ export function FacilityProfileSetup() {
 
                       {step === 1 && (
                         <div>
-                          <StepHeader icon={MapPin} title="Where Are You Located?" />
+                          <StepHeader icon={MapPin} title="Where Are You Located?" subtitle={STEP_WHY[1]} />
                           <div className="space-y-5">
                             <div className="grid sm:grid-cols-2 gap-4">
                               <div className="sm:col-span-2">
@@ -483,7 +520,7 @@ export function FacilityProfileSetup() {
 
                       {step === 2 && (
                         <div>
-                          <StepHeader icon={Clock} title="Capacity & Schedule" />
+                          <StepHeader icon={Clock} title="Capacity & Schedule" subtitle={STEP_WHY[2]} />
                           <div className="space-y-5">
                             <div className="grid sm:grid-cols-2 gap-4">
                               <div>
@@ -596,7 +633,7 @@ export function FacilityProfileSetup() {
 
                       {step === 3 && (
                         <div>
-                          <StepHeader icon={Stethoscope} title="Services & Specialization" />
+                          <StepHeader icon={Stethoscope} title="Services & Specialization" subtitle={STEP_WHY[3]} />
                           <div className="space-y-6">
                             <div>
                               <p className="text-[15px] font-semibold mb-2">Major medical specializations available</p>
@@ -641,7 +678,7 @@ export function FacilityProfileSetup() {
 
                       {step === 4 && (
                         <div>
-                          <StepHeader icon={Sparkles} title="Your Service Plan" />
+                          <StepHeader icon={Sparkles} title="Your Service Plan" subtitle={STEP_WHY[4]} />
 
                           <motion.div
                             initial={{ opacity: 0, scale: 0.96, y: 10 }}
@@ -770,10 +807,11 @@ export function FacilityProfileSetup() {
                         <ChevronLeft className="h-4 w-4 mr-1" /> Back
                       </Button>
                     ) : <span />}
+                    {step < 5 && <span className="text-xs text-muted-foreground">Step {step + 1} of {STEPS.length}</span>}
                     {step < 5 ? (
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
                         <Button onClick={goNext} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
-                          Continue <ChevronRight className="h-5 w-5 ml-1" />
+                          {step === 4 ? "Review" : "Continue"} <ChevronRight className="h-5 w-5 ml-1" />
                         </Button>
                       </motion.div>
                     ) : (
@@ -785,7 +823,7 @@ export function FacilityProfileSetup() {
                       </motion.div>
                     )}
                   </div>
-                </>
+                </div>
               )}
             </Card>
           </div>
