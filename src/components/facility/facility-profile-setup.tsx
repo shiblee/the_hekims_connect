@@ -8,6 +8,7 @@ import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { cn } from "@/lib/utils";
+import { useUrlParam } from "@/hooks/use-url-param";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,9 @@ const DEFAULT_OPEN_DAYS = [1, 2, 3, 4, 5, 6];
 const HFR_PATTERN = /^IN\d{10}$/i;
 
 const STEPS = ["Facility", "Location", "Capacity", "Services", "Plan"];
+/** Each step has its own address: /facility/profile-setup?step=location … (step 1 has none). */
+const STEP_KEYS = ["facility", "location", "capacity", "services", "plan", "review"] as const;
+type StepKey = (typeof STEP_KEYS)[number];
 /** Why each step matters — one line under its heading. */
 const STEP_WHY = [
   "Your clinic's identity — printed on reports and receipts.",
@@ -155,10 +159,11 @@ export function FacilityProfileSetup() {
 
   // Answers are kept on this device if the page is refreshed or closed part-way.
   const draftKey = `hekim-profile-setup:${facility?.id ?? "anon"}`;
-  const readDraft = (): { step?: number; form?: Partial<WizardForm> } => {
+  const readDraft = (): { form?: Partial<WizardForm> } => {
     try { return JSON.parse(localStorage.getItem(draftKey) || "{}"); } catch { return {}; }
   };
-  const [step, setStep] = useState(() => Math.min(Math.max(Number(readDraft().step) || 0, 0), 4));
+  const [stepKey, setStepKey] = useUrlParam<StepKey>("step", "facility", STEP_KEYS);
+  const requestedStep = STEP_KEYS.indexOf(stepKey);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -198,8 +203,8 @@ export function FacilityProfileSetup() {
     ...readDraft().form,
   }));
   useEffect(() => {
-    try { localStorage.setItem(draftKey, JSON.stringify({ step: Math.min(step, 4), form })); } catch { /* private mode — nothing kept */ }
-  }, [draftKey, step, form]);
+    try { localStorage.setItem(draftKey, JSON.stringify({ form })); } catch { /* private mode — nothing kept */ }
+  }, [draftKey, form]);
 
   const set = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -229,8 +234,6 @@ export function FacilityProfileSetup() {
     [meta]
   );
 
-  if (!facility) return null;
-
   const isHospital = form.facilityType === "Hospital";
 
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -257,6 +260,20 @@ export function FacilityProfileSetup() {
     }
     return errs;
   };
+
+  // A later step's link opens the first unfinished step instead, so nothing is skipped.
+  const firstUnfinished = [0, 1, 2, 3].find((i) => Object.keys(validateStep(i)).length > 0) ?? 5;
+  const step = Math.min(requestedStep, firstUnfinished);
+  useEffect(() => {
+    if (step === requestedStep) return;
+    const url = new URL(window.location.href);
+    if (step === 0) url.searchParams.delete("step"); else url.searchParams.set("step", STEP_KEYS[step]);
+    window.history.replaceState(window.history.state, "", url);
+    window.dispatchEvent(new Event("url-param-change"));
+  }, [step, requestedStep]);
+  const setStep = (v: number | ((s: number) => number)) => setStepKey(STEP_KEYS[typeof v === "function" ? v(step) : v]);
+
+  if (!facility) return null;
 
   const goNext = () => {
     const errs = validateStep(step);
