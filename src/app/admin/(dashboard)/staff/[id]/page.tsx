@@ -12,13 +12,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { SelectItem } from "@/components/ui/select";
-import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
+import { FloatingField } from "@/components/shared/floating-field";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { OptionMultiSelect } from "@/components/shared/option-multi-select";
 import { ListChecks } from "lucide-react";
+import { FloatingCombobox } from "@/components/shared/combobox";
 
 interface StaffDetail {
   id: string; staffCode: string; name: string; photo: string | null; email: string | null; phone: string | null;
@@ -209,30 +209,22 @@ export default function StaffDetailPage() {
           <h2 className="font-serif text-lg font-semibold">Professional Information</h2>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             {meta.staff_employee_type ? (
-              <FloatingSelect id="employeeType" label="Employee type" value={employeeType} onValueChange={setEmployeeType}>
-                {meta.staff_employee_type.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </FloatingSelect>
+              <FloatingCombobox id="employeeType" label="Employee type" value={employeeType} onValueChange={setEmployeeType} options={meta.staff_employee_type.options} placeholder="Select employee type" />
             ) : (
               <FloatingField id="employeeType" label="Employee type" value={employeeType} onChange={(e) => setEmployeeType(e.target.value)} />
             )}
             {meta.staff_specialization ? (
-              <FloatingSelect id="specialization" label="Specialization" value={specialization} onValueChange={setSpecialization}>
-                {meta.staff_specialization.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </FloatingSelect>
+              <FloatingCombobox id="specialization" label="Specialization" value={specialization} onValueChange={setSpecialization} options={meta.staff_specialization.options} placeholder="Select specialization" />
             ) : (
               <FloatingField id="specialization" label="Specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} />
             )}
             {meta.staff_qualification ? (
-              <FloatingSelect id="qualification" label="Qualification" value={qualification} onValueChange={setQualification}>
-                {meta.staff_qualification.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </FloatingSelect>
+              <FloatingCombobox id="qualification" label="Qualification" value={qualification} onValueChange={setQualification} options={meta.staff_qualification.options} placeholder="Select qualification" />
             ) : (
               <FloatingField id="qualification" label="Qualification" value={qualification} onChange={(e) => setQualification(e.target.value)} />
             )}
             {meta.staff_designation ? (
-              <FloatingSelect id="designation" label="Designation" value={designation} onValueChange={setDesignation}>
-                {meta.staff_designation.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </FloatingSelect>
+              <FloatingCombobox id="designation" label="Designation" value={designation} onValueChange={setDesignation} options={meta.staff_designation.options} placeholder="Select designation" />
             ) : (
               <FloatingField id="designation" label="Designation" value={designation} onChange={(e) => setDesignation(e.target.value)} />
             )}
@@ -245,9 +237,7 @@ export default function StaffDetailPage() {
           <h2 className="font-serif text-lg font-semibold">Role & Responsibilities</h2>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             {meta.staff_role ? (
-              <FloatingSelect id="role" label="Role" value={role} onValueChange={setRole}>
-                {meta.staff_role.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </FloatingSelect>
+              <FloatingCombobox id="role" label="Role" value={role} onValueChange={setRole} options={meta.staff_role.options} placeholder="Select role" />
             ) : (
               <FloatingField id="role" label="Role" value={role} onChange={(e) => setRole(e.target.value)} />
             )}

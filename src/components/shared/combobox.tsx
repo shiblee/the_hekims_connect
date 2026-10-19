@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { sortLabels } from "@/lib/sort-options";
+import { sortByLabel } from "@/lib/sort-options";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
@@ -27,7 +27,8 @@ export function FloatingCombobox({
   label: string;
   value: string;
   onValueChange: (value: string) => void;
-  options: string[];
+  /** Plain labels, or { value, label } when the saved value differs from what is shown (e.g. an id). */
+  options: (string | { value: string; label: string })[];
   placeholder?: string;
   error?: boolean;
   emptyText?: string;
@@ -35,6 +36,9 @@ export function FloatingCombobox({
   keepOrder?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  const shown = keepOrder ? items : sortByLabel(items);
+  const selectedLabel = items.find((i) => i.value === value)?.label ?? value;
   const listId = `${id || label.replace(/\s+/g, "-").toLowerCase()}-listbox`;
 
   return (
@@ -52,20 +56,20 @@ export function FloatingCombobox({
               error ? "border-destructive" : "border-input"
             )}
           >
-            <span className={cn("truncate", !value && "text-muted-foreground")}>{value || placeholder}</span>
+            <span className={cn("truncate", !value && "text-muted-foreground")}>{value ? selectedLabel : placeholder}</span>
             <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           </button>
         </PopoverTrigger>
-        <PopoverContent id={listId} className="p-0 w-[--radix-popover-trigger-width]" align="start">
-          <Command>
+        <PopoverContent id={listId} className="w-(--radix-popover-trigger-width) p-0" align="start">
+          <Command filter={(v, search) => (v.toLowerCase().includes(search.trim().toLowerCase()) ? 1 : 0)}>
             <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
             <CommandList>
               <CommandEmpty>{emptyText}</CommandEmpty>
               <CommandGroup>
-                {(keepOrder ? options : sortLabels(options)).map((o) => (
-                  <CommandItem key={o} value={o} onSelect={() => { onValueChange(o); setOpen(false); }}>
-                    <Check className={cn("h-4 w-4", value === o ? "opacity-100" : "opacity-0")} />
-                    {o}
+                {shown.map((o) => (
+                  <CommandItem key={o.value} className="data-[selected=true]:bg-primary/10 data-[selected=true]:text-foreground" value={`${o.label} ${o.value}`} onSelect={() => { onValueChange(o.value); setOpen(false); }}>
+                    <Check className={cn("h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")} />
+                    {o.label}
                   </CommandItem>
                 ))}
               </CommandGroup>

@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { SelectItem } from "@/components/ui/select";
-import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
+import { FloatingField } from "@/components/shared/floating-field";
 import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inline-contact-verify";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
@@ -19,6 +18,7 @@ import Link from "next/link";
 import { Search, UserCog, Loader2, Plus, Mail, Phone, ShieldCheck, Camera, Pencil, KeyRound } from "lucide-react";
 import { OptionMultiSelect } from "@/components/shared/option-multi-select";
 import { ListChecks } from "lucide-react";
+import { FloatingCombobox } from "@/components/shared/combobox";
 
 interface StaffRow {
   id: string;
@@ -327,9 +327,7 @@ export function TeamView() {
             </div>
 
             {meta.staff_employee_type ? (
-              <FloatingSelect id="employeeType" label="Employee type" value={form.employeeType} onValueChange={(v) => setForm((f) => ({ ...f, employeeType: v }))} placeholder="Select employee type">
-                {meta.staff_employee_type.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </FloatingSelect>
+              <FloatingCombobox id="employeeType" label="Employee type" value={form.employeeType} onValueChange={(v) => setForm((f) => ({ ...f, employeeType: v }))} options={meta.staff_employee_type.options} placeholder="Select employee type" />
             ) : (
               <FloatingField id="employeeType" label="Employee type" value={form.employeeType} onChange={(e) => setForm((f) => ({ ...f, employeeType: e.target.value }))} />
             )}
@@ -338,16 +336,12 @@ export function TeamView() {
               <div className="grid sm:grid-cols-2 gap-4">
                 {visibleFields.includes("specialization") && (
                   meta.staff_specialization ? (
-                    <FloatingSelect id="specialization" label="Specialization" value={form.specialization} onValueChange={(v) => setForm((f) => ({ ...f, specialization: v }))} placeholder="Select">
-                      {meta.staff_specialization.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </FloatingSelect>
+                    <FloatingCombobox id="specialization" label="Specialization" value={form.specialization} onValueChange={(v) => setForm((f) => ({ ...f, specialization: v }))} options={meta.staff_specialization.options} placeholder="Select specialization" />
                   ) : null
                 )}
                 {visibleFields.includes("qualification") && (
                   meta.staff_qualification ? (
-                    <FloatingSelect id="qualification" label="Qualification" value={form.qualification} onValueChange={(v) => setForm((f) => ({ ...f, qualification: v }))} placeholder="Select">
-                      {meta.staff_qualification.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </FloatingSelect>
+                    <FloatingCombobox id="qualification" label="Qualification" value={form.qualification} onValueChange={(v) => setForm((f) => ({ ...f, qualification: v }))} options={meta.staff_qualification.options} placeholder="Select qualification" />
                   ) : null
                 )}
                 {visibleFields.includes("registrationNumber") && (
@@ -355,9 +349,7 @@ export function TeamView() {
                 )}
                 {visibleFields.includes("designation") && (
                   meta.staff_designation ? (
-                    <FloatingSelect id="designation" label="Designation" value={form.designation} onValueChange={(v) => setForm((f) => ({ ...f, designation: v }))} placeholder="Select">
-                      {meta.staff_designation.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </FloatingSelect>
+                    <FloatingCombobox id="designation" label="Designation" value={form.designation} onValueChange={(v) => setForm((f) => ({ ...f, designation: v }))} options={meta.staff_designation.options} placeholder="Select designation" />
                   ) : null
                 )}
                 {visibleFields.includes("experience") && (
@@ -367,9 +359,7 @@ export function TeamView() {
             )}
 
             {meta.staff_role && (
-              <FloatingSelect id="role" label="Role" value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))} placeholder="Select role">
-                {meta.staff_role.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </FloatingSelect>
+              <FloatingCombobox id="role" label="Role" value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))} options={meta.staff_role.options} placeholder="Select role" />
             )}
 
             {meta.staff_responsibility && (
