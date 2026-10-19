@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/request-info";
+import { GUIDANCE_SETTING_DEFAULTS } from "@/lib/guidance/server";
 
 // Internal bookkeeping (e.g. seed version markers) — not admin-editable settings.
 // "security" holds the session-signing secret — never listed, never writable here.
@@ -12,6 +13,10 @@ export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
+  // Guidance settings live in General; make sure every one exists (with its default) so the section always shows.
+  for (const [key, value] of Object.entries(GUIDANCE_SETTING_DEFAULTS)) {
+    await db.portalSetting.upsert({ where: { category_key: { category: "guidance", key } }, create: { category: "guidance", key, value }, update: {} });
+  }
   const settings = await db.portalSetting.findMany({ where: VISIBLE, orderBy: [{ category: "asc" }, { key: "asc" }] });
   return NextResponse.json({ settings });
 }
@@ -48,6 +53,10 @@ export async function PUT(req: NextRequest) {
     getClientIp(req)
   );
 
+  // Guidance settings live in General; make sure every one exists (with its default) so the section always shows.
+  for (const [key, value] of Object.entries(GUIDANCE_SETTING_DEFAULTS)) {
+    await db.portalSetting.upsert({ where: { category_key: { category: "guidance", key } }, create: { category: "guidance", key, value }, update: {} });
+  }
   const settings = await db.portalSetting.findMany({ where: VISIBLE, orderBy: [{ category: "asc" }, { key: "asc" }] });
   return NextResponse.json({ settings });
 }

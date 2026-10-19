@@ -9,7 +9,8 @@ import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { FloatingField } from "@/components/shared/floating-field";
+import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
+import { SelectItem } from "@/components/ui/select";
 import { CatalogAssistantControls, CatalogAssistantLog, type CatalogAssistantConfig } from "@/components/admin/catalog-assistant-panel";
 import { SupplementProfilesStatus } from "@/components/admin/supplement-profile-dialog";
 import { cn } from "@/lib/utils";
@@ -74,11 +75,12 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   subscription: { label: "Subscription", description: "Free trial length and paid plan pricing for Facility accounts." },
   patient_defaults: { label: "Patient Defaults", description: "Default address values pre-filled when registering a new patient." },
   vitals: { label: "Vitals", description: "Rules for how long a recorded vitals assessment stays editable." },
+  guidance: { label: "User Guidance", description: "Guided tours and module tutorials for clinic users. Write and publish the content in Admin → Guidance." },
   ...Object.fromEntries(Object.entries(ASSISTANTS).map(([k, a]) => [k, { label: a.label, description: a.description }])),
 };
 
 // One "General" tab holds these sections (each keeps its own heading).
-const GENERAL_GROUP = ["general", "report", "registration", "verification", "subscription", "patient_defaults", "vitals"];
+const GENERAL_GROUP = ["general", "report", "registration", "verification", "subscription", "patient_defaults", "vitals", "guidance"];
 // Engine settings saved by other Admin tabs — summarised read-only under General, edited where they live.
 const SYSTEM: Record<string, { label: string; href?: string; summary: (v: Record<string, string>) => string }> = {
   dalail: { label: "Dala'il question engine", href: "/admin/meta/tashkhees?tab=dalail", summary: (v) => `Up to ${v.max_questions ?? "—"} questions · ordering with Hakeem Insight ${v.ranking === "off" ? "off" : "on"}` },
@@ -127,6 +129,15 @@ const KEY_LABELS: Record<string, string> = {
   default_state: "Default state",
   default_city: "Default city",
   edit_window_minutes: "Vitals edit window (minutes)",
+  // User guidance
+  enabled: "User guidance",
+  tours_enabled: "Guided tours",
+  docs_enabled: "Module tutorials",
+  login_tours: "Start tours at first sign-in",
+  first_visit_tours: "Start tours on first visit",
+  reoffer_updated: "Offer updated tours again",
+  default_language: "Default language",
+  fallback_language: "Fallback language",
 };
 
 /** One-line explanation under an on/off switch. */
@@ -135,6 +146,12 @@ const KEY_HINTS: Record<string, string> = {
   patient_registration_enabled: "Patients can create their own accounts.",
   require_license_for_facility: "Clinics must give a licence number to sign up.",
   email_code_only: "Never show email codes on screen. Turn on once Amazon SES is out of sandbox.",
+  enabled: "Master switch for tours, help panels and Learning & tutorials. Off never affects the modules.",
+  tours_enabled: "Step-by-step tours that highlight parts of the screen.",
+  docs_enabled: "The detailed help opened from the ? button on each page.",
+  login_tours: "Tours set to “First sign-in” open once, after the user's first sign-in.",
+  first_visit_tours: "Tours set to “First visit” open once, the first time the user opens that page.",
+  reoffer_updated: "Users who finished an older version see a republished tour once more.",
 };
 /** Long texts take the full row; medium texts two columns; everything else one column. */
 const FULL_WIDTH = new Set(["confidentiality", "insight_disclaimer"]);
@@ -145,12 +162,19 @@ const KEY_ORDER = [
   "report_title", "report_subtitle", "slogan", "website_url", "copyright_owner", "confidentiality", "insight_disclaimer",
   "otp_expiry_minutes", "otp_resend_cooldown_seconds", "max_otp_attempts", "max_login_attempts", "lockout_duration_minutes",
   "free_trial_months", "paid_plan_price_per_month", "currency",
+  "enabled", "tours_enabled", "docs_enabled", "login_tours", "first_visit_tours", "reoffer_updated", "default_language", "fallback_language",
 ];
 const orderOf = (k: string) => { const i = KEY_ORDER.indexOf(k); return i === -1 ? 999 : i; };
 
 const BOOLEAN_KEYS = new Set([
   "facility_registration_enabled", "patient_registration_enabled", "require_license_for_facility", "email_code_only",
+  "enabled", "tours_enabled", "docs_enabled", "login_tours", "first_visit_tours", "reoffer_updated",
 ]);
+/** Settings chosen from a fixed list instead of typed. */
+const SELECT_OPTIONS: Record<string, [string, string][]> = {
+  "guidance.default_language": [["en", "English"], ["hi", "Hindi"], ["ur", "Urdu"], ["ar", "Arabic"], ["fa", "Farsi"]],
+  "guidance.fallback_language": [["en", "English"], ["hi", "Hindi"], ["ur", "Urdu"], ["ar", "Arabic"], ["fa", "Farsi"]],
+};
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingRow[]>([]);
@@ -240,6 +264,15 @@ export default function SettingsPage() {
             onCheckedChange={(checked) => setDraft((d) => ({ ...d, [draftKey]: checked ? "true" : "false" }))}
           />
         </label>
+      );
+    }
+    if (SELECT_OPTIONS[draftKey]) {
+      return (
+        <div key={s.id}>
+          <FloatingSelect id={draftKey} label={KEY_LABELS[s.key] || s.key} value={draft[draftKey] ?? s.value} onValueChange={(v) => setDraft((d) => ({ ...d, [draftKey]: v }))}>
+            {SELECT_OPTIONS[draftKey].map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+          </FloatingSelect>
+        </div>
       );
     }
     return (
