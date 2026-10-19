@@ -807,7 +807,6 @@ export function FacilityProfileSetup() {
                         <ChevronLeft className="h-4 w-4 mr-1" /> Back
                       </Button>
                     ) : <span />}
-                    {step < 5 && <span className="text-xs text-muted-foreground">Step {step + 1} of {STEPS.length}</span>}
                     {step < 5 ? (
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
                         <Button onClick={goNext} size="lg" className="h-12 px-8 text-base font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
