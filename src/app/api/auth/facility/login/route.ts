@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { screenCode } from "@/lib/otp-screen";
 import { logClinicEventRaw } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { verifyPassword, generateOtp, normalizeContact } from "@/lib/auth";
@@ -111,13 +112,15 @@ export async function POST(req: NextRequest) {
       delivered = result.delivery === "sent";
     }
 
+    const shown = await screenCode(!!facility.email, delivered, code);
+    if (shown.error) return NextResponse.json({ error: shown.error }, { status: 503 });
     return NextResponse.json({
       message: facility.email ? "OTP sent to your registered email" : "OTP sent to your registered phone",
       needsOtp: true,
       contact: identifier,
       role: "facility",
       facilityName: facility.facilityName,
-      devOtp: delivered ? undefined : code,
+      devOtp: shown.devOtp,
     });
   } catch (e) {
     console.error("Facility login error:", e);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { screenCode } from "@/lib/otp-screen";
 import { db } from "@/lib/db";
 import { generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
@@ -64,11 +65,13 @@ export async function POST(req: NextRequest) {
       delivered = result.delivery === "sent";
     }
 
+    const shown = await screenCode(isEmail, delivered, code);
+    if (shown.error) return NextResponse.json({ error: shown.error }, { status: 503 });
     return NextResponse.json({
       message: isEmail ? "Code sent to your email" : "Code sent to your phone",
       contact: normalizedContact,
       // Omitted once a real email is delivered — the code must only be known to whoever reads that inbox.
-      devOtp: delivered ? undefined : code,
+      devOtp: shown.devOtp,
     });
   } catch (e) {
     console.error("Precheck send error:", e);

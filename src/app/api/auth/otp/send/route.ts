@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { screenCode } from "@/lib/otp-screen";
 import { db } from "@/lib/db";
 import { generateOtp, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
@@ -59,9 +60,11 @@ export async function POST(req: NextRequest) {
       delivered = result.delivery === "sent";
     }
 
+    const shown = await screenCode(!!(user as { email: string | null }).email, delivered, code);
+    if (shown.error) return NextResponse.json({ error: shown.error }, { status: 503 });
     return NextResponse.json({
       message: "A fresh OTP has been sent",
-      devOtp: delivered ? undefined : code,
+      devOtp: shown.devOtp,
     });
   } catch (e) {
     console.error("OTP send error:", e);

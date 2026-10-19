@@ -117,6 +117,7 @@ const KEY_LABELS: Record<string, string> = {
   otp_expiry_minutes: "OTP expiry (minutes)",
   otp_resend_cooldown_seconds: "Resend cooldown (seconds)",
   max_otp_attempts: "Max verification attempts",
+  email_code_only: "Email codes by email only (never shown on screen) — switch on once Amazon SES is out of sandbox",
   max_login_attempts: "Max failed password attempts",
   lockout_duration_minutes: "Account lockout duration (minutes)",
   free_trial_months: "Free trial duration (months)",
@@ -128,7 +129,7 @@ const KEY_LABELS: Record<string, string> = {
 };
 
 const BOOLEAN_KEYS = new Set([
-  "facility_registration_enabled", "patient_registration_enabled", "require_license_for_facility",
+  "facility_registration_enabled", "patient_registration_enabled", "require_license_for_facility", "email_code_only",
 ]);
 
 export default function SettingsPage() {

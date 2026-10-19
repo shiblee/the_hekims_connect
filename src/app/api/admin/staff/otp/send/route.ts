@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { screenCode } from "@/lib/otp-screen";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { generateOtp, normalizeContact } from "@/lib/auth";
@@ -56,9 +57,11 @@ export async function POST(req: NextRequest) {
     delivered = result.delivery === "sent";
   }
 
+  const shown = await screenCode(isEmail, delivered, code);
+  if (shown.error) return NextResponse.json({ error: shown.error }, { status: 503 });
   return NextResponse.json({
     message: isEmail ? "Code sent to the staff member's email" : "Code generated for the staff member's phone",
     contact: normalizedContact,
-    devOtp: delivered ? undefined : code,
+    devOtp: shown.devOtp,
   });
 }
