@@ -18,6 +18,8 @@ import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inl
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn, formatDate } from "@/lib/utils";
 import { sortLabels } from "@/lib/sort-options";
+import { OptionMultiSelect } from "@/components/shared/option-multi-select";
+import { ListChecks } from "lucide-react";
 
 interface StaffRow {
   id: string; staffCode: string; name: string; photo: string | null; email: string | null; phone: string | null;
@@ -92,12 +94,6 @@ export default function StaffListPage() {
   useEffect(loadStaff, [page, q, status, employeeType, facilityId]);
 
   const visibleFields = useMemo(() => FIELD_VISIBILITY[form.employeeType] || ["qualification", "designation", "experience"], [form.employeeType]);
-  const toggleResponsibility = (item: string) => {
-    setForm((f) => ({
-      ...f,
-      responsibilities: f.responsibilities.includes(item) ? f.responsibilities.filter((x) => x !== item) : [...f.responsibilities, item],
-    }));
-  };
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -337,24 +333,7 @@ export default function StaffListPage() {
             )}
 
             {meta.staff_responsibility && (
-              <div>
-                <p className="text-sm font-semibold mb-2">Responsibilities</p>
-                <div className="flex flex-wrap gap-2">
-                  {meta.staff_responsibility.options.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => toggleResponsibility(item)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
-                        form.responsibilities.includes(item) ? "bg-primary text-primary-foreground border-primary" : "border-border/60 bg-background/60 text-foreground"
-                      )}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <OptionMultiSelect id="responsibilities" label="Responsibilities" icon={ListChecks} options={meta.staff_responsibility.options} value={form.responsibilities} onChange={(v) => setForm((f) => ({ ...f, responsibilities: v }))} />
             )}
           </div>
 

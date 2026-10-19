@@ -17,6 +17,8 @@ import { FloatingField, FloatingSelect } from "@/components/shared/floating-fiel
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
+import { OptionMultiSelect } from "@/components/shared/option-multi-select";
+import { ListChecks } from "lucide-react";
 
 interface StaffDetail {
   id: string; staffCode: string; name: string; photo: string | null; email: string | null; phone: string | null;
@@ -110,9 +112,6 @@ export default function StaffDetailPage() {
     setStaff(res.staff);
   };
 
-  const toggleResponsibility = (item: string) => {
-    setResponsibilities((r) => r.includes(item) ? r.filter((x) => x !== item) : [...r, item]);
-  };
 
   const save = async () => {
     setSaving(true);
@@ -254,24 +253,7 @@ export default function StaffDetailPage() {
             )}
           </div>
           {meta.staff_responsibility && (
-            <div>
-              <p className="text-sm font-semibold mb-2">Responsibilities</p>
-              <div className="flex flex-wrap gap-2">
-                {meta.staff_responsibility.options.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => toggleResponsibility(item)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
-                      responsibilities.includes(item) ? "bg-primary text-primary-foreground border-primary" : "border-border/60 bg-background/60 text-foreground"
-                    )}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <OptionMultiSelect id="responsibilities" label="Responsibilities" icon={ListChecks} options={meta.staff_responsibility.options} value={responsibilities} onChange={setResponsibilities} />
           )}
           <Button
             className="self-start h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"

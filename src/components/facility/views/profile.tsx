@@ -235,7 +235,7 @@ export function ProfileView({ section }: { section: string }) {
         <h2 className="font-serif text-xl font-bold">Facility Profile</h2>
       </div>
 
-      <div className="grid md:grid-cols-[260px_1fr] gap-6">
+      <div className="grid md:grid-cols-[260px_minmax(0,1fr)] gap-6">
         <div className="space-y-4 h-fit md:sticky md:top-24 md:self-start">
           <Card className="p-2 border-border/50 bg-card/60">
             <div className="space-y-1">
