@@ -69,7 +69,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   report: { label: "Clinical Report", description: "Branding and wording printed on the patient assessment report." },
   vitals_validation: { label: "Vitals Validation", description: "" },
   registration: { label: "Registration", description: "Control who can register on the portal." },
-  verification: { label: "Verification", description: "OTP expiry, resend and attempt limits." },
+  verification: { label: "Verification", description: "One-time codes: how long they last, wait before resending, wrong tries allowed, and lockout after too many wrong passwords." },
   subscription: { label: "Subscription", description: "Free trial length and paid plan pricing for Facility accounts." },
   patient_defaults: { label: "Patient Defaults", description: "Default address values pre-filled when registering a new patient." },
   vitals: { label: "Vitals", description: "Rules for how long a recorded vitals assessment stays editable." },
@@ -114,12 +114,12 @@ const KEY_LABELS: Record<string, string> = {
   facility_registration_enabled: "Allow new Facility registrations",
   patient_registration_enabled: "Allow new patient registrations",
   require_license_for_facility: "Require license number for Facility signup",
-  otp_expiry_minutes: "OTP expiry (minutes)",
-  otp_resend_cooldown_seconds: "Resend cooldown (seconds)",
-  max_otp_attempts: "Max verification attempts",
-  email_code_only: "Email codes by email only (never shown on screen) — switch on once Amazon SES is out of sandbox",
-  max_login_attempts: "Max failed password attempts",
-  lockout_duration_minutes: "Account lockout duration (minutes)",
+  otp_expiry_minutes: "Code valid (min)",
+  otp_resend_cooldown_seconds: "Resend wait (sec)",
+  max_otp_attempts: "Code attempts",
+  email_code_only: "Email codes by email only",
+  max_login_attempts: "Password attempts",
+  lockout_duration_minutes: "Lockout (min)",
   free_trial_months: "Free trial duration (months)",
   paid_plan_price_per_month: "Paid plan price per month",
   currency: "Currency",
@@ -127,6 +127,25 @@ const KEY_LABELS: Record<string, string> = {
   default_city: "Default city",
   edit_window_minutes: "Vitals edit window (minutes)",
 };
+
+/** One-line explanation under an on/off switch. */
+const KEY_HINTS: Record<string, string> = {
+  facility_registration_enabled: "New clinics can sign up on the website.",
+  patient_registration_enabled: "Patients can create their own accounts.",
+  require_license_for_facility: "Clinics must give a licence number to sign up.",
+  email_code_only: "Never show email codes on screen. Turn on once Amazon SES is out of sandbox.",
+};
+/** Long texts take the full row; medium texts two columns; everything else one column. */
+const FULL_WIDTH = new Set(["confidentiality", "insight_disclaimer"]);
+const HALF_WIDTH = new Set(["slogan", "website_url", "report_title", "report_subtitle", "copyright_owner"]);
+/** Order within a section — follows how the steps happen, not the alphabet. */
+const KEY_ORDER = [
+  "portal_name", "support_email", "support_phone",
+  "report_title", "report_subtitle", "slogan", "website_url", "copyright_owner", "confidentiality", "insight_disclaimer",
+  "otp_expiry_minutes", "otp_resend_cooldown_seconds", "max_otp_attempts", "max_login_attempts", "lockout_duration_minutes",
+  "free_trial_months", "paid_plan_price_per_month", "currency",
+];
+const orderOf = (k: string) => { const i = KEY_ORDER.indexOf(k); return i === -1 ? 999 : i; };
 
 const BOOLEAN_KEYS = new Set([
   "facility_registration_enabled", "patient_registration_enabled", "require_license_for_facility", "email_code_only",
@@ -210,23 +229,27 @@ export default function SettingsPage() {
     const draftKey = `${s.category}.${s.key}`;
     if (BOOLEAN_KEYS.has(s.key)) {
       return (
-        <div key={s.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-background/60 px-4 py-3.5">
-          <p className="text-sm font-medium">{KEY_LABELS[s.key] || s.key}</p>
+        <label key={s.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium leading-tight">{KEY_LABELS[s.key] || s.key}</span>
+            {KEY_HINTS[s.key] && <span className="block text-xs leading-snug text-muted-foreground">{KEY_HINTS[s.key]}</span>}
+          </span>
           <Switch
             checked={draft[draftKey] === "true"}
             onCheckedChange={(checked) => setDraft((d) => ({ ...d, [draftKey]: checked ? "true" : "false" }))}
           />
-        </div>
+        </label>
       );
     }
     return (
-      <FloatingField
-        key={s.id}
-        id={draftKey}
-        label={KEY_LABELS[s.key] || s.key}
-        value={draft[draftKey] ?? s.value}
-        onChange={(e) => setDraft((d) => ({ ...d, [draftKey]: e.target.value }))}
-      />
+      <div key={s.id} className={cn(FULL_WIDTH.has(s.key) ? "col-span-full" : HALF_WIDTH.has(s.key) ? "sm:col-span-2" : "")}>
+        <FloatingField
+          id={draftKey}
+          label={KEY_LABELS[s.key] || s.key}
+          value={draft[draftKey] ?? s.value}
+          onChange={(e) => setDraft((d) => ({ ...d, [draftKey]: e.target.value }))}
+        />
+      </div>
     );
   };
 
@@ -311,18 +334,24 @@ export default function SettingsPage() {
                     );
                   })
                 ) : selected === "general" ? (
-                  <div className="space-y-8">
-                    {GENERAL_GROUP.filter((c) => settings.some((s) => s.category === c)).map((c) => (
-                      <section key={c} id={`section-${c}`} className="scroll-mt-24 space-y-3">
-                        {c !== "general" && (
-                          <div className="border-t border-border/50 pt-5 pb-2">
-                            <h3 className="font-serif text-base font-semibold">{CATEGORY_META[c]?.label || c}</h3>
-                            {CATEGORY_META[c]?.description && <p className="text-xs text-muted-foreground mt-0.5">{CATEGORY_META[c].description}</p>}
-                          </div>
-                        )}
-                        {settings.filter((s) => s.category === c).map(renderField)}
-                      </section>
-                    ))}
+                  <div className="space-y-5">
+                    {GENERAL_GROUP.filter((c) => settings.some((s) => s.category === c)).map((c) => {
+                      const rows = settings.filter((s) => s.category === c).sort((a, b) => orderOf(a.key) - orderOf(b.key));
+                      const switches = rows.filter((s) => BOOLEAN_KEYS.has(s.key));
+                      const fields = rows.filter((s) => !BOOLEAN_KEYS.has(s.key));
+                      return (
+                        <section key={c} id={`section-${c}`} className="scroll-mt-24 space-y-3">
+                          {c !== "general" && (
+                            <div className="flex flex-wrap items-baseline gap-x-2 border-t border-border/50 pt-4">
+                              <h3 className="font-serif text-base font-semibold">{CATEGORY_META[c]?.label || c}</h3>
+                              {CATEGORY_META[c]?.description && <p className="text-xs text-muted-foreground">{CATEGORY_META[c].description}</p>}
+                            </div>
+                          )}
+                          {switches.length > 0 && <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{switches.map(renderField)}</div>}
+                          {fields.length > 0 && <div className={cn("grid gap-x-3 gap-y-4 pt-1 sm:grid-cols-2", fields.length === 5 ? "lg:grid-cols-3 xl:grid-cols-5" : "lg:grid-cols-4")}>{fields.map(renderField)}</div>}
+                        </section>
+                      );
+                    })}
                     {Object.keys(SYSTEM).some((c) => settings.some((s) => s.category === c)) && (
                       <section id="section-engines" className="scroll-mt-24 space-y-3">
                         <div className="border-t border-border/50 pt-5 pb-2">
