@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { appStringFallbacks } from "@/lib/i18n/app-strings";
+import { APP_STRINGS, appStringFallbacks } from "@/lib/i18n/app-strings";
 
 type Bundle = Record<string, unknown>;
 
@@ -42,7 +42,8 @@ function toNested(rows: { key: string; text: string }[]): Bundle {
 
 /** DB-backed, version-cached message bundle for a locale — never calls AI, only SELECTs. */
 export async function getPublishedMessages(locale: string): Promise<Bundle> {
-  const version = await getMessagesVersion();
+  // A new app text in the code (e.g. after a deploy or while developing) also refreshes the cache.
+  const version = (await getMessagesVersion()) * 100000 + APP_STRINGS.length;
   const cached = messageCache.get(locale);
   if (cached && cached.version === version) return cached.messages;
 

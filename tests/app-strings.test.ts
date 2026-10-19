@@ -33,6 +33,20 @@ describe("app strings", () => {
     assert.deepEqual(problems, []);
   });
 
+  it("registers every text set defined in the app-strings folder", async () => {
+    const fs = await import("node:fs");
+    const dir = "src/lib/i18n/app-strings";
+    const registered = new Set(APP_STRINGS.map((s) => s.key));
+    const missing: string[] = [];
+    for (const f of fs.readdirSync(dir).filter((f: string) => f.endsWith(".ts") && !["define.ts", "index.ts", "seed.ts"].includes(f))) {
+      const mod = await import(`@/lib/i18n/app-strings/${f.replace(/\.ts$/, "")}`);
+      for (const [name, list] of Object.entries(mod)) {
+        if (Array.isArray(list) && list[0]?.key && !registered.has(list[0].key)) missing.push(`${f}: ${name}`);
+      }
+    }
+    assert.deepEqual(missing, []);
+  });
+
   it("falls back to English for languages without app texts", () => {
     const en = appStringFallbacks("en"), xx = appStringFallbacks("xx");
     assert.deepEqual(xx, en);

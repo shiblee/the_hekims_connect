@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { VisitStage } from "@/lib/visit-stage";
 
 // Where the latest visit stands, and where "Continue" takes you.
@@ -11,3 +12,9 @@ export const STAGES: Record<VisitStage, { label: string; tone: string; dot: stri
   referred: { label: "Referred out", tone: "text-destructive bg-destructive/10 border-destructive/30", dot: "bg-destructive", action: "View record", href: (id) => `/facility/patients/${id}/record` },
 };
 
+
+/** STAGES with the label and button text in the user's language. */
+export function useStages() {
+  const t = useTranslations("clinic.stages");
+  return (k: VisitStage) => ({ ...STAGES[k], label: t(k), action: t(`${k}_action`) });
+}

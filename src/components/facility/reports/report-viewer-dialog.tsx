@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { InlineNotice, LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { cn } from "@/lib/utils";
 import { reportCategory, resultFlag, type ReportExtraction } from "@/lib/reports";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,7 +23,6 @@ interface ReportDetail {
   files: { id: string; fileName: string; mimeType: string; size: number }[];
 }
 
-const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null);
 
 /**
  * Review a patient's reports one after another: the document on the left
@@ -35,6 +36,10 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
   onChanged: () => void;
 }) {
   const [currentId, setCurrentId] = useState<string | null>(openId);
+  const t = useTranslations("clinic.reports");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
+  const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString(dl, { day: "numeric", month: "short", year: "numeric" }) : null);
   const [report, setReport] = useState<ReportDetail | null>(null);
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
   const [page, setPage] = useState(0);
@@ -67,7 +72,7 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
           setFileUrls((m) => ({ ...m, [f.id]: url }));
         }
       })
-      .catch((e) => { if (!cancelled) setLoadError(e.message || "Network error"); });
+      .catch((e) => { if (!cancelled) setLoadError(e.message || tc("network_error")); });
     return () => { cancelled = true; urls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [currentId, openId, reloadTick]);
 
@@ -98,13 +103,13 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
       if (status === "reviewed") {
         // "Mark as reviewed & next" — move straight on to the next report.
         const next = reportIds[idx + 1];
-        msg.success(`"${r.title}" marked as reviewed`, next ? "Showing the next report." : "That was the last report in the list.");
+        msg.success(t("marked_reviewed", { title: r.title }), next ? t("showing_next") : t("last_one"));
         if (next) setCurrentId(next);
       } else {
-        msg.info("Review reopened", "The report is back in the pending-review list.");
+        msg.info(t("reopened"), t("reopened_hint"));
       }
     } catch (e: any) {
-      msg.error(status === "reviewed" ? "The report wasn't marked as reviewed" : "The review wasn't reopened", `${e.message || "Network error"}. Try again.`, { retry: () => setStatus(status) });
+      msg.error(status === "reviewed" ? t("not_marked") : t("not_reopened"), tc("load_failed_detail", { detail: e.message || tc("network_error") }), { retry: () => setStatus(status) });
     } finally {
       setBusy(false);
     }
@@ -121,7 +126,7 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
       const next = reportIds[idx + 1] || reportIds[idx - 1];
       if (next && next !== report.id) setCurrentId(next); else onOpenChange(false);
     } catch (e: any) {
-      msg.error("The report wasn't deleted", `${e.message || "Network error"}. Try again.`, { retry: remove });
+      msg.error(t("not_deleted"), tc("load_failed_detail", { detail: e.message || tc("network_error") }), { retry: remove });
     } finally {
       setBusy(false);
     }
@@ -140,13 +145,13 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
           <div className="flex items-center justify-between gap-3 pe-8">
             <DialogTitle className="font-serif flex items-center gap-2 min-w-0">
               {cat && <span className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", cat.tint)}><cat.icon className="h-4 w-4" /></span>}
-              <span className="truncate">{report?.title || "Report"}</span>
+              <span className="truncate">{report?.title || t("report")}</span>
             </DialogTitle>
             {reportIds.length > 1 && (
               <div className="flex items-center gap-1 shrink-0">
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => go(-1)} disabled={idx <= 0} aria-label="Previous report"><ChevronLeft className="h-4 w-4" /></Button>
-                <span className="text-xs text-muted-foreground tabular-nums">{idx + 1} of {reportIds.length}</span>
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => go(1)} disabled={idx >= reportIds.length - 1} aria-label="Next report"><ChevronRight className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => go(-1)} disabled={idx <= 0} aria-label={t("prev_report")}><ChevronLeft className="h-4 w-4 rtl:rotate-180" /></Button>
+                <span className="text-xs text-muted-foreground tabular-nums">{t("n_of", { n: idx + 1, total: reportIds.length })}</span>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => go(1)} disabled={idx >= reportIds.length - 1} aria-label={t("next_report")}><ChevronRight className="h-4 w-4 rtl:rotate-180" /></Button>
               </div>
             )}
           </div>
@@ -154,15 +159,15 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
 
         {!report ? (
           loadError
-            ? <div className="p-4"><LoadFailed what="this report" detail={loadError} onRetry={() => setReloadTick((t) => t + 1)} /></div>
-            : <div className="flex items-center gap-2 text-muted-foreground text-sm p-8"><Loader2 className="h-4 w-4 animate-spin" /> Loading report…</div>
+            ? <div className="p-4"><LoadFailed what={t("this_report")} detail={loadError} onRetry={() => setReloadTick((t) => t + 1)} /></div>
+            : <div className="flex items-center gap-2 text-muted-foreground text-sm p-8"><Loader2 className="h-4 w-4 animate-spin" /> {t("loading_report")}</div>
         ) : (
           <div className="grid lg:grid-cols-[1fr_380px]">
             {/* Document */}
             <div className="bg-muted/30 border-b lg:border-b-0 lg:border-e border-border/50 p-4 space-y-3 min-w-0">
               <div className={cn("relative rounded-lg bg-background/60 h-[58vh] overflow-auto flex", !zoom && "items-center justify-center")}>
                 {!url ? (
-                  <div className="m-auto flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading file…</div>
+                  <div className="m-auto flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> {t("loading_file")}</div>
                 ) : file!.mimeType === "application/pdf" ? (
                   <iframe src={url} title={file!.fileName} className="h-full w-full rounded-lg" />
                 ) : (
@@ -188,10 +193,10 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
                 {url && (
                   <div className="flex items-center gap-1">
                     {file!.mimeType.startsWith("image/") && (
-                      <Button size="sm" variant="ghost" onClick={() => setZoom((z) => !z)}>{zoom ? <ZoomOut className="h-3.5 w-3.5" /> : <ZoomIn className="h-3.5 w-3.5" />} {zoom ? "Fit" : "Zoom"}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setZoom((z) => !z)}>{zoom ? <ZoomOut className="h-3.5 w-3.5" /> : <ZoomIn className="h-3.5 w-3.5" />} {zoom ? t("fit") : t("zoom")}</Button>
                     )}
-                    <Button size="sm" variant="ghost" asChild><a href={url} target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5" /> Open</a></Button>
-                    <Button size="sm" variant="ghost" asChild><a href={url} download={file!.fileName}><Download className="h-3.5 w-3.5" /> Download</a></Button>
+                    <Button size="sm" variant="ghost" asChild><a href={url} target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5" /> {t("open")}</a></Button>
+                    <Button size="sm" variant="ghost" asChild><a href={url} download={file!.fileName}><Download className="h-3.5 w-3.5" /> {t("download")}</a></Button>
                   </div>
                 )}
               </div>
@@ -201,30 +206,30 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
             <div className="p-5 space-y-4 min-w-0">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <Badge variant="outline" className="font-normal">{cat?.label}</Badge>
-                  {flag && report.resultFlag !== "unknown" && <Badge variant="outline" className={cn("font-medium", flag.className)}>{flag.label}</Badge>}
+                  <Badge variant="outline" className="font-normal">{cat && t(`cat_${cat.value}`)}</Badge>
+                  {flag && report.resultFlag !== "unknown" && <Badge variant="outline" className={cn("font-medium", flag.className)}>{t(`flag_${flag.value}`)}</Badge>}
                   {report.status === "reviewed"
-                    ? <Badge variant="outline" className="font-normal text-emerald-600 dark:text-emerald-400 border-emerald-500/40">Reviewed</Badge>
-                    : <Badge variant="outline" className="font-normal text-amber-600 dark:text-amber-400 border-amber-500/40">Awaiting review</Badge>}
+                    ? <Badge variant="outline" className="font-normal text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{t("reviewed")}</Badge>
+                    : <Badge variant="outline" className="font-normal text-amber-600 dark:text-amber-400 border-amber-500/40">{t("awaiting")}</Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {[fmtDate(report.reportDate), report.source].filter(Boolean).join(" · ") || "No date or lab recorded"}
+                  {[fmtDate(report.reportDate), report.source].filter(Boolean).join(" · ") || t("no_date")}
                 </p>
-                <p className="text-xs text-muted-foreground">Added by {report.uploadedByName} · {fmtDate(report.createdAt)}</p>
+                <p className="text-xs text-muted-foreground">{t("added_by", { name: report.uploadedByName, date: fmtDate(report.createdAt) ?? "" })}</p>
               </div>
 
               {extraction && (extraction.summary || (extraction.values?.length ?? 0) > 0) && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-primary" /> Hakeem Insight reading</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-primary" /> {t("insight_reading")}</p>
                   {extraction.summary && <p className="text-sm">{extraction.summary}</p>}
                   {(extraction.values?.length ?? 0) > 0 && <ReportValuesTable values={extraction.values!} />}
-                  <p className="text-[11px] text-muted-foreground">Transcribed from the document — the document itself is the source of truth.</p>
+                  <p className="text-[11px] text-muted-foreground">{t("source_truth")}</p>
                 </div>
               )}
 
               {report.findings && (
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Key findings</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("key_findings")}</p>
                   <p className="text-sm whitespace-pre-wrap">{report.findings}</p>
                 </div>
               )}
@@ -232,15 +237,15 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
               <div className="rounded-xl border border-border/50 bg-background/40 p-3 space-y-2">
                 {report.status === "reviewed" ? (
                   <>
-                    <p className="text-sm flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Reviewed by {report.reviewedByName}{report.reviewedAt && ` · ${fmtDate(report.reviewedAt)}`}</p>
+                    <p className="text-sm flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> {t("reviewed_by", { name: report.reviewedByName ?? "" })}{report.reviewedAt && ` · ${fmtDate(report.reviewedAt)}`}</p>
                     {report.reviewNote && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.reviewNote}</p>}
-                    <Button size="sm" variant="ghost" onClick={() => setStatus("pending_review")} disabled={busy}><RotateCcw className="h-3.5 w-3.5" /> Mark as not reviewed</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setStatus("pending_review")} disabled={busy}><RotateCcw className="h-3.5 w-3.5" /> {t("mark_unreviewed")}</Button>
                   </>
                 ) : (
                   <>
-                    <Textarea maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Review note (optional)" className="min-h-[60px] bg-background/60" />
+                    <Textarea maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("review_note")} className="min-h-[60px] bg-background/60" />
                     <Button size="sm" className="w-full" onClick={() => setStatus("reviewed")} disabled={busy}>
-                      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Mark as reviewed{idx < reportIds.length - 1 ? " & next" : ""}
+                      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} {idx < reportIds.length - 1 ? t("mark_reviewed_next") : t("mark_reviewed")}
                     </Button>
                   </>
                 )}
@@ -250,20 +255,20 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
               {confirmDelete ? (
                 <InlineNotice
                   tone="error"
-                  title={`Delete "${report.title}"?`}
-                  detail="The report and all its files are removed for everyone. This can't be undone."
+                  title={t("delete_q", { title: report.title })}
+                  detail={t("delete_hint")}
                   action={
                     <div className="flex flex-col gap-1.5">
                       <Button size="sm" variant="destructive" onClick={remove} disabled={busy}>
-                        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Delete
+                        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} {tc("delete")}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={busy}>Keep</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={busy}>{tc("keep")}</Button>
                     </div>
                   }
                 />
               ) : (
                 <button type="button" onClick={() => setConfirmDelete(true)} disabled={busy} className="text-xs text-muted-foreground hover:text-destructive inline-flex items-center gap-1">
-                  <Trash2 className="h-3 w-3" /> Delete report
+                  <Trash2 className="h-3 w-3" /> {t("delete_report")}
                 </button>
               )}
             </div>

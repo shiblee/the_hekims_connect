@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { cn } from "@/lib/utils";
 import { reportCategory } from "@/lib/reports";
 import { Button } from "@/components/ui/button";
@@ -41,6 +43,9 @@ export function PatientReportsPanel() {
   const reports = current?.reports ?? null;
   const loadError = current?.error;
   const msg = useNotice();
+  const t = useTranslations("clinic.reports");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
   const [adding, setAdding] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
 
@@ -49,7 +54,7 @@ export function PatientReportsPanel() {
     api.get<{ reports: ReportRow[] }>(`/api/facility/patients/${patientId}/reports`)
       .then((r) => setLoaded({ patientId, reports: r.reports }))
       // A failed load must not look like "no reports" — say so, with a retry.
-      .catch((e) => setLoaded({ patientId, reports: null, error: e.message || "Network error" }));
+      .catch((e) => setLoaded({ patientId, reports: null, error: e.message || tc("network_error") }));
   }, [patientId]);
 
   useEffect(() => { load(); }, [load]);
@@ -58,7 +63,7 @@ export function PatientReportsPanel() {
     return (
       <div className="mt-6 mx-3 rounded-xl border border-dashed border-sidebar-border p-3 text-center">
         <FolderOpen className="h-4 w-4 mx-auto text-muted-foreground" />
-        <p className="text-xs text-muted-foreground mt-1.5">Open a patient to see and add their reports.</p>
+        <p className="text-xs text-muted-foreground mt-1.5">{t("open_patient")}</p>
       </div>
     );
   }
@@ -69,33 +74,33 @@ export function PatientReportsPanel() {
     <div className="mt-6 px-3">
       <div className="flex items-center justify-between gap-2 px-1 mb-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-          Patient Reports
+          {t("panel_title")}
           {reports && reports.length > 0 && <span className="rounded-full bg-sidebar-accent px-1.5 text-[10px] text-foreground normal-case tracking-normal">{reports.length}</span>}
         </p>
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setAdding(true)} aria-label="Add report">
+        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setAdding(true)} aria-label={t("add")}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
 
       {pending > 0 && (
-        <p className="px-1 mb-2 text-[11px] text-amber-600 dark:text-amber-400">{pending} awaiting doctor review</p>
+        <p className="px-1 mb-2 text-[11px] text-amber-600 dark:text-amber-400">{t("awaiting_n", { count: pending })}</p>
       )}
 
       <NoticeSlot state={msg} className="mb-2 px-3 py-2" />
 
       {loadError ? (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-xs">
-          <p className="font-semibold text-destructive">Couldn&apos;t load reports</p>
-          <p className="text-muted-foreground mt-0.5">{loadError}. Existing reports are safe.</p>
-          <button type="button" onClick={load} className="mt-1.5 text-primary hover:underline font-medium">Try again</button>
+          <p className="font-semibold text-destructive">{t("load_failed")}</p>
+          <p className="text-muted-foreground mt-0.5">{t("safe", { error: loadError })}</p>
+          <button type="button" onClick={load} className="mt-1.5 text-primary hover:underline font-medium">{tc("retry")}</button>
         </div>
       ) : reports === null ? (
-        <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</div>
+        <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> {tc("loading")}</div>
       ) : reports.length === 0 ? (
         <button type="button" onClick={() => setAdding(true)}
           className="w-full rounded-xl border border-dashed border-sidebar-border p-3 text-center hover:border-primary/40 transition-colors">
           <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
-          <p className="text-xs text-muted-foreground mt-1.5">No reports yet — add lab, imaging or other reports here.</p>
+          <p className="text-xs text-muted-foreground mt-1.5">{t("none")}</p>
         </button>
       ) : (
         <div className="space-y-1.5">
@@ -113,16 +118,16 @@ export function PatientReportsPanel() {
               >
                 <span className={cn("relative h-8 w-8 rounded-lg flex items-center justify-center shrink-0", cat.tint)}>
                   <cat.icon className="h-4 w-4" />
-                  {unreviewed && <span className="absolute -top-0.5 -end-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-sidebar" aria-label="Awaiting review" />}
+                  {unreviewed && <span className="absolute -top-0.5 -end-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-sidebar" aria-label={t("awaiting")} />}
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className={cn("block text-sm truncate", unreviewed ? "font-semibold" : "font-medium")}>{r.title}</span>
                   <span className="block text-[11px] text-muted-foreground truncate">
-                    {new Date(date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "2-digit" })}
-                    {r.files.length > 1 && ` · ${r.files.length} pages`}
+                    {new Date(date).toLocaleDateString(dl, { day: "numeric", month: "short", year: "2-digit" })}
+                    {r.files.length > 1 && ` · ${t("pages_n", { count: r.files.length })}`}
                     {flagged && (
                       <span className={cn("font-semibold", r.resultFlag === "critical" ? "text-destructive" : "text-amber-600 dark:text-amber-400")}>
-                        {" · "}{r.resultFlag === "critical" ? "Critical" : "Abnormal"}
+                        {" · "}{r.resultFlag === "critical" ? t("flag_critical") : t("flag_abnormal")}
                       </span>
                     )}
                   </span>
@@ -133,7 +138,7 @@ export function PatientReportsPanel() {
         </div>
       )}
 
-      <AddReportDialog patientId={patientId} open={adding} onOpenChange={setAdding} onSaved={() => { load(); msg.success("Report added", "It's listed below, awaiting doctor review."); }} />
+      <AddReportDialog patientId={patientId} open={adding} onOpenChange={setAdding} onSaved={() => { load(); msg.success(t("added"), t("added_hint")); }} />
       <ReportViewerDialog
         reportIds={(reports || []).map((r) => r.id)}
         openId={viewing}

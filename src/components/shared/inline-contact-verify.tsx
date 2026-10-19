@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ interface ApiClient {
  * staff-contact verification) rather than only the public precheck routes.
  */
 export function useInlineContactVerify(client: ApiClient, sendUrl: string, verifyUrl: string, extraBody?: Record<string, unknown>) {
+  const t = useTranslations("common.widgets");
   const [stage, setStage] = useState<"idle" | "sent" | "verified">("idle");
   const [devOtp, setDevOtp] = useState("");
   const [code, setCode] = useState("");
@@ -42,7 +44,7 @@ export function useInlineContactVerify(client: ApiClient, sendUrl: string, verif
       setStage("sent");
       setCooldown(30); // the box itself now says the code was sent
     } catch (err: any) {
-      setError(err.message || "Could not send code");
+      setError(err.message || t("could_not_send"));
     } finally {
       setSending(false);
     }
@@ -50,7 +52,7 @@ export function useInlineContactVerify(client: ApiClient, sendUrl: string, verif
 
   const verify = async (contact: string) => {
     if (code.length !== 6) {
-      setError("Enter the 6-digit code");
+      setError(t("enter_code"));
       return;
     }
     setError("");
@@ -59,7 +61,7 @@ export function useInlineContactVerify(client: ApiClient, sendUrl: string, verif
       await client.post(verifyUrl, { contact, code });
       setStage("verified"); // shown in place as "✓ Verified"
     } catch (err: any) {
-      setError(err.message || "Invalid code");
+      setError(err.message || t("invalid_code"));
     } finally {
       setVerifying(false);
     }
@@ -77,16 +79,18 @@ export function useInlineContactVerify(client: ApiClient, sendUrl: string, verif
 }
 
 export function InlineVerifyBox({ iv, contact, name }: { iv: ReturnType<typeof useInlineContactVerify>; contact: string; name?: string }) {
+  const t = useTranslations("common.widgets");
+  const tc = useTranslations("common");
   if (iv.stage === "idle") return iv.error ? <FieldError message={iv.error} /> : null;
 
   if (iv.stage === "verified") {
     return (
       <div className="mt-2 flex items-center gap-3">
         <p className="flex items-center gap-1.5 text-sm font-medium text-primary">
-          <Check className="h-4 w-4" /> Verified
+          <Check className="h-4 w-4" /> {t("verified")}
         </p>
         <button type="button" onClick={iv.reset} className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2">
-          Edit
+          {tc("edit")}
         </button>
       </div>
     );
@@ -97,10 +101,10 @@ export function InlineVerifyBox({ iv, contact, name }: { iv: ReturnType<typeof u
       <div className="flex items-center justify-between gap-2 mb-2.5">
         {iv.devOtp ? (
           <p className="text-xs text-muted-foreground">
-            Demo code (dev mode): <span className="font-semibold text-foreground tracking-wider">{iv.devOtp}</span>
+            {t("demo_code")} <span className="font-semibold text-foreground tracking-wider">{iv.devOtp}</span>
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">We sent a 6-digit code — check your inbox.</p>
+          <p className="text-xs text-muted-foreground">{t("code_sent")}</p>
         )}
         <button
           type="button"
@@ -109,7 +113,7 @@ export function InlineVerifyBox({ iv, contact, name }: { iv: ReturnType<typeof u
           className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50 shrink-0"
         >
           <RefreshCw className="h-3 w-3" />
-          {iv.cooldown > 0 ? `Resend in ${iv.cooldown}s` : "Resend"}
+          {iv.cooldown > 0 ? t("resend_in", { seconds: iv.cooldown }) : t("resend")}
         </button>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -133,7 +137,7 @@ export function InlineVerifyBox({ iv, contact, name }: { iv: ReturnType<typeof u
           onClick={() => iv.verify(contact)}
           className="h-10 bg-primary text-primary-foreground hover:bg-primary/90"
         >
-          {iv.verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+          {iv.verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : t("verify")}
         </Button>
       </div>
       <FieldError message={iv.error} />

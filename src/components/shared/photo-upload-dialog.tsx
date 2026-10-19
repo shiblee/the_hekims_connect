@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import Cropper, { type Area } from "react-easy-crop";
 import { ImagePlus, Loader2, Check, Trash2, ZoomIn } from "lucide-react";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
@@ -23,7 +24,7 @@ export function PhotoUploadDialog({
   currentPhoto,
   onSave,
   onRemove,
-  title = "Change photo",
+  title,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,6 +41,8 @@ export function PhotoUploadDialog({
   const [croppedArea, setCroppedArea] = useState<CropArea | null>(null);
   const [saving, setSaving] = useState(false);
   const msg = useNotice();
+  const t = useTranslations("common.widgets");
+  const tc = useTranslations("common");
 
   const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
     setCroppedArea(areaPixels);
@@ -56,11 +59,11 @@ export function PhotoUploadDialog({
   const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      msg.warning("That file isn't an image", "Choose a PNG, JPEG or WebP photo.");
+      msg.warning(t("photo_not_image"), t("photo_not_image_hint"));
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      msg.warning("That photo is too large", `It's ${(file.size / 1024 / 1024).toFixed(1)} MB — choose one under 8 MB.`);
+      msg.warning(t("photo_too_large"), t("photo_too_large_hint", { size: (file.size / 1024 / 1024).toFixed(1) }));
       return;
     }
     msg.clear();
@@ -78,7 +81,7 @@ export function PhotoUploadDialog({
       reset(); // the new photo shows in place once the dialog closes
       onOpenChange(false);
     } catch (err: any) {
-      msg.error("The photo wasn't saved", `${err.message || "Network error"}. Try again.`, { retry: save });
+      msg.error(t("photo_not_saved"), t("try_again_detail", { detail: err.message || tc("network_error") }), { retry: save });
     } finally {
       setSaving(false);
     }
@@ -92,7 +95,7 @@ export function PhotoUploadDialog({
       reset();
       onOpenChange(false);
     } catch (err: any) {
-      msg.error("The photo wasn't removed", `${err.message || "Network error"}. Try again.`, { retry: removePhoto });
+      msg.error(t("photo_not_removed"), t("try_again_detail", { detail: err.message || tc("network_error") }), { retry: removePhoto });
     } finally {
       setSaving(false);
     }
@@ -102,8 +105,8 @@ export function PhotoUploadDialog({
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Upload a photo, then drag and zoom to adjust it before saving.</DialogDescription>
+          <DialogTitle>{title ?? t("photo_title")}</DialogTitle>
+          <DialogDescription>{t("photo_hint")}</DialogDescription>
         </DialogHeader>
 
         {!imageSrc ? (
@@ -121,8 +124,8 @@ export function PhotoUploadDialog({
               className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/60 py-10 text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
             >
               <ImagePlus className="h-8 w-8" />
-              <span className="text-sm font-medium">Click to choose a photo</span>
-              <span className="text-xs">PNG, JPEG or WebP — up to 8MB</span>
+              <span className="text-sm font-medium">{t("photo_choose")}</span>
+              <span className="text-xs">{t("photo_types")}</span>
             </button>
           </div>
         ) : (
@@ -159,16 +162,16 @@ export function PhotoUploadDialog({
         <DialogFooter className="flex items-center sm:justify-between gap-2">
           {currentPhoto && !imageSrc ? (
             <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" disabled={saving} onClick={removePhoto}>
-              <Trash2 className="h-4 w-4" /> Remove photo
+              <Trash2 className="h-4 w-4" /> {t("photo_remove")}
             </Button>
           ) : imageSrc ? (
-            <Button type="button" variant="ghost" onClick={reset} disabled={saving}>Choose a different photo</Button>
+            <Button type="button" variant="ghost" onClick={reset} disabled={saving}>{t("photo_other")}</Button>
           ) : (
             <span />
           )}
           {imageSrc && (
             <Button type="button" disabled={saving || !croppedArea} onClick={save}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Save
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {tc("save")}
             </Button>
           )}
         </DialogFooter>

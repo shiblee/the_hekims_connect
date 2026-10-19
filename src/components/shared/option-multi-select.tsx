@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, type ComponentType } from "react";
+import { useTranslations } from "next-intl";
 import { FloatingMultiSelect } from "@/components/shared/floating-field";
 
 /**
  * Search-and-pick for a plain list of options (e.g. a Meta section): click or type to
  * see the options, chosen ones show as chips. Same field as allergies / services.
  */
-export function OptionMultiSelect({ id, label, options, value, onChange, icon, placeholder = "Type to search…" }: {
+export function OptionMultiSelect({ id, label, options, value, onChange, icon, placeholder }: {
   id: string;
   label: string;
   options: string[];
@@ -17,12 +18,13 @@ export function OptionMultiSelect({ id, label, options, value, onChange, icon, p
   placeholder?: string;
 }) {
   const [query, setQuery] = useState("");
+  const t = useTranslations("common");
   const q = query.trim().toLowerCase();
   const results = options.filter((o) => !value.includes(o) && (!q || o.toLowerCase().includes(q))).map((o) => ({ id: o, label: o }));
   return (
     <FloatingMultiSelect
       id={id}
-      label={value.length ? `${label} · ${value.length} selected` : label}
+      label={value.length ? `${label} · ${t("n_selected", { count: value.length })}` : label}
       labelIcon={icon}
       selected={value.map((v) => ({ id: v, label: v }))}
       onRemove={(v) => onChange(value.filter((x) => x !== v))}
@@ -32,8 +34,8 @@ export function OptionMultiSelect({ id, label, options, value, onChange, icon, p
       onPick={(v) => { onChange([...value, v]); setQuery(""); }}
       openOnFocus
       inlineList
-      emptyHint={results.length ? `${results.length} option${results.length === 1 ? "" : "s"} — type to narrow` : "All options chosen"}
-      placeholder={placeholder}
+      emptyHint={results.length ? t("options_narrow", { count: results.length }) : t("all_chosen")}
+      placeholder={placeholder ?? t("type_to_search")}
     />
   );
 }

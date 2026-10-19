@@ -1,5 +1,13 @@
 export type AgeUnit = "years" | "months" | "days";
 
+/** The page's language (from <html lang>) when it isn't English — other languages use the browser's own wording. */
+function pageLang(): string | null {
+  const lang = typeof document !== "undefined" ? document.documentElement.lang : "";
+  return lang && lang !== "en" ? `${lang}-u-nu-latn` : null;
+}
+const unitText = (lang: string, n: number, unit: "year" | "month" | "day") =>
+  new Intl.NumberFormat(lang, { style: "unit", unit, unitDisplay: "short" }).format(n);
+
 /** Estimated "YYYY-MM-DD" DOB, counting back from today by the given age value + unit (newborns included). */
 export function estimateDobFromAgeValue(value: number, unit: AgeUnit): string {
   const dob = new Date();
@@ -36,6 +44,12 @@ export function formatAge(dob: string | null): string {
     months += 12;
   }
 
+  const lang = pageLang();
+  if (lang) {
+    if (years >= 1) return [unitText(lang, years, "year"), months > 0 && unitText(lang, months, "month")].filter(Boolean).join(" ");
+    if (months >= 1) return [unitText(lang, months, "month"), days > 0 && unitText(lang, days, "day")].filter(Boolean).join(" ");
+    return unitText(lang, days, "day");
+  }
   if (years >= 1) return `${years} yr${years === 1 ? "" : "s"}${months > 0 ? ` ${months} mo` : ""}`;
   if (months >= 1) return `${months} mo${months === 1 ? "" : "s"}${days > 0 ? ` ${days}d` : ""}`;
   return `${days} day${days === 1 ? "" : "s"}`;
@@ -85,6 +99,13 @@ export function daysAgo(dateStr: string | null): string {
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
 
+  const lang = pageLang();
+  if (lang) {
+    const rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
+    if (days < 30) return rtf.format(-Math.max(0, days), "day");
+    const m = Math.floor(days / 30);
+    return m < 12 ? rtf.format(-m, "month") : rtf.format(-Math.floor(m / 12), "year");
+  }
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 30) return `${days} days ago`;
@@ -99,7 +120,8 @@ export function formatDateTime(dateStr: string | null): string {
   if (!dateStr) return "—";
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return "—";
-  const datePart = date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const timePart = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const lang = pageLang();
+  const datePart = date.toLocaleDateString(lang ?? "en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const timePart = date.toLocaleTimeString(lang ?? "en-US", { hour: "numeric", minute: "2-digit" });
   return `${datePart}, ${timePart}`;
 }

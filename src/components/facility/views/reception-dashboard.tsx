@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +28,6 @@ interface Data {
 }
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-const vsYesterday = (t: number, y: number) => (y === t ? "same as yesterday" : `${t > y ? "+" : "−"}${Math.abs(t - y)} vs yesterday (${y})`);
 
 /** Reception workspace at the top of the dashboard: today's flow, registrations over time, quick actions. */
 export function ReceptionDashboard() {
@@ -37,36 +38,40 @@ export function ReceptionDashboard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"d7" | "d30" | "m12">("d7");
+  const t = useTranslations("clinic.dashboard");
+  const tc = useTranslations("common");
+  const dl = useDateLocale();
+  const vsYesterday = (n: number, y: number) => (y === n ? t("same_as_yesterday") : t("vs_yesterday", { diff: `${n > y ? "+" : "−"}${Math.abs(n - y)}`, y }));
 
   const load = useCallback(async () => {
     setLoading(true);
     try { setData(await api.get<Data>(`/api/facility/reception?tz=${-new Date().getTimezoneOffset()}`)); setError(""); }
-    catch (e: any) { setError(e.message || "Network error"); }
+    catch (e: any) { setError(e.message || tc("network_error")); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
   const go = (path: string) => router.push(path);
   const actions = [
-    { label: "Register new patient", icon: UserPlus, path: "/facility/patients/register", primary: true },
-    { label: "Find existing patient", icon: Search, path: "/facility/patients" },
-    { label: "Reception desk (7 days)", icon: CalendarCheck, path: "/facility/reception" },
-    { label: "In progress", icon: Stethoscope, path: "/facility/patients?filter=progress" },
-    { label: "My activity", icon: History, path: "/facility/profile/activity" },
+    { label: t("act_register"), icon: UserPlus, path: "/facility/patients/register", primary: true },
+    { label: t("act_find"), icon: Search, path: "/facility/patients" },
+    { label: t("act_desk"), icon: CalendarCheck, path: "/facility/reception" },
+    { label: t("act_progress"), icon: Stethoscope, path: "/facility/patients?filter=progress" },
+    { label: t("act_activity"), icon: History, path: "/facility/profile/activity" },
   ].filter((a) => can(a.path.split("?")[0]));
 
   const fmtKey = (k: string) => period === "m12"
-    ? new Date(`${k}-01T00:00:00`).toLocaleDateString(undefined, { month: "short" })
-    : new Date(`${k}T00:00:00`).toLocaleDateString(undefined, period === "d7" ? { weekday: "short", day: "numeric" } : { day: "numeric", month: "short" });
+    ? new Date(`${k}-01T00:00:00`).toLocaleDateString(dl, { month: "short" })
+    : new Date(`${k}T00:00:00`).toLocaleDateString(dl, period === "d7" ? { weekday: "short", day: "numeric" } : { day: "numeric", month: "short" });
 
   return (
-    <section className="space-y-4" aria-label="Reception">
+    <section className="space-y-4" aria-label={t("section")}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-serif text-xl font-bold">Reception</h2>
-          <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}{data && ` · updated ${new Date(data.generatedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}</p>
+          <h2 className="font-serif text-xl font-bold">{t("section")}</h2>
+          <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString(dl, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}{data && ` · ${t("updated", { time: new Date(data.generatedAt).toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) })}`}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={load} disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Refresh</Button>
+        <Button size="sm" variant="outline" onClick={load} disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} {tc("refresh")}</Button>
       </div>
 
       {/* Quick actions */}
@@ -78,33 +83,33 @@ export function ReceptionDashboard() {
         ))}
       </div>
 
-      {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">Reception figures couldn&apos;t be loaded — {error}. <button className="underline" onClick={load}>Try again</button></p>}
+      {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{t("load_failed", { error })} <button className="underline" onClick={load}>{tc("retry")}</button></p>}
 
       {!data && loading ? (
-        <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading today&apos;s figures…</div>
+        <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}</div>
       ) : data && (
         <>
           {/* Today */}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-tour="dashboard.today">
-            <Stat label="New patients" range="Today" value={data.patients.newToday} sub={vsYesterday(data.patients.newToday, data.patients.newYesterday)} icon={UserPlus} tone="primary" onClick={() => go("/facility/patients?filter=today")} />
-            <Stat label="Returning patients" range="Today" value={data.patients.returningToday} sub="seen here before" icon={UserRoundCheck} tone="accent" onClick={() => go("/facility/patients?filter=today")} />
-            <Stat label="Visits" range="Today" value={data.visits.today} sub={vsYesterday(data.visits.today, data.visits.yesterday)} icon={ClipboardList} tone="primary" onClick={() => go("/facility/patients?filter=today")} />
+            <Stat label={t("new_patients")} range={t("today")} value={data.patients.newToday} sub={vsYesterday(data.patients.newToday, data.patients.newYesterday)} icon={UserPlus} tone="primary" onClick={() => go("/facility/patients?filter=today")} />
+            <Stat label={t("returning")} range={t("today")} value={data.patients.returningToday} sub={t("returning_sub")} icon={UserRoundCheck} tone="accent" onClick={() => go("/facility/patients?filter=today")} />
+            <Stat label={t("visits")} range={t("today")} value={data.visits.today} sub={vsYesterday(data.visits.today, data.visits.yesterday)} icon={ClipboardList} tone="primary" onClick={() => go("/facility/patients?filter=today")} />
             {data.money ? (
-              <Stat label="Collected" range="Today" value={inr(data.money.today.amount)} sub={`${data.money.today.count} payment${data.money.today.count === 1 ? "" : "s"} · 7 days ${inr(data.money.last7.amount)}`} icon={Wallet} tone="emerald" />
+              <Stat label={t("collected")} range={t("today")} value={inr(data.money.today.amount)} sub={t("collected_sub", { count: data.money.today.count, amount: inr(data.money.last7.amount) })} icon={Wallet} tone="emerald" />
             ) : (
-              <Stat label="Waiting for vitals" range="Today" value={data.visits.waitingVitals} sub="registered, vitals not yet taken" icon={Activity} tone="amber" onClick={() => go("/facility/patients?filter=progress")} />
+              <Stat label={t("waiting_vitals")} range={t("today")} value={data.visits.waitingVitals} sub={t("waiting_sub")} icon={Activity} tone="amber" onClick={() => go("/facility/patients?filter=progress")} />
             )}
           </div>
 
           {/* Patient flow today */}
           <Card className="gap-3 border-border/50 bg-card/60 p-4">
-            <p className="text-sm font-semibold">Today&apos;s patient flow <span className="font-normal text-muted-foreground">· {data.visits.today} visit{data.visits.today === 1 ? "" : "s"}</span></p>
+            <p className="text-sm font-semibold">{t("flow")} <span className="font-normal text-muted-foreground">· {t("flow_visits", { count: data.visits.today })}</span></p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {([
-                ["Waiting for vitals", data.visits.waitingVitals, "bg-amber-500", "progress"],
-                ["In assessment", data.visits.inAssessment, "bg-sky-500", "progress"],
-                ["Completed", data.visits.completed, "bg-emerald-500", "done"],
-                ["Referred out", data.visits.referred, "bg-red-500", "referred"],
+                [t("waiting_vitals"), data.visits.waitingVitals, "bg-amber-500", "progress"],
+                [t("in_assessment"), data.visits.inAssessment, "bg-sky-500", "progress"],
+                [t("completed"), data.visits.completed, "bg-emerald-500", "done"],
+                [t("referred_out"), data.visits.referred, "bg-red-500", "referred"],
               ] as const).map(([l, n, dot, f]) => (
                 <button key={l} type="button" onClick={() => go(`/facility/patients?filter=${f}`)} className="rounded-lg border border-border bg-background/60 px-3 py-2.5 text-start transition-colors hover:border-primary/40">
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={cn("h-2 w-2 rounded-full", dot)} />{l}</p>
@@ -125,9 +130,9 @@ export function ReceptionDashboard() {
             {/* Trend */}
             <Card className="gap-3 border-border/50 bg-card/60 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold">New patients &amp; visits</p>
+                <p className="text-sm font-semibold">{t("trend")}</p>
                 <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5 text-xs">
-                  {([["d7", "7 days"], ["d30", "30 days"], ["m12", "12 months"]] as const).map(([k, l]) => (
+                  {([["d7", t("d7")], ["d30", t("d30")], ["m12", t("m12")]] as const).map(([k, l]) => (
                     <button key={k} type="button" onClick={() => setPeriod(k)} className={cn("rounded-md px-2.5 py-1 transition-colors", period === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
                   ))}
                 </div>
@@ -139,8 +144,8 @@ export function ReceptionDashboard() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
                   <Tooltip labelFormatter={(k) => fmtKey(String(k))} contentStyle={{ fontSize: 12, borderRadius: 10 }} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="newPatients" name="New patients" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                  <Line dataKey="visits" name="Visits" type="monotone" stroke="var(--color-accent)" strokeWidth={2} dot={period === "d7"} />
+                  <Bar dataKey="newPatients" name={t("new_patients")} fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  <Line dataKey="visits" name={t("visits")} type="monotone" stroke="var(--color-accent)" strokeWidth={2} dot={period === "d7"} />
                 </ComposedChart>
               </ResponsiveContainer>
             </Card>
@@ -148,23 +153,23 @@ export function ReceptionDashboard() {
             <div className="space-y-4">
               {/* Registrations over time */}
               <Card className="gap-2 border-border/50 bg-card/60 p-4">
-                <p className="text-sm font-semibold">New patients</p>
-                {([["Yesterday", data.patients.newYesterday], ["Last 7 days", data.patients.new7], ["Last 30 days", data.patients.new30], ["Last 12 months", data.patients.new12m], ["All time", data.patients.totalEver]] as const).map(([l, n]) => (
+                <p className="text-sm font-semibold">{t("new_patients")}</p>
+                {([[t("yesterday"), data.patients.newYesterday], [t("last7"), data.patients.new7], [t("last30"), data.patients.new30], [t("last12m"), data.patients.new12m], [t("all_time"), data.patients.totalEver]] as const).map(([l, n]) => (
                   <div key={l} className="flex items-center justify-between border-b border-border/60 py-1 text-sm last:border-0"><span className="text-muted-foreground">{l}</span><span className="font-semibold tabular-nums">{n}</span></div>
                 ))}
                 {data.money && (
-                  <div className="mt-1 flex items-center justify-between rounded-md bg-emerald-500/10 px-2 py-1.5 text-sm"><span className="text-muted-foreground">Collected, 30 days</span><span className="font-semibold">{inr(data.money.last30.amount)}</span></div>
+                  <div className="mt-1 flex items-center justify-between rounded-md bg-emerald-500/10 px-2 py-1.5 text-sm"><span className="text-muted-foreground">{t("collected_30")}</span><span className="font-semibold">{inr(data.money.last30.amount)}</span></div>
                 )}
               </Card>
 
               {/* My workload */}
               {data.mine && (
                 <Card className="gap-2 border-primary/25 bg-primary/5 p-4">
-                  <p className="text-sm font-semibold">My work</p>
-                  {([["Visits I registered today", data.mine.visitsToday], ["Visits I registered, 7 days", data.mine.visits7], ["My recorded actions today", data.mine.actionsToday]] as const).map(([l, n]) => (
+                  <p className="text-sm font-semibold">{t("my_work")}</p>
+                  {([[t("mine_today"), data.mine.visitsToday], [t("mine_7"), data.mine.visits7], [t("mine_actions"), data.mine.actionsToday]] as const).map(([l, n]) => (
                     <div key={l} className="flex items-center justify-between text-sm"><span className="text-muted-foreground">{l}</span><span className="font-semibold tabular-nums">{n}</span></div>
                   ))}
-                  {data.mine.collectedToday.count > 0 && <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">I collected today</span><span className="font-semibold">{inr(data.mine.collectedToday.amount)}</span></div>}
+                  {data.mine.collectedToday.count > 0 && <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">{t("mine_collected")}</span><span className="font-semibold">{inr(data.mine.collectedToday.amount)}</span></div>}
                 </Card>
               )}
             </div>
@@ -172,10 +177,10 @@ export function ReceptionDashboard() {
 
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>A <b className="font-medium text-foreground">new patient</b> is someone whose first visit to this clinic was in that period — counted once. A <b className="font-medium text-foreground">returning patient</b> was seen here before. <b className="font-medium text-foreground">Visits</b> count every visit, so one person can have several. Days follow this device&apos;s time zone.</span>
+            <span>{t.rich("info", { b: (c) => <b className="font-medium text-foreground">{c}</b> })}</span>
           </p>
           {data.visits.referred > 0 && (
-            <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400"><ShieldAlert className="h-3.5 w-3.5" /> {data.visits.referred} patient{data.visits.referred === 1 ? " was" : "s were"} referred out today.</p>
+            <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400"><ShieldAlert className="h-3.5 w-3.5" /> {t("referred_today", { count: data.visits.referred })}</p>
           )}
         </>
       )}
@@ -186,6 +191,7 @@ export function ReceptionDashboard() {
 function Stat({ label, range, value, sub, icon: Icon, tone, onClick }: { label: string; range: string; value: number | string; sub: string; icon: typeof Users; tone: "primary" | "accent" | "amber" | "emerald"; onClick?: () => void }) {
   const tones = { primary: "bg-primary/15 text-primary", accent: "bg-accent/15 text-accent", amber: "bg-amber-500/15 text-amber-600 dark:text-amber-400", emerald: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" };
   const Comp = onClick ? "button" : "div";
+  const t = useTranslations("clinic.dashboard");
   return (
     <Comp type={onClick ? "button" : undefined} onClick={onClick} className={cn("group rounded-xl border border-border/60 bg-card/60 p-4 text-start transition-colors", onClick && "hover:border-primary/40")}>
       <div className="flex items-start justify-between gap-2">
@@ -197,7 +203,7 @@ function Stat({ label, range, value, sub, icon: Icon, tone, onClick }: { label: 
         </div>
         <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", tones[tone])}><Icon className="h-5 w-5" /></span>
       </div>
-      {onClick && <p className="mt-2 flex items-center gap-1 text-[11px] text-primary opacity-0 transition-opacity group-hover:opacity-100">Open list <ArrowUpRight className="h-3 w-3" /></p>}
+      {onClick && <p className="mt-2 flex items-center gap-1 text-[11px] text-primary opacity-0 transition-opacity group-hover:opacity-100">{t("open_list")} <ArrowUpRight className="h-3 w-3 rtl:-scale-x-100" /></p>}
     </Comp>
   );
 }

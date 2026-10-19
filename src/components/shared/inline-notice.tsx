@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertCircle, CheckCircle2, Info, RotateCw, TriangleAlert, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 export type NoticeTone = "error" | "warning" | "success" | "info";
@@ -25,6 +26,7 @@ export function InlineNotice({ tone, title, detail, action, onDismiss, className
   className?: string;
 }) {
   const s = STYLES[tone];
+  const t = useTranslations("common");
   return (
     <div role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"}
       className={cn("flex items-start gap-3 rounded-xl border px-4 py-3", s.box, className)}>
@@ -38,7 +40,7 @@ export function InlineNotice({ tone, title, detail, action, onDismiss, className
         {action && <div className="shrink-0">{action}</div>}
       </div>
       {onDismiss && (
-        <button type="button" onClick={onDismiss} aria-label="Dismiss" className="shrink-0 rounded-md p-0.5 opacity-70 hover:opacity-100">
+        <button type="button" onClick={onDismiss} aria-label={t("dismiss")} className="shrink-0 rounded-md p-0.5 opacity-70 hover:opacity-100">
           <X className="h-4 w-4" />
         </button>
       )}
@@ -83,6 +85,7 @@ export type NoticeState = ReturnType<typeof useNotice>;
 /** Renders the current message of a useNotice() state in place (nothing when empty). */
 export function NoticeSlot({ state, className }: { state: NoticeState; className?: string }) {
   const n = state.notice;
+  const t = useTranslations("common");
   if (!n) return null;
   return (
     <InlineNotice
@@ -97,7 +100,7 @@ export function NoticeSlot({ state, className }: { state: NoticeState; className
           onClick={() => { state.clear(); n.retry?.(); }}
           className="inline-flex items-center gap-1.5 rounded-md border border-current/30 px-2.5 py-1 text-xs font-medium hover:bg-current/10 transition-colors"
         >
-          <RotateCw className="h-3.5 w-3.5" /> {n.retryLabel ?? "Try again"}
+          <RotateCw className="h-3.5 w-3.5" /> {n.retryLabel ?? t("retry")}
         </button>
       )}
     />
@@ -109,11 +112,13 @@ export function NoticeSlot({ state, className }: { state: NoticeState; className
  * replaces an endless spinner or an empty panel.
  */
 export function LoadFailed({ what, detail, onRetry, className }: { what: string; detail?: string; onRetry?: () => void; className?: string }) {
+  const t = useTranslations("common");
+  const d = (detail || t("network_error")).replace(/\.$/, "");
   return (
     <InlineNotice
       tone="error"
-      title={`Couldn't load ${what}`}
-      detail={`${detail || "Network error"}. Nothing has been changed${onRetry ? " — try again" : " — reload the page to try again"}.`}
+      title={t("load_failed", { what })}
+      detail={t(onRetry ? "load_failed_detail" : "load_failed_reload", { detail: d })}
       className={className}
       action={
         <button
@@ -121,7 +126,7 @@ export function LoadFailed({ what, detail, onRetry, className }: { what: string;
           onClick={onRetry ?? (() => window.location.reload())}
           className="inline-flex items-center gap-1.5 rounded-md border border-current/30 px-2.5 py-1 text-xs font-medium hover:bg-current/10 transition-colors"
         >
-          <RotateCw className="h-3.5 w-3.5" /> {onRetry ? "Try again" : "Reload"}
+          <RotateCw className="h-3.5 w-3.5" /> {onRetry ? t("retry") : t("reload")}
         </button>
       }
     />

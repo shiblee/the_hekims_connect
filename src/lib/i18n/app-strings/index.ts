@@ -3,9 +3,15 @@ import { COMMON } from "./common";
 import { CLINIC_SHELL } from "./clinic-shell";
 import { PATIENT_SHELL } from "./patient-shell";
 import { STAFF_PORTAL } from "./staff-portal";
+import { SHARED_WIDGETS } from "./shared-widgets";
+import { CLINIC_RECEPTION, CLINIC_STAGES } from "./clinic-reception";
+import { CLINIC_DASHBOARD, CLINIC_OVERVIEW } from "./clinic-dashboard";
+import { CLINIC_PATIENTS } from "./clinic-patients";
+import { VALUE_LABELS } from "./values";
+import { CLINIC_REPORTS } from "./clinic-reports";
 
 /** Every clinic / staff / patient app text. Add new files here. */
-export const APP_STRINGS: AppString[] = [...COMMON, ...CLINIC_SHELL, ...PATIENT_SHELL, ...STAFF_PORTAL];
+export const APP_STRINGS: AppString[] = [...CLINIC_REPORTS, ...VALUE_LABELS, ...CLINIC_PATIENTS, ...CLINIC_DASHBOARD, ...CLINIC_OVERVIEW, ...CLINIC_STAGES, ...CLINIC_RECEPTION, ...SHARED_WIDGETS, ...COMMON, ...CLINIC_SHELL, ...PATIENT_SHELL, ...STAFF_PORTAL];
 
 /** Message namespaces each app needs (the rest of the store — e.g. the public website — isn't sent). */
 export const AREA_NAMESPACES = {

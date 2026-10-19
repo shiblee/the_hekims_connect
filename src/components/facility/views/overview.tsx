@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
@@ -28,6 +29,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
   const facility = useAppStore((s) => s.facility);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [recentPatients, setRecentPatients] = useState<any[]>([]);
+  const t = useTranslations("clinic.overview");
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -42,10 +44,10 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
   if (!facility) return null;
 
   const statCards = [
-    { label: "Today's Appointments", value: stats?.todaysAppointments ?? 0, icon: CalendarDays, tint: "text-primary", bg: "bg-primary/15", sub: `${stats?.totalAppointments ?? 0} all-time` },
-    { label: "Total Patients", value: stats?.totalPatients ?? 0, icon: Users, tint: "text-accent", bg: "bg-accent/15", sub: `${stats?.activePatientsCount ?? 0} active` },
-    { label: "Unread Messages", value: stats?.unreadMessages ?? 0, icon: MessageSquare, tint: "text-primary", bg: "bg-primary/15", sub: `${stats?.totalMessages ?? 0} total` },
-    { label: "Mizaj Assessments", value: stats?.mizajAssessments ?? 0, icon: Activity, tint: "text-accent", bg: "bg-accent/15", sub: `${stats?.prescriptionsCount ?? 0} prescriptions` },
+    { label: t("todays_appts"), value: stats?.todaysAppointments ?? 0, icon: CalendarDays, tint: "text-primary", bg: "bg-primary/15", sub: t("all_time", { count: stats?.totalAppointments ?? 0 }) },
+    { label: t("total_patients"), value: stats?.totalPatients ?? 0, icon: Users, tint: "text-accent", bg: "bg-accent/15", sub: t("active_n", { count: stats?.activePatientsCount ?? 0 }) },
+    { label: t("unread"), value: stats?.unreadMessages ?? 0, icon: MessageSquare, tint: "text-primary", bg: "bg-primary/15", sub: t("total_n", { count: stats?.totalMessages ?? 0 }) },
+    { label: t("mizaj"), value: stats?.mizajAssessments ?? 0, icon: Activity, tint: "text-accent", bg: "bg-accent/15", sub: t("prescriptions_n", { count: stats?.prescriptionsCount ?? 0 }) },
   ];
 
   const chartData = stats?.weekly || [];
@@ -78,10 +80,10 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-serif text-base font-semibold">Healing Progress Analytics</h3>
-              <p className="text-xs text-muted-foreground">Weekly Mizaj stabilization & consultation flow</p>
+              <h3 className="font-serif text-base font-semibold">{t("analytics")}</h3>
+              <p className="text-xs text-muted-foreground">{t("analytics_sub")}</p>
             </div>
-            <Badge variant="outline" className="border-primary/30 text-primary">Weekly</Badge>
+            <Badge variant="outline" className="border-primary/30 text-primary">{t("weekly")}</Badge>
           </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -92,7 +94,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
                   cursor={{ fill: "oklch(0.72 0.13 175 / 0.08)" }}
                   contentStyle={{ background: "oklch(0.205 0.01 165)", border: "1px solid oklch(0.3 0.012 165)", borderRadius: 8, color: "#fff", fontSize: 12 }}
                 />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Appointments">
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} name={t("appointments")}>
                   {chartData.map((_: any, i: number) => (
                     <Cell key={i} fill={i === chartData.length - 1 ? "oklch(0.78 0.14 80)" : "oklch(0.72 0.13 175)"} />
                   ))}
@@ -105,14 +107,14 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
         {/* Active appointments */}
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-base font-semibold">Active Appointments</h3>
+            <h3 className="font-serif text-base font-semibold">{t("active_appts")}</h3>
             <button onClick={() => onNavigate("appointments")} className="text-xs text-primary hover:underline flex items-center">
-              View All <ChevronRight className="h-3 w-3" />
+              {t("view_all")} <ChevronRight className="h-3 w-3 rtl:rotate-180" />
             </button>
           </div>
           <div className="space-y-2.5">
             {appointments.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">No appointments scheduled for today.</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">{t("no_appts_today")}</p>
             ) : (
               appointments.slice(0, 5).map((a) => {
                 const urgent = /pain|urgent|emergency/i.test(a.reason || a.type);
@@ -130,7 +132,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
                       <p className="text-xs text-muted-foreground truncate">{a.type}{a.reason ? ` · ${a.reason}` : ""}</p>
                     </div>
                     <Badge variant="outline" className={urgent ? "text-accent bg-accent/15 border-accent/30" : "text-primary bg-primary/15 border-primary/30"}>
-                      {urgent ? "URGENT" : "SCHEDULED"}
+                      {urgent ? t("urgent") : t("scheduled")}
                     </Badge>
                   </div>
                 );
@@ -143,13 +145,13 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="font-serif text-base font-semibold">Daily Consultation Cap</h3>
-              <p className="text-xs text-muted-foreground">You have completed {stats?.monthlyCompleted ?? 0}/{stats?.consultationCap ?? 100} consultations this month.</p>
+              <h3 className="font-serif text-base font-semibold">{t("cap")}</h3>
+              <p className="text-xs text-muted-foreground">{t("cap_sub", { done: stats?.monthlyCompleted ?? 0, cap: stats?.consultationCap ?? 100 })}</p>
             </div>
             <div className="text-end">
               <p className="font-serif text-3xl font-bold text-primary">{consultationPct}%</p>
               <p className="text-xs text-emerald-400 flex items-center justify-end gap-1">
-                <TrendingUp className="h-3 w-3" /> Ahead of schedule
+                <TrendingUp className="h-3 w-3" /> {t("ahead")}
               </p>
             </div>
           </div>
@@ -169,16 +171,16 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
             <p className="text-xs text-muted-foreground">{facility.specialization}</p>
             <div className="grid grid-cols-3 gap-2 mt-4 w-full">
               <div className="rounded-lg bg-background/50 p-2">
-                <p className="text-[10px] text-muted-foreground">RATING</p>
+                <p className="text-[10px] text-muted-foreground">{t("rating")}</p>
                 <p className="text-sm font-semibold text-primary flex items-center justify-center gap-0.5"><Star className="h-3 w-3 fill-primary" />{facility.rating}</p>
               </div>
               <div className="rounded-lg bg-background/50 p-2">
-                <p className="text-[10px] text-muted-foreground">EXP</p>
-                <p className="text-sm font-semibold text-accent">{facility.experience}yrs</p>
+                <p className="text-[10px] text-muted-foreground">{t("exp")}</p>
+                <p className="text-sm font-semibold text-accent">{t("years_short", { count: facility.experience })}</p>
               </div>
               <div className="rounded-lg bg-background/50 p-2">
-                <p className="text-[10px] text-muted-foreground">LICENSE</p>
-                <p className="text-sm font-semibold text-primary">{facility.license ? "Verified" : "—"}</p>
+                <p className="text-[10px] text-muted-foreground">{t("license")}</p>
+                <p className="text-sm font-semibold text-primary">{facility.license ? t("verified") : "—"}</p>
               </div>
             </div>
             {facility.bio && <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{facility.bio}</p>}
@@ -188,8 +190,8 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
         {/* Active patients */}
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active Patients</h3>
-            <button onClick={() => onNavigate("patients")} className="text-xs text-primary hover:underline">View all</button>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("active_patients")}</h3>
+            <button onClick={() => onNavigate("patients")} className="text-xs text-primary hover:underline">{t("view_all")}</button>
           </div>
           <div className="flex -space-x-2">
             {recentPatients.slice(0, 5).map((p) => (
@@ -197,7 +199,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
                 {initials(p.name)}
               </div>
             ))}
-            {recentPatients.length === 0 && <p className="text-xs text-muted-foreground">No active patients.</p>}
+            {recentPatients.length === 0 && <p className="text-xs text-muted-foreground">{t("no_active")}</p>}
           </div>
         </Card>
 
@@ -205,7 +207,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
         {lastPatient && (
           <Card className="border-border/50 bg-card/60 overflow-hidden h-[420px] flex flex-col">
             <div className="px-4 py-3 border-b border-border">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chat with {lastPatient.name}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("chat_with", { name: lastPatient.name })}</p>
             </div>
             <div className="flex-1 min-h-0">
               <ChatWidget partnerId={lastPatient.id} partnerType="patient" partnerName={lastPatient.name} />

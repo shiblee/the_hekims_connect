@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Mic } from "lucide-react";
 
@@ -22,6 +23,7 @@ export function VoiceInputButton({
   className?: string;
   size?: "sm" | "md";
 }) {
+  const tc = useTranslations("common");
   const [supported] = useState(() => typeof window !== "undefined" && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -46,7 +48,7 @@ export function VoiceInputButton({
     }
     const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!Ctor) {
-      setHint("Voice input isn't available in this browser — type instead.");
+      setHint(tc("voice_unavailable"));
       return;
     }
     setHint(null);
@@ -67,7 +69,7 @@ export function VoiceInputButton({
     recognition.onerror = (ev: any) => {
       setListening(false);
       if (ev.error !== "no-speech" && ev.error !== "aborted") {
-        setHint(ev.error === "not-allowed" ? "Microphone is blocked — allow it for this site, then try again." : "Didn't catch that — tap the mic and speak again.");
+        setHint(ev.error === "not-allowed" ? tc("mic_blocked") : tc("voice_retry"));
       }
     };
     recognition.onend = () => setListening(false);
@@ -83,8 +85,8 @@ export function VoiceInputButton({
     <button
       type="button"
       onClick={toggle}
-      aria-label={listening ? "Stop voice input" : "Start voice input"}
-      title={listening ? "Listening… click to stop" : "Dictate"}
+      aria-label={listening ? tc("voice_stop") : tc("voice_start")}
+      title={listening ? tc("voice_listening") : tc("voice_dictate")}
       className={cn(
         "relative inline-flex items-center justify-center rounded-full transition-colors shrink-0",
         size === "sm" ? "h-8 w-8" : "h-10 w-10",

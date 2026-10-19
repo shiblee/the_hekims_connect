@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ComponentType, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { useTranslations } from "next-intl";
 import { AlertCircle, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -230,8 +231,8 @@ const TONES = {
  */
 export function FloatingMultiSelect<T extends { id: string; label: string }>({
   id, label, required, error, selected, onRemove, query, onQueryChange, results, onPick,
-  onCreate, createLabel = (q) => `Add "${q}"`, createOptions, tone = "primary", labelIcon: LabelIcon, itemIcon: ItemIcon,
-  renderIcon, chipClassName, placeholder = "Type to search — e.g. fever, headache", openOnFocus, describe, emptyHint, keepOrder, inlineList,
+  onCreate, createLabel, createOptions, tone = "primary", labelIcon: LabelIcon, itemIcon: ItemIcon,
+  renderIcon, chipClassName, placeholder, openOnFocus, describe, emptyHint, keepOrder, inlineList,
 }: {
   id: string;
   label: string;
@@ -269,6 +270,9 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const t = TONES[tone];
+  const tc = useTranslations("common");
+  createLabel ??= (text: string) => tc("add_quoted", { text });
+  placeholder ??= tc("type_to_search_eg");
   const floated = focused || !!query || selected.length > 0;
   const q = query.trim();
   results = keepOrder ? results : sortSearchResults(results, q);
@@ -354,7 +358,7 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
                 <span className="block">{r.label}</span>
                 {describe?.(r) && <span className="block text-[11px] text-muted-foreground leading-snug">{describe(r)}</span>}
               </span>
-              {i === 0 && q && <span className="ms-auto text-[10px] text-muted-foreground shrink-0">Enter</span>}
+              {i === 0 && q && <span className="ms-auto text-[10px] text-muted-foreground shrink-0">{tc("enter_key")}</span>}
             </button>
           ))}
           {creates.map((c, i) => (
@@ -366,7 +370,7 @@ export function FloatingMultiSelect<T extends { id: string; label: string }>({
               className={cn("w-full text-start px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center gap-1.5", i === 0 && "border-t border-border/40", !results.length && i === 0 && "bg-muted/40")}
             >
               {c.icon ?? <Plus className="h-3 w-3 text-muted-foreground shrink-0" />} {c.label}
-              {!results.length && i === 0 && <span className="ms-auto text-[10px] text-muted-foreground">Enter</span>}
+              {!results.length && i === 0 && <span className="ms-auto text-[10px] text-muted-foreground">{tc("enter_key")}</span>}
             </button>
           ))}
         </div>

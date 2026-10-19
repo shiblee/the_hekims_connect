@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sortByLabel } from "@/lib/sort-options";
@@ -18,9 +19,9 @@ export function FloatingCombobox({
   value,
   onValueChange,
   options,
-  placeholder = "Select",
+  placeholder,
   error,
-  emptyText = "No matches.",
+  emptyText,
   keepOrder,
 }: {
   id?: string;
@@ -36,6 +37,7 @@ export function FloatingCombobox({
   keepOrder?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("common");
   const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   const shown = keepOrder ? items : sortByLabel(items);
   const selectedLabel = items.find((i) => i.value === value)?.label ?? value;
@@ -56,15 +58,15 @@ export function FloatingCombobox({
               error ? "border-destructive" : "border-input"
             )}
           >
-            <span className={cn("truncate", !value && "text-muted-foreground")}>{value ? selectedLabel : placeholder}</span>
+            <span className={cn("truncate", !value && "text-muted-foreground")}>{value ? selectedLabel : placeholder ?? t("select")}</span>
             <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           </button>
         </PopoverTrigger>
         <PopoverContent id={listId} className="w-(--radix-popover-trigger-width) p-0" align="start">
           <Command filter={(v, search) => (v.toLowerCase().includes(search.trim().toLowerCase()) ? 1 : 0)}>
-            <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
+            <CommandInput placeholder={t("search_in", { what: label.toLowerCase() })} />
             <CommandList>
-              <CommandEmpty>{emptyText}</CommandEmpty>
+              <CommandEmpty>{emptyText ?? t("no_matches")}</CommandEmpty>
               <CommandGroup>
                 {shown.map((o) => (
                   <CommandItem key={o.value} className="data-[selected=true]:bg-primary/10 data-[selected=true]:text-foreground" value={`${o.label} ${o.value}`} onSelect={() => { onValueChange(o.value); setOpen(false); }}>

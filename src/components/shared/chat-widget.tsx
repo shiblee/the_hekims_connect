@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { avatarGradient, initials } from "@/lib/avatar";
@@ -42,6 +43,8 @@ interface ChatWidgetProps {
 export function ChatWidget({ partnerId, partnerType, partnerName, compact }: ChatWidgetProps) {
   const facility = useAppStore((s) => s.facility);
   const patient = useAppStore((s) => s.patient);
+  const t = useTranslations("common.widgets");
+  const tc = useTranslations("common");
   const me = facility ? { id: facility.id, type: "facility" as const } : patient ? { id: patient.id, type: "patient" as const } : null;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activePartner, setActivePartner] = useState<{ id: string; type: string; name: string } | null>(
@@ -127,7 +130,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
       });
       loadMessages();
     } catch (err: any) {
-      toast.error(err.message || "Failed to send");
+      toast.error(err.message || t("chat_failed"));
       setMessages((m) => m.filter((x) => x.id !== optimistic.id));
       setDraft(content);
     } finally {
@@ -153,7 +156,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
             <div>
               <p className="text-sm font-medium leading-none">{activePartner.name}</p>
               <p className="text-[10px] text-emerald-400 mt-0.5 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Active now
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t("chat_active")}
               </p>
             </div>
           </div>
@@ -177,7 +180,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
             );
           })}
           {messages.length === 0 && (
-            <p className="text-center text-xs text-muted-foreground py-8">No messages yet. Say hello 👋</p>
+            <p className="text-center text-xs text-muted-foreground py-8">{t("chat_empty")}</p>
           )}
         </div>
         <div className="flex gap-1.5 p-2 border-t border-border">
@@ -185,7 +188,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-            placeholder="Type your message…"
+            placeholder={t("chat_type")}
             className="h-8 text-xs bg-background/60"
           />
           <Button size="icon" onClick={send} disabled={sending || !draft.trim()} className="h-8 w-8 rounded-full bg-primary shrink-0">
@@ -208,25 +211,25 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search conversations…"
+                placeholder={t("chat_search")}
                 className="ps-8 h-9 text-sm bg-background/60"
               />
             </div>
           </div>
           <ScrollArea className="flex-1">
             {loadingConv ? (
-              <div className="p-6 text-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline me-1" /> Loading…</div>
+              <div className="p-6 text-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline me-1" /> {tc("loading")}</div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted-foreground">
                 <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-40" />
-                No conversations yet.
+                {t("chat_none")}
               </div>
             ) : (
               <div className="space-y-0.5 p-2">
                 {filteredConversations.map((c) => (
                   <button
                     key={`${c.partnerType}|${c.partnerId}`}
-                    onClick={() => setActivePartner({ id: c.partnerId, type: c.partnerType, name: c.partner?.name || "User" })}
+                    onClick={() => setActivePartner({ id: c.partnerId, type: c.partnerType, name: c.partner?.name || t("chat_user") })}
                     className={cn(
                       "w-full text-start p-2.5 rounded-lg transition-colors flex gap-2.5 items-center",
                       activePartner?.id === c.partnerId ? "bg-primary/10" : "hover:bg-muted/50"
@@ -274,7 +277,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
               {loadingMsgs && messages.length === 0 ? (
-                <div className="text-center text-xs text-muted-foreground py-8"><Loader2 className="h-4 w-4 animate-spin inline me-1" /> Loading messages…</div>
+                <div className="text-center text-xs text-muted-foreground py-8"><Loader2 className="h-4 w-4 animate-spin inline me-1" /> {t("chat_loading")}</div>
               ) : (
                 messages.map((m, i) => {
                   const mine = m.senderId === me.id && m.senderType === me.type;
@@ -312,7 +315,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder="Type your message…"
+                placeholder={t("chat_type")}
                 className="bg-background/60"
               />
               <Button onClick={send} disabled={sending || !draft.trim()} className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">
@@ -323,8 +326,8 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
             <MessageSquare className="h-12 w-12 mb-3 opacity-30" />
-            <p className="text-sm font-medium">Select a conversation</p>
-            <p className="text-xs">Choose a person from the list to start messaging.</p>
+            <p className="text-sm font-medium">{t("chat_select")}</p>
+            <p className="text-xs">{t("chat_select_hint")}</p>
           </div>
         )}
       </div>

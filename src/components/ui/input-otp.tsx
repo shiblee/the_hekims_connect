@@ -17,7 +17,7 @@ function InputOTP({
     <OTPInput
       data-slot="input-otp"
       containerClassName={cn(
-        "flex items-center gap-2 has-disabled:opacity-50",
+        "flex items-center gap-2 has-disabled:opacity-50 [direction:ltr]", // digits always read left to right
         containerClassName
       )}
       className={cn("disabled:cursor-not-allowed", className)}
