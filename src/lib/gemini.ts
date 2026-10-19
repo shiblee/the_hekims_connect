@@ -28,6 +28,9 @@ export interface VitalsInsightVisit {
 let quotaHitAt = 0;
 export function geminiQuotaRecentlyHit() { return Date.now() - quotaHitAt < 120_000; }
 
+/** Plain text answer from Gemini (null when no key / any failure). Server-side only. */
+export async function geminiText(prompt: string): Promise<string | null> { return callGemini(prompt); }
+
 async function callGemini(prompt: string): Promise<string | null> {
   const apiKey = await getGeminiApiKey();
   if (!apiKey) return null;

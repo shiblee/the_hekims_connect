@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Archive, ArrowDown, ArrowLeft, ArrowUp, BookOpen, Eye, History, Loader2, Map, Plus, RotateCcw, Save, Send, Trash2, Undo2, X,
+  Archive, ArrowDown, ArrowLeft, ArrowUp, BookOpen, Eye, History, Languages, Loader2, Map, Plus, RotateCcw, Save, Send, Trash2, Undo2, X,
 } from "lucide-react";
 import { adminApi } from "@/lib/admin-api";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -116,6 +116,18 @@ export default function GuidanceEditorPage() {
     finally { setBusy(""); }
   };
 
+  const translate = async () => {
+    if (dirty && !(await save())) return;
+    setBusy("translate");
+    const tid = toast.loading("Drafting translations — this can take a minute…");
+    try {
+      const r = await adminApi.post<{ translated: number; remaining: number }>(`/api/admin/guidance/${kind}/${id}/translate`, {});
+      toast.success(r.translated ? `${r.translated} text${r.translated === 1 ? "" : "s"} drafted — review each language, then tick “reviewed”${r.remaining ? ` (${r.remaining} still empty — run again)` : ""}` : "Nothing to translate — every language already has text", { id: tid });
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Translation failed", { id: tid }); }
+    finally { setBusy(""); }
+  };
+
   const remove = async () => {
     if (!confirm("Delete this draft? It has never been published.")) return;
     try { await adminApi.delete(`/api/admin/guidance/${kind}/${id}`); router.push("/admin/guidance"); }
@@ -186,6 +198,9 @@ export default function GuidanceEditorPage() {
                 </button>
               ))}
             </div>
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={translate} title="Fill empty Hindi, Urdu, Arabic and Farsi texts from the English (marked awaiting review)">
+              {busy === "translate" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />} Draft translations
+            </Button>
             {lang !== "en" && (
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={!!draft.reviewed[lang]} onCheckedChange={(v) => edit((d) => { d.reviewed = { ...d.reviewed, [lang]: v === true }; })} />

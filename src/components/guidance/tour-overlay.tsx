@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, BookOpen, Check, ExternalLink, X } from "lucide-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { GuideText } from "./guide-text";
-import { guideUi } from "@/lib/guidance/ui-strings";
+import { useGuideUi } from "@/lib/guidance/ui-strings";
 import type { TourPayload } from "@/lib/guidance/viewer-content";
 
 const PAD = 6, GAP = 12, CARD_W = 360;
@@ -30,7 +30,7 @@ export function TourOverlay({ tour, step, routeName, hasDoc, onStep, onClose, on
   const path = usePathname() || "/";
   const router = useRouter();
   const s = tour.steps[Math.min(step, tour.steps.length - 1)];
-  const ui = guideUi(tour.lang);
+  const ui = useGuideUi();
   const last = step >= tour.steps.length - 1;
   const elsewhere = !onRoute(path, s.route);
   const [rect, setRect] = useState<DOMRect | null>(null);

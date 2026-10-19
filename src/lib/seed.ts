@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/lib/notifications";
 import { LANDING_EN_STRINGS } from "@/lib/i18n/seed-data/landing-en";
+import { GUIDANCE_UI_STRINGS, GUIDANCE_UI_DRAFTS } from "@/lib/i18n/seed-data/guidance-ui";
 import { PAGES_EN } from "@/lib/i18n/seed-data/pages-en";
 import { VITALS_RANGE_FIELDS, DEFAULT_NORMAL_RANGES, DEFAULT_ENTRY_BOUNDS } from "@/lib/vitals-ranges";
 
@@ -27,7 +28,7 @@ export async function seedTranslations() {
   for (const l of LANGUAGES) {
     await db.language.upsert({ where: { code: l.code }, update: {}, create: l });
   }
-  for (const s of LANDING_EN_STRINGS) {
+  for (const s of [...LANDING_EN_STRINGS, ...GUIDANCE_UI_STRINGS]) {
     const key = await db.translationKey.upsert({
       where: { key: s.key },
       update: { group: s.group, description: s.description, sourceText: s.sourceText },
@@ -38,6 +39,15 @@ export async function seedTranslations() {
       update: { text: s.sourceText, status: "published", source: "manual" },
       create: { keyId: key.id, languageCode: "en", text: s.sourceText, status: "published", source: "manual" },
     });
+  }
+  // Guidance labels: draft translations awaiting review — created once, never overwriting an admin's edit.
+  for (const [lang, texts] of Object.entries(GUIDANCE_UI_DRAFTS)) {
+    for (const [k, text] of Object.entries(texts)) {
+      const key = await db.translationKey.findUnique({ where: { key: k }, select: { id: true } });
+      if (!key) continue;
+      const exists = await db.translationValue.findUnique({ where: { keyId_languageCode: { keyId: key.id, languageCode: lang } }, select: { id: true } });
+      if (!exists) await db.translationValue.create({ data: { keyId: key.id, languageCode: lang, text, status: "draft", source: "ai" } });
+    }
   }
 }
 

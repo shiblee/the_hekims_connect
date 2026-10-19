@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { guideUi } from "@/lib/guidance/ui-strings";
+import { useGuideUi } from "@/lib/guidance/ui-strings";
 import { RTL_LANGS, type GuideLang } from "@/lib/guidance/content";
 import { GuideText } from "./guide-text";
 import { useGuidance } from "./guidance-provider";
@@ -20,11 +20,11 @@ interface DocResp {
 /** The "?" button: shown only when this page has a tour or tutorial for this user. */
 export function HelpButton({ floating, className }: { floating?: boolean; className?: string }) {
   const g = useGuidance();
+  const ui = useGuideUi();
   if (!g?.state.on) return null;
   const s = g.state;
   const has = (s.docsOn && s.module?.hasDoc) || (s.toursOn && (s.pageTours?.length ?? 0) > 0);
   if (!has) return null;
-  const ui = guideUi(s.lang ?? "en");
   return (
     <Button
       type="button"
@@ -44,6 +44,7 @@ export function HelpButton({ floating, className }: { floating?: boolean; classN
 /** Side panel with this page's tours (start / resume / restart), its tutorial, and related modules. */
 export function HelpPanel() {
   const g = useGuidance();
+  const ui = useGuideUi();
   const [data, setData] = useState<DocResp | null>(null);
   const [loading, setLoading] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -65,8 +66,6 @@ export function HelpPanel() {
 
   if (!g) return null;
   const s = g.state;
-  const lang = data?.doc.lang ?? (s.lang as GuideLang) ?? "en";
-  const ui = guideUi(s.lang ?? "en");
   const rtl = RTL_LANGS.includes((s.lang ?? "en") as GuideLang);
   const tours = s.toursOn && !openKey ? s.pageTours ?? [] : [];
   const close = (o: boolean) => { g.setHelpOpen(o); if (!o) setOpenKey(null); };
@@ -110,16 +109,16 @@ export function HelpPanel() {
           ) : data ? (
             <article dir={data.doc.rtl ? "rtl" : "ltr"} lang={data.doc.lang} className="space-y-5">
               <h2 className="flex items-start gap-2 font-serif text-lg font-semibold"><BookOpen className="mt-1 h-4 w-4 shrink-0 text-primary" /> {data.doc.title}</h2>
-              {data.doc.isFallback && <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">{guideUi(lang).fallback}</p>}
+              {data.doc.isFallback && <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">{ui.fallback}</p>}
               {data.doc.sections.map((sec) => (
                 <section key={sec.key}>
-                  <h3 className="mb-1.5 text-sm font-semibold">{guideUi(lang).sections[sec.key] ?? sec.key}</h3>
+                  <h3 className="mb-1.5 text-sm font-semibold">{ui.section(sec.key)}</h3>
                   <GuideText text={sec.text} className="text-muted-foreground" />
                 </section>
               ))}
               {data.doc.faqs.length > 0 && (
                 <section>
-                  <h3 className="mb-1 text-sm font-semibold">{guideUi(lang).questions}</h3>
+                  <h3 className="mb-1 text-sm font-semibold">{ui.questions}</h3>
                   <Accordion type="multiple">
                     {data.doc.faqs.map((f) => (
                       <AccordionItem key={f.id} value={f.id}>
@@ -132,19 +131,19 @@ export function HelpPanel() {
               )}
               {data.related.length > 0 && (
                 <section>
-                  <h3 className="mb-2 text-sm font-semibold">{guideUi(lang).related}</h3>
+                  <h3 className="mb-2 text-sm font-semibold">{ui.related}</h3>
                   <div className="flex flex-wrap gap-2">
                     {data.related.map((r) => (
                       <span key={r.key} className="inline-flex items-center overflow-hidden rounded-full border border-border text-xs">
                         <Link href={r.route} onClick={() => close(false)} className="px-3 py-1.5 font-medium hover:bg-muted">{r.name}</Link>
-                        {r.hasDoc && <button type="button" onClick={() => setOpenKey(r.key)} className="border-s border-border px-2.5 py-1.5 text-primary hover:bg-primary/10" title={guideUi(lang).openTutorial}><BookOpen className="h-3.5 w-3.5" /></button>}
+                        {r.hasDoc && <button type="button" onClick={() => setOpenKey(r.key)} className="border-s border-border px-2.5 py-1.5 text-primary hover:bg-primary/10" title={ui.openTutorial}><BookOpen className="h-3.5 w-3.5" /></button>}
                       </span>
                     ))}
                   </div>
                 </section>
               )}
               <p className="border-t border-border pt-3 text-[11px] text-muted-foreground">
-                {data.doc.updatedAt && guideUi(lang).updated(new Date(data.doc.updatedAt).toLocaleDateString(data.doc.lang, { day: "numeric", month: "long", year: "numeric" }))} · {guideUi(lang).version(data.doc.version)}
+                {data.doc.updatedAt && ui.updated(new Date(data.doc.updatedAt).toLocaleDateString(data.doc.lang, { day: "numeric", month: "long", year: "numeric" }))} · {ui.version(data.doc.version)}
               </p>
             </article>
           ) : tours.length === 0 && <p className="text-sm text-muted-foreground">{ui.noHelp}</p>}

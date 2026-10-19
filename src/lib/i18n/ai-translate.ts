@@ -59,3 +59,43 @@ export function isMissingAnthropicCredentials(err: unknown): boolean {
   if (err instanceof Anthropic.AuthenticationError) return true;
   return err instanceof Error && /could not resolve authentication method/i.test(err.message);
 }
+
+/**
+ * Translates a guidance text (tour step or tutorial section) via Claude, keeping its formatting
+ * marks — "- " bullets, "1. " steps, **bold**, [label](/path) links with the path unchanged —
+ * and {placeholders}. Result is a DRAFT: the admin editor marks it "awaiting review".
+ */
+export async function translateGuideText(text: string, targetLanguageCode: string, context: string): Promise<string> {
+  const targetLabel = TARGET_LABELS[targetLanguageCode] ?? targetLanguageCode;
+  try {
+    return await translateGuideWithClaude(text, targetLabel, context);
+  } catch (e) {
+    // No Anthropic credentials on this server → use the platform's Gemini connection instead.
+    if (!isMissingAnthropicCredentials(e)) throw e;
+    const { geminiText } = await import("@/lib/gemini");
+    const out = await geminiText(`${GUIDE_SYSTEM}\n\nTranslate into ${targetLabel}.\nWhere it appears: ${context}\n\n${text}`);
+    if (!out) throw e;
+    return out;
+  }
+}
+
+async function translateGuideWithClaude(text: string, targetLabel: string, context: string): Promise<string> {
+  const response = await client.messages.create({
+    model: "claude-opus-5",
+    max_tokens: 4096,
+    output_config: { effort: "low" },
+    system: GUIDE_SYSTEM,
+    messages: [{ role: "user", content: `Translate into ${targetLabel}.\nWhere it appears: ${context}\n\n${text}` }],
+  });
+  const out = response.content.find((b) => b.type === "text")?.text?.trim();
+  if (!out) throw new Error("AI returned an empty translation");
+  return out;
+}
+
+const GUIDE_SYSTEM =
+      "You translate help text for clinic staff using \"The Hekim's Connect\", a Unani-medicine clinic platform. " +
+      "Translate faithfully and clearly for non-technical staff; do not add or drop information. Keep the formatting " +
+      "exactly: line breaks, blank lines, lines starting with \"- \" or \"1. \", **bold** markers, and links written as " +
+      "[label](/path) — translate the label but never the /path. Keep {placeholders} unchanged. Keep these terms " +
+      "transliterated: Hekim, Mizaj, Unani, Akhlat, Asbab-e-Sitta, Tashkhees, Usool-e-Ilaj, Ilaj-bil-Ghiza, Ilaj-bil-Dawa, " +
+      "Ilaj-bil-Tadbeer, Hijama, HFR. Return ONLY the translated text.";
