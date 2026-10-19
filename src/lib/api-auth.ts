@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { makeSessionToken, readSessionToken } from "@/lib/session-token";
 
 export interface AuthUser {
   id: string;
@@ -11,43 +12,62 @@ export interface AuthUser {
    * src/proxy.ts before the route runs.
    */
   staffId?: string;
+  /** The login session behind this request (for logout and audit). */
+  sessionId?: string;
 }
 
 /**
- * Reads the simple session token from the `x-hekim-auth` header.
- * Token format: base64(`${type}|${userId}`).
- *
- * Also re-checks the account's `active` flag on every call, so a facility,
- * patient or staff member suspended/deactivated loses API access immediately —
- * not just on their next login — even with an already-issued token in hand.
+ * Reads the signed session token from the `x-hekim-auth` header (see src/lib/session-token.ts):
+ * the signature must be valid, the login session still open and unexpired, and the account
+ * (and, for staff, their clinic) still active — so logout, expiry, suspension and deactivation
+ * all end access immediately, even with an already-issued token in hand.
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
-  const raw = req.headers.get("x-hekim-auth");
-  if (!raw) return null;
   try {
-    const decoded = Buffer.from(raw, "base64").toString("utf-8");
-    const [type, id] = decoded.split("|");
-    if (type !== "facility" && type !== "patient" && type !== "staff") return null;
-    if (!id) return null;
+    const claims = await readSessionToken(req.headers.get("x-hekim-auth"));
+    if (!claims) return null;
+    const session = await db.userSession.findUnique({ where: { id: claims.sessionId }, select: { logoutAt: true, facilityId: true, patientId: true, staffId: true } });
+    if (!session || session.logoutAt) return null;
+    if (claims.expired) {
+      await db.userSession.update({ where: { id: claims.sessionId }, data: { logoutAt: new Date(), logoutType: "expired" } }).catch(() => {});
+      return null;
+    }
+    const { type, id } = claims;
+    // The session must belong to the account the token names.
+    const owner = type === "staff" ? session.staffId : type === "facility" ? (session.staffId ? null : session.facilityId) : session.patientId;
+    if (owner !== id) return null;
 
     if (type === "staff") {
       const s = await db.staff.findUnique({ where: { id }, select: { active: true, facilityId: true, facility: { select: { active: true } } } });
       if (!s || !s.active || !s.facility.active) return null;
-      return { type: "facility", id: s.facilityId, staffId: id };
+      return { type: "facility", id: s.facilityId, staffId: id, sessionId: claims.sessionId };
     }
     const account = type === "facility"
       ? await db.facility.findUnique({ where: { id }, select: { active: true } })
       : await db.patient.findUnique({ where: { id }, select: { active: true } });
     if (!account || !account.active) return null;
 
-    return { type, id };
+    return { type, id, sessionId: claims.sessionId };
   } catch {
     return null;
   }
 }
 
-export function makeToken(type: "facility" | "patient" | "staff", id: string): string {
-  return Buffer.from(`${type}|${id}`, "utf-8").toString("base64");
+/** Opens a login session and returns its signed token. Call only after the person has been verified. */
+export async function startSession(
+  type: "facility" | "patient" | "staff",
+  id: string,
+  meta: { ip?: string | null; browser?: string | null; os?: string | null; device?: string | null; facilityId?: string | null } = {},
+): Promise<{ token: string; sessionId: string }> {
+  const session = await db.userSession.create({
+    data: {
+      facilityId: type === "facility" ? id : type === "staff" ? meta.facilityId ?? null : null,
+      patientId: type === "patient" ? id : null,
+      staffId: type === "staff" ? id : null,
+      ip: meta.ip ?? null, browser: meta.browser ?? null, os: meta.os ?? null, device: meta.device ?? null,
+    },
+  });
+  return { token: await makeSessionToken(type, id, session.id), sessionId: session.id };
 }
 
 /**

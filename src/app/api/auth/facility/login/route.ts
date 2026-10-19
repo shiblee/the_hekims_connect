@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
       where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] },
     });
 
+    // Staff share this login page but sign in with a one-time code (no password).
+    if (!facility && await db.staff.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] }, select: { id: true } })) {
+      return NextResponse.json({ error: "Staff members sign in with a one-time code.", staff: true }, { status: 409 });
+    }
+
     if (facility?.lockedUntil && facility.lockedUntil > new Date()) {
       const waitMinutes = Math.ceil((facility.lockedUntil.getTime() - Date.now()) / 60000);
       return NextResponse.json(

@@ -8,7 +8,8 @@ import { getSetting } from "@/lib/settings";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { contact, role } = body;
+    const { contact } = body;
+    let role = body.role;
     if (!contact || (role !== "facility" && role !== "patient" && role !== "staff")) {
       return NextResponse.json({ error: "Contact and role are required" }, { status: 400 });
     }
@@ -22,6 +23,12 @@ export async function POST(req: NextRequest) {
       ? await db.patient.findMany({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
       : [];
 
+    // One clinic login page: a contact that isn't a facility but is a staff member signs in as staff.
+    if (role === "facility") {
+      const isFacility = await db.facility.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] }, select: { id: true } });
+      if (!isFacility && await db.staff.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] }, select: { id: true } })) role = "staff";
+    }
+
     const user = role === "facility"
       ? await db.facility.findFirst({ where: { OR: [{ email: normalizedContact }, { phone: normalizedContact }] } })
       : role === "patient"
@@ -33,6 +40,10 @@ export async function POST(req: NextRequest) {
     }
     if (!patientMatches.some((p) => p.active) && role === "patient") {
       return NextResponse.json({ error: "This account has been suspended. Contact support." }, { status: 403 });
+    }
+    if (role === "staff") {
+      const clinic = await db.staff.findUnique({ where: { id: user.id }, select: { facility: { select: { active: true } } } });
+      if (!clinic?.facility.active) return NextResponse.json({ error: "Your clinic's account is not active. Contact the clinic." }, { status: 403 });
     }
     if (role !== "patient" && !user.active) {
       return NextResponse.json({ error: "This account has been suspended. Contact support." }, { status: 403 });
@@ -83,6 +94,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: hasEmail ? "OTP sent to your registered email" : "OTP sent to your registered phone",
       contact: identifier,
+      role,
       name: ambiguousPatient ? undefined : displayName,
       devOtp: delivered ? undefined : code,
     });

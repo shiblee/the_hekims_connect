@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword, normalizeContact, isSecurePassword } from "@/lib/auth";
-import { makeToken, fetchPatient } from "@/lib/api-auth";
+import { startSession, fetchPatient } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
@@ -75,19 +75,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const session = await db.userSession.create({
-      data: { patientId: patient.id, ip, browser, os, device },
-    });
+    const { token, sessionId } = await startSession("patient", patient.id, { ip, browser, os, device });
     await db.loginEvent.create({
       data: {
         patientId: patient.id, identifier: normalizedContact, displayName: patient.name,
-        ip, browser, os, device, status: "success", sessionId: session.id,
+        ip, browser, os, device, status: "success", sessionId,
       },
     });
 
     return NextResponse.json({
       success: true,
-      token: makeToken("patient", patient.id),
+      token,
       user: await fetchPatient(patient.id),
       role: "patient",
     });

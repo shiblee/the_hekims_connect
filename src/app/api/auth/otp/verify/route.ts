@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { makeToken, fetchFacility, fetchPatient, fetchStaff } from "@/lib/api-auth";
+import { startSession, fetchFacility, fetchPatient, fetchStaff } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
@@ -98,21 +98,19 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const { token, sessionId } = await startSession("facility", otp.facilityId, { ip, browser, os, device });
       if (facility) {
-        const session = await db.userSession.create({
-          data: { facilityId: facility.id, ip, browser, os, device },
-        });
         await db.loginEvent.create({
           data: {
             facilityId: facility.id, identifier: contact, displayName: facility.facilityName,
-            ip, browser, os, device, status: "success", sessionId: session.id,
+            ip, browser, os, device, status: "success", sessionId,
           },
         });
       }
 
       return NextResponse.json({
         success: true,
-        token: makeToken("facility", otp.facilityId),
+        token,
         user: facility,
         role: "facility",
       });
@@ -120,31 +118,35 @@ export async function POST(req: NextRequest) {
       await db.patient.update({ where: { id: resolvedPatientId }, data: { verified: true, lastLoginAt: new Date() } });
       const patient = await fetchPatient(resolvedPatientId);
 
+      const { token, sessionId } = await startSession("patient", resolvedPatientId, { ip, browser, os, device });
       if (patient) {
-        const session = await db.userSession.create({
-          data: { patientId: patient.id, ip, browser, os, device },
-        });
         await db.loginEvent.create({
           data: {
             patientId: patient.id, identifier: contact, displayName: patient.name,
-            ip, browser, os, device, status: "success", sessionId: session.id,
+            ip, browser, os, device, status: "success", sessionId,
           },
         });
       }
 
       return NextResponse.json({
         success: true,
-        token: makeToken("patient", resolvedPatientId),
+        token,
         user: patient,
         role: "patient",
       });
     } else if (role === "staff" && otp.staffId) {
       await db.staff.update({ where: { id: otp.staffId }, data: { lastLoginAt: new Date() } });
       const staff = await fetchStaff(otp.staffId);
+      const s = await db.staff.findUnique({ where: { id: otp.staffId }, select: { facilityId: true, name: true, active: true, facility: { select: { active: true } } } });
+      if (!s || !s.active || !s.facility.active) return NextResponse.json({ error: "This account is not active. Contact your clinic." }, { status: 403 });
+      const { token, sessionId } = await startSession("staff", otp.staffId, { ip, browser, os, device, facilityId: s.facilityId });
+      await db.loginEvent.create({
+        data: { facilityId: s.facilityId, staffId: otp.staffId, identifier: contact, displayName: `${s.name} (staff)`, ip, browser, os, device, status: "success", sessionId },
+      });
 
       return NextResponse.json({
         success: true,
-        token: makeToken("staff", otp.staffId),
+        token,
         user: staff,
         role: "staff",
       });

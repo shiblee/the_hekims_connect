@@ -1,11 +1,6 @@
-import type { Metadata } from "next";
-import { StaffLogin } from "@/components/auth/staff-login";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Staff Sign In | The Hekim's Connect",
-  description: "Sign in to your staff account to view your profile.",
-};
-
+// Staff share the clinic login page (they sign in there with a one-time code).
 export default function StaffLoginPage() {
-  return <StaffLogin />;
+  redirect("/login/facility");
 }

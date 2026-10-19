@@ -852,6 +852,8 @@ model LoginEvent {
   id            String   @id @default(cuid())
   facilityId    String?
   patientId     String?
+  /// Set for a staff login (facilityId is then the staff member's clinic).
+  staffId       String?
   identifier    String
   displayName   String
   ip            String?
@@ -871,6 +873,8 @@ model UserSession {
   id         String    @id @default(cuid())
   facilityId String?
   patientId  String?
+  /// Set for a staff login (facilityId is then the staff member's clinic).
+  staffId    String?
   ip         String?
   browser    String?
   os         String?

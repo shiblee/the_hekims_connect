@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allowed, requiredPermission } from "@/lib/staff-permissions";
 import { loadStaffAccess } from "@/lib/staff-permissions-server";
+import { readSessionToken } from "@/lib/session-token";
 
 /**
  * Staff permissions, enforced on the server for every API call made with a staff session
@@ -8,11 +9,10 @@ import { loadStaffAccess } from "@/lib/staff-permissions-server";
  * would sign the person out — so a blocked action just shows an error.
  */
 export async function proxy(req: NextRequest) {
-  const raw = req.headers.get("x-hekim-auth");
-  if (!raw) return NextResponse.next();
-  let type = "", id = "";
-  try { [type, id] = Buffer.from(raw, "base64").toString("utf-8").split("|"); } catch { return NextResponse.next(); }
-  if (type !== "staff" || !id) return NextResponse.next();
+  const claims = await readSessionToken(req.headers.get("x-hekim-auth"));
+  // Not a valid staff token: the route's own session check decides (401 for bad / expired tokens).
+  if (!claims || claims.expired || claims.type !== "staff") return NextResponse.next();
+  const id = claims.id;
 
   const need = requiredPermission(req.nextUrl.pathname, req.method);
   if (need === "allow") return NextResponse.next();

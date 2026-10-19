@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword, normalizeContact, isSecurePassword } from "@/lib/auth";
-import { makeToken, fetchFacility } from "@/lib/api-auth";
+import { startSession, fetchFacility } from "@/lib/api-auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { getSiteUrl } from "@/lib/site-url";
@@ -76,19 +76,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const session = await db.userSession.create({
-      data: { facilityId: facility.id, ip, browser, os, device },
-    });
+    const { token, sessionId } = await startSession("facility", facility.id, { ip, browser, os, device });
     await db.loginEvent.create({
       data: {
         facilityId: facility.id, identifier: normalizedContact, displayName: facility.facilityName,
-        ip, browser, os, device, status: "success", sessionId: session.id,
+        ip, browser, os, device, status: "success", sessionId,
       },
     });
 
     return NextResponse.json({
       success: true,
-      token: makeToken("facility", facility.id),
+      token,
       user: await fetchFacility(facility.id),
       role: "facility",
     });

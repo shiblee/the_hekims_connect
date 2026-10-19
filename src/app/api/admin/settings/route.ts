@@ -4,7 +4,9 @@ import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/request-info";
 
 // Internal bookkeeping (e.g. seed version markers) — not admin-editable settings.
-const VISIBLE = { category: { notIn: ["seed_versions"] } };
+// "security" holds the session-signing secret — never listed, never writable here.
+const HIDDEN = ["seed_versions", "security"];
+const VISIBLE = { category: { notIn: HIDDEN } };
 
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
@@ -24,7 +26,7 @@ export async function PUT(req: NextRequest) {
   }
 
   for (const u of updates) {
-    if (!u.category || !u.key || typeof u.value !== "string") {
+    if (!u.category || !u.key || typeof u.value !== "string" || HIDDEN.includes(u.category)) {
       return NextResponse.json({ error: "Invalid update entry" }, { status: 400 });
     }
   }

@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
-import { api, setToken } from "@/lib/api";
+import { api, setToken, restoreSession } from "@/lib/api";
+import { firstAllowedPage } from "@/lib/staff-permissions";
 import { Button } from "@/components/ui/button";
 import {
   InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator,
@@ -424,6 +425,8 @@ function FacilityLogin() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [otpStage, setOtpStage] = useState<"form" | "otp">("form");
+  // One clinic login page: the server tells us whether this contact is the facility or a staff member.
+  const [otpRole, setOtpRole] = useState<"facility" | "staff">("facility");
   const [otpContact, setOtpContact] = useState("");
   const [otpDevCode, setOtpDevCode] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -480,6 +483,13 @@ function FacilityLogin() {
       toast.success("OTP sent!");
       enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
+      if (String(err.message || "").startsWith("Staff members sign in")) {
+        // Staff have no password — switch to a one-time code for them.
+        setMode("otp");
+        setLoading(false);
+        void sendOtpLogin();
+        return;
+      }
       setErrors({ password: err.message || "Login failed" });
     } finally {
       setLoading(false);
@@ -494,8 +504,9 @@ function FacilityLogin() {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ devOtp?: string; contact: string; name: string }>("/api/auth/otp/login-send", { contact: form.contact, role: "facility" });
-      toast.success("OTP sent!");
+      const res = await api.post<{ devOtp?: string; contact: string; name: string; role?: "facility" | "staff" }>("/api/auth/otp/login-send", { contact: form.contact, role: "facility" });
+      setOtpRole(res.role === "staff" ? "staff" : "facility");
+      toast.success(res.role === "staff" ? `OTP sent — signing in as staff (${res.name})` : "OTP sent!");
       enterOtpStage(res.contact, res.devOtp);
     } catch (err: any) {
       setErrors((er) => ({ ...er, contact: err.message || "Could not send OTP" }));
@@ -512,8 +523,15 @@ function FacilityLogin() {
     setOtpVerifying(true);
     setOtpError("");
     try {
-      const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: "facility" });
+      const res = await api.post<{ token: string; user: any }>("/api/auth/otp/verify", { contact: otpContact, code: otpCode, role: otpRole });
       setToken(res.token);
+      if (otpRole === "staff") {
+        // Staff work in their clinic's app, limited to their permissions.
+        const me = await restoreSession();
+        toast.success(`Welcome, ${res.user?.name ?? ""}`);
+        router.push(firstAllowedPage(me?.permissions ?? []));
+        return;
+      }
       setFacility(res.user);
       toast.success("Verified! Welcome.");
       router.push(res.user.profileCompleted ? "/facility/dashboard" : "/facility/profile-setup");
@@ -527,7 +545,9 @@ function FacilityLogin() {
   const resendLogin = async () => {
     if (otpCooldown > 0) return;
     try {
-      const res = await api.post<{ devOtp?: string }>("/api/auth/otp/send", { contact: otpContact, role: "facility" });
+      const res = otpRole === "staff"
+        ? await api.post<{ devOtp?: string }>("/api/auth/otp/login-send", { contact: otpContact, role: "staff" })
+        : await api.post<{ devOtp?: string }>("/api/auth/otp/send", { contact: otpContact, role: "facility" });
       setOtpDevCode(res.devOtp ?? "");
       setOtpCode(res.devOtp ?? "");
       setOtpCooldown(30);
@@ -603,7 +623,7 @@ function FacilityLogin() {
         <RoleTabs role="facility" mode="login" />
         <div className="mb-6">
           <h1 className="font-serif text-2xl font-bold">Welcome back</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sign in securely with OTP verification.</p>
+          <p className="text-sm text-muted-foreground mt-1">Clinic owners and staff sign in here. Staff: enter your email or phone and choose <b className="font-medium text-foreground">OTP only</b>.</p>
         </div>
 
         <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-1">
