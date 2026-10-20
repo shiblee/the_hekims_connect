@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FloatingCombobox } from "@/components/shared/combobox";
-import { FloatingField } from "@/components/shared/floating-field";
+import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
+import { SelectItem } from "@/components/ui/select";
 import type { DifferentialResult, Differential } from "@/lib/differential-engine";
 
 export type DiagnosisRole = "working" | "secondary" | "differential" | "ruled_out";
@@ -193,26 +194,27 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
         {d.diagnoses.length === 0 ? <p className="text-[13px] text-muted-foreground">{t("empty")}</p> : (
           <ul className="space-y-2">
             {sorted.map(({ x, i }) => (
-              <li key={`${x.label}${i}`} className={cn("rounded-lg border p-2.5 space-y-1.5", ROLE_STYLE[x.role])}>
+              <li key={`${x.label}${i}`} className={cn("rounded-xl border p-3 space-y-2", ROLE_STYLE[x.role])}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={cn("text-sm font-semibold min-w-0", x.role === "ruled_out" && "line-through")}>{x.label}</span>
+                  <span className={cn("text-[15px] font-semibold min-w-0", x.role === "ruled_out" && "line-through")}>{x.label}</span>
                   {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
                   {x.source === "engine" && <span className="text-[11px] text-muted-foreground">· {t("from_engine")}</span>}
                   {amraz.find((m) => m.id === x.marzId)?.unverified && <Pill className="border-border/60 text-muted-foreground font-medium" title={t("unverified_hint")}>{t("unverified")}</Pill>}
                   <button type="button" onClick={() => set({ diagnoses: d.diagnoses.filter((_, j) => j !== i) })} className="ms-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={t("remove")}><X className="h-3.5 w-3.5" /></button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <select aria-label={t("role_working")} value={x.role} onChange={(e) => update(i, { role: e.target.value as DiagnosisRole })} className="h-8 rounded-md border border-input bg-background px-2 text-xs">
-                    {ROLES.map((r) => <option key={r} value={r}>{t(`role_${r}`)}</option>)}
-                  </select>
-                  {x.role !== "ruled_out" && (
-                    <select aria-label={t("certainty")} value={x.certainty ?? ""} onChange={(e) => update(i, { certainty: (e.target.value || null) as DossierDiagnosis["certainty"] })} className="h-8 rounded-md border border-input bg-background px-2 text-xs">
-                      <option value="">{t("certainty")}</option>
-                      {CERTS.map((c) => <option key={c} value={c}>{t(`cert_${c}`)}</option>)}
-                    </select>
-                  )}
-                  <input value={x.note ?? ""} onChange={(e) => update(i, { note: e.target.value || null })} placeholder={t("note_ph")} maxLength={1000}
-                    className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs" />
+                {/* Same floating-label fields as the rest of the form */}
+                <div className="grid gap-x-2 gap-y-4 pt-3 sm:grid-cols-[13rem_11rem_1fr]">
+                  <FloatingSelect id={`dx-role-${i}`} label={t("role")} value={x.role} onValueChange={(v) => update(i, { role: v as DiagnosisRole })}>
+                    {ROLES.map((r) => <SelectItem key={r} value={r}>{t(`role_${r}`)}</SelectItem>)}
+                  </FloatingSelect>
+                  {x.role !== "ruled_out" ? (
+                    <FloatingSelect id={`dx-cert-${i}`} label={t("certainty")} value={x.certainty ?? ""} placeholder={t("cert_choose")}
+                      onValueChange={(v) => update(i, { certainty: (v === "none" ? null : v) as DossierDiagnosis["certainty"] })}>
+                      <SelectItem value="none">{t("cert_none")}</SelectItem>
+                      {CERTS.map((c) => <SelectItem key={c} value={c}>{t(`cert_${c}`)}</SelectItem>)}
+                    </FloatingSelect>
+                  ) : <span className="hidden sm:block" />}
+                  <FloatingField id={`dx-note-${i}`} label={t("note_ph")} value={x.note ?? ""} onChange={(e) => update(i, { note: e.target.value || null })} maxLength={1000} />
                 </div>
                 {(x.evidenceFor.length > 0 || x.evidenceAgainst.length > 0) && (
                   <p className="text-[11px] text-muted-foreground">
@@ -227,6 +229,7 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
         {d.diagnoses.length > 0 && !d.diagnoses.some((x) => x.role === "working") && (
           <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"><AlertTriangle className="h-3.5 w-3.5" /> {t("need_working")}</p>
         )}
+        <div className="pt-3" />
         <FloatingCombobox id="addMarz" label={t("add")} placeholder={t("add_ph")} value={pick}
           options={amraz.map((m) => ({ value: m.id, label: m.localName ? `${m.label} · ${m.localName}` : m.label }))}
           onValueChange={(id) => {
