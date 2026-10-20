@@ -1057,7 +1057,6 @@ interface CdsData {
   };
   decisions?: { tagId: string; action: string; reason: string | null }[];
 }
-const NOTE_STYLE = { high: "text-destructive", caution: "text-amber-700 dark:text-amber-400", info: "text-muted-foreground" } as const;
 
 /**
  * "Clinical Decision Support — Medicines & Supplements" (doctors only).
@@ -1108,7 +1107,8 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
       <div className={cn("rounded-xl border p-3 space-y-2", dec?.action === "rejected" ? "border-border/40 bg-muted/30 opacity-70" : dec?.action === "accepted" || inRx ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/50 bg-background/50")}>
         <div className="space-y-1">
           <div className="min-w-0">
-            <p className="text-[15px] font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}</p>
+            <p className="text-[15px] font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}
+              {c.safety.length === 0 && <span className="ms-1 inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>}</p>
             <p className="text-xs text-muted-foreground">{[c.herbType, c.mizaj].filter(Boolean).join(" · ")}</p>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -1119,13 +1119,10 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
         </div>
         <ul className="space-y-0.5">{c.reasons.map((x) => <li key={x} className="text-xs text-foreground/85">• {x}</li>)}</ul>
         {c.safety.length > 0 && (
-          <ul className="space-y-0.5 rounded-lg bg-background/60 px-2 py-1.5">
-            {c.safety.map((n, i) => (
-              <li key={i} className={cn("text-xs flex gap-1.5", NOTE_STYLE[n.level])}>
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /><span>{n.text}{!n.verified && <span className="opacity-70">{td("unverified_paren")}</span>}</span>
-              </li>
-            ))}
-          </ul>
+          <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
+            className={cn("flex items-center gap-1.5 text-[13px] font-medium", c.safety.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
+          </MedicineInfoButton>
         )}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
           <span className="text-[11px] text-muted-foreground me-auto">{td("profile_pct", { pct: c.completeness })}{dec ? ` · ${dec.action === "added_to_prescription" ? td("dec_rx") : dec.action === "accepted" ? td("dec_accepted") : dec.action === "considered" ? td("dec_considered") : dec.action === "rejected" ? td("dec_rejected") : dec.action}` : ""}</span>
