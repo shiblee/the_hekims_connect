@@ -52,6 +52,8 @@ const EMPTY: Dossier = {
 };
 interface Herb { id: string; label: string; category: string | null; forms: string[] }
 type Warn = { level: "high" | "caution" | "info"; text: string; verified: boolean };
+/** Colour of a "safety notes" link: red if any is high, amber if any caution, otherwise plain information. */
+const noteTone = (notes: { level: string }[]) => notes.some((x) => x.level === "high") ? "text-destructive" : notes.some((x) => x.level === "caution") ? "text-amber-700 dark:text-amber-400" : "text-primary";
 
 /** Dossier + Dala'il answers + option lists for Stage 5. */
 export function useTashkhees(visitId: string | undefined) {
@@ -1062,7 +1064,7 @@ interface CdsCand { tagId: string; label: string; unaniName: string | null; herb
 interface CdsData {
   enabled: boolean; sessionId?: string; method?: string; changed?: boolean;
   result?: {
-    urgent: string[]; infoNeeded: string[]; unani: CdsCand[]; supplements: CdsCand[];
+    urgent: string[]; infoNeeded: string[]; unani: CdsCand[]; supplements: CdsCand[]; allopathic?: CdsCand[];
     excluded: { tagId: string; label: string; reason: string; verified: boolean }[];
     currentMeds: { label: string; matched: boolean }[];
     basis: { complaints: string[]; conditions: string[]; allergies: string[]; suMizaj: string | null; age: number | null; sex: string | null };
@@ -1080,7 +1082,7 @@ interface CdsData {
 function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, herbs } = state;
   const [data, setData] = useState<CdsData | null>(null);
-  const [tab, setTab] = useState<"unani" | "supplements" | "safety" | "info">("unani");
+  const [tab, setTab] = useState<"unani" | "allopathic" | "supplements" | "safety" | "info">("unani");
   const [running, setRunning] = useState(false);
   const [rejecting, setRejecting] = useState<{ tagId: string; reason: string } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -1128,7 +1130,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
   const SafetyLink = ({ c }: { c: CdsCand }) => (c.safety.length === 0
     ? <span className="ms-1 inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>
     : <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
-        className={cn("ms-1.5 inline-flex items-center gap-1 align-middle text-xs font-medium", c.safety.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+        className={cn("ms-1.5 inline-flex items-center gap-1 align-middle text-xs font-medium", noteTone(c.safety))}>
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
       </MedicineInfoButton>);
 
@@ -1170,7 +1172,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
     );
   };
 
-  const counts = { unani: r?.unani.length ?? 0, supplements: r?.supplements.length ?? 0, safety: (r?.excluded.length ?? 0), info: r?.infoNeeded.length ?? 0 };
+  const counts = { unani: r?.unani.length ?? 0, allopathic: r?.allopathic?.length ?? 0, supplements: r?.supplements.length ?? 0, safety: (r?.excluded.length ?? 0), info: r?.infoNeeded.length ?? 0 };
   return (
     <Panel icon={ShieldAlert} tour="dossier.cds" title={td("cds_title")}
       aside={
@@ -1195,26 +1197,27 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
             {data?.changed && <span className="text-primary">{td("updated_after")}</span>}
           </p>
           <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
-            {([["unani", td("tab_unani", { count: counts.unani })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(k === "unani" || k === "supplements"); }}
+            {([["unani", td("tab_unani", { count: counts.unani })], ["allopathic", td("tab_allo", { count: counts.allopathic })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(k === "unani" || k === "allopathic" || k === "supplements"); }}
                 className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? (k === "safety" ? "bg-destructive text-white" : k === "info" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>{l}</button>
             ))}
           </div>
 
-          {(tab === "unani" || tab === "supplements") && (() => {
-            const list = tab === "unani" ? r.unani : r.supplements;
+          {(tab === "unani" || tab === "allopathic" || tab === "supplements") && (() => {
+            const list = tab === "unani" ? r.unani : tab === "allopathic" ? (r.allopathic ?? []) : r.supplements;
             const ql = q.trim().toLowerCase();
             const rows = list.filter((c) => !ql || `${c.label} ${c.unaniName ?? ""} ${c.herbType ?? ""} ${c.reasons.join(" ")}`.toLowerCase().includes(ql));
             return (
               <div ref={boxRef} className="relative">
                 <FloatingField id="cdsSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
-                  label={tab === "unani" ? td("cds_search_unani", { count: list.length }) : td("cds_search_supp", { count: list.length })}
+                  label={tab === "unani" ? td("cds_search_unani", { count: list.length }) : tab === "allopathic" ? td("cds_search_allo", { count: list.length }) : td("cds_search_supp", { count: list.length })}
                   onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onClick={() => setOpen(true)}
                   onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
                 {open && (
                   <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[420px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
                     <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("cds_dropdown_hint")}</p>
-                    {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{list.length === 0 ? (tab === "unani" ? td("no_unani") : td("no_supp")) : td("cds_no_match", { q })}</p>}
+                    {tab === "allopathic" && <p className="px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/5">{td("cds_allo_note")}</p>}
+                    {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{list.length === 0 ? (tab === "unani" ? td("no_unani") : tab === "allopathic" ? td("no_allo") : td("no_supp")) : td("cds_no_match", { q })}</p>}
                     {rows.map(renderRow)}
                   </div>
                 )}
@@ -1306,7 +1309,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-[15px] font-semibold flex flex-wrap items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{p.tagId && (w.length > 0
                       ? <MedicineInfoButton tagId={p.tagId} name={p.name} patientNotes={w}
-                          className={cn("ms-1 inline-flex items-center gap-1.5 text-[13px] font-medium", w.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+                          className={cn("ms-1 inline-flex items-center gap-1.5 text-[13px] font-medium", noteTone(w))}>
                           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: w.length })}
                         </MedicineInfoButton>
                       : <MedicineInfoButton tagId={p.tagId} name={p.name} />)}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">{td("not_catalogue")}</Badge>}</p>

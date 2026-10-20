@@ -1,6 +1,6 @@
 // Clinical Decision Support — Medicines & Supplements (Stage 5, doctors only).
 //
-// Helps the treating Hakim find Unani medicines and supplements from the
+// Helps the treating Hakim find Unani medicines, supplements and allopathic medicines from the
 // platform's own database that may be worth evaluating for THIS patient. It
 // never prescribes: candidates are options for review; prescriptions are only
 // written by the doctor in Ilaj-bil-Dawa.
@@ -9,9 +9,10 @@
 //   1. Context   — documented findings only (complaints, symptoms, diagnosis,
 //                  organs, history conditions, allergies, current medicines,
 //                  age, sex, pregnancy region, warning signs). Unrecorded ≠ absent.
-//   2. Candidates— existing indication / symptom links (supplement-kind items
-//                  only; allopathic medicines are used for safety context, never
-//                  suggested). "Not recommended" links exclude the item.
+//   2. Candidates— existing indication / symptom links: Unani medicines and
+//                  supplements, and allopathic medicines (approved indication,
+//                  evidence-supported or symptom relief — never off-label).
+//                  "Not recommended" links exclude the item.
 //   3. Safety    — allergy & cross-reactivity, interactions with current
 //                  medicines, duplicate ingredients, pregnancy / lactation /
 //                  children / older adults / kidney / liver, contraindications
@@ -42,7 +43,8 @@ const SUPPLEMENT_TYPES = /nutritional|vitamin|mineral prep/i;
 
 export interface SafetyNote { level: "high" | "caution" | "info"; text: string; verified: boolean }
 export interface Candidate {
-  tagId: string; label: string; unaniName: string | null; herbType: string | null; category: "unani" | "supplement";
+  /** unaniName holds the generic name for allopathic medicines (the secondary name shown beside the label). */
+  tagId: string; label: string; unaniName: string | null; herbType: string | null; category: "unani" | "supplement" | "allopathic";
   reasons: string[]; evidence: { traditional: boolean; clinical: boolean; verified: boolean };
   safety: SafetyNote[]; completeness: number; score: number; mizaj: string | null;
 }
@@ -52,6 +54,7 @@ export interface CdsResult {
   infoNeeded: string[];
   unani: Candidate[];
   supplements: Candidate[];
+  allopathic: Candidate[];
   excluded: Excluded[];
   currentMeds: { label: string; matched: boolean }[];
   basis: { complaints: string[]; symptoms: string[]; conditions: string[]; allergies: string[]; suMizaj: string | null; age: number | null; sex: string | null };
@@ -120,11 +123,11 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
   const primaryLabel = ctx.complaints.find((c) => c.primary)?.label;
   const [cLinks, sLinks] = await Promise.all([
     complaintRows.length ? db.supplementComplaintLink.findMany({
-      where: { complaintId: { in: complaintRows.map((c) => c.id) }, verificationStatus: { not: "rejected" }, profile: { tag: { active: true, kind: "supplement" } } },
-      select: { relationType: true, evidenceType: true, verificationStatus: true, complaint: { select: { label: true } }, profile: { select: { tagId: true } } },
+      where: { complaintId: { in: complaintRows.map((c) => c.id) }, verificationStatus: { not: "rejected" }, profile: { tag: { active: true, kind: { in: ["supplement", "medication"] } } } },
+      select: { relationType: true, evidenceType: true, verificationStatus: true, complaint: { select: { label: true } }, profile: { select: { tagId: true, tag: { select: { kind: true } } } } },
     }) : [],
     symptomRows.length ? db.supplementSymptomLink.findMany({
-      where: { symptomId: { in: symptomRows.map((s) => s.id) }, verificationStatus: { not: "rejected" }, profile: { tag: { active: true, kind: "supplement" } } },
+      where: { symptomId: { in: symptomRows.map((s) => s.id) }, verificationStatus: { not: "rejected" }, profile: { tag: { active: true, kind: { in: ["supplement", "medication"] } } } },
       select: { evidenceType: true, verificationStatus: true, symptom: { select: { label: true } }, profile: { select: { tagId: true } } },
     }) : [],
   ]);
@@ -134,10 +137,11 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
   for (const l of cLinks) {
     const a = get(l.profile.tagId);
     if (l.relationType === "not_recommended") { a.notRecommended = l.complaint.label; continue; }
+    if (l.relationType === "off_label") continue; // never suggested on an off-label use
     const primary = l.complaint.label === primaryLabel;
     a.score += primary ? 6 : 4;
-    a.reasons.push(`${l.relationType === "traditional_use" ? "Traditionally used for" : "Indicated for"} ${l.complaint.label}`);
-    if (l.evidenceType === "clinical" || l.relationType === "evidence_supported") { a.clinical = true; a.score += 1; }
+    a.reasons.push(`${l.relationType === "traditional_use" ? "Traditionally used for" : l.relationType === "symptom_relief" ? "Symptom relief for" : l.relationType === "evidence_supported" ? "Evidence supports use for" : "Indicated for"} ${l.complaint.label}`);
+    if (l.evidenceType === "clinical" || l.relationType === "evidence_supported" || l.profile.tag.kind === "medication") { a.clinical = true; a.score += 1; }
     else a.traditional = true;
     if (l.verificationStatus === "verified") { a.verified = true; a.score += 2; }
   }
@@ -153,7 +157,7 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
   const profiles = ids.length ? await db.supplementProfile.findMany({
     where: { tagId: { in: ids } },
     select: {
-      tagId: true, unaniName: true, herbType: true, mizaj: true, completeness: true, tag: { select: { label: true } },
+      tagId: true, unaniName: true, genericName: true, rxStatus: true, herbType: true, mizaj: true, completeness: true, tag: { select: { label: true, kind: true } },
       allergies: { where: { relation: "caution", verificationStatus: { not: "rejected" } }, select: { verificationStatus: true, allergy: { select: { label: true } } } },
       ingredients: { where: { verificationStatus: { not: "rejected" } }, select: { name: true, ingredientTagId: true } },
       safetyItems: { where: { verificationStatus: { not: "rejected" } }, select: { category: true, text: true, severity: true, verificationStatus: true, medicationTagId: true, medication: { select: { label: true } } } },
@@ -163,7 +167,11 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
   // ---- 3. Safety
   const unani: Candidate[] = [];
   const supplements: Candidate[] = [];
+  const allopathic: Candidate[] = [];
   const excluded: Excluded[] = [];
+  // Interactions are checked against what the patient already takes and what is prescribed in this visit.
+  const interactsWith = (id: string | null) => !!id && (currentMedIds.has(id) || alreadyPrescribed.has(id));
+  const whereFrom = (id: string | null) => (id && currentMedIds.has(id) ? "current medicine" : "prescribed in this visit");
   const condPatterns = CONDITIONS.filter((c) => conditions.includes(c.key));
   for (const pr of profiles) {
     const a = acc.get(pr.tagId)!;
@@ -189,9 +197,9 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
       const say = (level: SafetyNote["level"], text: string) => notes.push({ level, text, verified });
       switch (s.category) {
         case "interaction":
-          if (s.medicationTagId && currentMedIds.has(s.medicationTagId)) {
-            if (high) block ??= { reason: `Serious interaction with ${s.medication?.label} (current medicine): ${s.text}`, verified };
-            else say("caution", `Interaction with ${s.medication?.label} (current medicine): ${s.text}`);
+          if (interactsWith(s.medicationTagId)) {
+            if (high) block ??= { reason: `Serious interaction with ${s.medication?.label} (${whereFrom(s.medicationTagId)}): ${s.text}`, verified };
+            else say("caution", `Interaction with ${s.medication?.label} (${whereFrom(s.medicationTagId)}): ${s.text}`);
           }
           break;
         case "pregnancy":
@@ -238,9 +246,11 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
         else if (t < 0) { a.score -= 2; notes.push({ level: "info", text: `Temperament ${pr.mizaj} adds to ${suMizaj}`, verified: false }); }
       }
     }
+    const allo = pr.tag.kind === "medication";
+    if (allo && pr.rxStatus) notes.push({ level: "info", text: `Prescription status: ${pr.rxStatus}`, verified: false });
     const cand: Candidate = {
-      tagId: pr.tagId, label, unaniName: pr.unaniName, herbType: pr.herbType, mizaj: pr.mizaj,
-      category: SUPPLEMENT_TYPES.test(pr.herbType || "") ? "supplement" : "unani",
+      tagId: pr.tagId, label, unaniName: allo ? pr.genericName : pr.unaniName, herbType: pr.herbType, mizaj: pr.mizaj,
+      category: allo ? "allopathic" : SUPPLEMENT_TYPES.test(pr.herbType || "") ? "supplement" : "unani",
       reasons: [...new Set(a.reasons)].slice(0, 4), evidence: { traditional: a.traditional, clinical: a.clinical, verified: a.verified },
       safety: notes.sort((x, y) => (x.level === "high" ? 0 : x.level === "caution" ? 1 : 2) - (y.level === "high" ? 0 : y.level === "caution" ? 1 : 2)).slice(0, 6),
       completeness: pr.completeness, score: a.score - notes.filter((n) => n.level === "high").length * 3 - notes.filter((n) => n.level === "caution").length,
@@ -251,7 +261,7 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
       cand.safety.unshift({ level: "info", text: "Consider only if a deficiency or clinical need is confirmed (e.g. by investigation) — not for general wellness alone", verified: false });
       cand.score -= 3;
     }
-    (cand.category === "unani" ? unani : supplements).push(cand);
+    (cand.category === "unani" ? unani : cand.category === "allopathic" ? allopathic : supplements).push(cand);
   }
 
   const sortC = (l: Candidate[]) => l.sort((x, y) => y.score - x.score);
@@ -273,12 +283,13 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
       method = "ranked";
     } else method = "rules-fallback";
   }
-  if (!unani.length && !supplements.length && ctx.complaints.length) infoNeeded.push("No suitable option found in the current database for the recorded complaints.");
+  if (!unani.length && !supplements.length && !allopathic.length && ctx.complaints.length) infoNeeded.push("No suitable option found in the current database for the recorded complaints.");
 
   const result: CdsResult = {
     urgent, infoNeeded,
     unani: unaniOut.slice(0, cfg.maxPerCategory),
     supplements: sortC(supplements).slice(0, cfg.maxPerCategory),
+    allopathic: sortC(allopathic).slice(0, cfg.maxPerCategory),
     excluded: excluded.slice(0, 20),
     currentMeds: medLabels.map((m) => ({ label: m, matched: !unmatchedMeds.includes(m) })),
     basis: { complaints: ctx.complaints.map((c) => c.label), symptoms: ctx.symptoms, conditions: conditions.map(conditionLabel), allergies: allergyNames, suMizaj, age: ctx.age, sex: ctx.sex },
