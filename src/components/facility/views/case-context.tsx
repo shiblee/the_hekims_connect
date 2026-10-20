@@ -190,10 +190,8 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
   const { ctx } = state;
   if (!ctx) return null;
   const pid = ctx.patient.id;
-  const s2 = `/facility/patients/${pid}/record`, s3 = `/facility/mizaj?patientId=${pid}`, s4 = `/facility/asbab?patientId=${pid}`, reg = `/facility/patients/${pid}`;
+  const s2 = `/facility/patients/${pid}/record`, s3 = `/facility/mizaj?patientId=${pid}`;
   const date = (iso: string) => new Date(iso).toLocaleDateString(dl, { dateStyle: "medium" });
-  const w = ctx.warning;
-  const h = ctx.history;
 
   return (
     <Card className="p-5 gap-3 border-border/50 bg-card/60" id="khulasa" data-tour="case.summary">
@@ -221,36 +219,6 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
                 </li>
               ))}
             </ul>
-          </Block>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Block title={t("s_symptoms")} kind="reported" href={s2} stage={2} empty={!ctx.presenting.symptoms.length}><Chips items={ctx.presenting.symptoms} /></Block>
-            <Block title={t("s_regions")} kind="reported" href={s3} stage={3} empty={!ctx.presenting.regions.length && !ctx.presenting.onsetPatterns.length}>
-              {ctx.presenting.regions.length > 0 && <Chips items={ctx.presenting.regions} />}
-              {ctx.presenting.onsetPatterns.length > 0 && <p className="mt-1.5 text-[13px]"><span className="text-muted-foreground">{t("s_onset")}:</span> {ctx.presenting.onsetPatterns.map(vl).join(", ")}{ctx.presenting.duration ? ` · ${ctx.presenting.duration}` : ""}</p>}
-            </Block>
-            <Block title={t("s_warning")} kind="examined" href={s2} stage={2}>
-              <p className={cn("text-[13px]", w && w.outcome !== "cleared" && "text-destructive font-medium")}>
-                {!w ? t("w_none") : w.outcome === "cleared" ? t("w_cleared") : w.outcome === "referred" ? t("w_referred", { to: w.referredTo || "—" }) : w.outcome === "continued_ama" ? t("w_ama") : t("w_pending")}
-              </p>
-              {w && w.signs.length > 0 && <div className="mt-1.5"><Chips items={w.signs} /></div>}
-            </Block>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Block title={t("s_lifestyle")} kind="reported" href={s4} stage={4} empty={!ctx.lifestyle.answered}><Answers sections={ctx.lifestyle.items} /></Block>
-            <Block title={t("s_exam")} kind="examined" empty={!ctx.examination.answered}><Answers sections={ctx.examination.sections} /></Block>
-          </div>
-
-          <Block title={t("s_history")} kind="history" href={reg} stage={1}>
-            <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-[13px]">
-              <div><dt className="text-muted-foreground inline">{t("h_allergies")}: </dt><dd className={cn("inline", h.allergies.length && "font-medium text-destructive")}>{!h.allergiesRecorded ? t("h_not_recorded") : h.allergies.length ? h.allergies.join(", ") : t("h_none")}</dd></div>
-              <div><dt className="text-muted-foreground inline">{t("h_medicines")}: </dt><dd className="inline">{!h.medicinesRecorded ? t("h_not_recorded") : h.medicines.length ? h.medicines.join(", ") : t("h_none")}</dd></div>
-              {h.conditions.length > 0 && <div><dt className="text-muted-foreground inline">{t("h_conditions")}: </dt><dd className="inline">{h.conditions.join(", ")}</dd></div>}
-              {h.medicalHistory && <div><dt className="text-muted-foreground inline">{t("h_medical")}: </dt><dd className="inline">{h.medicalHistory}</dd></div>}
-              {h.surgicalHistory && <div><dt className="text-muted-foreground inline">{t("h_surgical")}: </dt><dd className="inline">{h.surgicalHistory}</dd></div>}
-              {h.familyHistory && <div><dt className="text-muted-foreground inline">{t("h_family")}: </dt><dd className="inline">{h.familyHistory}</dd></div>}
-            </dl>
           </Block>
 
           {(ctx.reports.length > 0 || ctx.mizajAssessment) && (
