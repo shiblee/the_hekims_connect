@@ -23,27 +23,40 @@ const USES = [
   "Draft translations for guidance",
 ];
 
-/** Admin → Settings → General: the Google Gemini key and the switch every AI feature respects. */
-export function AiServiceCard() {
+const PROVIDERS = {
+  gemini: {
+    title: "AI service (Google Gemini)", keyLabel: "Gemini API key", company: "Google", where: "Create one in Google AI Studio → API keys, then paste it here.", uses: USES,
+    note: "Paid by usage. When it's off, nothing is sent to Google and nothing is charged — AI features say they're switched off and everything else keeps working.",
+  },
+  anthropic: {
+    title: "Clinical reasoning (Anthropic Claude)", keyLabel: "Anthropic API key", company: "Anthropic", where: "Create one in the Anthropic Console → API keys (it starts with sk-ant-), then paste it here.",
+    uses: ["Stage 5 Hakeem Insight — case summary, contradictions, missing information, differential reasoning and a draft Tashkhees statement (only when a Hakim asks)"],
+    note: "Paid by usage, only when a Hakim asks for a reasoning run. Only de-identified clinical facts are sent — no names, phone numbers or IDs. When it's off, Stage 5 keeps working on its rule engines.",
+  },
+} as const;
+
+/** Admin → Settings → General: an AI provider's key and the switch its features respect. */
+export function AiServiceCard({ provider = "gemini" }: { provider?: keyof typeof PROVIDERS }) {
+  const P = PROVIDERS[provider];
   const [s, setS] = useState<State | null>(null);
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState<"" | "toggle" | "save" | "test" | "remove">("");
   const [test, setTest] = useState<{ ok: boolean; message: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
-  const load = useCallback(() => adminApi.get<State>("/api/admin/integrations/gemini").then(setS).catch(() => toast.error("Couldn't load the AI service settings")), []);
+  const load = useCallback(() => adminApi.get<State>(`/api/admin/integrations/${provider}`).then(setS).catch(() => toast.error("Couldn't load the AI service settings")), []);
   useEffect(() => { load(); }, [load]);
 
   const put = async (body: Record<string, unknown>, kind: typeof busy, done: string) => {
     setBusy(kind);
-    try { setS(await adminApi.put<State>("/api/admin/integrations/gemini", body)); toast.success(done); return true; }
+    try { setS(await adminApi.put<State>(`/api/admin/integrations/${provider}`, body)); toast.success(done); return true; }
     catch (e) { toast.error(e instanceof Error ? e.message : "Not saved"); return false; }
     finally { setBusy(""); }
   };
 
   const runTest = async () => {
     setBusy("test"); setTest(null);
-    try { setTest(await adminApi.post<{ ok: boolean; message: string }>("/api/admin/integrations/gemini", key.trim() ? { apiKey: key.trim() } : {})); }
+    try { setTest(await adminApi.post<{ ok: boolean; message: string }>(`/api/admin/integrations/${provider}`, key.trim() ? { apiKey: key.trim() } : {})); }
     catch { setTest({ ok: false, message: "The test couldn't run." }); }
     finally { setBusy(""); }
   };
@@ -55,8 +68,8 @@ export function AiServiceCard() {
     <div className="space-y-4 rounded-xl border border-input bg-background/40 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 font-semibold"><Bot className="h-4 w-4 text-primary" /> AI service (Google Gemini) <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", status.cls)}>{status.label}</span></p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Paid by usage. When it&apos;s off, nothing is sent to Google and nothing is charged — AI features say they&apos;re switched off and everything else keeps working.</p>
+          <p className="flex items-center gap-2 font-semibold"><Bot className="h-4 w-4 text-primary" /> {P.title} <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", status.cls)}>{status.label}</span></p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{P.note}</p>
         </div>
         <label className="flex items-center gap-2 text-sm font-medium">
           Use AI features
@@ -66,10 +79,10 @@ export function AiServiceCard() {
 
       <div className="grid gap-3 border-t border-input pt-4 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="space-y-1.5">
-          <FloatingField id="geminiKey" type="password" autoComplete="off" label={s.configured ? `Replace API key (saved key ${s.keyHint})` : "Gemini API key"} value={key} onChange={(e) => { setKey(e.target.value); setTest(null); }} />
+          <FloatingField id={`${provider}Key`} type="password" autoComplete="off" label={s.configured ? `Replace API key (saved key ${s.keyHint})` : P.keyLabel} value={key} onChange={(e) => { setKey(e.target.value); setTest(null); }} />
           <p className="text-xs text-muted-foreground">
             <KeyRound className="mb-0.5 mr-1 inline h-3 w-3" />
-            {s.configured ? <>Stored encrypted; only the last 4 characters are ever shown.{s.updatedAt && ` Last changed ${formatDateTime(s.updatedAt)}.`}</> : "Create one in Google AI Studio → API keys, then paste it here."}
+            {s.configured ? <>Stored encrypted; only the last 4 characters are ever shown.{s.updatedAt && ` Last changed ${formatDateTime(s.updatedAt)}.`}</> : P.where}
           </p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
@@ -83,13 +96,13 @@ export function AiServiceCard() {
 
       <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer font-medium text-foreground/80">What uses it</summary>
-        <ul className="mt-1.5 list-disc space-y-0.5 ps-5">{USES.map((u) => <li key={u}>{u}</li>)}</ul>
+        <ul className="mt-1.5 list-disc space-y-0.5 ps-5">{P.uses.map((u) => <li key={u}>{u}</li>)}</ul>
       </details>
 
       <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove the Gemini API key?</AlertDialogTitle>
+            <AlertDialogTitle>Remove the {P.company} API key?</AlertDialogTitle>
             <AlertDialogDescription>The key is deleted from the platform and all AI features switch off. You can add a key again at any time.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

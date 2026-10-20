@@ -2248,3 +2248,44 @@ model GuidanceProgress {
   @@unique([userKey, tourId])
 }
 
+
+// Stage 5 clinical reasoning assistant — every run, with exactly what was sent
+// (de-identified), what came back, what the safety check removed, and versions,
+// so any suggestion can be traced and reproduced.
+model AiReasoningRun {
+  id            String   @id @default(cuid())
+  visitId       String
+  facilityId    String
+  model         String
+  mode          String // "standard" | "deep"
+  promptVersion String
+  contextHash   String
+  input         String // de-identified case sent to the model (JSON)
+  output        String   @default("{}") // validated result shown to the Hakim (JSON)
+  removed       String   @default("[]") // what the safety check dropped, and why (JSON)
+  status        String   @default("ok") // "ok" | "failed"
+  error         String?
+  inputTokens   Int?
+  outputTokens  Int?
+  latencyMs     Int?
+  createdByName String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  feedback AiFeedback[]
+
+  @@index([visitId, createdAt])
+}
+
+// A Hakim's verdict on a reasoning run — for supervised evaluation only; it never changes rules or the model.
+model AiFeedback {
+  id        String   @id @default(cuid())
+  runId     String
+  rating    String // "useful" | "incomplete" | "wrong" | "unsafe"
+  note      String?
+  byName    String?
+  byStaffId String?
+  createdAt DateTime @default(now())
+
+  run AiReasoningRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}

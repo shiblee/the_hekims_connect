@@ -371,6 +371,7 @@ export default function SettingsPage() {
                 ) : selected === "general" ? (
                   <div className="space-y-5">
                     <AiServiceCard />
+                    <AiServiceCard provider="anthropic" />
                     {GENERAL_GROUP.filter((c) => settings.some((s) => s.category === c)).map((c) => {
                       const rows = settings.filter((s) => s.category === c).sort((a, b) => orderOf(a.key) - orderOf(b.key));
                       const switches = rows.filter((s) => BOOLEAN_KEYS.has(s.key));

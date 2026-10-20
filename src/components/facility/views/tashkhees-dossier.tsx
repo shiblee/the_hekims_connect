@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { MarzSection, type AmrazOption, type DossierDiagnosis } from "@/components/facility/views/marz-diagnosis";
 import { SafetyReviewPanel } from "@/components/facility/views/safety-review-panel";
+import { ReasoningPanel } from "@/components/facility/views/reasoning-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -644,6 +645,9 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
   const td = useTranslations("clinic.dossier");
   return (
     <Panel icon={FileSignature} tour="dossier.diagnosis" title={td("tashkhees_title")}>
+      <ReasoningPanel visitId={visitId} diagnoses={d.diagnoses} saveFirst={() => state.save(false)}
+        onAdd={(x) => { if (!d.diagnoses.some((y) => y.label === x.label)) set({ diagnoses: [...d.diagnoses, x] }); }}
+        onUseStatement={(text) => set({ diagnosisNote: text })} />
       <MarzSection visitId={visitId} d={d} set={set} amraz={state.amraz} rerun={() => state.save(false)} />
       <div className="border-t border-border/50" />
       <EngineCard state={state} visitId={visitId} />
