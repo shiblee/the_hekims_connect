@@ -995,12 +995,11 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
             </button>
           ))}
         </div>
-        <div className="relative">
-          <Search className="absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input id="ghizaSearch" value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
-            onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
-            placeholder={td("search_foods", { count: foods.length })} className="h-11 ps-10 bg-background/60" aria-label={td("search_foods_aria")} aria-expanded={open} />
-        </div>
+        {/* Label follows the tab and floats onto the border when the box is focused or filled */}
+        <FloatingField id="ghizaSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
+          label={tab === "rec" ? td("diet_search_rec", { count: suggested("rec").length }) : tab === "avoid" ? td("diet_search_avoid", { count: suggested("avoid").length }) : td("diet_search_all", { count: foods.length })}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
+          onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
         {open && (
           <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[380px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
             <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{tab === "all" ? td("diet_general_hint") : td("diet_suggested_for")}</p>
