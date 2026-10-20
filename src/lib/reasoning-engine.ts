@@ -47,7 +47,7 @@ export function deidentify(text: string | null | undefined): string | null {
 
 export function buildReasoningInput(
   ctx: CaseContext, diff: DifferentialResult, engine: Suggestion | null,
-  dossier: { mizajAsli: string | null; suMizajType: string | null; suMizajQuality: string | null; suMizajGrade: number | null; organs: string[]; sabab: string[]; diagnoses: { label: string; role: string; certainty: string | null }[] } | null,
+  dossier: { mizajAsli: string | null; suMizajType: string | null; suMizajQuality: string | null; suMizajGrade: number | null; organs: string[]; sabab: string[]; diagnoses: { label: string; role: string; certainty: string | null }[]; treatmentResponse?: string | null; treatmentResponseNote?: string | null } | null,
   catalogue: CatalogueEntry[], organList: string[],
 ) {
   const d = deidentify;
@@ -77,7 +77,7 @@ export function buildReasoningInput(
       organs: engine?.organs.map((o) => o.label) ?? [],
       differentials: diff.differentials.map((x) => ({ key: x.key, disease: x.label, certainty: x.certainty, for: x.for, against: x.against, notChecked: x.missing })),
     },
-    hakimSoFar: dossier ? { mizajAsli: dossier.mizajAsli, suMizaj: [dossier.suMizajType, dossier.suMizajQuality, dossier.suMizajGrade ? `Darja ${dossier.suMizajGrade}` : null].filter(Boolean).join(" ") || null, organs: dossier.organs, diagnoses: dossier.diagnoses, sabab: dossier.sabab } : null,
+    hakimSoFar: dossier ? { mizajAsli: dossier.mizajAsli, suMizaj: [dossier.suMizajType, dossier.suMizajQuality, dossier.suMizajGrade ? `Darja ${dossier.suMizajGrade}` : null].filter(Boolean).join(" ") || null, organs: dossier.organs, diagnoses: dossier.diagnoses, sabab: dossier.sabab, responseToPreviousPlan: dossier.treatmentResponse ? [dossier.treatmentResponse, deidentify(dossier.treatmentResponseNote)].filter(Boolean).join(" — ") : null } : null,
     catalogue: catalogue.map((c) => ({ key: c.key, disease: c.label, group: c.category, organs: c.organs, typicalMizaj: c.mizaj })),
     allowedTemperaments: ENGINE_MIZAJ,
     allowedOrgans: organList,

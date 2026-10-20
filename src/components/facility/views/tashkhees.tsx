@@ -21,7 +21,7 @@ import { FloatingTextarea } from "@/components/shared/floating-field";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TashkheesDossierPanel, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
-import { CaseReadinessCard, CaseSummaryPanel, useCaseContext } from "@/components/facility/views/case-context";
+import { CaseReadinessCard, CaseSummaryPanel, FollowUpCard, useCaseContext } from "@/components/facility/views/case-context";
 import { useAppStore } from "@/lib/store";
 import { Undo2 } from "lucide-react";
 
@@ -69,6 +69,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   // Senior sign-off: the owner and staff with "diagnosis.signoff" finalise; others submit for sign-off.
   const canSignOff = useAppStore((s) => !s.staff || s.permissions === null || s.permissions.includes("diagnosis.signoff"));
   const tsf = useTranslations("clinic.safety");
+  const tcase = useTranslations("clinic.case");
   const [backOpen, setBackOpen] = useState(false);
   const [backNote, setBackNote] = useState("");
   const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
@@ -92,6 +93,8 @@ function TashkheesStage({ patientId }: { patientId: string }) {
 
   const finalized = t.dossier.status === "finalized";
   const submitted = t.dossier.status === "submitted";
+  const lastHash = t.dossier.versions?.[0]?.contextHash;
+  const changedSince = !!lastHash && !!cc.ctx && cc.ctx.fingerprint !== lastHash;
   const saveDraft = async () => {
     const [ok, note] = await Promise.all([t.save(false), saveNote()]);
     cc.reload();
@@ -122,7 +125,17 @@ function TashkheesStage({ patientId }: { patientId: string }) {
 
       <div className="mb-6 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 min-w-0 space-y-5">
+          {latestVisit && finalized && changedSince && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{tcase("changed_title", { n: t.dossier.versions![0].version })}</p>
+                <p className="text-[13px] text-amber-800/80 dark:text-amber-300/80">{tcase("changed_hint")}</p>
+              </div>
+              {canSignOff && <Button size="sm" variant="outline" onClick={() => finalize()}>{tcase("review_amend")}</Button>}
+            </div>
+          )}
           {latestVisit && <CaseSummaryPanel state={cc} />}
+          {latestVisit && <FollowUpCard state={cc} response={t.dossier.treatmentResponse ?? null} note={t.dossier.treatmentResponseNote ?? null} onChange={(p) => t.set(p)} />}
           {latestVisit
             ? <div data-tour="dossier.panel"><TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} /></div>
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{ta("no_visit")}</Card>}

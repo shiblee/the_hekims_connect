@@ -8,6 +8,7 @@
 //   • Nothing unrecorded is treated as absent: readiness lists what is missing.
 //   • Texts are keys + values; the screen translates them.
 
+import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { conditionsIn, conditionLabel } from "@/lib/ghiza-conditions";
 import type { ReportExtraction } from "@/lib/reports";
@@ -50,6 +51,19 @@ export interface CaseContext {
   mizajAssessment: { result: string; date: string; pulse: string | null } | null;
   readiness: ReadinessItem[];
   alerts: CaseAlert[];
+  /** Fingerprint of the clinical findings — stored with each finalisation so later changes are noticed. */
+  fingerprint: string;
+}
+
+/** Fingerprint of what a diagnosis rests on (not timestamps or the Hakim's own decisions). */
+export function caseFingerprint(c: Omit<CaseContext, "fingerprint">): string {
+  const facts = {
+    p: [c.patient.pregnancyStatus, c.patient.historyReliability], cx: c.presenting.complaints.map((x) => [x.label, x.severity, x.duration, x.pattern, x.character, x.aggravating, x.relieving, x.associated]),
+    s: c.presenting.symptoms, r: c.presenting.regions, o: c.presenting.onsetPatterns, v: c.vitals && [c.vitals.bp, c.vitals.pulse, c.vitals.spo2, c.vitals.tempF],
+    w: c.warning && [c.warning.outcome, c.warning.signs], l: c.lifestyle.items, e: c.examination.sections,
+    h: [c.history.allergies, c.history.medicines, c.history.conditionKeys], rp: c.reports.map((x) => [x.id, x.flag, x.reviewed]),
+  };
+  return createHash("sha1").update(JSON.stringify(facts)).digest("hex").slice(0, 16);
 }
 
 /** Vital-sign flags with a level — the same cut-offs the rest of the app uses for "fever", "low oxygen" etc. */
@@ -206,6 +220,7 @@ export async function buildCaseContext(visitId: string, facilityId: string): Pro
     mizajAssessment: ma ? { result: ma.result, date: ma.createdAt.toISOString(), pulse: ma.pulse } : null,
     readiness: [],
     alerts: [],
+    fingerprint: "",
   };
 
   // ---- readiness: what's done, partly done or missing — never assumed
@@ -245,5 +260,6 @@ export async function buildCaseContext(visitId: string, facilityId: string): Pro
   if (visit.historyReliability && visit.historyReliability !== "reliable") A("history_unreliable", "caution", { level: visit.historyReliability });
   if (visit.pregnancyStatus === "pregnant" || visit.pregnancyStatus === "breastfeeding") A(`is_${visit.pregnancyStatus}`, "high");
   if (ctx.history.allergies.length) A("allergies", "caution", { items: ctx.history.allergies.join(", ") }, { stage: 1, href: href.reg });
+  ctx.fingerprint = caseFingerprint(ctx);
   return ctx;
 }

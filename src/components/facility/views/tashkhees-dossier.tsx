@@ -38,7 +38,8 @@ interface Dossier {
   urgentDirectives: string | null; priority: string; handoverNote: string | null;
   diagnoses: DossierDiagnosis[]; sabab: string[]; icdCode: string | null; icdLabel: string | null;
   revision?: number;
-  versions?: { version: number; kind: "finalized" | "amended"; reason: string | null; byName: string | null; createdAt: string }[];
+  versions?: { version: number; kind: "finalized" | "amended"; reason: string | null; byName: string | null; createdAt: string; contextHash?: string | null }[];
+  treatmentResponse?: string | null; treatmentResponseNote?: string | null;
 }
 const EMPTY: Dossier = {
   status: "draft", finalizedAt: null, finalizedByName: null, mizajAsli: null, suMizajType: null, suMizajQuality: null, suMizajGrade: null,

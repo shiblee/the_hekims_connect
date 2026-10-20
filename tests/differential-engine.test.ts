@@ -16,7 +16,7 @@ const ctx = (over: { complaints?: { label: string; key: string; aggravating?: st
   warning: null, lifestyle: { answered: 0, sections: 0, totalSections: 6, items: [] },
   examination: { answered: (over.exam || []).length, sections: (over.exam || []).map((s) => ({ key: s.key, label: s.key, answers: s.answers })) },
   history: { conditions: [], conditionKeys: [], medicalHistory: null, surgicalHistory: null, familyHistory: null, allergies: [], allergiesRecorded: true, medicines: [], medicinesRecorded: true },
-  reports: [], previousVisits: [], mizajAssessment: null, readiness: [], alerts: [],
+  reports: [], previousVisits: [], mizajAssessment: null, readiness: [], alerts: [], fingerprint: "",
 });
 const entry = (o: Partial<CatalogueEntry> & { key: string }): CatalogueEntry => ({
   id: o.key, label: o.key, localName: null, category: null, icd: null, organs: [], mizaj: [], suMizajType: null, sabab: [],

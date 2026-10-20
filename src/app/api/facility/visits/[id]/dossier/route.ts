@@ -6,6 +6,7 @@ import { getAuthUser } from "@/lib/api-auth";
 import { logClinicEvent } from "@/lib/clinic-audit";
 import { loadStaffAccess } from "@/lib/staff-permissions-server";
 import { computeSafetyReview } from "@/lib/safety-review";
+import { buildCaseContext } from "@/lib/case-context";
 
 const parse = <T,>(s: string | null | undefined, fallback: T): T => { try { return s ? JSON.parse(s) : fallback; } catch { return fallback; } };
 const str = (v: unknown, max = 4000) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
@@ -36,12 +37,13 @@ function serialize(d: NonNullable<Awaited<ReturnType<typeof load>>>) {
     prognosis: d.prognosis, followUpDate: d.followUpDate, followUpNote: d.followUpNote,
     urgentDirectives: d.urgentDirectives, priority: d.priority, handoverNote: d.handoverNote,
     revision: d.revision, submittedAt: d.submittedAt, submittedByName: d.submittedByName, returnNote: d.returnNote, prescriptionId: d.prescriptionId,
-    versions: d.versions.map((v) => ({ version: v.version, kind: v.kind, reason: v.reason, byName: v.byName, createdAt: v.createdAt })),
+    versions: d.versions.map((v) => ({ version: v.version, kind: v.kind, reason: v.reason, byName: v.byName, createdAt: v.createdAt, contextHash: v.contextHash })),
+    treatmentResponse: d.treatmentResponse, treatmentResponseNote: d.treatmentResponseNote,
   };
 }
 const load = (visitId: string) => db.tashkheesDossier.findUnique({
   where: { visitId },
-  include: { prescriptions: { orderBy: { sortOrder: "asc" } }, diagnoses: { orderBy: { sortOrder: "asc" } }, versions: { orderBy: { version: "desc" }, select: { version: true, kind: true, reason: true, byName: true, createdAt: true } } },
+  include: { prescriptions: { orderBy: { sortOrder: "asc" } }, diagnoses: { orderBy: { sortOrder: "asc" } }, versions: { orderBy: { version: "desc" }, select: { version: true, kind: true, reason: true, byName: true, createdAt: true, contextHash: true } } },
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -70,6 +72,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     suMizajQuality: str(b.suMizajQuality, 120), suMizajGrade: Number.isInteger(grade) && grade >= 1 && grade <= 4 ? grade : null,
     organs: JSON.stringify(strArr(b.organs)), diagnosisNote: str(b.diagnosisNote),
     sabab: JSON.stringify(strArr(b.sabab).slice(0, 20)), icdCode: str(b.icdCode, 20), icdLabel: str(b.icdLabel, 200),
+    treatmentResponse: ["improved", "partly", "unchanged", "worse", "new_problem"].includes(b.treatmentResponse) ? b.treatmentResponse : null,
+    treatmentResponseNote: str(b.treatmentResponseNote, 1000),
     usool: JSON.stringify(strArr(b.usool)), usoolNote: str(b.usoolNote),
     ghizaRecommended: JSON.stringify(strArr(b.ghizaRecommended)), ghizaAvoid: JSON.stringify(strArr(b.ghizaAvoid)), ghizaNote: str(b.ghizaNote),
     tadbeer: JSON.stringify((Array.isArray(b.tadbeer) ? b.tadbeer : [])
@@ -168,6 +172,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await db.dossierVersion.create({
       data: {
         dossierId: saved.id, version, kind: amending ? "amended" : "finalized", reason: amending ? amendReason : null,
+        contextHash: (await buildCaseContext(id, actor!.facilityId))?.fingerprint ?? null,
         snapshot: JSON.stringify(serialize(d)), byName: actor!.name, byStaffId: actor!.type === "staff" ? actor!.id : null,
       },
     });

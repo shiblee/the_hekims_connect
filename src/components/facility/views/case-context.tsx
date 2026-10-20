@@ -308,3 +308,36 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
     </Card>
   );
 }
+
+/** Follow-up visits: the last visit's Tashkhees beside today's, and how the patient responded to that plan. */
+export function FollowUpCard({ state, response, note, onChange }: { state: CaseContextState; response: string | null; note: string | null; onChange: (p: { treatmentResponse?: string | null; treatmentResponseNote?: string | null }) => void }) {
+  const t = useTranslations("clinic.case");
+  const dl = useDateLocale();
+  const ctx = state.ctx;
+  if (!ctx || !ctx.visit.followUp) return null;
+  const last = ctx.previousVisits[0];
+  const dx = last.dossier;
+  const RESP = ["improved", "partly", "unchanged", "worse", "new_problem"] as const;
+  return (
+    <Card className="p-5 gap-3 border-border/50 bg-card/60">
+      <SectionHeading icon={ClipboardList} title={t("fu_title")} />
+      <div className="rounded-lg border border-border/50 bg-background/40 p-3 text-[13px]">
+        <p className="font-medium">{t("fu_last", { date: new Date(last.date).toLocaleDateString(dl, { dateStyle: "medium" }) })} {last.complaints.length > 0 && <span className="text-muted-foreground font-normal">· {last.complaints.join(", ")}</span>}</p>
+        {dx ? <p className="text-muted-foreground mt-0.5">{[dx.diagnoses.join(", "), dx.suMizaj, dx.organs.join(", "), dx.prognosis].filter(Boolean).join(" · ") || dx.statement}</p> : <p className="text-muted-foreground mt-0.5">{t("fu_none")}</p>}
+      </div>
+      <div>
+        <p className="text-sm font-medium mb-1.5">{t("fu_response")}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {RESP.map((r) => (
+            <button key={r} type="button" onClick={() => onChange({ treatmentResponse: response === r ? null : r })} aria-pressed={response === r}
+              className={cn("rounded-full border px-3 py-1 text-xs transition-colors", response === r ? (r === "worse" || r === "new_problem" ? "border-destructive/50 bg-destructive/10 text-destructive" : r === "unchanged" ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300") : "border-border/60 text-muted-foreground hover:text-foreground")}>
+              {t(`resp_${r}`)}
+            </button>
+          ))}
+        </div>
+        <input id="treatmentResponseNote" value={note ?? ""} onChange={(e) => onChange({ treatmentResponseNote: e.target.value || null })} placeholder={t("fu_note")} maxLength={1000}
+          className="mt-2 h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm" />
+      </div>
+    </Card>
+  );
+}

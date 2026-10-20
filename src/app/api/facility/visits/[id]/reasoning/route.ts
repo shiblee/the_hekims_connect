@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!ctx) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
   const [catalogue, bank, dossierRow, engine, organs] = await Promise.all([
     loadCatalogue(), loadDalailQuestions(),
-    db.tashkheesDossier.findUnique({ where: { visitId: id }, select: { mizajAsli: true, suMizajType: true, suMizajQuality: true, suMizajGrade: true, organs: true, sabab: true, diagnoses: { select: { label: true, role: true, certainty: true } } } }),
+    db.tashkheesDossier.findUnique({ where: { visitId: id }, select: { mizajAsli: true, suMizajType: true, suMizajQuality: true, suMizajGrade: true, organs: true, sabab: true, treatmentResponse: true, treatmentResponseNote: true, diagnoses: { select: { label: true, role: true, certainty: true } } } }),
     runTashkheesEngine(id, actor.facilityId).catch(() => null),
     db.tashkheesOption.findMany({ where: { list: "organ", active: true }, select: { label: true } }),
   ]);

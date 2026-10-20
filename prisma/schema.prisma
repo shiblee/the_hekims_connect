@@ -714,6 +714,9 @@ model TashkheesDossier {
   returnNote       String?
   // The prescription created from the medicine lines when the dossier is finalised.
   prescriptionId   String?
+  // Follow-up visits: how the patient responded to the previous plan.
+  treatmentResponse     String? // "improved" | "partly" | "unchanged" | "worse" | "new_problem"
+  treatmentResponseNote String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -802,6 +805,7 @@ model DossierVersion {
   kind      String // "finalized" | "amended"
   reason    String? // required for amendments
   snapshot  String // JSON of the dossier as finalised
+  contextHash String? // fingerprint of the case findings it was based on — later changes are flagged
   byName    String?
   byStaffId String?
   createdAt DateTime @default(now())
