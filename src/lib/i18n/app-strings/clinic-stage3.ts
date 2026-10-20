@@ -123,7 +123,7 @@ export const CLINIC_ASBAB = defineStrings("clinic.asbab", {
   suggested: ["Suggested · {hint}", "सुझाव · {hint}", "تجویز · {hint}", "مقترح · {hint}", "پیشنهاد · {hint}"],
   choose_one: ["Choose an answer", "एक जवाब चुनें", "ایک جواب منتخب کریں", "اختر إجابة", "یک پاسخ انتخاب کنید"],
   choose_many: ["Choose one or more answers", "एक या अधिक जवाब चुनें", "ایک یا زیادہ جواب منتخب کریں", "اختر إجابة أو أكثر", "یک یا چند پاسخ انتخاب کنید"],
-  suggested_pick: ["Suggested: {option} — tap to choose", "सुझाव: {option} — चुनने के लिए टैप करें", "تجویز: {option} — منتخب کرنے کے لیے ٹیپ کریں", "مقترح: {option} — انقر للاختيار", "پیشنهاد: {option} — برای انتخاب بزنید"],
+  suggested_pick: ["Suggested: {option}", "सुझाव: {option}", "تجویز: {option}", "مقترح: {option}", "پیشنهاد: {option}"],
   answer_number: ["Answer (number)", "जवाब (संख्या)", "جواب (عدد)", "الإجابة (رقم)", "پاسخ (عدد)"],
   answer: ["Answer", "जवाब", "جواب", "الإجابة", "پاسخ"],
   short_hawa: ["Air", "हवा", "ہوا", "الهواء", "هوا"],

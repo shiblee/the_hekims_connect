@@ -182,12 +182,12 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
 
   return (
     <Wrap bare={bare} className={cn(bare ? "" : "p-4 border-border/50 bg-card/60 gap-3", !bare && (answered ? "border-s-2 border-s-emerald-500/60" : q.required && "border-s-2 border-s-amber-500/60"))}>
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         <span className={cn(
           "h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold",
           answered ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground",
         )} aria-label={`${t("question_n", { n: index + 1, count })}${answered ? t("answered_suffix") : ""}`}>{index + 1}</span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[12rem] flex-1">
           {pillarKey && (
             <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
               <PillarIcon pillarKey={pillarKey} className="h-3.5 w-3.5" /> {pillarLabel}
@@ -199,36 +199,39 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
           </p>
           {q.helpText && <p className="text-[13px] text-muted-foreground mt-0.5">{q.helpText}</p>}
         </div>
-        {q.required && !answered && <Badge variant="outline" className="shrink-0 text-[11px] font-normal border-amber-500/40 text-amber-700 dark:text-amber-400">{t("required")}</Badge>}
+        {q.required && !answered && (inline || !choice) && <Badge variant="outline" className="shrink-0 text-[11px] font-normal border-amber-500/40 text-amber-700 dark:text-amber-400">{t("required")}</Badge>}
+        {choice && !inline && (
+          <div className="w-full sm:w-[22rem] sm:shrink-0">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <button id={`asbab-${q.id}`} type="button" aria-expanded={open} className={cn(
+                "flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 py-2 text-start transition-colors",
+                open ? "border-primary" : "border-input hover:border-primary/40",
+              )}>
+                <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                  {selected.length > 0 ? selected.map((l) => (
+                    <span key={l} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-0.5 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                      <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500 text-[11px] font-semibold text-white">{letterOf(l)}</span>{l}
+                    </span>
+                  )) : firstHint ? (
+                    <span className="flex min-w-0 items-center gap-1 text-sm text-primary">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{t("suggested_pick", { option: `${letterOf(firstHint.label)} · ${firstHint.label}` })}</span>
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{q.type === "single_select" ? t("choose_one") : t("choose_many")}</span>
+                  )}
+                </span>
+                <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="max-h-[60vh] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto p-3">{options}</PopoverContent>
+          </Popover>
+          </div>
+        )}
       </div>
 
-      {choice ? (inline ? options : (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <button id={`asbab-${q.id}`} type="button" aria-expanded={open} className={cn(
-              "flex min-h-12 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 py-2 text-start transition-colors",
-              open ? "border-primary" : "border-input hover:border-primary/40",
-            )}>
-              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-                {selected.length > 0 ? selected.map((l) => (
-                  <span key={l} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-0.5 text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                    <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500 text-[11px] font-semibold text-white">{letterOf(l)}</span>{l}
-                  </span>
-                )) : firstHint ? (
-                  <span className="flex min-w-0 items-center gap-1 text-sm text-primary">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{t("suggested_pick", { option: `${letterOf(firstHint.label)} · ${firstHint.label}` })}</span>
-                  </span>
-                ) : (
-                  <span className="text-sm text-muted-foreground">{q.type === "single_select" ? t("choose_one") : t("choose_many")}</span>
-                )}
-              </span>
-              <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="max-h-[60vh] w-[var(--radix-popover-trigger-width)] overflow-y-auto p-3">{options}</PopoverContent>
-        </Popover>
-      )) : q.type === "numeric" ? (
+      {choice ? (inline ? options : null) : q.type === "numeric" ? (
         <div className="max-w-xs">
           <FloatingField id={`asbab-${q.id}`} label={t("answer_number")} type="number" min={0} step="any" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
         </div>
