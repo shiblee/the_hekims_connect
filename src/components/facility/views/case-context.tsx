@@ -229,17 +229,6 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
               {ctx.presenting.regions.length > 0 && <Chips items={ctx.presenting.regions} />}
               {ctx.presenting.onsetPatterns.length > 0 && <p className="mt-1.5 text-[13px]"><span className="text-muted-foreground">{t("s_onset")}:</span> {ctx.presenting.onsetPatterns.map(vl).join(", ")}{ctx.presenting.duration ? ` · ${ctx.presenting.duration}` : ""}</p>}
             </Block>
-            <Block title={t("s_vitals")} kind="measured" href={s2} stage={2} empty={!ctx.vitals}>
-              {ctx.vitals && (
-                <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] tabular-nums">
-                  {ctx.vitals.bp && <span>{t("v_bp", { v: ctx.vitals.bp })}</span>}
-                  {ctx.vitals.pulse != null && <span>{t("v_pulse", { v: ctx.vitals.pulse })}</span>}
-                  {ctx.vitals.spo2 != null && <span>{t("v_spo2", { v: ctx.vitals.spo2 })}</span>}
-                  {ctx.vitals.tempF != null && <span>{t("v_temp", { v: ctx.vitals.tempF })}</span>}
-                  {ctx.vitals.bmi != null && <span>{t("v_bmi", { v: ctx.vitals.bmi })}</span>}
-                </p>
-              )}
-            </Block>
             <Block title={t("s_warning")} kind="examined" href={s2} stage={2}>
               <p className={cn("text-[13px]", w && w.outcome !== "cleared" && "text-destructive font-medium")}>
                 {!w ? t("w_none") : w.outcome === "cleared" ? t("w_cleared") : w.outcome === "referred" ? t("w_referred", { to: w.referredTo || "—" }) : w.outcome === "continued_ama" ? t("w_ama") : t("w_pending")}
