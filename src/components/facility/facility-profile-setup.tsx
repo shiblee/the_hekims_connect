@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { LogoutConfirm } from "@/components/shared/logout-confirm";
 import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -222,6 +223,7 @@ export function FacilityProfileSetup() {
   const facility = useAppStore((s) => s.facility);
   const setFacility = useAppStore((s) => s.setFacility);
   const logout = useAppStore((s) => s.logout);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const onLogout = () => { logout(); router.push("/"); };
   const t = useTranslations("clinic.setup");
   const tp = useTranslations("clinic.profile");
@@ -431,7 +433,7 @@ export function FacilityProfileSetup() {
         <header className="px-4 lg:px-0 py-5">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <BrandLogo size={32} />
-            <Button variant="ghost" size="sm" onClick={onLogout} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={() => setLogoutOpen(true)} className="text-muted-foreground hover:text-foreground">
               <LogOut className="h-4 w-4 me-1.5" /> {t("logout")}
             </Button>
           </div>
@@ -931,6 +933,7 @@ export function FacilityProfileSetup() {
           {t("rights", { year: new Date().getFullYear() })}
         </footer>
       </div>
+      <LogoutConfirm open={logoutOpen} onOpenChange={setLogoutOpen} onConfirm={onLogout} who={facility.facilityName} />
     </div>
   );
 }

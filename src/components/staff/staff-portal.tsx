@@ -1,6 +1,8 @@
 "use client";
 
 import { firstAllowedPage } from "@/lib/staff-permissions";
+import { LogoutConfirm } from "@/components/shared/logout-confirm";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LanguageSelector } from "@/components/shared/language-selector";
@@ -31,6 +33,7 @@ export function StaffPortal() {
   const staff = useAppStore((s) => s.staff);
   const logout = useAppStore((s) => s.logout);
   const permissions = useAppStore((s) => s.permissions);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const onLogout = () => { logout(); router.push("/"); };
   const t = useTranslations("clinic.staff_portal");
   const tc = useTranslations("common");
@@ -49,7 +52,7 @@ export function StaffPortal() {
             <Button size="sm" onClick={() => router.push(firstAllowedPage(permissions ?? []))}>{t("open_clinic")}</Button>
           )}
           <LanguageSelector compact />
-          <Button variant="outline" size="sm" onClick={onLogout}>
+          <Button variant="outline" size="sm" onClick={() => setLogoutOpen(true)}>
             <LogOut className="h-4 w-4 rtl:rotate-180" /> {tc("logout")}
           </Button>
           </div>
@@ -134,6 +137,7 @@ export function StaffPortal() {
           {staff.phone && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" /> {staff.phone}</p>}
         </Card>
       </main>
+      <LogoutConfirm open={logoutOpen} onOpenChange={setLogoutOpen} onConfirm={onLogout} />
     </div>
   );
 }

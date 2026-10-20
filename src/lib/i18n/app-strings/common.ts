@@ -60,3 +60,13 @@ export const COMMON = defineStrings("common", {
   no_access_title: ["You don't have access to this page", "आपके पास इस पेज की पहुँच नहीं है", "آپ کو اس صفحے تک رسائی نہیں ہے", "ليس لديك صلاحية الوصول إلى هذه الصفحة", "شما به این صفحه دسترسی ندارید"],
   no_access_hint: ["Ask the clinic owner to change your permissions (Facility Profile → Permissions).", "क्लिनिक मालिक से अपनी अनुमतियाँ बदलने को कहें (Facility Profile → Permissions)।", "کلینک کے مالک سے اپنی اجازتیں بدلنے کو کہیں (Facility Profile → Permissions)۔", "اطلب من مالك العيادة تغيير صلاحياتك (Facility Profile → Permissions).", "از مالک درمانگاه بخواهید مجوزهای شما را تغییر دهد (Facility Profile → Permissions)."],
 });
+
+// Log-out confirmation (every account type; English in the admin panel).
+export const LOGOUT = defineStrings("common.logout_confirm", {
+  title: ["Log out?", "लॉग आउट करें?", "لاگ آؤٹ کریں؟", "تسجيل الخروج؟", "خروج از حساب؟"],
+  body: ["You'll be signed out on this device and will need to sign in again to continue. Anything not saved on this page will be lost.", "आप इस डिवाइस पर साइन आउट हो जाएँगे और जारी रखने के लिए फिर से साइन इन करना होगा। इस पेज पर जो सहेजा नहीं गया वह खो जाएगा।", "آپ اس ڈیوائس پر سائن آؤٹ ہو جائیں گے اور جاری رکھنے کے لیے دوبارہ سائن ان کرنا ہو گا۔ اس صفحے پر جو محفوظ نہیں ہوا وہ ضائع ہو جائے گا۔", "سيتم تسجيل خروجك على هذا الجهاز وستحتاج إلى تسجيل الدخول مجددًا للمتابعة. سيضيع كل ما لم يُحفظ في هذه الصفحة.", "روی این دستگاه از حساب خارج می‌شوید و برای ادامه باید دوباره وارد شوید. هر چیزی که در این صفحه ذخیره نشده از دست می‌رود."],
+  body_who: ["You'll be signed out of {who} on this device and will need to sign in again to continue. Anything not saved on this page will be lost.", "आप इस डिवाइस पर {who} से साइन आउट हो जाएँगे और जारी रखने के लिए फिर से साइन इन करना होगा। इस पेज पर जो सहेजा नहीं गया वह खो जाएगा।", "آپ اس ڈیوائس پر {who} سے سائن آؤٹ ہو جائیں گے اور جاری رکھنے کے لیے دوبارہ سائن ان کرنا ہو گا۔ اس صفحے پر جو محفوظ نہیں ہوا وہ ضائع ہو جائے گا۔", "سيتم تسجيل خروجك من {who} على هذا الجهاز وستحتاج إلى تسجيل الدخول مجددًا للمتابعة. سيضيع كل ما لم يُحفظ في هذه الصفحة.", "روی این دستگاه از {who} خارج می‌شوید و برای ادامه باید دوباره وارد شوید. هر چیزی که در این صفحه ذخیره نشده از دست می‌رود."],
+  stay: ["Stay signed in", "साइन इन रहें", "سائن ان رہیں", "البقاء مسجّلًا", "در حساب بمانم"],
+  confirm: ["Log out", "लॉग आउट", "لاگ آؤٹ", "تسجيل الخروج", "خروج"],
+  busy: ["Logging out…", "लॉग आउट हो रहा है…", "لاگ آؤٹ ہو رہا ہے…", "جارٍ تسجيل الخروج…", "در حال خروج…"],
+});

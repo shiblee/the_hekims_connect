@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LogoutConfirm } from "@/components/shared/logout-confirm";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LanguageSelector } from "@/components/shared/language-selector";
@@ -46,6 +47,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   const go = (tab: string) => { router.push(`/patient/${tab}`); setMobileNav(false); };
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const onLogout = () => { logout(); router.push("/"); };
 
   if (!patient) return null;
@@ -101,11 +103,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-muted-foreground truncate">{t("patient")}</p>
             </div>
           </div>
-          <button onClick={onLogout} className="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
+          <button onClick={() => setLogoutOpen(true)} className="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
             <LogOut className="h-4 w-4 rtl:rotate-180" /> {tc("logout")}
           </button>
         </div>
       </aside>
+      <LogoutConfirm open={logoutOpen} onOpenChange={setLogoutOpen} onConfirm={onLogout} />
 
       {mobileNav && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setMobileNav(false)} />}
 

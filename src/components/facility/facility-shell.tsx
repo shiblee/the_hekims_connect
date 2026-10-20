@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, Suspense, useContext, useEffect, useState } from "react";
+import { LogoutConfirm } from "@/components/shared/logout-confirm";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAppStore } from "@/lib/store";
@@ -76,6 +77,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
 
   const go = (tab: string) => { router.push(`/facility/${tab}`); setMobileNav(false); };
   const pageAllowed = can(pathname);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const onLogout = () => { logout(); router.push("/"); };
 
   if (!facility) return null;
@@ -149,11 +151,12 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-muted-foreground truncate">{asStaff ? `${staffRole ?? t("staff")} · ${facility.facilityName}` : facility.specialization}</p>
             </div>
           </button>
-          <button onClick={onLogout} className="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
+          <button onClick={() => setLogoutOpen(true)} className="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
             <LogOut className="h-4 w-4 rtl:rotate-180" /> {tc("logout")}
           </button>
         </div>
       </aside>
+      <LogoutConfirm open={logoutOpen} onOpenChange={setLogoutOpen} onConfirm={onLogout} who={facility.facilityName} />
 
       {mobileNav && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setMobileNav(false)} />}
 

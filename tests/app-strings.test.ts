@@ -33,6 +33,12 @@ describe("app strings", () => {
     assert.deepEqual(problems, []);
   });
 
+  it("never uses a text's key as the start of another key (that would crash the message tree)", () => {
+    const keys = new Set(APP_STRINGS.map((s) => s.key));
+    const clashes = [...keys].filter((k) => { const parts = k.split("."); return parts.slice(0, -1).some((_, i) => keys.has(parts.slice(0, i + 1).join("."))); });
+    assert.deepEqual(clashes, []);
+  });
+
   it("registers every text set defined in the app-strings folder", async () => {
     const fs = await import("node:fs");
     const dir = "src/lib/i18n/app-strings";

@@ -1,6 +1,7 @@
 "use client";
 
 import { GuidanceProvider } from "@/components/guidance/guidance-provider";
+import { LogoutConfirm } from "@/components/shared/logout-confirm";
 import { HelpButton, HelpPanel } from "@/components/guidance/help-panel";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -53,6 +54,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   const admin = useAdminStore((s) => s.admin);
   const logout = useAdminStore((s) => s.logout);
   const [checked, setChecked] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   useEffect(() => {
     restoreAdminSession().then((a) => {
@@ -140,7 +142,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
                     <Link href="/admin/history/clinics"><ListChecks className="h-4 w-4" /> Clinic Activity (all clinics)</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={doLogout}>
+                  <DropdownMenuItem variant="destructive" onSelect={() => setTimeout(() => setLogoutOpen(true), 0)}>
                     <LogOut className="h-4 w-4" /> Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -174,6 +176,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
         </div>
       </header>
       <main className="flex-1">{children}</main>
+      <LogoutConfirm open={logoutOpen} onOpenChange={setLogoutOpen} onConfirm={doLogout} who="the admin panel" />
     </div>
     </GuidanceProvider>
   );
