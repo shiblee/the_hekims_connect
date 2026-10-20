@@ -1062,8 +1062,8 @@ interface CdsData {
  * "Clinical Decision Support — Medicines & Supplements" (doctors only).
  * Candidates from the clinic's own database that may be worth evaluating,
  * after safety checks — each with why it was found, its evidence and
- * verification status and any precautions. Accepting is NOT prescribing:
- * adding to the prescription is a separate, deliberate step.
+ * verification status and any precautions. They sit in a search box with a
+ * drop-down (like the diet); Add appends the medicine to Ilaj-bil-Dawa below.
  */
 function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, herbs } = state;
@@ -1072,6 +1072,19 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
   const [running, setRunning] = useState(false);
   const [rejecting, setRejecting] = useState<{ tagId: string; reason: string } | null>(null);
   const [failed, setFailed] = useState(false);
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      const t = e.target as Element;
+      // Clicks inside the medicine pop-up (a dialog outside this box) keep the list open.
+      if (boxRef.current && !boxRef.current.contains(t) && !t.closest?.("[role=dialog]")) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
   const td = useTranslations("clinic.dossier");
   const tc = useTranslations("common");
   const vl = useValueLabel();
@@ -1100,49 +1113,47 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
     act(c, "added_to_prescription");
   };
 
-  const renderCard = (c: CdsCand) => {
+  const SafetyLink = ({ c }: { c: CdsCand }) => (c.safety.length === 0
+    ? <span className="ms-1 inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>
+    : <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
+        className={cn("ms-1.5 inline-flex items-center gap-1 align-middle text-xs font-medium", c.safety.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
+      </MedicineInfoButton>);
+
+  /** One suggested medicine as a drop-down row: Add puts it in Ilaj-bil-Dawa. */
+  const renderRow = (c: CdsCand) => {
     const dec = last(c.tagId);
     const inRx = d.prescriptions.some((p) => p.tagId === c.tagId);
+    const rejected = dec?.action === "rejected" && !inRx;
     return (
-      <div className={cn("rounded-xl border p-3 space-y-2", dec?.action === "rejected" ? "border-border/40 bg-muted/30 opacity-70" : dec?.action === "accepted" || inRx ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/50 bg-background/50")}>
-        <div className="space-y-1">
-          <div className="min-w-0">
-            <p className="text-[15px] font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}
-              {c.safety.length === 0
-                ? <span className="ms-1 inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>
-                : <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
-                    className={cn("ms-1.5 inline-flex items-center gap-1 align-middle text-[13px] font-medium", c.safety.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
-                  </MedicineInfoButton>}</p>
-            <p className="text-xs text-muted-foreground">{[c.herbType, c.mizaj].filter(Boolean).join(" · ")}</p>
+      <div key={c.tagId} className={cn("px-3 py-2.5 space-y-1", rejected && "opacity-60", inRx && "bg-emerald-500/5")}>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}<SafetyLink c={c} /></p>
+            <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+              {[c.herbType, c.mizaj].filter(Boolean).join(" · ")}
+              {c.evidence.traditional && <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{td("traditional")}</Badge>}
+              {c.evidence.clinical && <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">{td("clinical")}</Badge>}
+              <Badge variant="outline" className={cn("h-4 px-1.5 text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? td("verified") : td("unverified")}</Badge>
+            </p>
+            {c.reasons.length > 0 && <p className="text-xs text-emerald-700 dark:text-emerald-400">{c.reasons.join(" · ")}</p>}
           </div>
-          <div className="flex flex-wrap gap-1">
-            {c.evidence.traditional && <Badge variant="outline" className="text-[10px]">{td("traditional")}</Badge>}
-            {c.evidence.clinical && <Badge variant="outline" className="text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">{td("clinical")}</Badge>}
-            <Badge variant="outline" className={cn("text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? td("verified") : td("unverified")}</Badge>
+          <div className="flex shrink-0 items-center gap-1">
+            {inRx ? <span className="flex items-center gap-1 rounded-md border border-emerald-500/60 bg-emerald-600 px-3 py-1 text-xs font-medium text-white"><Check className="h-3 w-3" />{td("added")}</span>
+              : <button type="button" onClick={() => addToRx(c)} className="rounded-md border border-emerald-500/50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">{td("add")}</button>}
+            {!inRx && !rejected && rejecting?.tagId !== c.tagId && (
+              <button type="button" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })} className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10">{td("reject_more")}</button>
+            )}
+            {rejected && <span className="text-xs text-muted-foreground">{td("dec_rejected")}</span>}
           </div>
         </div>
-        <ul className="space-y-0.5">{c.reasons.map((x) => <li key={x} className="text-xs text-foreground/85">• {x}</li>)}</ul>
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-[11px] text-muted-foreground me-auto">{td("profile_pct", { pct: c.completeness })}{dec ? ` · ${dec.action === "added_to_prescription" ? td("dec_rx") : dec.action === "accepted" ? td("dec_accepted") : dec.action === "considered" ? td("dec_considered") : dec.action === "rejected" ? td("dec_rejected") : dec.action}` : ""}</span>
-          {rejecting?.tagId === c.tagId ? (
-            <span className="flex items-center gap-1.5">
-              <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder={td("reject_reason")} className="h-7 w-48 text-xs" />
-              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!rejecting.reason.trim()} onClick={() => { act(c, "rejected", rejecting.reason); setRejecting(null); }}>{td("reject")}</Button>
-              <button type="button" className="text-xs text-muted-foreground" onClick={() => setRejecting(null)}>{tc("cancel")}</button>
-            </span>
-          ) : (
-            <>
-              {!dec && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => act(c, "considered")}>{td("considered")}</Button>}
-              {dec?.action !== "accepted" && dec?.action !== "added_to_prescription" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => act(c, "accepted")}>{td("accept_eval")}</Button>}
-              {dec?.action !== "rejected" && <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })}>{td("reject_more")}</Button>}
-              {(dec?.action === "accepted" || dec?.action === "added_to_prescription") && (
-                inRx ? <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Check className="h-3.5 w-3.5" /> {td("in_rx")}</span>
-                  : <Button size="sm" className="h-7 text-xs" onClick={() => addToRx(c)}><Plus className="h-3 w-3" /> {td("add_rx")}</Button>
-              )}
-            </>
-          )}
-        </div>
+        {rejecting?.tagId === c.tagId && (
+          <span className="flex items-center justify-end gap-1.5">
+            <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder={td("reject_reason")} className="h-7 w-56 text-xs" />
+            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!rejecting.reason.trim()} onClick={() => { act(c, "rejected", rejecting.reason); setRejecting(null); }}>{td("reject")}</Button>
+            <button type="button" className="text-xs text-muted-foreground" onClick={() => setRejecting(null)}>{tc("cancel")}</button>
+          </span>
+        )}
       </div>
     );
   };
@@ -1173,13 +1184,31 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           </p>
           <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
             {([["unani", td("tab_unani", { count: counts.unani })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(k === "unani" || k === "supplements"); }}
                 className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? (k === "safety" ? "bg-destructive text-white" : k === "info" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>{l}</button>
             ))}
           </div>
 
-          {tab === "unani" && (r.unani.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.unani.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">{td("no_unani")}</p>)}
-          {tab === "supplements" && (r.supplements.length ? <div className="grid lg:grid-cols-2 gap-2.5">{r.supplements.map((c) => <div key={c.tagId}>{renderCard(c)}</div>)}</div> : <p className="text-sm text-muted-foreground">{td("no_supp")}</p>)}
+          {(tab === "unani" || tab === "supplements") && (() => {
+            const list = tab === "unani" ? r.unani : r.supplements;
+            const ql = q.trim().toLowerCase();
+            const rows = list.filter((c) => !ql || `${c.label} ${c.unaniName ?? ""} ${c.herbType ?? ""} ${c.reasons.join(" ")}`.toLowerCase().includes(ql));
+            return (
+              <div ref={boxRef} className="relative">
+                <FloatingField id="cdsSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
+                  label={tab === "unani" ? td("cds_search_unani", { count: list.length }) : td("cds_search_supp", { count: list.length })}
+                  onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onClick={() => setOpen(true)}
+                  onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
+                {open && (
+                  <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[420px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
+                    <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("cds_dropdown_hint")}</p>
+                    {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{list.length === 0 ? (tab === "unani" ? td("no_unani") : td("no_supp")) : td("cds_no_match", { q })}</p>}
+                    {rows.map(renderRow)}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {tab === "safety" && (
             <div className="space-y-3">
               <div>
