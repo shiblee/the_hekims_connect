@@ -10,6 +10,7 @@ import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerL
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
 import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
+import { MarzSection, type AmrazOption, type DossierDiagnosis } from "@/components/facility/views/marz-diagnosis";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,13 +34,14 @@ interface Dossier {
   tadbeer: TadbeerLine[]; prescriptions: PrescriptionLine[];
   prognosis: string | null; followUpDate: string | null; followUpNote: string | null;
   urgentDirectives: string | null; priority: string; handoverNote: string | null;
+  diagnoses: DossierDiagnosis[]; sabab: string[]; icdCode: string | null; icdLabel: string | null;
   revision?: number;
   versions?: { version: number; kind: "finalized" | "amended"; reason: string | null; byName: string | null; createdAt: string }[];
 }
 const EMPTY: Dossier = {
   status: "draft", finalizedAt: null, finalizedByName: null, mizajAsli: null, suMizajType: null, suMizajQuality: null, suMizajGrade: null,
   organs: [], diagnosisNote: null, usool: [], usoolNote: null, ghizaRecommended: [], ghizaAvoid: [], ghizaNote: null,
-  tadbeer: [], prescriptions: [], prognosis: null, followUpDate: null, followUpNote: null, urgentDirectives: null, priority: "routine", handoverNote: null,
+  tadbeer: [], prescriptions: [], diagnoses: [], sabab: [], icdCode: null, icdLabel: null, prognosis: null, followUpDate: null, followUpNote: null, urgentDirectives: null, priority: "routine", handoverNote: null,
 };
 interface Herb { id: string; label: string; category: string | null; forms: string[] }
 type Warn = { level: "high" | "caution" | "info"; text: string; verified: boolean };
@@ -49,6 +51,7 @@ export function useTashkhees(visitId: string | undefined) {
   const dalail = useAsbabAssessment(visitId, "dalail");
   const [options, setOptions] = useState<Record<string, TashkheesOptionRow[]> | null>(null);
   const [herbs, setHerbs] = useState<Herb[]>([]);
+  const [amraz, setAmraz] = useState<AmrazOption[]>([]);
   const [dossier, setDossier] = useState<Dossier>(EMPTY);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState<"draft" | "finalize" | null>(null);
@@ -64,13 +67,13 @@ export function useTashkhees(visitId: string | undefined) {
     if (!visitId) return;
     let cancelled = false;
     Promise.all([
-      api.get<{ options: Record<string, TashkheesOptionRow[]>; herbs: Herb[] }>("/api/facility/tashkhees/options"),
+      api.get<{ options: Record<string, TashkheesOptionRow[]>; herbs: Herb[]; amraz: AmrazOption[] }>("/api/facility/tashkhees/options"),
       api.get<{ dossier: Dossier | null }>(`/api/facility/visits/${visitId}/dossier`),
     ])
       .then(([o, d]) => {
         if (cancelled) return;
         setLoadError(null);
-        setOptions(o.options); setHerbs(o.herbs);
+        setOptions(o.options); setHerbs(o.herbs); setAmraz(o.amraz || []);
         if (d.dossier) setDossier({ ...EMPTY, ...d.dossier, followUpDate: d.dossier.followUpDate ? d.dossier.followUpDate.slice(0, 10) : null });
       })
       .catch((e) => { if (!cancelled) setLoadError(e.message || tc("network_error")); });
@@ -115,7 +118,7 @@ export function useTashkhees(visitId: string | undefined) {
     }
   };
 
-  return { dalail, options, herbs, dossier, set, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload, safety, setSafety };
+  return { dalail, options, herbs, amraz, dossier, set, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload, safety, setSafety };
 }
 type TashkheesState = ReturnType<typeof useTashkhees>;
 
@@ -620,6 +623,8 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
   const td = useTranslations("clinic.dossier");
   return (
     <Panel icon={FileSignature} tour="dossier.diagnosis" title={td("tashkhees_title")}>
+      <MarzSection visitId={visitId} d={d} set={set} amraz={state.amraz} rerun={() => state.save(false)} />
+      <div className="border-t border-border/50" />
       <EngineCard state={state} visitId={visitId} />
       <div><Label required>{td("asli_label")}</Label>
         <Chips items={mizaj} selected={d.mizajAsli ? [d.mizajAsli] : []} onToggle={(l) => set({ mizajAsli: d.mizajAsli === l ? null : l })} /></div>
@@ -1312,7 +1317,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
   const done: Record<string, boolean> = {
     // Adaptive selection means not every question is shown — any recorded finding counts.
     dalail: state.dalail.progress.answered > 0,
-    tashkhees: !!d.mizajAsli && !!d.suMizajQuality,
+    tashkhees: !!d.mizajAsli && !!d.suMizajQuality && d.diagnoses.some((x) => x.role === "working"),
     usool: d.usool.length > 0,
     ilaj: d.prescriptions.length + d.tadbeer.length + d.ghizaRecommended.length + d.ghizaAvoid.length > 0,
     handover: !!d.prognosis || !!d.handoverNote,

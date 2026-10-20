@@ -91,8 +91,9 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   };
   const finalize = async (reason?: string) => {
     if (finalized && reason === undefined) { setAmendReason(""); setAmendOpen(true); return; }
-    if (!t.dossier.mizajAsli || !t.dossier.suMizajQuality) {
-      const missing = list([!t.dossier.mizajAsli && "Mizaj-e-Asli", !t.dossier.suMizajQuality && "Su-e-Mizaj"].filter(Boolean) as string[]);
+    const noWorking = !t.dossier.diagnoses.some((x) => x.role === "working");
+    if (noWorking || !t.dossier.mizajAsli || !t.dossier.suMizajQuality) {
+      const missing = list([noWorking && "Marz", !t.dossier.mizajAsli && "Mizaj-e-Asli", !t.dossier.suMizajQuality && "Su-e-Mizaj"].filter(Boolean) as string[]);
       t.msg.warning(tr("need_diag", { items: missing }), tr("need_diag_hint"));
       return;
     }

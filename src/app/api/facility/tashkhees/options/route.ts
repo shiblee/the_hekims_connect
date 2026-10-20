@@ -6,18 +6,25 @@ import { getClinicActor } from "@/lib/reports-server";
 export async function GET(req: NextRequest) {
   const actor = await getClinicActor(req);
   if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const [options, herbs] = await Promise.all([
+  const [options, herbs, amraz] = await Promise.all([
     // Doctors only see approved options (Usool-e-Ilaj drafts await physician review).
     db.tashkheesOption.findMany({ where: { active: true, reviewStatus: "approved" }, orderBy: [{ list: "asc" }, { sortOrder: "asc" }], select: { id: true, list: true, label: true, localName: true, description: true, imageUrl: true, imageCredit: true, category: true, foodMizaj: true } }),
     db.medicationTag.findMany({
       where: { kind: "supplement", active: true }, orderBy: { label: "asc" },
       select: { id: true, label: true, profile: { select: { herbType: true, dosageForms: true } } },
     }),
+    // Amraz catalogue for the diagnosis picker — unverified entries included, labelled on screen.
+    db.marzEntry.findMany({ where: { active: true, reviewStatus: { not: "rejected" } }, orderBy: { label: "asc" }, select: { id: true, label: true, localName: true, category: true, sabab: true, reviewStatus: true } }),
   ]);
   const grouped: Record<string, typeof options> = {};
   for (const o of options) (grouped[o.list] ||= []).push(o);
   return NextResponse.json({
     options: grouped,
+    amraz: amraz.map((m) => {
+      let sabab: string[] = [];
+      try { sabab = JSON.parse(m.sabab || "[]"); } catch { /* ignore */ }
+      return { id: m.id, label: m.label, localName: m.localName, category: m.category, sabab, unverified: m.reviewStatus !== "approved" };
+    }),
     herbs: herbs.map((h) => {
       let forms: string[] = [];
       try { forms = JSON.parse(h.profile?.dosageForms || "[]"); } catch { /* ignore */ }

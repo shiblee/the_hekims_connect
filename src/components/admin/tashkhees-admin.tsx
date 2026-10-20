@@ -11,6 +11,7 @@ import { TashkheesEngineAdmin } from "@/components/admin/tashkhees-engine-admin"
 import { UsoolAdmin } from "@/components/admin/usool-admin";
 import { GhizaAdmin } from "@/components/admin/ghiza-admin";
 import { CdsAdmin } from "@/components/admin/cds-admin";
+import { AmrazAdmin } from "@/components/admin/amraz-admin";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,9 +25,9 @@ interface Row { id: string; list: string; label: string; localName: string | nul
 /** Admin → Meta → Tashkhees & Ilaj: the Dala'il examination questions and the Stage 5 option lists. */
 export function TashkheesAdmin() {
   // Each sub-tab has its own URL: ?tab=dalail | engine | lists
-  const [part, setPartRaw] = useUrlParam("tab", "dalail", ["dalail", "engine", "usool", "ghiza", "cds", "lists"] as const);
+  const [part, setPartRaw] = useUrlParam("tab", "dalail", ["dalail", "engine", "amraz", "usool", "ghiza", "cds", "lists"] as const);
   // Switching sub-tab drops the previous tab's own params (section / list).
-  const setPart = (v: "dalail" | "engine" | "usool" | "ghiza" | "cds" | "lists") => {
+  const setPart = (v: "dalail" | "engine" | "amraz" | "usool" | "ghiza" | "cds" | "lists") => {
     const url = new URL(window.location.href);
     url.searchParams.delete("section"); url.searchParams.delete("list");
     window.history.replaceState(window.history.state, "", url);
@@ -34,13 +35,13 @@ export function TashkheesAdmin() {
   };
   return (
     <div className="space-y-5">
-      <div className="inline-flex rounded-lg border border-border/60 bg-card/60 p-1">
-        {([["dalail", "Dala'il Examination"], ["engine", "Tashkhees Engine"], ["usool", "Usool-e-Ilaj (Principles)"], ["ghiza", "Ghiza (Foods)"], ["cds", "Medicines (Decision support)"], ["lists", "Option Lists"]] as const).map(([k, l]) => (
+      <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-card/60 p-1">
+        {([["dalail", "Dala'il Examination"], ["engine", "Tashkhees Engine"], ["amraz", "Amraz (Diseases)"], ["usool", "Usool-e-Ilaj (Principles)"], ["ghiza", "Ghiza (Foods)"], ["cds", "Medicines (Decision support)"], ["lists", "Option Lists"]] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setPart(k)}
             className={cn("rounded-md px-4 py-1.5 text-sm transition-colors", part === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
         ))}
       </div>
-      {part === "dalail" ? <AsbabAdmin framework="dalail" /> : part === "engine" ? <TashkheesEngineAdmin /> : part === "usool" ? <UsoolAdmin /> : part === "ghiza" ? <GhizaAdmin /> : part === "cds" ? <CdsAdmin /> : <OptionLists />}
+      {part === "dalail" ? <AsbabAdmin framework="dalail" /> : part === "engine" ? <TashkheesEngineAdmin /> : part === "amraz" ? <AmrazAdmin /> : part === "usool" ? <UsoolAdmin /> : part === "ghiza" ? <GhizaAdmin /> : part === "cds" ? <CdsAdmin /> : <OptionLists />}
     </div>
   );
 }

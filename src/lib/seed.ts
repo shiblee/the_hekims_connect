@@ -1,4 +1,5 @@
 import { REPORT_DEFAULTS } from "@/lib/report-branding";
+import { seedAmraz } from "@/lib/amraz";
 import { REFERRAL_DECLINE_SECTION } from "@/lib/referral-decline";
 import { seedFacilityMeta } from "@/lib/facility-meta-seed";
 import { seedMetaCatalogs } from "@/lib/meta-catalog-seed";
@@ -587,6 +588,7 @@ export async function seedDatabase() {
   await seedTranslations();
   await seedPages();
   await seedMetadata();
+  await seedAmraz();
   await seedScreeningConfig();
   await seedTriageCatalogs();
   await seedHumorConfig();

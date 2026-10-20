@@ -22,6 +22,11 @@ function serialize(d: NonNullable<Awaited<ReturnType<typeof load>>>) {
     status: d.status, finalizedAt: d.finalizedAt, finalizedByName: d.finalizedByName, updatedAt: d.updatedAt,
     mizajAsli: d.mizajAsli, suMizajType: d.suMizajType, suMizajQuality: d.suMizajQuality, suMizajGrade: d.suMizajGrade,
     organs: parse<string[]>(d.organs, []), diagnosisNote: d.diagnosisNote,
+    sabab: parse<string[]>(d.sabab, []), icdCode: d.icdCode, icdLabel: d.icdLabel,
+    diagnoses: d.diagnoses.map((x) => ({
+      marzId: x.marzId, label: x.label, localName: x.localName, role: x.role, certainty: x.certainty,
+      evidenceFor: parse<string[]>(x.evidenceFor, []), evidenceAgainst: parse<string[]>(x.evidenceAgainst, []), note: x.note, source: x.source,
+    })),
     usool: parse<string[]>(d.usool, []), usoolNote: d.usoolNote,
     ghizaRecommended: parse<string[]>(d.ghizaRecommended, []), ghizaAvoid: parse<string[]>(d.ghizaAvoid, []), ghizaNote: d.ghizaNote,
     tadbeer: parse<unknown[]>(d.tadbeer, []),
@@ -34,7 +39,7 @@ function serialize(d: NonNullable<Awaited<ReturnType<typeof load>>>) {
 }
 const load = (visitId: string) => db.tashkheesDossier.findUnique({
   where: { visitId },
-  include: { prescriptions: { orderBy: { sortOrder: "asc" } }, versions: { orderBy: { version: "desc" }, select: { version: true, kind: true, reason: true, byName: true, createdAt: true } } },
+  include: { prescriptions: { orderBy: { sortOrder: "asc" } }, diagnoses: { orderBy: { sortOrder: "asc" } }, versions: { orderBy: { version: "desc" }, select: { version: true, kind: true, reason: true, byName: true, createdAt: true } } },
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -62,6 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     mizajAsli: str(b.mizajAsli, 120), suMizajType: b.suMizajType === "Sada" || b.suMizajType === "Maddi" ? b.suMizajType : null,
     suMizajQuality: str(b.suMizajQuality, 120), suMizajGrade: Number.isInteger(grade) && grade >= 1 && grade <= 4 ? grade : null,
     organs: JSON.stringify(strArr(b.organs)), diagnosisNote: str(b.diagnosisNote),
+    sabab: JSON.stringify(strArr(b.sabab).slice(0, 20)), icdCode: str(b.icdCode, 20), icdLabel: str(b.icdLabel, 200),
     usool: JSON.stringify(strArr(b.usool)), usoolNote: str(b.usoolNote),
     ghizaRecommended: JSON.stringify(strArr(b.ghizaRecommended)), ghizaAvoid: JSON.stringify(strArr(b.ghizaAvoid)), ghizaNote: str(b.ghizaNote),
     tadbeer: JSON.stringify((Array.isArray(b.tadbeer) ? b.tadbeer : [])
@@ -82,8 +88,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       duration: str(p.duration, 80), adjuvant: str(p.adjuvant, 160), instructions: str(p.instructions, 1000), sortOrder: i,
     }));
 
+  const ROLES = ["working", "secondary", "differential", "ruled_out"], CERT = ["suspected", "probable", "confirmed"], SRC = ["hakim", "engine", "ai"];
+  const diagnoses = (Array.isArray(b.diagnoses) ? b.diagnoses : [])
+    .filter((x: any) => str(x?.label) && ROLES.includes(x.role))
+    .slice(0, 20)
+    .map((x: any, i: number) => ({
+      marzId: str(x.marzId, 60), label: str(x.label, 200)!, localName: str(x.localName, 200), role: x.role,
+      certainty: CERT.includes(x.certainty) ? x.certainty : null,
+      evidenceFor: JSON.stringify(strArr(x.evidenceFor).slice(0, 20).map((e) => e.slice(0, 300))),
+      evidenceAgainst: JSON.stringify(strArr(x.evidenceAgainst).slice(0, 20).map((e) => e.slice(0, 300))),
+      note: str(x.note, 1000), source: SRC.includes(x.source) ? x.source : "hakim", sortOrder: i,
+    }));
+  if (diagnoses.length) {
+    const known = new Set((await db.marzEntry.findMany({ where: { id: { in: diagnoses.map((x: any) => x.marzId).filter(Boolean) } }, select: { id: true } })).map((x) => x.id));
+    for (const x of diagnoses) if (x.marzId && !known.has(x.marzId)) x.marzId = null;
+  }
+
   if (b.finalize) {
-    const missing = [!data.mizajAsli && "Mizaj-e-Asli", !data.suMizajQuality && "Su-e-Mizaj"].filter(Boolean);
+    const missing = [!diagnoses.some((x: any) => x.role === "working") && "Marz (working diagnosis)", !data.mizajAsli && "Mizaj-e-Asli", !data.suMizajQuality && "Su-e-Mizaj"].filter(Boolean);
     if (missing.length) return NextResponse.json({ error: `Record the ${missing.join(" and ")} before finalising` }, { status: 400 });
   }
   const existing = await db.tashkheesDossier.findUnique({ where: { visitId: id }, select: { id: true, status: true, revision: true } });
@@ -102,6 +124,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     await tx.dossierPrescription.deleteMany({ where: { dossierId: d.id } });
     if (prescriptions.length) await tx.dossierPrescription.createMany({ data: prescriptions.map((p: any) => ({ ...p, dossierId: d.id })) });
+    await tx.dossierDiagnosis.deleteMany({ where: { dossierId: d.id } });
+    if (diagnoses.length) await tx.dossierDiagnosis.createMany({ data: diagnoses.map((x: any) => ({ ...x, dossierId: d.id })) });
     return d;
   });
   let d = await load(id);

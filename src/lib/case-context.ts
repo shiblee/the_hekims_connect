@@ -23,7 +23,7 @@ export type ReadinessKey = "vitals" | "complaints" | "warning_signs" | "body_map
 export interface ReadinessItem { key: ReadinessKey; status: "done" | "partial" | "missing" | "na"; critical: boolean; source: SourceRef; count?: number }
 export interface CaseAlert { key: string; level: "high" | "caution" | "info"; params?: Record<string, string | number>; source?: SourceRef }
 export interface ComplaintSummary {
-  label: string; primary: boolean; severity: number | null; duration: string | null; pattern: string | null; character: string | null;
+  label: string; key: string | null; category: string | null; primary: boolean; severity: number | null; duration: string | null; pattern: string | null; character: string | null;
   aggravating: string[]; relieving: string[]; associated: string[]; notes: string | null;
 }
 export interface ExamSection { key: string; label: string; answers: { question: string; answer: string }[] }
@@ -110,13 +110,19 @@ export async function buildCaseContext(visitId: string, facilityId: string): Pro
 
   // ---- presenting
   const complaints: ComplaintSummary[] = visit.complaintAssessments.map((c, i) => ({
-    label: c.chiefComplaintLabel, primary: i === 0, severity: c.severityScore,
+    label: c.chiefComplaintLabel, key: null, category: null, primary: i === 0, severity: c.severityScore,
     duration: c.onsetValue != null ? `${c.onsetValue} ${c.onsetUnit || "days"}` : null, pattern: c.onsetPattern, character: c.character,
     aggravating: parse<string[]>(c.aggravatingFactors, []), relieving: parse<string[]>(c.relievingFactors, []), associated: parse<string[]>(c.associatedManifestations, []),
     notes: c.clinicalNotes,
   }));
   for (const l of parse<string[]>(visit.intake?.chiefComplaints, [])) {
-    if (!complaints.some((c) => c.label.toLowerCase() === l.toLowerCase())) complaints.push({ label: l, primary: complaints.length === 0, severity: null, duration: null, pattern: null, character: null, aggravating: [], relieving: [], associated: [], notes: null });
+    if (!complaints.some((c) => c.label.toLowerCase() === l.toLowerCase())) complaints.push({ label: l, key: null, category: null, primary: complaints.length === 0, severity: null, duration: null, pattern: null, character: null, aggravating: [], relieving: [], associated: [], notes: null });
+  }
+
+  // Catalogue keys and categories, so engines can match on them.
+  if (complaints.length) {
+    const master = await db.chiefComplaint.findMany({ where: { label: { in: complaints.map((c) => c.label) } }, select: { key: true, label: true, category: true } });
+    for (const c of complaints) { const m = master.find((x) => x.label.toLowerCase() === c.label.toLowerCase()); if (m) { c.key = m.key; c.category = m.category; } }
   }
 
   // ---- vitals

@@ -490,6 +490,20 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     {dos && (
                       <div className="rpt-keep rounded-lg border-2 border-[#7c3aed] bg-white px-3.5 py-2.5">
                         <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("diagnosis")}</p>
+                        {dos.diagnoses?.filter((x: R) => x.role !== "ruled_out").length > 0 && (
+                          <div className="mb-1.5">
+                            <p className="text-[9pt] text-[#6b7280]">{t("marz")}</p>
+                            {dos.diagnoses.filter((x: R) => x.role !== "ruled_out").map((x: R, i: number) => (
+                              <p key={i} className={x.role === "working" ? "text-[12pt] font-bold" : "text-[10.5pt]"}>
+                                {x.label}{x.localName ? ` (${x.localName})` : ""}
+                                <span className="text-[9pt] font-normal text-[#6b7280]"> · {t(`role_${x.role}`)}{x.certainty ? ` · ${t(`cert_${x.certainty}`)}` : ""}</span>
+                              </p>
+                            ))}
+                            {dos.diagnoses.some((x: R) => x.role === "ruled_out") && <p className="text-[9.5pt] text-[#6b7280]">{t("ruled_out_list", { items: dos.diagnoses.filter((x: R) => x.role === "ruled_out").map((x: R) => x.label).join(", ") })}</p>}
+                          </div>
+                        )}
+                        {dos.sabab?.length > 0 && <p className="mb-1 text-[10pt]"><span className="text-[#6b7280]">{t("sabab")} </span><b>{dos.sabab.join(", ")}</b></p>}
+                        {(dos.icdCode || dos.icdLabel) && <p className="mb-1 text-[10pt]"><span className="text-[#6b7280]">{t("icd")} </span>{[dos.icdCode, dos.icdLabel].filter(Boolean).join(" — ")}</p>}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                           <div><p className="text-[9pt] text-[#6b7280]">{t("asli")}</p><p className="text-[12pt] font-bold">{dos.mizajAsli || <Dim>{t("not_recorded")}</Dim>}</p></div>
                           <div><p className="text-[9pt] text-[#6b7280]">{t("su")}</p><p className="text-[12pt] font-bold">{[dos.suMizajType, dos.suMizajQuality, dos.suMizajGrade ? t("darja", { n: dos.suMizajGrade }) : null].filter(Boolean).join(" · ") || <Dim>{t("not_recorded")}</Dim>}</p></div>
