@@ -47,7 +47,7 @@ function AlertLine({ a }: { a: CaseAlert }) {
     <li className={cn("flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-[13px] leading-snug", L.cls)}>
       <L.icon className="h-3.5 w-3.5 mt-0.5 shrink-0" />
       <span className="min-w-0 flex-1">{text}</span>
-      {a.source && <Link href={a.source.href} className="shrink-0 text-xs font-medium underline-offset-2 hover:underline">{t("stage_n", { n: a.source.stage })}</Link>}
+      {a.source && <Link href={a.source.href} className="shrink-0 text-[13px] font-medium underline-offset-2 hover:underline">{t("stage_n", { n: a.source.stage })}</Link>}
     </li>
   );
 }
@@ -66,7 +66,7 @@ export function CaseReadinessCard({ state }: { state: CaseContextState }) {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   if (error && !ctx) {
     return (
-      <Card className="p-4 border-border/50 bg-card/60 text-sm text-muted-foreground">
+      <Card className="p-4 border-border/50 bg-card/60 text-[15px] text-muted-foreground">
         {t("load_failed", { error })} <button type="button" onClick={reload} className="text-primary font-medium hover:underline">{t("retry")}</button>
       </Card>
     );
@@ -81,7 +81,7 @@ export function CaseReadinessCard({ state }: { state: CaseContextState }) {
   return (
     <Card className="p-4 gap-3 border-border/50 bg-card/60" data-tour="case.readiness">
       <SectionHeading icon={ListChecks} title={t("readiness")} tone={done === items.length ? "success" : "primary"}
-        right={<span className="text-xs font-medium tabular-nums text-muted-foreground">{t("n_ready", { done, total: items.length })}</span>} />
+        right={<span className="text-[13px] font-medium tabular-nums text-muted-foreground">{t("n_ready", { done, total: items.length })}</span>} />
       <div className="h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
         <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${items.length ? (done / items.length) * 100 : 0}%` }} />
       </div>
@@ -104,7 +104,7 @@ export function CaseReadinessCard({ state }: { state: CaseContextState }) {
                 {r.critical && r.status !== "done" && <span className="ms-1.5 inline-block h-1.5 w-1.5 rounded-full bg-destructive align-middle" title={t("important")} />}
               </span>
               {r.status !== "done" && r.key !== "pregnancy" && (
-                <Link href={r.source.href} className="shrink-0 text-xs font-medium text-primary hover:underline">{t("stage_n", { n: r.source.stage })}</Link>
+                <Link href={r.source.href} className="shrink-0 text-[13px] font-medium text-primary hover:underline">{t("stage_n", { n: r.source.stage })}</Link>
               )}
             </li>
           );
@@ -117,7 +117,7 @@ export function CaseReadinessCard({ state }: { state: CaseContextState }) {
           <label className="grid gap-1 text-[13px]">
             <span className="font-medium">{t("preg_label")}</span>
             <select id="pregnancyStatus" value={ctx.patient.pregnancyStatus ?? ""} onChange={(e) => save({ pregnancyStatus: e.target.value || null })}
-              className="h-9 rounded-lg border border-input bg-background px-2.5 text-sm">
+              className="h-9 rounded-lg border border-input bg-background px-2.5 text-[15px]">
               <option value="">{t("choose")}</option>
               {["pregnant", "breastfeeding", "neither", "unknown"].map((v) => <option key={v} value={v}>{t(`preg_${v}`)}</option>)}
             </select>
@@ -126,12 +126,12 @@ export function CaseReadinessCard({ state }: { state: CaseContextState }) {
         <label className="grid gap-1 text-[13px]">
           <span className="font-medium">{t("rel_label")}</span>
           <select id="historyReliability" value={ctx.patient.historyReliability ?? ""} onChange={(e) => save({ historyReliability: e.target.value || null })}
-            className="h-9 rounded-lg border border-input bg-background px-2.5 text-sm">
+            className="h-9 rounded-lg border border-input bg-background px-2.5 text-[15px]">
             <option value="">{t("choose")}</option>
             {["reliable", "limited", "unreliable"].map((v) => <option key={v} value={v}>{t(`rel_${v}`)}</option>)}
           </select>
         </label>
-        {saveMsg && <p className="text-xs text-muted-foreground" role="status">{saveMsg}</p>}
+        {saveMsg && <p className="text-[13px] text-muted-foreground" role="status">{saveMsg}</p>}
       </div>
     </Card>
   );
@@ -159,7 +159,7 @@ function Block({ title, kind, href, stage, children, empty }: { title: string; k
 }
 
 function Chips({ items }: { items: string[] }) {
-  return <div className="flex flex-wrap gap-1">{items.map((x) => <span key={x} className="rounded-full border border-border/60 bg-card px-2 py-0.5 text-xs">{x}</span>)}</div>;
+  return <div className="flex flex-wrap gap-1">{items.map((x) => <span key={x} className="rounded-full border border-border/60 bg-card px-2 py-0.5 text-[13px]">{x}</span>)}</div>;
 }
 
 function Answers({ sections, limit = 6 }: { sections: ExamSection[]; limit?: number }) {
@@ -173,7 +173,7 @@ function Answers({ sections, limit = 6 }: { sections: ExamSection[]; limit?: num
         {shown.map((r, i) => <li key={i} className="min-w-0"><span className="text-muted-foreground">{r.question}:</span> <span className="font-medium">{r.answer}</span></li>)}
       </ul>
       {rows.length > limit && (
-        <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 text-xs font-medium text-primary hover:underline">
+        <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 text-[13px] font-medium text-primary hover:underline">
           {all ? t("show_less") : t("show_all", { count: rows.length })}
         </button>
       )}
@@ -206,7 +206,7 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
               {ctx.presenting.complaints.map((c) => (
                 <li key={c.label} className="text-[13px]">
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span className="font-semibold text-sm">{c.label}</span>
+                    <span className="font-semibold text-[15px]">{c.label}</span>
                     {c.primary && <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-medium text-primary">{t("primary")}</span>}
                     {c.severity != null && <span className="text-muted-foreground">{t("sev", { n: c.severity })}</span>}
                     {c.duration && <span className="text-muted-foreground">{t("for_dur", { d: c.duration })}</span>}
@@ -231,7 +231,7 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
                         <p><span className="font-medium">{r.title}</span> <span className="text-muted-foreground">· {r.date ? date(r.date) : ""} · </span>
                           <span className={cn(r.flag === "critical" ? "text-destructive font-medium" : r.flag === "abnormal" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>{t(`rf_${["normal", "abnormal", "critical"].includes(r.flag) ? r.flag : "unknown"}`)}</span>
                           {!r.reviewed && <span className="text-muted-foreground"> · {t("unreviewed")}</span>}</p>
-                        {r.abnormal.length > 0 && <p className="text-xs text-muted-foreground">{r.abnormal.map((x) => `${x.name} ${x.value}${x.unit ? ` ${x.unit}` : ""}`).join(" · ")}</p>}
+                        {r.abnormal.length > 0 && <p className="text-[13px] text-muted-foreground">{r.abnormal.map((x) => `${x.name} ${x.value}${x.unit ? ` ${x.unit}` : ""}`).join(" · ")}</p>}
                       </li>
                     ))}
                   </ul>
@@ -240,7 +240,7 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
               {ctx.mizajAssessment && (
                 <Block title={t("s_assessment")} kind="examined" href={s3} stage={3}>
                   <p className="text-[13px]">{ctx.mizajAssessment.result}</p>
-                  <p className="text-xs text-muted-foreground">{date(ctx.mizajAssessment.date)}{ctx.mizajAssessment.pulse ? ` · ${ctx.mizajAssessment.pulse}` : ""}</p>
+                  <p className="text-[13px] text-muted-foreground">{date(ctx.mizajAssessment.date)}{ctx.mizajAssessment.pulse ? ` · ${ctx.mizajAssessment.pulse}` : ""}</p>
                 </Block>
               )}
             </div>
@@ -252,7 +252,7 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
                 {ctx.previousVisits.map((v) => (
                   <li key={v.id}>
                     <p><span className="font-medium">{date(v.date)}</span> <span className="text-muted-foreground">· {v.code}{v.complaints.length ? ` · ${v.complaints.join(", ")}` : ""}</span></p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[13px] text-muted-foreground">
                       {v.dossier ? [v.dossier.diagnoses.join(", "), v.dossier.suMizaj, v.dossier.organs.join(", "), v.dossier.prognosis].filter(Boolean).join(" · ") || v.dossier.statement || t("prev_no_dossier") : t("prev_no_dossier")}
                     </p>
                   </li>
@@ -283,17 +283,17 @@ export function FollowUpCard({ state, response, note, onChange }: { state: CaseC
         {dx ? <p className="text-muted-foreground mt-0.5">{[dx.diagnoses.join(", "), dx.suMizaj, dx.organs.join(", "), dx.prognosis].filter(Boolean).join(" · ") || dx.statement}</p> : <p className="text-muted-foreground mt-0.5">{t("fu_none")}</p>}
       </div>
       <div>
-        <p className="text-sm font-medium mb-1.5">{t("fu_response")}</p>
+        <p className="text-[15px] font-medium mb-1.5">{t("fu_response")}</p>
         <div className="flex flex-wrap gap-1.5">
           {RESP.map((r) => (
             <button key={r} type="button" onClick={() => onChange({ treatmentResponse: response === r ? null : r })} aria-pressed={response === r}
-              className={cn("rounded-full border px-3 py-1 text-xs transition-colors", response === r ? (r === "worse" || r === "new_problem" ? "border-destructive/50 bg-destructive/10 text-destructive" : r === "unchanged" ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300") : "border-border/60 text-muted-foreground hover:text-foreground")}>
+              className={cn("rounded-full border px-3 py-1 text-[13px] transition-colors", response === r ? (r === "worse" || r === "new_problem" ? "border-destructive/50 bg-destructive/10 text-destructive" : r === "unchanged" ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300") : "border-border/60 text-muted-foreground hover:text-foreground")}>
               {t(`resp_${r}`)}
             </button>
           ))}
         </div>
         <input id="treatmentResponseNote" value={note ?? ""} onChange={(e) => onChange({ treatmentResponseNote: e.target.value || null })} placeholder={t("fu_note")} maxLength={1000}
-          className="mt-2 h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm" />
+          className="mt-2 h-9 w-full rounded-lg border border-input bg-background px-2.5 text-[15px]" />
       </div>
     </Card>
   );
