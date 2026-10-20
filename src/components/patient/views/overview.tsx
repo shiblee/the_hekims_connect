@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
@@ -21,6 +23,9 @@ interface Appt {
 
 export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }) {
   const patient = useAppStore((s) => s.patient);
+  const t = useTranslations("patient.pages");
+  const vl = useValueLabel();
+  const dl = useDateLocale();
   const [appts, setAppts] = useState<Appt[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
@@ -38,10 +43,10 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
   const profileComplete = !!(patient.familyHistory && patient.medicalHistory && patient.dob && patient.bloodGroup && patient.address);
 
   const statCards = [
-    { label: "Upcoming Visits", value: upcoming.length, icon: CalendarDays, tint: "text-primary", bg: "bg-primary/15" },
-    { label: "Records Uploaded", value: records.length, icon: FileImage, tint: "text-accent", bg: "bg-accent/15" },
-    { label: "Prescriptions", value: prescriptions.length, icon: FileText, tint: "text-primary", bg: "bg-primary/15" },
-    { label: "Total Visits", value: appts.length, icon: Activity, tint: "text-accent", bg: "bg-accent/15" },
+    { label: t("stat_upcoming"), value: upcoming.length, icon: CalendarDays, tint: "text-primary", bg: "bg-primary/15" },
+    { label: t("stat_records"), value: records.length, icon: FileImage, tint: "text-accent", bg: "bg-accent/15" },
+    { label: t("stat_rx"), value: prescriptions.length, icon: FileText, tint: "text-primary", bg: "bg-primary/15" },
+    { label: t("stat_total"), value: appts.length, icon: Activity, tint: "text-accent", bg: "bg-accent/15" },
   ];
 
   return (
@@ -52,17 +57,17 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <Badge variant="outline" className="mb-2 border-accent/40 text-accent bg-accent/10">
-              <Heart className="me-1 h-3 w-3" /> Your healing journey
+              <Heart className="me-1 h-3 w-3" /> {t("journey")}
             </Badge>
-            <h2 className="font-serif text-2xl font-bold">Welcome back, {patient.name.split(" ")[0]}</h2>
+            <h2 className="font-serif text-2xl font-bold">{t("welcome", { name: patient.name.split(" ")[0] })}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {profileComplete
-                ? "Your medical profile is complete — your Facility has everything needed."
-                : "Complete your medical profile so your Facility has the full picture."}
+                ? t("profile_done")
+                : t("profile_todo")}
             </p>
           </div>
           <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate(profileComplete ? "appointments" : "profile")}>
-            {profileComplete ? <><CalendarDays className="me-2 h-4 w-4" /> Book Appointment</> : <><ClipboardList className="me-2 h-4 w-4" /> Complete Profile</>}
+            {profileComplete ? <><CalendarDays className="me-2 h-4 w-4" /> {t("book")}</> : <><ClipboardList className="me-2 h-4 w-4" /> {t("complete_profile")}</>}
           </Button>
         </div>
       </Card>
@@ -90,12 +95,12 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
           {nextAppt ? (
             <Card className="p-5 border-primary/40 bg-card/60">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-serif text-base font-semibold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> Next Appointment</h3>
-                <Button variant="ghost" size="sm" onClick={() => onNavigate("appointments")} className="text-primary">View all <ChevronRight className="h-3.5 w-3.5" /></Button>
+                <h3 className="font-serif text-base font-semibold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> {t("next_appt")}</h3>
+                <Button variant="ghost" size="sm" onClick={() => onNavigate("appointments")} className="text-primary">{t("view_all")} <ChevronRight className="h-3.5 w-3.5" /></Button>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex flex-col items-center justify-center w-16 shrink-0 rounded-lg bg-primary/10 py-3">
-                  <span className="text-[10px] text-primary uppercase">{new Date(nextAppt.date).toLocaleDateString("en-US", { month: "short" })}</span>
+                  <span className="text-[10px] text-primary uppercase">{new Date(nextAppt.date).toLocaleDateString(dl, { month: "short" })}</span>
                   <span className="font-serif text-2xl font-bold text-primary leading-none">{new Date(nextAppt.date).getDate()}</span>
                   <span className="text-[10px] text-muted-foreground mt-1">{nextAppt.time}</span>
                 </div>
@@ -113,20 +118,20 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
           ) : (
             <Card className="p-6 border-dashed border-border bg-card/60 text-center">
               <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm font-medium">No upcoming appointments</p>
-              <p className="text-xs text-muted-foreground mb-3">Book a consultation with a verified Facility.</p>
-              <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate("appointments")}><Plus className="h-4 w-4 me-1" /> Book now</Button>
+              <p className="text-sm font-medium">{t("no_upcoming")}</p>
+              <p className="text-xs text-muted-foreground mb-3">{t("no_upcoming_hint")}</p>
+              <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => onNavigate("appointments")}><Plus className="h-4 w-4 me-1" /> {t("book_now")}</Button>
             </Card>
           )}
 
           {/* Recent records */}
           <Card className="p-5 border-border/50 bg-card/60">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-serif text-base font-semibold flex items-center gap-2"><FileImage className="h-4 w-4 text-accent" /> Recent Records</h3>
-              <Button variant="ghost" size="sm" onClick={() => onNavigate("records")} className="text-accent">View all <ChevronRight className="h-3.5 w-3.5" /></Button>
+              <h3 className="font-serif text-base font-semibold flex items-center gap-2"><FileImage className="h-4 w-4 text-accent" /> {t("recent_records")}</h3>
+              <Button variant="ghost" size="sm" onClick={() => onNavigate("records")} className="text-accent">{t("view_all")} <ChevronRight className="h-3.5 w-3.5" /></Button>
             </div>
             {records.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No records uploaded yet.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("no_records")}</p>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {records.slice(0, 8).map((r) => (
@@ -148,41 +153,41 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
         {/* Health summary */}
         <div className="space-y-5">
           <Card className="p-5 border-border/50 bg-card/60">
-            <h3 className="font-serif text-base font-semibold mb-3 flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Health Summary</h3>
+            <h3 className="font-serif text-base font-semibold mb-3 flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> {t("health")}</h3>
             <div className="space-y-2.5 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Mizaj (Temperament)</span>
-                <Badge variant="outline" className={cn("border", mizajBadge(patient.mizaj))}>{patient.mizaj || "Not assessed"}</Badge>
+                <span className="text-muted-foreground">{t("mizaj")}</span>
+                <Badge variant="outline" className={cn("border", mizajBadge(patient.mizaj))}>{patient.mizaj || t("not_assessed")}</Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Blood Group</span>
+                <span className="text-muted-foreground">{t("blood")}</span>
                 <span className="font-medium flex items-center gap-1"><Droplet className="h-3 w-3 text-red-400" />{patient.bloodGroup || "—"}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Gender</span>
-                <span className="font-medium">{patient.gender || "—"}</span>
+                <span className="text-muted-foreground">{t("gender")}</span>
+                <span className="font-medium">{patient.gender ? vl(patient.gender) : "—"}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Date of Birth</span>
+                <span className="text-muted-foreground">{t("dob")}</span>
                 <span className="font-medium">{patient.dob || "—"}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Height / Weight</span>
+                <span className="text-muted-foreground">{t("hw")}</span>
                 <span className="font-medium">{patient.height || "—"} / {patient.weight || "—"}</span>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-4" onClick={() => onNavigate("profile")}>Edit Medical Profile</Button>
+            <Button variant="outline" size="sm" className="w-full mt-4" onClick={() => onNavigate("profile")}>{t("edit_profile")}</Button>
           </Card>
 
           <Card className="p-5 border-border/50 bg-card/60">
-            <h3 className="font-serif text-base font-semibold mb-3">Profile Completeness</h3>
+            <h3 className="font-serif text-base font-semibold mb-3">{t("completeness")}</h3>
             <div className="space-y-2">
               {[
-                { l: "Basic info", d: !!(patient.dob && patient.gender && patient.bloodGroup) },
-                { l: "Address & emergency contact", d: !!(patient.address && patient.emergencyContact) },
-                { l: "Family medical history", d: !!patient.familyHistory },
-                { l: "Personal medical history", d: !!patient.medicalHistory },
-                { l: "Allergies & medications", d: !!(patient.allergies || patient.currentMedications) },
+                { l: t("c_basic"), d: !!(patient.dob && patient.gender && patient.bloodGroup) },
+                { l: t("c_address"), d: !!(patient.address && patient.emergencyContact) },
+                { l: t("c_family"), d: !!patient.familyHistory },
+                { l: t("c_personal"), d: !!patient.medicalHistory },
+                { l: t("c_allergies"), d: !!(patient.allergies || patient.currentMedications) },
               ].map((s) => (
                 <div key={s.l} className="flex items-center gap-2 text-sm">
                   {s.d ? <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" /> : <AlertCircle className="h-4 w-4 text-accent shrink-0" />}
@@ -191,7 +196,7 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
               ))}
             </div>
             <Progress value={profileComplete ? 100 : 60} className="h-2 mt-3" />
-            <p className="text-xs text-muted-foreground mt-2">{profileComplete ? "Ready for consultation" : "Complete your profile for safer care"}</p>
+            <p className="text-xs text-muted-foreground mt-2">{profileComplete ? t("ready") : t("safer")}</p>
           </Card>
         </div>
       </div>

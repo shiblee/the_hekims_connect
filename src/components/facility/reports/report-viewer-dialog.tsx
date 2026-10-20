@@ -121,7 +121,7 @@ export function ReportViewerDialog({ reportIds, openId, onOpenChange, onChanged 
     try {
       await api.delete(`/api/facility/reports/${report.id}`);
       setConfirmDelete(false);
-      msg.success(`"${report.title}" deleted`);
+      msg.success(t("deleted", { title: report.title }));
       onChanged();
       const next = reportIds[idx + 1] || reportIds[idx - 1];
       if (next && next !== report.id) setCurrentId(next); else onOpenChange(false);

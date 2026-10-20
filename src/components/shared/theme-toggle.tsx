@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { AnimatePresence, motion } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
+  const t = useTranslations("common.learning");
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
@@ -19,7 +21,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       type="button"
       role="switch"
       aria-checked={isDark}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={isDark ? t("to_light") : t("to_dark")}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={cn(
         "relative inline-flex h-9 w-[3.75rem] shrink-0 items-center rounded-full border border-border/70 px-1",
@@ -29,7 +31,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         className
       )}
     >
-      <span className="sr-only">Toggle theme</span>
+      <span className="sr-only">{t("toggle_theme")}</span>
       {/* track icons */}
       <Sun className="absolute start-1.5 h-4 w-4 text-accent/70" />
       <Moon className="absolute end-1.5 h-4 w-4 text-primary/70" />

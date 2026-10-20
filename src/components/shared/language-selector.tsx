@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { Check, Globe, Loader2 } from "lucide-react";
@@ -24,6 +25,7 @@ interface Lang {
  * The choice is kept in a cookie for a year. `compact` shows only the globe and the language code.
  */
 export function LanguageSelector({ compact, className }: { compact?: boolean; className?: string }) {
+  const tl = useTranslations("common.learning");
   const router = useRouter();
   const locale = useLocale();
   const [languages, setLanguages] = useState<Lang[]>([]);
@@ -52,7 +54,7 @@ export function LanguageSelector({ compact, className }: { compact?: boolean; cl
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Language"
+        aria-label={tl("language")}
         data-tour="shell.language"
         className={cn("flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-card transition-colors outline-none", className)}
       >

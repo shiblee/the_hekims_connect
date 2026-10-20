@@ -306,7 +306,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
               {messages.length === 0 && !loadingMsgs && (
                 <div className="text-center text-sm text-muted-foreground py-12">
                   <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  No messages yet. Start the conversation.
+                  {t("chat_start")}
                 </div>
               )}
             </div>

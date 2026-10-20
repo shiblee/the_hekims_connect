@@ -401,7 +401,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
               </Button>
             ) : <span />}
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setReferDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setReferDialogOpen(false)}>{tc("cancel")}</Button>
               <Button onClick={submitReferral} disabled={saving} className={URGENCY.find((u) => u.value === urgency)?.button}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingReferral ? <Pencil className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
                 {editingReferral ? tc("save_changes") : t("confirm_close")}
@@ -437,7 +437,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           </div>
           <NoticeSlot state={dialogMsg} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAmaDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAmaDialogOpen(false)}>{tc("cancel")}</Button>
             <Button onClick={submitAma} disabled={saving || !amaAcknowledged} className="bg-amber-600 hover:bg-amber-700 text-white">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {t("ama_confirm")}
             </Button>
