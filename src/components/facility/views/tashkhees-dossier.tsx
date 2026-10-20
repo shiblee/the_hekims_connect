@@ -697,138 +697,138 @@ interface UsoolPlanData {
 }
 
 /**
- * Suggested treatment plan — principles in the classical order, from the
- * diagnosis and the visit's findings. Principles needing care (e.g.
- * evacuation with a weak pulse) are listed apart with the reason and are
- * never part of "Accept plan". The Hakim adds what fits.
+ * Usool-e-Ilaj picker — same pattern as the diet: one search box with two tabs. "Treatment plan"
+ * lists the principles suggested for this patient (in classical order, with why; ones that need care
+ * are marked with the reason) and "Other principles" every other approved principle. One Add per row;
+ * the chosen plan sits under the box as numbered chips (the number is the classical step).
  */
-function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: string }) {
-  const { dossier: d, set } = state;
+function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
+  const { dossier: d, set, options } = state;
+  const td = useTranslations("clinic.dossier");
   const [data, setData] = useState<{ plan: UsoolPlanData; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
-  const td = useTranslations("clinic.dossier");
+  const [tab, setTab] = useState<"plan" | "other">("plan");
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   const fetchPlan = useCallback(() =>
     api.get<{ plan: UsoolPlanData; method: string }>(`/api/facility/visits/${visitId}/usool-engine`)
       .then((r) => { setData(r); setFailed(false); })
       .catch(() => setFailed(true)), [visitId]);
   useEffect(() => { fetchPlan(); }, [fetchPlan]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
   const rerun = async () => { setRunning(true); try { await state.save(false); await fetchPlan(); } finally { setRunning(false); } };
   const record = (labels: string[]) => { if (labels.length) api.post(`/api/facility/visits/${visitId}/usool-engine`, { accepted: labels }).catch(() => {}); };
-  const add = (labels: string[]) => {
-    const fresh = labels.filter((l) => !d.usool.includes(l));
-    if (!fresh.length) return;
-    set({ usool: [...d.usool, ...fresh] });
-    record(fresh);
-  };
 
-  const p = data?.plan;
-  const missing = (p?.plan || []).filter((x) => !d.usool.includes(x.label)).map((x) => x.label);
-  const b = p?.basis;
-
-  return (
-    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("plan_title")}</p>
-        <span className="flex items-center gap-2">
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
-          {missing.length > 0 && <Button size="sm" className="h-7" onClick={() => add(missing)}>{td("accept_plan", { count: missing.length })}</Button>}
-        </span>
-      </div>
-      {failed ? (
-        <p className="text-sm text-muted-foreground">{td.rich("plan_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
-      ) : !p ? <Loading /> : (
-        <>
-          <p className="text-xs text-muted-foreground">
-            {td("based_on")} {b?.suMizaj ? <span className="font-medium text-foreground">Su-e-Mizaj {[b.type, b.suMizaj, b.darja ? td("darja_n", { n: b.darja }) : null].filter(Boolean).join(" · ")}</span> : td("no_diagnosis")}
-            {b && b.organs.length > 0 && <> · {td("organs_word")} <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
-            {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("from_engine")}</span>}
-          </p>
-          {/* Still to add — one compact line each; ones already in the plan fold into a single line */}
-          {p.plan.some((x) => !d.usool.includes(x.label)) && (
-            <ul className="divide-y divide-border/40 rounded-lg border border-border/50 bg-background/50">
-              {p.plan.filter((x) => !d.usool.includes(x.label)).map((x) => (
-                <li key={x.label} className="flex items-center gap-3 px-3 py-1.5" title={x.description ?? undefined}>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px]"><span className="font-semibold">{x.label}</span> <span className="text-[11px] text-muted-foreground">· {td("step", { n: x.phase, phase: x.phase >= 1 && x.phase <= 6 ? td(`phase_${x.phase}`) : "" })}</span></p>
-                    <p className="truncate text-[11px] text-primary/90">{x.reason}</p>
-                  </div>
-                  <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={() => add([x.label])}>{td("add")}</Button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {p.plan.some((x) => d.usool.includes(x.label)) && (
-            <p className="flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-400"><Check className="h-3.5 w-3.5 mt-px shrink-0" /> {td("in_plan", { items: p.plan.filter((x) => d.usool.includes(x.label)).map((x) => x.label).join(", ") })}</p>
-          )}
-          {p.cautions.length > 0 && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {td("caution")}</p>
-              {p.cautions.map((x) => (
-                <div key={x.label} className="flex items-start justify-between gap-3">
-                  <p className="text-xs"><span className="font-semibold">{x.label}</span> <span className="text-muted-foreground">— {x.caution}</span></p>
-                  {!d.usool.includes(x.label) && <button type="button" onClick={() => add([x.label])} className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline">{td("add_anyway")}</button>}
-                </div>
-              ))}
-            </div>
-          )}
-          {p.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
-          <p className="text-[11px] text-muted-foreground">{td("guide_note", { ranked: data?.method === "ranked" ? td("ranked") : "" })}</p>
-        </>
-      )}
-    </div>
-  );
-}
-
-function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
-  const { dossier: d, set, options } = state;
-  const td = useTranslations("clinic.dossier");
-  const [q, setQ] = useState("");
   const all = options?.usool || [];
-  const phaseOf = (label: string) => all.find((o) => o.label === label)?.phase ?? 6;
-  const stepName = (n: number) => td("step", { n, phase: td(`phase_${n}`) });
-  const add = (label: string) => { if (!d.usool.includes(label)) set({ usool: [...d.usool, label] }); };
-  const remove = (label: string) => set({ usool: d.usool.filter((x) => x !== label) });
-  // The chosen plan in classical order (Izala-e-Sabab first … symptomatic relief last).
-  const chosen = [...d.usool].sort((a, b) => phaseOf(a) - phaseOf(b));
+  const p = data?.plan;
+  const b = p?.basis;
+  const planItems = [...(p?.plan || []), ...(p?.cautions || [])];
+  const inPlan = new Set(planItems.map((x) => x.label));
+  const phaseOf = (label: string) => planItems.find((x) => x.label === label)?.phase ?? all.find((o) => o.label === label)?.phase ?? 6;
+  const stepName = (n: number) => td("step", { n, phase: n >= 1 && n <= 6 ? td(`phase_${n}`) : "" });
+  const toggle = (label: string) => {
+    if (d.usool.includes(label)) { set({ usool: d.usool.filter((x) => x !== label) }); return; }
+    set({ usool: [...d.usool, label] });
+    if (inPlan.has(label)) record([label]);
+  };
+  const missing = (p?.plan || []).filter((x) => !d.usool.includes(x.label)).map((x) => x.label);
+  const acceptPlan = () => { if (!missing.length) return; set({ usool: [...d.usool, ...missing] }); record(missing); };
+
+  type Row = { label: string; description: string | null; phase: number; reason: string | null; caution?: string };
   const ql = q.trim().toLowerCase();
-  const results = all
-    .filter((o) => !d.usool.includes(o.label) && (!ql || `${o.label} ${o.localName ?? ""} ${o.description ?? ""} ${td(`phase_${o.phase ?? 6}`)}`.toLowerCase().includes(ql)))
-    .sort((a, b) => (a.phase ?? 6) - (b.phase ?? 6) || a.label.localeCompare(b.label))
-    .map((o) => ({ id: o.label, label: o.label, description: o.description, phase: o.phase ?? 6 }));
+  const match = (r: Row) => !ql || `${r.label} ${r.description ?? ""} ${td(`phase_${r.phase >= 1 && r.phase <= 6 ? r.phase : 6}`)}`.toLowerCase().includes(ql);
+  const planRows: Row[] = planItems.map((x) => ({ label: x.label, description: x.description, phase: x.phase, reason: x.reason, caution: x.caution }));
+  const otherRows: Row[] = all.filter((o) => !inPlan.has(o.label)).map((o) => ({ label: o.label, description: o.description, phase: o.phase ?? 6, reason: null }))
+    .sort((a, b2) => a.phase - b2.phase || a.label.localeCompare(b2.label));
+  const rows = (tab === "plan" ? planRows : otherRows).filter(match);
+  const chosen = [...d.usool].sort((a, b2) => phaseOf(a) - phaseOf(b2));
+
   return (
     <Panel icon={ClipboardCheck} tour="dossier.usool" title={td("usool_title")}>
-      <UsoolEngineCard state={state} visitId={visitId} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="min-w-0 text-xs text-muted-foreground">
+          {failed ? td.rich("plan_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })
+            : !p ? td("rerunning") : <>
+              {td("based_on")} {b?.suMizaj ? <span className="font-medium text-foreground">Su-e-Mizaj {[b.type, b.suMizaj, b.darja ? td("darja_n", { n: b.darja }) : null].filter(Boolean).join(" · ")}</span> : td("no_diagnosis")}
+              {b && b.organs.length > 0 && <> · {td("organs_word")} <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
+              {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("from_engine")}</span>}
+            </>}
+        </p>
+        <span className="flex items-center gap-2">
+          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
+          {missing.length > 0 && <Button size="sm" className="h-7" onClick={acceptPlan}><Sparkles className="h-3.5 w-3.5" /> {td("accept_plan", { count: missing.length })}</Button>}
+        </span>
+      </div>
 
-      {/* One search box to pick any number of principles; the chosen ones sit right under it */}
-      <div className="space-y-2">
-        <FloatingMultiSelect id="usoolPick" label={td("usool_add")} placeholder={td("usool_search")} openOnFocus keepOrder
-          selected={[]} onRemove={() => {}}
-          query={q} onQueryChange={setQ} results={results} onPick={add}
-          describe={(o) => `${stepName(o.phase)}${o.description ? ` · ${o.description}` : ""}`} />
-        {chosen.length === 0 ? <p className="text-[13px] text-muted-foreground">{td("usool_none")}</p> : (
-          <div className="flex flex-wrap gap-1.5" aria-label={td("usool_yours")}>
-            {chosen.map((l) => {
-              const n = phaseOf(l);
+      <div ref={boxRef} className="relative">
+        <div className="mb-1.5 inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
+          {(["plan", "other"] as const).map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(true); }}
+              className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+              {k === "plan" ? td("usool_tab_plan") : td("usool_tab_other")}
+              <span className="ms-1.5 text-[11px] opacity-80">{k === "plan" ? (p ? planRows.length : "") : otherRows.length}</span>
+            </button>
+          ))}
+        </div>
+        <FloatingField id="usoolSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
+          label={tab === "plan" ? td("usool_search_plan", { count: planRows.length }) : td("usool_search_other", { count: otherRows.length })}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
+          onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
+        {open && (
+          <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[380px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
+            {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{ql ? td("no_food", { q }) : td("no_suggestion")}</p>}
+            {rows.map((r) => {
+              const on = d.usool.includes(r.label);
               return (
-                <button key={l} type="button" onClick={() => remove(l)} title={`${stepName(n)}${all.find((o) => o.label === l)?.description ? ` · ${all.find((o) => o.label === l)!.description}` : ""}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 ps-1 pe-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20">
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">{n}</span>
-                  {l} <X className="h-3 w-3" />
-                </button>
+                <div key={r.label} className={cn("flex items-center gap-3 px-3 py-2", r.caution && "bg-amber-500/5")}>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary" title={stepName(r.phase)}>{r.phase}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-snug">{r.label} <span className="text-[11px] font-normal text-muted-foreground">· {stepName(r.phase)}</span></p>
+                    {r.description && <p className="truncate text-xs text-muted-foreground">{r.description}</p>}
+                    {r.caution ? <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{r.caution}</p>
+                      : r.reason && <p className="truncate text-xs text-emerald-700 dark:text-emerald-400">{r.reason}</p>}
+                  </div>
+                  <button type="button" onClick={() => toggle(r.label)} aria-pressed={on}
+                    className={cn("shrink-0 rounded-md border px-3 py-1 text-xs font-medium",
+                      on ? "border-emerald-500/60 bg-emerald-600 text-white" : r.caution ? "border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10" : "border-primary/40 text-primary hover:bg-primary/10")}>
+                    {on ? <><Check className="me-0.5 inline h-3 w-3" />{td("added")}</> : r.caution ? td("add_anyway") : td("add")}
+                  </button>
+                </div>
               );
             })}
           </div>
         )}
       </div>
 
+      {/* The chosen plan, in classical order */}
+      {chosen.length === 0 ? <p className="text-[13px] text-muted-foreground">{td("usool_none")}</p> : (
+        <div className="flex flex-wrap gap-1.5" aria-label={td("usool_yours")}>
+          {chosen.map((l) => {
+            const n = phaseOf(l);
+            return (
+              <button key={l} type="button" onClick={() => toggle(l)} title={stepName(n)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 ps-1 pe-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">{n}</span>
+                {l} <X className="h-3 w-3" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {p?.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
+
       <FloatingTextarea id="usool-note" label={td("plan_note")} rows={2} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })}
         title={td("plan_note_eg")} />
     </Panel>
   );
 }
-
-// ---------------------------------------------------------------- tab 4: Ilaj trinity
 
 function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string | null; label: string; forms: string[] }) => void }) {
   const [open, setOpen] = useState(false);
