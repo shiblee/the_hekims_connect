@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthUser, isDoctor } from "@/lib/api-auth";
+import { getAuthUser } from "@/lib/api-auth";
 import { recomputeHumoralAssessment, syncVisitIntakeToLabels, clearClinicalRoutingInsight } from "@/lib/complaint-sync";
 
 async function resolveFacilityId(auth: { id: string; type: "facility" | "patient" | "staff" }): Promise<string | null> {
@@ -53,9 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!auth || (auth.type !== "facility" && auth.type !== "staff")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!(await isDoctor(auth))) {
-    return NextResponse.json({ error: "Only a doctor can record a clinical complaint assessment" }, { status: 403 });
-  }
+  // Who may save is decided by the Stage 2 ("triage") permission, checked in proxy.ts.
   const facilityId = await resolveFacilityId(auth);
   if (!facilityId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
