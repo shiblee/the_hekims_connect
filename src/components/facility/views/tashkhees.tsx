@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { TashkheesDossierPanel, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 import { CaseReadinessCard, CaseSummaryPanel, useCaseContext } from "@/components/facility/views/case-context";
+import { useAppStore } from "@/lib/store";
+import { Undo2 } from "lucide-react";
 
 /**
  * Stage 5 — Tashkhees & Handover Dossier. Same header as Stages 3–4; the
@@ -64,6 +66,11 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   // Amending a finalised dossier asks why; the reason is kept with the new version.
   const [amendOpen, setAmendOpen] = useState(false);
   const [amendReason, setAmendReason] = useState("");
+  // Senior sign-off: the owner and staff with "diagnosis.signoff" finalise; others submit for sign-off.
+  const canSignOff = useAppStore((s) => !s.staff || s.permissions === null || s.permissions.includes("diagnosis.signoff"));
+  const tsf = useTranslations("clinic.safety");
+  const [backOpen, setBackOpen] = useState(false);
+  const [backNote, setBackNote] = useState("");
   const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
   const saveNote = () => residentNoteRef.current?.save().then(() => true, () => false) ?? Promise.resolve(true);
   // Print icon → the full assessment report (now including this dossier), in a
@@ -84,6 +91,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   if (!patient) return loadError ? <LoadFailed what={ts("this_patient")} detail={loadError} onRetry={reload} /> : <p className="text-muted-foreground text-sm">{ts("not_found")}</p>;
 
   const finalized = t.dossier.status === "finalized";
+  const submitted = t.dossier.status === "submitted";
   const saveDraft = async () => {
     const [ok, note] = await Promise.all([t.save(false), saveNote()]);
     cc.reload();
@@ -104,7 +112,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
     const [ok, note] = await Promise.all([t.save(true, reason), saveNote()]);
     cc.reload();
     if (ok) setAmendOpen(false);
-    if (ok && note) t.msg.success(finalized ? tr("final_updated") : tr("finalised"), savedAt());
+    if (ok && note) t.msg.success(!canSignOff ? tsf("submitted_ok") : finalized ? tr("final_updated") : tr("finalised"), savedAt());
   };
 
   return (
@@ -132,6 +140,16 @@ function TashkheesStage({ patientId }: { patientId: string }) {
         </div>
       </div>
 
+      {/* Sign-off status */}
+      {submitted && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-[13px]">
+          <span className="font-medium">{tsf("waiting", { by: t.dossier.submittedByName || "—", when: t.dossier.submittedAt ? new Date(t.dossier.submittedAt).toLocaleString(dl, { dateStyle: "medium", timeStyle: "short" }) : "" })}</span>
+          {!canSignOff && <span className="text-muted-foreground">{tsf("waiting_edit")}</span>}
+        </div>
+      )}
+      {t.dossier.status === "draft" && t.dossier.returnNote && (
+        <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-[13px] text-amber-800 dark:text-amber-300">{tsf("sent_back", { note: t.dossier.returnNote })}</div>
+      )}
       {/* Same action bar as the earlier stages; its messages sit right above it. */}
       <NoticeSlot state={t.msg} className="mb-3" />
       {latestVisit && (
@@ -148,13 +166,32 @@ function TashkheesStage({ patientId }: { patientId: string }) {
                 {t.saving === "draft" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} {ts("save_draft")}
               </Button>
             )}
-            <Button size="sm" onClick={() => finalize()} disabled={t.saving !== null || !t.options}>
-              {t.saving === "finalize" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              {finalized ? tr("amend") : tr("finalise")}
-            </Button>
+            {submitted && canSignOff && (
+              <Button size="sm" variant="outline" onClick={() => { setBackNote(""); setBackOpen(true); }} disabled={t.saving !== null}>
+                <Undo2 className="h-3.5 w-3.5" /> {tsf("send_back")}
+              </Button>
+            )}
+            {(canSignOff || !finalized) && (
+              <Button size="sm" onClick={() => finalize()} disabled={t.saving !== null || !t.options || (submitted && !canSignOff)}>
+                {t.saving === "finalize" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                {finalized ? tr("amend") : !canSignOff ? (submitted ? tsf("submitted_ok") : tsf("submit")) : submitted ? tsf("sign_off") : tr("finalise")}
+              </Button>
+            )}
           </div>
         </Card>
       )}
+      <Dialog open={backOpen} onOpenChange={setBackOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{tsf("send_back_title")}</DialogTitle></DialogHeader>
+          <FloatingTextarea id="returnNote" label={tsf("send_back_note")} required value={backNote} onChange={(e) => setBackNote(e.target.value)} rows={3} />
+          <DialogFooter className="border-t pt-4">
+            <Button variant="outline" onClick={() => setBackOpen(false)}>{tc("cancel")}</Button>
+            <Button onClick={async () => { if (await t.sendBack(backNote.trim())) { setBackOpen(false); t.msg.success(tsf("sent_back_ok"), savedAt()); } }} disabled={backNote.trim().length < 3}>
+              <Undo2 className="h-3.5 w-3.5" /> {tsf("send_back")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={amendOpen} onOpenChange={setAmendOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{tr("amend_title")}</DialogTitle></DialogHeader>

@@ -29,3 +29,12 @@ describe("Stage 5 medicine safety", () => {
   });
   it("reception can't", () => assert.equal(can("Receptionist", "POST", "/api/facility/tashkhees/prescription-check"), false));
 });
+
+describe("Stage 5 senior sign-off", () => {
+  it("Hakims can sign off by default", () => assert.ok(defaultsFor("Hakim").includes("diagnosis.signoff")));
+  it("Junior Hakims submit for sign-off instead", () => assert.ok(!defaultsFor("Junior Hakim / Intern").includes("diagnosis.signoff")));
+  it("the safety review is part of Stage 5", () => {
+    assert.equal(can("Junior Hakim / Intern", "POST", `${V}/safety`), true);
+    assert.equal(can("Receptionist", "POST", `${V}/safety`), false);
+  });
+});

@@ -4,6 +4,8 @@ import { getClinicActor } from "@/lib/reports-server";
 import { PRIORITIES } from "@/lib/tashkhees";
 import { getAuthUser } from "@/lib/api-auth";
 import { logClinicEvent } from "@/lib/clinic-audit";
+import { loadStaffAccess } from "@/lib/staff-permissions-server";
+import { computeSafetyReview } from "@/lib/safety-review";
 
 const parse = <T,>(s: string | null | undefined, fallback: T): T => { try { return s ? JSON.parse(s) : fallback; } catch { return fallback; } };
 const str = (v: unknown, max = 4000) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
@@ -33,7 +35,7 @@ function serialize(d: NonNullable<Awaited<ReturnType<typeof load>>>) {
     prescriptions: d.prescriptions.map((p) => ({ tagId: p.tagId, name: p.name, form: p.form ?? "", dose: p.dose ?? "", timing: p.timing ?? "", duration: p.duration ?? "", adjuvant: p.adjuvant ?? "", instructions: p.instructions ?? "" })),
     prognosis: d.prognosis, followUpDate: d.followUpDate, followUpNote: d.followUpNote,
     urgentDirectives: d.urgentDirectives, priority: d.priority, handoverNote: d.handoverNote,
-    revision: d.revision,
+    revision: d.revision, submittedAt: d.submittedAt, submittedByName: d.submittedByName, returnNote: d.returnNote, prescriptionId: d.prescriptionId,
     versions: d.versions.map((v) => ({ version: v.version, kind: v.kind, reason: v.reason, byName: v.byName, createdAt: v.createdAt })),
   };
 }
@@ -108,15 +110,44 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const missing = [!diagnoses.some((x: any) => x.role === "working") && "Marz (working diagnosis)", !data.mizajAsli && "Mizaj-e-Asli", !data.suMizajQuality && "Su-e-Mizaj"].filter(Boolean);
     if (missing.length) return NextResponse.json({ error: `Record the ${missing.join(" and ")} before finalising` }, { status: 400 });
   }
-  const existing = await db.tashkheesDossier.findUnique({ where: { visitId: id }, select: { id: true, status: true, revision: true } });
+  const existing = await db.tashkheesDossier.findUnique({ where: { visitId: id }, select: { id: true, status: true, revision: true, prescriptionId: true } });
   if (existing && typeof b.revision === "number" && b.revision !== existing.revision) {
     return NextResponse.json({ error: "Someone else saved this dossier after you opened it. Reload to see their changes, then save again.", conflict: true }, { status: 409 });
   }
+  // Senior sign-off: the owner and staff with "diagnosis.signoff" finalise; others submit for sign-off.
+  const canSignOff = actor!.type === "facility" || !!(await loadStaffAccess(actor!.id))?.permissions.includes("diagnosis.signoff");
+  const auth = await getAuthUser(req);
+  const vInfo = await db.visit.findUnique({ where: { id }, select: { visitCode: true, patientId: true, patient: { select: { name: true } } } });
+  const label = `${vInfo?.visitCode ?? ""} · ${vInfo?.patient.name ?? ""}`;
+
+  // A senior sends a submitted dossier back with a note.
+  if (b.sendBack) {
+    if (!canSignOff) return NextResponse.json({ error: "Only a senior with sign-off permission can send a dossier back" }, { status: 403 });
+    if (existing?.status !== "submitted") return NextResponse.json({ error: "This dossier isn't waiting for sign-off" }, { status: 409 });
+    const note = str(b.returnNote, 1000);
+    if (!note || note.length < 3) return NextResponse.json({ error: "Say what needs to change" }, { status: 400 });
+    await db.tashkheesDossier.update({ where: { visitId: id }, data: { status: "draft", returnNote: note, revision: { increment: 1 } } });
+    if (auth) await logClinicEvent(req, auth, { action: "dossier.returned", summary: `Sent the Tashkhees dossier for ${label} back: ${note}`, entityType: "visit", entityId: id, entityLabel: label });
+    const back = await load(id);
+    return NextResponse.json({ dossier: back && serialize(back) });
+  }
+
   const amending = existing?.status === "finalized";
   const amendReason = str(b.amendReason, 500);
   if (amending && !b.finalize) return NextResponse.json({ error: "This dossier is finalised. Use Amend to change it." }, { status: 409 });
+  if (amending && !canSignOff) return NextResponse.json({ error: "Only a senior with sign-off permission can amend a finalised dossier" }, { status: 403 });
   if (amending && (!amendReason || amendReason.length < 3)) return NextResponse.json({ error: "Give a reason for the amendment" }, { status: 400 });
-  const finalize = b.finalize ? { status: "finalized", finalizedAt: new Date(), finalizedByName: actor!.name } : {};
+  // High-risk safety items must each be acknowledged with a reason before finalising or submitting.
+  if (b.finalize) {
+    const review = await computeSafetyReview(id, actor!.facilityId, prescriptions.map((p: any) => ({ tagId: p.tagId, name: p.name })));
+    if (review && review.blocking > 0) return NextResponse.json({ error: "Review the high-risk safety items before finalising", safety: true, blocking: review.blocking }, { status: 409 });
+  }
+  const submitting = !!b.finalize && !canSignOff;
+  const finalize = !b.finalize
+    ? (existing?.status === "submitted" && !canSignOff ? { status: "draft" } : {}) // editing a submitted dossier withdraws it
+    : submitting
+      ? { status: "submitted", submittedAt: new Date(), submittedByName: actor!.name, returnNote: null }
+      : { status: "finalized", finalizedAt: new Date(), finalizedByName: actor!.name, returnNote: null };
 
   const saved = await db.$transaction(async (tx) => {
     const d = await tx.tashkheesDossier.upsert({
@@ -129,7 +160,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return d;
   });
   let d = await load(id);
-  if (b.finalize && d) {
+  if (submitting && d) {
+    if (auth) await logClinicEvent(req, auth, { action: "dossier.submitted", summary: `Submitted the Tashkhees dossier for ${label} for senior sign-off`, entityType: "visit", entityId: id, entityLabel: label });
+  }
+  if (b.finalize && !submitting && d) {
     const version = (d.versions[0]?.version ?? 0) + 1;
     await db.dossierVersion.create({
       data: {
@@ -137,9 +171,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         snapshot: JSON.stringify(serialize(d)), byName: actor!.name, byStaffId: actor!.type === "staff" ? actor!.id : null,
       },
     });
-    const v = await db.visit.findUnique({ where: { id }, select: { visitCode: true, patient: { select: { name: true } } } });
-    const auth = await getAuthUser(req);
-    const label = `${v?.visitCode ?? ""} · ${v?.patient.name ?? ""}`;
+    // The medicine lines become (or update) the visit's prescription — Prescriptions page, pharmacy and patient app.
+    const items = prescriptions.map((p: any) => ({
+      name: p.name, dose: p.dose ?? "", frequency: [p.timing, p.duration].filter(Boolean).join(" · "),
+      instructions: [p.form, p.adjuvant && `with ${p.adjuvant}`, p.instructions].filter(Boolean).join(" · "),
+    }));
+    const current = existing?.prescriptionId ? await db.prescription.findUnique({ where: { id: existing.prescriptionId }, select: { id: true } }) : null;
+    if (items.length) {
+      if (current) await db.prescription.update({ where: { id: current.id }, data: { items: JSON.stringify(items) } });
+      else {
+        const rx = await db.prescription.create({ data: { patientId: vInfo!.patientId, facilityId: actor!.facilityId, items: JSON.stringify(items), notes: `Tashkhees dossier ${vInfo?.visitCode ?? ""}`, therapyType: "Ilaj-bil-Dawa" } });
+        await db.tashkheesDossier.update({ where: { id: saved.id }, data: { prescriptionId: rx.id } });
+      }
+    } else if (current) {
+      await db.prescription.delete({ where: { id: current.id } });
+      await db.tashkheesDossier.update({ where: { id: saved.id }, data: { prescriptionId: null } });
+    }
     if (auth) {
       await logClinicEvent(req, auth, amending
         ? { action: "dossier.amended", summary: `Amended the Tashkhees dossier (v${version}) for ${label}: ${amendReason}`, entityType: "visit", entityId: id, entityLabel: label, details: { version, reason: amendReason } }

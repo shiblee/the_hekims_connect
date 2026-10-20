@@ -681,7 +681,7 @@ model TashkheesOption {
 model TashkheesDossier {
   id               String    @id @default(cuid())
   visitId          String    @unique
-  status           String    @default("draft") // "draft" | "finalized"
+  status           String    @default("draft") // "draft" | "submitted" (awaiting senior sign-off) | "finalized"
   mizajAsli        String?
   suMizajType      String? // "Sada" | "Maddi"
   suMizajQuality   String?
@@ -708,6 +708,12 @@ model TashkheesDossier {
   recordedById     String?
   // Bumped on every save — a save based on an older revision is refused (two people editing at once).
   revision         Int       @default(0)
+  // Senior sign-off: who submitted it for sign-off, and the note when a senior sends it back.
+  submittedAt      DateTime?
+  submittedByName  String?
+  returnNote       String?
+  // The prescription created from the medicine lines when the dossier is finalised.
+  prescriptionId   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -769,6 +775,22 @@ model MarzEntry {
   updatedAt      DateTime  @updatedAt
 
   diagnoses DossierDiagnosis[]
+}
+
+// A high-risk safety item the Hakim reviewed before finalising, with the reason
+// for continuing — e.g. a declined referral, an interaction, pregnancy.
+model SafetyAcknowledgement {
+  id        String   @id @default(cuid())
+  visitId   String
+  key       String // stable key of the safety item
+  level     String
+  text      String // the item as it read when acknowledged
+  reason    String
+  byName    String?
+  byStaffId String?
+  createdAt DateTime @default(now())
+
+  @@unique([visitId, key])
 }
 
 // A snapshot of the dossier each time it is finalised or amended — a finalised

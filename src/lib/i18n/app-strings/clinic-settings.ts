@@ -140,6 +140,8 @@ export const CLINIC_PERMISSIONS = defineStrings("clinic.permissions", {
   asbab_hint: ["Asbab-e-Sitta Zarooriya", "Asbab-e-Sitta Zarooriya", "Asbab-e-Sitta Zarooriya", "Asbab-e-Sitta Zarooriya", "Asbab-e-Sitta Zarooriya"],
   diagnosis: ["Stage 5 — Diagnosis & Plan", "चरण 5 — निदान और योजना", "مرحلہ 5 — تشخیص اور منصوبہ", "المرحلة 5 — التشخيص والخطة", "مرحلهٔ ۵ — تشخیص و برنامه"],
   diagnosis_hint: ["Dala'il, Tashkhees, Usool-e-Ilaj, Ghiza", "Dala'il, Tashkhees, Usool-e-Ilaj, Ghiza", "Dala'il, Tashkhees, Usool-e-Ilaj, Ghiza", "Dala'il, Tashkhees, Usool-e-Ilaj, Ghiza", "Dala'il, Tashkhees, Usool-e-Ilaj, Ghiza"],
+  diagnosis_signoff: ["Sign off Stage 5 (senior)", "चरण 5 पर हस्ताक्षर (वरिष्ठ)", "مرحلہ 5 کی منظوری (سینئر)", "اعتماد المرحلة 5 (كبير)", "تأیید نهایی مرحلهٔ ۵ (ارشد)"],
+  diagnosis_signoff_hint: ["Finalise the dossier; without it, a finished dossier goes to a senior for sign-off", "डोसियर को अंतिम करें; इसके बिना पूरा डोसियर वरिष्ठ की स्वीकृति के लिए जाता है", "ڈوزیئر حتمی کریں؛ اس کے بغیر مکمل ڈوزیئر سینئر کی منظوری کے لیے جاتا ہے", "اعتماد الملف؛ ومن دونها يُرسل الملف المكتمل إلى كبير الأطباء للاعتماد", "پرونده را نهایی کنید؛ بدون آن، پروندهٔ کامل برای تأیید نزد ارشد می‌رود"],
   prescribe: ["Prescribe medicines", "दवाएँ लिखें", "ادویات تجویز کریں", "وصف الأدوية", "تجویز دارو"],
   prescribe_hint: ["Ilaj-bil-Dawa and medicine decision support", "Ilaj-bil-Dawa और दवा निर्णय सहायता", "Ilaj-bil-Dawa اور دوا کے فیصلے میں مدد", "Ilaj-bil-Dawa ودعم قرار الدواء", "Ilaj-bil-Dawa و پشتیبانی تصمیم دارویی"],
   refer: ["Refer patients", "मरीज़ रेफ़र करें", "مریض ریفر کریں", "إحالة المرضى", "ارجاع بیماران"],

@@ -11,6 +11,7 @@ import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment
 import { Card } from "@/components/ui/card";
 import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { MarzSection, type AmrazOption, type DossierDiagnosis } from "@/components/facility/views/marz-diagnosis";
+import { SafetyReviewPanel } from "@/components/facility/views/safety-review-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,13 +22,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
-  Search, ShieldAlert, Sparkles, Stethoscope, Trash2, Utensils, X,
+  Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
 
 interface Dossier {
-  status: "draft" | "finalized"; finalizedAt: string | null; finalizedByName: string | null;
+  status: "draft" | "submitted" | "finalized"; submittedAt?: string | null; submittedByName?: string | null; returnNote?: string | null; prescriptionId?: string | null; finalizedAt: string | null; finalizedByName: string | null;
   mizajAsli: string | null; suMizajType: string | null; suMizajQuality: string | null; suMizajGrade: number | null;
   organs: string[]; diagnosisNote: string | null; usool: string[]; usoolNote: string | null;
   ghizaRecommended: string[]; ghizaAvoid: string[]; ghizaNote: string | null;
@@ -59,8 +60,11 @@ export function useTashkhees(visitId: string | undefined) {
   const [reloadTick, setReloadTick] = useState(0);
   // Medicine safety check for the current medicine lines — finalising waits for it to have run.
   const [safety, setSafety] = useState<"idle" | "checking" | "ok" | "failed">("idle");
+  // High-risk safety-review items still without a reason (null = not loaded / failed).
+  const [safetyBlocking, setSafetyBlocking] = useState<number | null>(null);
   const msg = useNotice();
   const td = useTranslations("clinic.dossier");
+  const ts = useTranslations("clinic.safety");
   const tc = useTranslations("common");
 
   useEffect(() => {
@@ -103,6 +107,10 @@ export function useTashkhees(visitId: string | undefined) {
       msg.clear();
       return true;
     } catch (e: any) {
+      if (e?.status === 409 && e?.data?.safety) {
+        msg.error(ts("need_safety_title"), ts("need_safety_hint"), { retry: () => document.getElementById("safety")?.scrollIntoView({ behavior: "smooth", block: "start" }), retryLabel: ts("go_safety") });
+        return false;
+      }
       if (e?.status === 409 && e?.data?.conflict) {
         msg.error(td("conflict_title"), td("conflict_hint"), { retry: reload, retryLabel: td("reload") });
         return false;
@@ -118,7 +126,20 @@ export function useTashkhees(visitId: string | undefined) {
     }
   };
 
-  return { dalail, options, herbs, amraz, dossier, set, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload, safety, setSafety };
+  /** A senior sends a submitted dossier back with a note. */
+  const sendBack = async (note: string) => {
+    if (!visitId) return false;
+    try {
+      const res = await api.post<{ dossier: Dossier }>(`/api/facility/visits/${visitId}/dossier`, { sendBack: true, returnNote: note });
+      setDossier({ ...EMPTY, ...res.dossier, followUpDate: res.dossier.followUpDate ? res.dossier.followUpDate.slice(0, 10) : null });
+      return true;
+    } catch (e: any) {
+      msg.error(td("draft_not_saved"), td("on_screen", { error: e.message || tc("network_error") }));
+      return false;
+    }
+  };
+
+  return { dalail, options, herbs, amraz, dossier, set, sendBack, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload, safety, setSafety, safetyBlocking, setSafetyBlocking };
 }
 type TashkheesState = ReturnType<typeof useTashkhees>;
 
@@ -1297,6 +1318,7 @@ const TABS = [
   { key: "tashkhees", label: "Tashkhees", short: "Tashkhees", sub: "Diagnosis", icon: FileSignature },
   { key: "usool", label: "Usool-e-Ilaj", short: "Usool", sub: "Principles", icon: ClipboardCheck },
   { key: "ilaj", label: "Ilaj", short: "Ilaj", sub: "Ghiza · Dawa · Tadbeer", short2: "Treatment", icon: Leaf },
+  { key: "safety", label: "Safety", short: "Safety", sub: "Review", icon: ShieldCheck },
   { key: "handover", label: "Prognosis", short: "Prognosis", sub: "& Handover", short2: "Handover", icon: CalendarDays },
 ] as const;
 
@@ -1311,15 +1333,17 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
   const dl = useDateLocale();
   const td = useTranslations("clinic.dossier");
   // Unani step names stay as they are; their plain-language descriptions are translated.
-  const tabLabel = (k: string, label: string) => (k === "handover" ? td("tab_prognosis") : label);
-  const tabSub = (k: string) => td(`sub_${k}`);
-  const tabShort2 = (k: string) => (k === "ilaj" || k === "handover" ? td(`short2_${k}`) : td(`sub_${k}`));
+  const tsf = useTranslations("clinic.safety");
+  const tabLabel = (k: string, label: string) => (k === "handover" ? td("tab_prognosis") : k === "safety" ? tsf("tab") : label);
+  const tabSub = (k: string) => (k === "safety" ? tsf("tab_sub") : td(`sub_${k}`));
+  const tabShort2 = (k: string) => (k === "safety" ? tsf("tab_sub") : k === "ilaj" || k === "handover" ? td(`short2_${k}`) : td(`sub_${k}`));
   const done: Record<string, boolean> = {
     // Adaptive selection means not every question is shown — any recorded finding counts.
     dalail: state.dalail.progress.answered > 0,
     tashkhees: !!d.mizajAsli && !!d.suMizajQuality && d.diagnoses.some((x) => x.role === "working"),
     usool: d.usool.length > 0,
     ilaj: d.prescriptions.length + d.tadbeer.length + d.ghizaRecommended.length + d.ghizaAvoid.length > 0,
+    safety: state.safetyBlocking === 0,
     handover: !!d.prognosis || !!d.handoverNote,
   };
   const doneCount = Object.values(done).filter(Boolean).length;
@@ -1441,6 +1465,9 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
       <section id="tashkhees" className="scroll-mt-20" ref={(el) => { refs.current.tashkhees = el; }}><TashkheesTab state={state} visitId={visitId} /></section>
       <section id="usool" className="scroll-mt-20" ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} visitId={visitId} /></section>
       <section id="ilaj" className="scroll-mt-20" ref={(el) => { refs.current.ilaj = el; }}><IlajTab state={state} patientId={patientId} visitId={visitId} /></section>
+      <section id="safety" className="scroll-mt-20" ref={(el) => { refs.current.safety = el; }}>
+        <SafetyReviewPanel visitId={visitId} refreshKey={`${d.revision ?? 0}|${d.prescriptions.map((p) => p.tagId).join(",")}`} onBlocking={state.setSafetyBlocking} />
+      </section>
       <section id="handover" className="scroll-mt-20" ref={(el) => { refs.current.handover = el; }}><HandoverTab state={state} /></section>
 
       {/* Where to next */}

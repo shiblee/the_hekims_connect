@@ -69,6 +69,7 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
         tashkheesDossier: { select: { suMizajQuality: true, organs: true, prescriptions: { select: { tagId: true, name: true } } } },
         redFlagScreening: { select: { outcome: true, answers: { where: { present: true }, select: { criterionLabel: true } } } },
         referral: { select: { referredTo: true } },
+        pregnancyStatus: true,
       },
     }),
     getCdsConfig(),
@@ -91,7 +92,8 @@ export async function runCdsEngine(visitId: string, facilityId: string) {
   const currentMedIds = new Set(currentMedTags.map((t) => t.id));
   const historyText = [p?.chronicConditions, p?.medicalHistory, p?.currentMedications, ...medLabels].filter(Boolean).join(" ; ");
   const conditions = conditionsIn(historyText);
-  const pregnancyRecorded = ctx.regions.some((r) => /obstetric|pregnan/i.test(r.label)) || ctx.complaints.some((c) => /pregnan/i.test(c.label));
+  // Pregnancy: the status recorded at Stage 5 case readiness, else pregnancy-related complaints / regions.
+  const pregnancyRecorded = visit.pregnancyStatus === "pregnant" || ctx.regions.some((r) => /obstetric|pregnan/i.test(r.label)) || ctx.complaints.some((c) => /pregnan/i.test(c.label));
   const female = ctx.sex === "female";
   const childbearing = female && ctx.age != null && ctx.age >= 14 && ctx.age <= 50;
   const warningSigns = visit.redFlagScreening?.answers.map((a) => a.criterionLabel) || [];

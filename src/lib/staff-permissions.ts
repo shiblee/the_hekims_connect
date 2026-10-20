@@ -10,6 +10,7 @@ export const PERMISSIONS = [
   { key: "mizaj", group: "Assessment", label: "Stage 3 — Temperament", hint: "Mizaj, body regions, onset & chronology" },
   { key: "asbab", group: "Assessment", label: "Stage 4 — Lifestyle Factors", hint: "Asbab-e-Sitta Zarooriya" },
   { key: "diagnosis", group: "Assessment", label: "Stage 5 — Diagnosis & Plan", hint: "Dala'il, Tashkhees, Usool-e-Ilaj, Ghiza" },
+  { key: "diagnosis.signoff", group: "Assessment", label: "Sign off Stage 5 (senior)", hint: "Finalise the dossier; without it, a finished dossier goes to a senior for sign-off" },
   { key: "prescribe", group: "Assessment", label: "Prescribe medicines", hint: "Ilaj-bil-Dawa and medicine decision support" },
   { key: "refer", group: "Assessment", label: "Refer patients", hint: "Refer out to another doctor or hospital" },
   { key: "reports", group: "Assessment", label: "Reports", hint: "Print assessment reports, add lab / imaging reports" },
@@ -29,7 +30,7 @@ const isKey = (k: unknown): k is PermissionKey => typeof k === "string" && (ALL_
 
 /** Built-in starting point for each role (Admin → Meta → Staff Role); the clinic can change them. */
 export const ROLE_DEFAULTS: Record<string, PermissionKey[]> = {
-  Hakim: ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "asbab", "diagnosis", "prescribe", "refer", "reports", "appointments", "messages"],
+  Hakim: ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "asbab", "diagnosis", "diagnosis.signoff", "prescribe", "refer", "reports", "appointments", "messages"],
   "Staff Nurse": ["dashboard", "patients.view", "patients.register", "triage", "mizaj", "appointments"],
   Counsellor: ["patients.view", "asbab", "appointments", "messages"],
   Administrator: ["dashboard", "patients.view", "patients.register", "reports", "appointments", "messages", "payments", "finance.view", "payments.refund", "staff.manage", "settings", "activity"],
@@ -66,7 +67,7 @@ const READ_LISTS = R("/api/facility/(acute-symptoms|allergies|anatomical-regions
 const V = "/api/facility/visits/[^/]+";
 const TRIAGE = R(`${V}/(vitals|screening|complaint-assessments|red-flag-screening|acute-symptoms|humoral-assessment|clinical-routing-insight|humoral-clues-insight)`);
 const MIZAJ = R(`${V}/(anatomical-regions|chronology)`);
-const DIAG = R(`${V}/(dalail-selection|dossier|tashkhees-engine|usool-engine|ghiza-engine|clinical-assessment|treatment-plan|clinical-summary|case-context|differentials|reasoning)`);
+const DIAG = R(`${V}/(dalail-selection|dossier|tashkhees-engine|usool-engine|ghiza-engine|clinical-assessment|treatment-plan|clinical-summary|case-context|differentials|reasoning|safety)`);
 
 /** What a staff member needs for this API request. Reads of a visit need "View patients"; changes need the stage's permission. */
 export function requiredPermission(path: string, method: string): Need {
