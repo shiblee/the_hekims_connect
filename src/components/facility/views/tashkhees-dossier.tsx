@@ -193,7 +193,19 @@ function Segmented<T extends string | number>({ value, options, onChange }: { va
   );
 }
 
-function HumourBars({ pct, compact }: { pct: HumourPoints; compact?: boolean }) {
+function HumourBars({ pct, compact, inline }: { pct: HumourPoints; compact?: boolean; inline?: boolean }) {
+  // inline: the four humours side by side on one line (two per line on phones)
+  if (inline) return (
+    <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-1.5 md:grid-cols-4">
+      {AKHLAT.map((h) => (
+        <div key={h.key} className="grid min-w-0 grid-cols-[auto_minmax(1.5rem,1fr)_2.3rem] items-center gap-1.5 text-[13px]">
+          <span className="text-muted-foreground">{h.label}</span>
+          <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className={cn("block h-full rounded-full", h.bar)} style={{ width: `${pct[h.key]}%` }} /></span>
+          <span className="font-medium tabular-nums">{pct[h.key]}%</span>
+        </div>
+      ))}
+    </div>
+  );
   return (
     <div className={cn("space-y-1.5", compact && "space-y-1")}>
       {AKHLAT.map((h) => (
@@ -430,9 +442,9 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
       )}
 
       {hasSigns && drift && (
-        <div className="rounded-xl border border-border/50 bg-background/40 p-3">
-          <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">{td("signs_point")}</p>
-          <HumourBars pct={drift.percent} compact />
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-border/50 bg-background/40 px-3 py-2.5">
+          <p className="w-full shrink-0 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground md:w-auto">{td("signs_point")}</p>
+          <HumourBars pct={drift.percent} inline />
         </div>
       )}
     </Panel>
