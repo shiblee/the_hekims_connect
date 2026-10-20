@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 
-type ModelName = "facility" | "staff" | "patient" | "payment" | "vitals";
+type ModelName = "facility" | "staff" | "patient" | "payment" | "vitals" | "referralDecline";
 
 interface FieldConfig {
   model: ModelName;
@@ -34,6 +34,7 @@ const FIELD_CONFIG: Record<string, FieldConfig> = {
   gender: { model: "patient", field: "gender" },
   marital_status: { model: "patient", field: "maritalStatus" },
   payment_mode: { model: "payment", field: "mode", required: true },
+  referral_decline_reason: { model: "referralDecline", field: "declineReason" },
 };
 
 async function countModel(model: ModelName, where: Record<string, unknown>): Promise<number> {
@@ -43,6 +44,7 @@ async function countModel(model: ModelName, where: Record<string, unknown>): Pro
     case "patient": return db.patient.count({ where });
     case "payment": return db.payment.count({ where });
     case "vitals": return db.vitalSigns.count({ where });
+    case "referralDecline": return db.amaDecline.count({ where });
   }
 }
 

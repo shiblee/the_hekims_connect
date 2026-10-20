@@ -31,7 +31,7 @@ const SELECT = {
   clinicalAssessment: { select: { id: true, workingDiagnosis: true, requiresUrgentReferral: true, updatedAt: true } },
   treatmentPlan: { select: { id: true, referralRequired: true, updatedAt: true } },
   referral: { select: { id: true, reason: true, referredTo: true, urgency: true, notes: true, createdAt: true } },
-  amaDecline: { select: { id: true, reason: true, patientReason: true, createdAt: true } },
+  amaDecline: { select: { id: true, reason: true, patientReason: true, declineReason: true, createdAt: true } },
   // Triage findings shown to the main doctor on the later stages.
   redFlagScreening: { select: { outcome: true, answers: { select: { criterionLabel: true, present: true } } } },
   acuteSymptomAssessment: { select: { symptoms: true } },

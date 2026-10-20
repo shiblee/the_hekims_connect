@@ -41,7 +41,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       complaintAssessments: { orderBy: { sortOrder: "asc" }, select: { chiefComplaintLabel: true, onsetValue: true, onsetUnit: true, onsetPattern: true, severityScore: true, character: true, aggravatingFactors: true, relievingFactors: true, clinicalNotes: true, updatedAt: true } },
       redFlagScreening: { select: { outcome: true, updatedAt: true, answers: { select: { criterionId: true, criterionLabel: true, present: true } } } },
       referral: { select: { reason: true, referredTo: true, urgency: true, notes: true, createdAt: true, referredBy: { select: { name: true } } } },
-      amaDecline: { select: { reason: true, patientReason: true, createdAt: true } },
+      amaDecline: { select: { reason: true, patientReason: true, declineReason: true, createdAt: true, recordedBy: { select: { name: true } } } },
       acuteSymptomAssessment: { select: { symptoms: true, updatedAt: true } },
       humoralAssessment: { select: { safraPercent: true, damPercent: true, saudaPercent: true, balghamPercent: true, dominant: true, dominantOverride: true, aiClue: true, aiClueGeneratedAt: true, computedAt: true } },
       clinicalRoutingInsight: { select: { priorityLevel: true, triageStream: true, justification: true, generatedAt: true, updatedAt: true } },

@@ -350,7 +350,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                 {data.amaDecline && (
                   <div className="rpt-keep mt-2 rounded border border-[#fcd34d] px-3 py-2">
                     <p className="text-[9.5pt] uppercase tracking-wide font-semibold text-[#92400e]">{t("ama")}</p>
-                    <Facts rows={[[t("f_ama_reason"), data.amaDecline.reason], [t("f_patient_reason"), data.amaDecline.patientReason], [t("f_recorded"), fmtDateTime(data.amaDecline.createdAt)]]} />
+                    <Facts rows={[[t("f_ama_reason"), data.amaDecline.reason], [t("f_decline_reason"), data.amaDecline.declineReason], [t("f_patient_reason"), data.amaDecline.patientReason], [t("f_declined_on"), fmtDateTime(data.amaDecline.createdAt)], [t("f_declined_by"), data.amaDecline.recordedBy?.name]]} />
                   </div>
                 )}
               </Section>

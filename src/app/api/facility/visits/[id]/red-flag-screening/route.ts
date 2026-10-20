@@ -21,7 +21,7 @@ const SCREENING_SELECT = {
   id: true, outcome: true, createdAt: true, updatedAt: true,
   answers: { select: { id: true, criterionId: true, criterionLabel: true, present: true } },
   referral: { select: { id: true, reason: true, referredTo: true, urgency: true, notes: true, createdAt: true } },
-  amaDecline: { select: { id: true, reason: true, patientReason: true, createdAt: true } },
+  amaDecline: { select: { id: true, reason: true, patientReason: true, declineReason: true, createdAt: true } },
 };
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -150,6 +150,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Staff must confirm the patient was informed of the risks" }, { status: 400 });
     }
 
+    const declineReason = ama.declineReason ? String(ama.declineReason).trim().slice(0, 200) || null : null;
+
     const screening = await db.redFlagScreening.upsert({
       where: { visitId: id },
       update: { outcome: "continued_ama", recordedById: auth.staffId ?? null, answers: { deleteMany: {}, create: answerRows } },
@@ -162,6 +164,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       update: {
         reason: String(ama.reason).trim(),
         patientReason: ama.patientReason ? String(ama.patientReason).trim() : null,
+        declineReason: declineReason,
         recordedById: auth.staffId ?? null,
       },
       create: {
@@ -169,6 +172,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         screeningId: screening.id,
         reason: String(ama.reason).trim(),
         patientReason: ama.patientReason ? String(ama.patientReason).trim() : null,
+        declineReason: declineReason,
         recordedById: auth.staffId ?? null,
       },
     });

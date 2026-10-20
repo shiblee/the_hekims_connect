@@ -1,4 +1,5 @@
 import { REPORT_DEFAULTS } from "@/lib/report-branding";
+import { REFERRAL_DECLINE_SECTION } from "@/lib/referral-decline";
 import { seedFacilityMeta } from "@/lib/facility-meta-seed";
 import { seedMetaCatalogs } from "@/lib/meta-catalog-seed";
 import { WARNING_SIGN_SEED, OTHER_SYMPTOM_SEED, ONSET_PATTERN_SEED } from "@/lib/triage-catalog-seed";
@@ -138,6 +139,7 @@ export async function seedMetadata() {
     { key: "gender", label: "Gender", category: "Patient", options: ["Male", "Female", "Other", "Prefer not to say"] },
     { key: "marital_status", label: "Marital Status", category: "Patient", options: ["Single", "Married", "Widowed", "Divorced", "Separated", "Other"] },
     { key: "payment_mode", label: "Payment Mode", category: "Patient", options: ["Cash", "UPI", "Card", "Bank Transfer", "Other"] },
+    { key: REFERRAL_DECLINE_SECTION.key, label: REFERRAL_DECLINE_SECTION.label, category: REFERRAL_DECLINE_SECTION.category, options: REFERRAL_DECLINE_SECTION.options },
   ];
   for (let i = 0; i < metadataSections.length; i++) {
     const s = metadataSections[i];

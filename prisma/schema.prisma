@@ -1151,7 +1151,8 @@ model AmaDecline {
   visitId       String   @unique
   screeningId   String   @unique
   reason        String // clinical reason referral was recommended (the flagged criteria)
-  patientReason String? // why the patient declined, if stated
+  patientReason String? // additional remarks from the patient / family, if any
+  declineReason String? // why the family won't go for the referral — picked from Meta "Referral decline reasons"
   recordedById  String?
   createdAt     DateTime @default(now())
 

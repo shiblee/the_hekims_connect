@@ -49,7 +49,7 @@ interface Option {
   updatedAt?: string;
 }
 
-type CountScope = "facility" | "staff" | "patient" | "payment" | "vitals" | "none";
+type CountScope = "facility" | "staff" | "patient" | "payment" | "vitals" | "referralDecline" | "none";
 
 const SCOPE_NOUN: Record<CountScope, [string, string]> = {
   facility: ["facility", "facilities"],
@@ -57,6 +57,7 @@ const SCOPE_NOUN: Record<CountScope, [string, string]> = {
   patient: ["patient", "patients"],
   payment: ["payment", "payments"],
   vitals: ["vitals record", "vitals records"],
+  referralDecline: ["declined referral", "declined referrals"],
   none: ["record", "records"],
 };
 

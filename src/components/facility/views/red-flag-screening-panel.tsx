@@ -12,17 +12,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import { FloatingField, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
+import { FloatingCombobox } from "@/components/shared/combobox";
+import { REFERRAL_DECLINE_SECTION } from "@/lib/referral-decline";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, TriangleAlert, Sparkles, Info, Pencil, Trash2 } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldQuestion, Loader2, TriangleAlert, Sparkles, Info, Pencil, Trash2, Clock } from "lucide-react";
 
 interface Criterion { id: string; label: string; description: string | null }
 interface Answer { id: string; criterionId: string | null; criterionLabel: string; present: boolean }
 interface ReferralRecord { id: string; reason: string; referredTo: string; urgency: string; notes: string | null; createdAt: string }
-interface AmaRecord { id: string; reason: string; patientReason: string | null; createdAt: string }
+interface AmaRecord { id: string; reason: string; patientReason: string | null; declineReason: string | null; createdAt: string }
 interface Screening { id: string; outcome: string; createdAt: string; updatedAt: string; answers: Answer[]; referral: ReferralRecord | null; amaDecline: AmaRecord | null }
 
 export interface RedFlagScreeningPanelHandle {
@@ -96,6 +97,10 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   const [amaDialogOpen, setAmaDialogOpen] = useState(false);
   const [amaReason, setAmaReason] = useState("");
   const [amaPatientReason, setAmaPatientReason] = useState("");
+  // Why the family won't go — options come from Admin → Meta ("Referral Decline Reasons").
+  const [amaDeclineReason, setAmaDeclineReason] = useState("");
+  const [declineOptions, setDeclineOptions] = useState<string[]>([]);
+  const [amaOpenedAt, setAmaOpenedAt] = useState<Date>(() => new Date());
   const [amaAcknowledged, setAmaAcknowledged] = useState(false);
 
   useEffect(() => {
@@ -156,6 +161,13 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   const openAmaDialog = () => {
     setAmaReason(flaggedSummary());
     setAmaPatientReason("");
+    setAmaDeclineReason("");
+    setAmaOpenedAt(new Date());
+    if (!declineOptions.length) {
+      api.get<{ sections: Record<string, { options: string[] }> }>("/api/facility/metadata")
+        .then((r) => setDeclineOptions(r.sections[REFERRAL_DECLINE_SECTION.key]?.options ?? []))
+        .catch(() => {});
+    }
     setAmaAcknowledged(false);
     dialogMsg.clear();
     setAmaDialogOpen(true);
@@ -163,7 +175,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
 
   const submitScreening = async (
     outcome: "cleared" | "referred" | "continued_ama",
-    extra?: { referral?: { reason: string; referredTo: string; urgency: string; notes?: string }; amaDecline?: { reason: string; patientReason?: string; acknowledged: boolean } }
+    extra?: { referral?: { reason: string; referredTo: string; urgency: string; notes?: string }; amaDecline?: { reason: string; patientReason?: string; declineReason?: string; acknowledged: boolean } }
   ): Promise<boolean> => {
     setSaving(true);
     try {
@@ -240,8 +252,9 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
 
   const submitAma = () => {
     if (!amaReason.trim()) { dialogMsg.warning(t("need_ama_reason"), t("need_ama_reason_hint")); return; }
+    if (declineOptions.length && !amaDeclineReason) { dialogMsg.warning(t("need_decline_reason"), t("need_decline_reason_hint")); document.getElementById("amaDeclineReason")?.focus(); return; }
     if (!amaAcknowledged) { dialogMsg.warning(t("need_ack"), t("need_ack_hint")); return; }
-    submitScreening("continued_ama", { amaDecline: { reason: amaReason, patientReason: amaPatientReason || undefined, acknowledged: true } });
+    submitScreening("continued_ama", { amaDecline: { reason: amaReason, declineReason: amaDeclineReason || undefined, patientReason: amaPatientReason.trim() || undefined, acknowledged: true } });
   };
 
   const attemptResolve = async (): Promise<boolean> => {
@@ -443,13 +456,19 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
               {t("ama_info")}
             </div>
             <FloatingField id="amaReason" label={t("ama_reason")} value={amaReason} onChange={(e) => setAmaReason(e.target.value)} />
-            <Textarea maxLength={500}
-              placeholder={t("ama_patient")}
-              value={amaPatientReason}
-              onChange={(e) => setAmaPatientReason(e.target.value)}
-              className="bg-background/60"
-              rows={3}
+            <FloatingCombobox
+              id="amaDeclineReason"
+              label={t("ama_decline_reason")}
+              value={amaDeclineReason}
+              onValueChange={(v) => { setAmaDeclineReason(v); dialogMsg.clear(); }}
+              options={declineOptions}
+              placeholder={t("ama_decline_reason_ph")}
             />
+            <FloatingTextarea id="amaRemarks" label={t("ama_patient")} value={amaPatientReason} onChange={(e) => setAmaPatientReason(e.target.value)} rows={2} />
+            <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              {t("ama_time", { time: amaOpenedAt.toLocaleString(dl, { dateStyle: "medium", timeStyle: "short" }) })}
+            </p>
             <label className="flex items-start gap-2.5 cursor-pointer">
               <Checkbox checked={amaAcknowledged} onCheckedChange={(v) => setAmaAcknowledged(!!v)} className="mt-0.5" />
               <span className="text-sm">
@@ -546,8 +565,9 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
           <p className="text-muted-foreground">
             <span className="font-semibold text-amber-700 dark:text-amber-400">{t("continuing_ama")}</span>
             {" · "}{screening.amaDecline.reason}
+            {screening.amaDecline.declineReason && <> · <span className="text-foreground">{t("declined_because", { reason: screening.amaDecline.declineReason })}</span></>}
             {screening.amaDecline.patientReason && <> · {t("patient_quote", { reason: screening.amaDecline.patientReason })}</>}
-            {" · "}{new Date(screening.amaDecline.createdAt).toLocaleDateString(dl)}
+            {" · "}{new Date(screening.amaDecline.createdAt).toLocaleString(dl, { dateStyle: "medium", timeStyle: "short" })}
           </p>
         </div>
       )}
