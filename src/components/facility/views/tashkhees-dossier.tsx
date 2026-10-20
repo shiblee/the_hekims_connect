@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -1101,7 +1101,6 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
   }, [open]);
   const td = useTranslations("clinic.dossier");
   const tc = useTranslations("common");
-  const vl = useValueLabel();
   const fetchCds = useCallback(() =>
     api.get<CdsData>(`/api/facility/visits/${visitId}/cds`)
       .then((r) => { setData(r); setFailed(false); })
@@ -1188,14 +1187,6 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           {r.urgent.map((u) => (
             <p key={u} className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />{u}</p>
           ))}
-          <p className="text-xs text-muted-foreground">
-            {td("for_label")} <span className="font-medium text-foreground">{r.basis.complaints.join(", ") || td("no_complaints")}</span>
-            {r.basis.suMizaj && <> · Su-e-Mizaj {r.basis.suMizaj}</>}
-            {r.basis.conditions.length > 0 && <> · {td("history")} {r.basis.conditions.join(", ")}</>}
-            {r.basis.allergies.length > 0 && <> · {td("allergies")} <span className="text-destructive">{r.basis.allergies.join(", ")}</span></>}
-            {r.basis.age != null && <> · {td("yrs", { age: r.basis.age })}{r.basis.sex ? `, ${vl(r.basis.sex)}` : ""}</>}
-            {data?.changed && <span className="text-primary">{td("updated_after")}</span>}
-          </p>
           <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
             {([["unani", td("tab_unani", { count: counts.unani })], ["allopathic", td("tab_allo", { count: counts.allopathic })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(k === "unani" || k === "allopathic" || k === "supplements"); }}
@@ -1244,9 +1235,6 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           )}
           {tab === "info" && (r.infoNeeded.length ? <ul className="space-y-1.5">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</ul> : <p className="text-sm text-muted-foreground">{td("nothing_missing")}</p>)}
 
-          <p className="text-[11px] text-muted-foreground border-t border-border/40 pt-2">
-            {td("cds_note", { ranked: data?.method === "ranked" ? td("cds_ranked") : "" })}
-          </p>
         </>
       )}
     </Panel>
@@ -1331,7 +1319,6 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                 </div>
               );
             })}
-            <p className="text-xs text-muted-foreground">{td("safety_note")}</p>
           </div>
         )}
       </Panel>
