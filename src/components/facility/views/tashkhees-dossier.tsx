@@ -743,28 +743,22 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
             {b && b.organs.length > 0 && <> · {td("organs_word")} <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
             {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("from_engine")}</span>}
           </p>
-          {p.plan.length > 0 && (
-            <ol className="space-y-1.5">
-              {p.plan.map((x, i) => {
-                const on = d.usool.includes(x.label);
-                const newPhase = i === 0 || p.plan[i - 1].phase !== x.phase;
-                return (
-                  <li key={x.label}>
-                    {newPhase && <p className="mt-1 mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("step", { n: x.phase, phase: x.phase >= 1 && x.phase <= 6 ? td(`phase_${x.phase}`) : "" })}</p>}
-                    <div className={cn("flex items-start justify-between gap-3 rounded-lg border px-3 py-2", on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/50")}>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold">{x.label}{x.localName && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{x.localName}</span>}</p>
-                        {x.description && <p className="text-xs text-muted-foreground">{x.description}</p>}
-                        <p className="mt-0.5 text-xs text-primary/90 flex items-center gap-1"><Sparkles className="h-3 w-3 shrink-0" />{x.reason}</p>
-                      </div>
-                      {on
-                        ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> {td("added")}</span>
-                        : <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={() => add([x.label])}>{td("add")}</Button>}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+          {/* Still to add — one compact line each; ones already in the plan fold into a single line */}
+          {p.plan.some((x) => !d.usool.includes(x.label)) && (
+            <ul className="divide-y divide-border/40 rounded-lg border border-border/50 bg-background/50">
+              {p.plan.filter((x) => !d.usool.includes(x.label)).map((x) => (
+                <li key={x.label} className="flex items-center gap-3 px-3 py-1.5" title={x.description ?? undefined}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px]"><span className="font-semibold">{x.label}</span> <span className="text-[11px] text-muted-foreground">· {td("step", { n: x.phase, phase: x.phase >= 1 && x.phase <= 6 ? td(`phase_${x.phase}`) : "" })}</span></p>
+                    <p className="truncate text-[11px] text-primary/90">{x.reason}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={() => add([x.label])}>{td("add")}</Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {p.plan.some((x) => d.usool.includes(x.label)) && (
+            <p className="flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-400"><Check className="h-3.5 w-3.5 mt-px shrink-0" /> {td("in_plan", { items: p.plan.filter((x) => d.usool.includes(x.label)).map((x) => x.label).join(", ") })}</p>
           )}
           {p.cautions.length > 0 && (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1.5">
@@ -788,22 +782,82 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
 function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
   const td = useTranslations("clinic.dossier");
+  const [browse, setBrowse] = useState(false);
+  const [q, setQ] = useState("");
+  const all = options?.usool || [];
+  const phaseOf = (label: string) => all.find((o) => o.label === label)?.phase ?? 6;
+  const toggle = (label: string) => set({ usool: d.usool.includes(label) ? d.usool.filter((x) => x !== label) : [...d.usool, label] });
+  // The chosen plan, in classical order; any principle no longer in the list keeps its place at the end.
+  const chosen = [...d.usool].sort((a, b) => phaseOf(a) - phaseOf(b));
+  const steps = [1, 2, 3, 4, 5, 6];
+  const ql = q.trim().toLowerCase();
+  const shown = all.filter((o) => !ql || `${o.label} ${o.localName ?? ""} ${o.description ?? ""}`.toLowerCase().includes(ql));
   return (
     <Panel icon={ClipboardCheck} tour="dossier.usool" title={td("usool_title")}>
       <UsoolEngineCard state={state} visitId={visitId} />
-      <div className="grid sm:grid-cols-2 gap-2">
-        {(options?.usool || []).map((o) => {
-          const on = d.usool.includes(o.label);
-          return (
-            <button key={o.id} type="button" aria-pressed={on} onClick={() => set({ usool: on ? d.usool.filter((x) => x !== o.label) : [...d.usool, o.label] })}
-              className={cn("flex items-start justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-start transition-colors",
-                on ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-background/40 hover:border-primary/30")}>
-              <span className="min-w-0"><span className="block text-sm font-semibold">{o.label}</span>{o.description && <span className="block text-[13px] text-muted-foreground mt-0.5">{o.description}</span>}</span>
-              <span className={cn("mt-0.5 h-4.5 w-4.5 rounded-full border shrink-0 flex items-center justify-center", on ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40")}>{on && <Check className="h-3 w-3" />}</span>
-            </button>
-          );
-        })}
+
+      {/* Your plan — only what's chosen, grouped by classical step */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium">{td("usool_yours")}</p>
+        {chosen.length === 0 ? <p className="text-[13px] text-muted-foreground">{td("usool_none")}</p> : (
+          <div className="space-y-1.5">
+            {steps.filter((n) => chosen.some((l) => phaseOf(l) === n)).map((n) => (
+              <div key={n} className="flex flex-wrap items-center gap-1.5">
+                <span className="w-full sm:w-44 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("step", { n, phase: td(`phase_${n}`) })}</span>
+                {chosen.filter((l) => phaseOf(l) === n).map((l) => (
+                  <button key={l} type="button" onClick={() => toggle(l)} title={all.find((o) => o.label === l)?.description ?? undefined}
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20">
+                    {l} <X className="h-3 w-3" />
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Every approved principle — collapsed; searchable, grouped by step, one line each */}
+      <div className="rounded-xl border border-border/50 bg-background/30">
+        <button type="button" onClick={() => setBrowse((v) => !v)} aria-expanded={browse}
+          className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium hover:bg-muted/40 rounded-xl">
+          <span className="flex items-center gap-1.5"><Plus className="h-3.5 w-3.5" /> {td("usool_browse", { count: all.length })}</span>
+          <ArrowRight className={cn("h-3.5 w-3.5 transition-transform", browse && "rotate-90")} />
+        </button>
+        {browse && (
+          <div className="border-t border-border/50 p-3 space-y-3">
+            <div className="relative">
+              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input id="usoolSearch" value={q} onChange={(e) => setQ(e.target.value)} placeholder={td("usool_search")} aria-label={td("usool_search")}
+                className="h-9 w-full rounded-lg border border-input bg-background ps-8 pe-3 text-sm" />
+            </div>
+            {steps.map((n) => {
+              const rows = shown.filter((o) => (o.phase ?? 6) === n);
+              if (!rows.length) return null;
+              return (
+                <div key={n}>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("step", { n, phase: td(`phase_${n}`) })}</p>
+                  <ul className="divide-y divide-border/40 rounded-lg border border-border/40">
+                    {rows.map((o) => {
+                      const on = d.usool.includes(o.label);
+                      return (
+                        <li key={o.id}>
+                          <button type="button" aria-pressed={on} onClick={() => toggle(o.label)}
+                            className={cn("flex w-full items-center gap-2.5 px-3 py-1.5 text-start transition-colors", on ? "bg-emerald-500/10" : "hover:bg-muted/40")}>
+                            <span className={cn("h-4 w-4 rounded-full border shrink-0 flex items-center justify-center", on ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40")}>{on && <Check className="h-2.5 w-2.5" />}</span>
+                            <span className="min-w-0 flex-1 truncate text-[13px]"><span className="font-semibold">{o.label}</span>{o.description && <span className="text-muted-foreground"> · {o.description}</span>}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
+            {!shown.length && <p className="text-[13px] text-muted-foreground">{td("usool_no_match")}</p>}
+          </div>
+        )}
+      </div>
+
       <FloatingTextarea id="usool-note" label={td("plan_note")} rows={2} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })}
         title={td("plan_note_eg")} />
     </Panel>
