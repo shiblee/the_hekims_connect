@@ -23,6 +23,7 @@ export function FloatingCombobox({
   error,
   emptyText,
   keepOrder,
+  required,
 }: {
   id?: string;
   label: string;
@@ -35,6 +36,8 @@ export function FloatingCombobox({
   emptyText?: string;
   /** Show options in the given order instead of A–Z (for ordered scales). */
   keepOrder?: boolean;
+  /** Marks the label with a red asterisk. */
+  required?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const t = useTranslations("common");
@@ -85,7 +88,7 @@ export function FloatingCombobox({
           error ? "text-destructive" : "text-primary"
         )}
       >
-        {label}
+        {label}{required && <span className="text-destructive"> *</span>}
       </label>
     </div>
   );

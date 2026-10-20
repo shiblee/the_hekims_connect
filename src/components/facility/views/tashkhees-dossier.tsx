@@ -10,6 +10,7 @@ import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerL
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
 import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
+import { FloatingCombobox } from "@/components/shared/combobox";
 import { foodThumb } from "@/lib/food-thumb";
 import { MarzSection, type AmrazOption, type DossierDiagnosis } from "@/components/facility/views/marz-diagnosis";
 import { SafetyReviewPanel } from "@/components/facility/views/safety-review-panel";
@@ -663,8 +664,10 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
       <MarzSection visitId={visitId} d={d} set={set} amraz={state.amraz} rerun={() => state.save(false)} />
       <div className="border-t border-border/50" />
       <EngineCard state={state} visitId={visitId} />
-      <div><Label required>{td("asli_label")}</Label>
-        <Chips items={mizaj} selected={d.mizajAsli ? [d.mizajAsli] : []} onToggle={(l) => set({ mizajAsli: d.mizajAsli === l ? null : l })} /></div>
+      {/* Mizaj-e-Asli as a dropdown (classical order), each temperament with its qualities */}
+      <FloatingCombobox id="mizajAsli" label={td("asli_label")} required keepOrder value={d.mizajAsli ?? ""}
+        onValueChange={(v) => set({ mizajAsli: v || null })}
+        options={mizaj.map((m) => ({ value: m.label, label: m.sub ? `${m.label} · ${m.sub}` : m.label }))} />
       <div className="space-y-3">
         <Label required>{td("su_label")}</Label>
         <div className="flex flex-wrap items-center gap-3">
