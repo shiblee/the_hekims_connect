@@ -1015,14 +1015,29 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
                     {x.reasons.length > 0 && <p className={cn("truncate text-xs", x.hard ? "font-medium text-destructive" : x.kind === "rec" ? "text-emerald-700 dark:text-emerald-400" : x.kind === "avoid" ? "text-destructive/90" : "text-muted-foreground")}>{x.reasons.slice(0, 2).join(" · ")}</p>}
                   </div>
                   <div className="flex shrink-0 gap-1">
-                    <button type="button" onClick={() => setFood(x.label, "rec")} aria-pressed={inRec}
-                      className={cn("rounded-md border px-2.5 py-1 text-xs font-medium", inRec ? "border-emerald-500/60 bg-emerald-600 text-white" : tab === "rec" ? "border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10" : "border-border/60 text-muted-foreground hover:text-foreground")}>
-                      {inRec && <Check className="me-0.5 inline h-3 w-3" />}{td("recommend")}
-                    </button>
-                    <button type="button" onClick={() => setFood(x.label, "avoid")} aria-pressed={inAvoid}
-                      className={cn("rounded-md border px-2.5 py-1 text-xs font-medium", inAvoid ? "border-destructive/60 bg-destructive text-white" : tab === "avoid" ? "border-destructive/50 text-destructive hover:bg-destructive/10" : "border-border/60 text-muted-foreground hover:text-foreground")}>
-                      {inAvoid && <Check className="me-0.5 inline h-3 w-3" />}{td("parhez")}
-                    </button>
+                    {tab !== "all" ? (() => {
+                      // Recommended / Parhez tabs: one Add button for that side.
+                      const on = tab === "rec" ? inRec : inAvoid;
+                      return (
+                        <button type="button" onClick={() => setFood(x.label, tab)} aria-pressed={on}
+                          className={cn("rounded-md border px-3 py-1 text-xs font-medium",
+                            on ? (tab === "rec" ? "border-emerald-500/60 bg-emerald-600 text-white" : "border-destructive/60 bg-destructive text-white")
+                              : tab === "rec" ? "border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10" : "border-destructive/50 text-destructive hover:bg-destructive/10")}>
+                          {on ? <><Check className="me-0.5 inline h-3 w-3" />{td("added")}</> : td("add")}
+                        </button>
+                      );
+                    })() : (
+                      <>
+                        <button type="button" onClick={() => setFood(x.label, "rec")} aria-pressed={inRec}
+                          className={cn("rounded-md border px-2.5 py-1 text-xs font-medium", inRec ? "border-emerald-500/60 bg-emerald-600 text-white" : "border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10")}>
+                          {inRec && <Check className="me-0.5 inline h-3 w-3" />}{td("recommend")}
+                        </button>
+                        <button type="button" onClick={() => setFood(x.label, "avoid")} aria-pressed={inAvoid}
+                          className={cn("rounded-md border px-2.5 py-1 text-xs font-medium", inAvoid ? "border-destructive/60 bg-destructive text-white" : "border-destructive/50 text-destructive hover:bg-destructive/10")}>
+                          {inAvoid && <Check className="me-0.5 inline h-3 w-3" />}{td("parhez")}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
