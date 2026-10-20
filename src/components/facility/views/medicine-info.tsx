@@ -37,8 +37,15 @@ const FIELD_KEY: Record<string, string> = {
   rxStatus: "mi_rx_status", strengths: "mi_strengths", ingredients: "mi_ingredients", herbType: "mi_type",
 };
 
-/** ⓘ next to a prescribed medicine: opens everything the catalogue holds about it. */
-export function MedicineInfoButton({ tagId, name }: { tagId: string; name: string }) {
+export interface PatientNote { level: "high" | "caution" | "info"; text: string; verified: boolean }
+
+/**
+ * ⓘ next to a prescribed medicine (or, with `children`, a text link): opens everything the
+ * catalogue holds about it, with the safety notes that match this patient on top.
+ */
+export function MedicineInfoButton({ tagId, name, patientNotes = [], children, className }: {
+  tagId: string; name: string; patientNotes?: PatientNote[]; children?: ReactNode; className?: string;
+}) {
   const td = useTranslations("clinic.dossier");
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<MedicineInfoData | null>(() => cache.get(tagId) ?? null);
@@ -54,15 +61,33 @@ export function MedicineInfoButton({ tagId, name }: { tagId: string; name: strin
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) load(); }}>
-      <button type="button" onClick={() => { setOpen(true); load(); }} aria-label={td("mi_open", { name })} title={td("mi_open", { name })}
-        className="rounded-full p-0.5 text-primary/80 hover:bg-primary/10 hover:text-primary">
-        <Info className="h-4 w-4" />
-      </button>
+      {children
+        ? <button type="button" onClick={() => { setOpen(true); load(); }} className={cn("text-start hover:underline", className)}>{children}</button>
+        : (
+          <button type="button" onClick={() => { setOpen(true); load(); }} aria-label={td("mi_open", { name })} title={td("mi_open", { name })}
+            className="rounded-full p-0.5 text-primary/80 hover:bg-primary/10 hover:text-primary">
+            <Info className="h-4 w-4" />
+          </button>
+        )}
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl">{name}</DialogTitle>
           <DialogDescription>{data?.profile?.category ? `${data.profile.category} · ` : ""}{td("mi_from")}</DialogDescription>
         </DialogHeader>
+        {patientNotes.length > 0 && (
+          <section className="space-y-1.5">
+            <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">{td("mi_for_patient")}</h3>
+            <ul className="space-y-1.5">
+              {patientNotes.map((n, i) => (
+                <li key={i} className={cn("flex items-start gap-2 rounded-lg border px-3 py-2 text-sm",
+                  n.level === "high" ? "border-destructive/40 bg-destructive/5" : n.level === "caution" ? "border-amber-500/30 bg-amber-500/5" : "border-border/50")}>
+                  <AlertTriangle className={cn("mt-0.5 h-4 w-4 shrink-0", n.level === "high" ? "text-destructive" : n.level === "caution" ? "text-amber-600" : "text-muted-foreground")} />
+                  <span>{n.text}<Mark verified={n.verified} /></span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {failed ? <p className="text-sm text-destructive">{td("mi_failed")}</p>
           : !data ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {td("mi_loading")}</p>
             : !data.profile ? <p className="text-sm text-muted-foreground">{td("mi_none")}</p>

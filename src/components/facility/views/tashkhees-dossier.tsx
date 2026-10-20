@@ -1267,7 +1267,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
               return (
                 <div key={i} className={cn("rounded-xl border p-3 space-y-2.5", w.some((x) => x.level === "high") ? "border-destructive/40 bg-card" : "border-border/50 bg-card")}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[15px] font-semibold flex items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{p.tagId && <MedicineInfoButton tagId={p.tagId} name={p.name} />}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">{td("not_catalogue")}</Badge>}</p>
+                    <p className="text-[15px] font-semibold flex items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{p.tagId && <MedicineInfoButton tagId={p.tagId} name={p.name} patientNotes={w} />}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">{td("not_catalogue")}</Badge>}</p>
                     <button type="button" onClick={() => set({ prescriptions: d.prescriptions.filter((_, n) => n !== i) })} aria-label={td("remove_x", { label: p.name })} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                   {/* One line where there's room (six fields), otherwise three per row. */}
@@ -1283,14 +1283,11 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                     <FloatingField id={`rx-with-${i}`} label={td("badraqa")} value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title={td("badraqa_eg")} />
                     <FloatingField id={`rx-instr-${i}`} label={td("instructions")} maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} title={p.instructions || td("instructions")} />
                   </div></div>
-                  {w.length > 0 && (
-                    <div className="space-y-1">
-                      {w.map((x, n) => (
-                        <p key={n} className={cn("text-[13px] flex items-start gap-1.5", x.level === "high" ? "text-destructive" : x.level === "caution" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
-                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>{x.text}{!x.verified && <span className="opacity-70">{td("ref_unverified")}</span>}</span>
-                        </p>
-                      ))}
-                    </div>
+                  {w.length > 0 && p.tagId && (
+                    <MedicineInfoButton tagId={p.tagId} name={p.name} patientNotes={w}
+                      className={cn("flex items-center gap-1.5 text-[13px] font-medium", w.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: w.length })}
+                    </MedicineInfoButton>
                   )}
                 </div>
               );

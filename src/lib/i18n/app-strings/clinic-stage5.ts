@@ -259,6 +259,8 @@ export const CLINIC_DOSSIER = defineStrings("clinic.dossier", {
   dawa_title: ["Ilaj-bil-Dawa — Medicines", "इलाज-बिल-दवा — दवाएँ", "علاج بالدوا — ادویات", "العلاج بالدواء — الأدوية", "علاج با دارو — داروها"],
   no_meds: ["No medicines added yet.", "अभी कोई दवा नहीं जोड़ी गई।", "ابھی کوئی دوا شامل نہیں کی گئی۔", "لم تُضَف أدوية بعد.", "هنوز دارویی افزوده نشده."],
   mi_open: ["Medicine information — {name}", "दवा की जानकारी — {name}", "دوا کی معلومات — {name}", "معلومات الدواء — {name}", "اطلاعات دارو — {name}"],
+  mi_for_patient: ["For this patient", "इस मरीज़ के लिए", "اس مریض کے لیے", "لهذا المريض", "برای این بیمار"],
+  rx_notes: ["{count, plural, one {# safety note for this patient} other {# safety notes for this patient}} — view", "{count, plural, one {इस मरीज़ के लिए # सुरक्षा नोट} other {इस मरीज़ के लिए # सुरक्षा नोट}} — देखें", "{count, plural, one {اس مریض کے لیے # حفاظتی نوٹ} other {اس مریض کے لیے # حفاظتی نوٹس}} — دیکھیں", "{count, plural, one {ملاحظة سلامة واحدة لهذا المريض} two {ملاحظتا سلامة لهذا المريض} few {# ملاحظات سلامة لهذا المريض} many {# ملاحظة سلامة لهذا المريض} other {# ملاحظة سلامة لهذا المريض}} — عرض", "{count, plural, one {# نکتهٔ ایمنی برای این بیمار} other {# نکتهٔ ایمنی برای این بیمار}} — مشاهده"],
   mi_from: ["From the clinic catalogue", "क्लिनिक सूची से", "کلینک کی فہرست سے", "من فهرس العيادة", "از فهرست درمانگاه"],
   mi_loading: ["Loading…", "लोड हो रहा है…", "لوڈ ہو رہا ہے…", "جارٍ التحميل…", "در حال بارگذاری…"],
   mi_failed: ["Couldn't load the information", "जानकारी लोड नहीं हो सकी", "معلومات لوڈ نہیں ہو سکیں", "تعذّر تحميل المعلومات", "بارگذاری اطلاعات ممکن نشد"],
