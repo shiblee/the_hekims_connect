@@ -139,7 +139,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
     : (selected.includes(label) ? [] : [label]));
   const answered = isAnswered(value);
   const items = q.options.map((o) => ({ label: o.label, description: o.description }));
-  const options = <OptionCards options={items} selected={selected} multiple={multiple} onToggle={toggle} hints={hints} />;
+  const options = <OptionCards twoColumns options={items} selected={selected} multiple={multiple} onToggle={toggle} hints={hints} />;
 
   return (
     <Wrap bare={bare} className={cn(bare ? "" : "p-4 border-border/50 bg-card/60 gap-3", !bare && (answered ? "border-s-2 border-s-emerald-500/60" : q.required && "border-s-2 border-s-amber-500/60"))}>

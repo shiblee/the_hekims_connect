@@ -16,14 +16,16 @@ export interface OptionCardItem { label: string; description?: string | null }
  * The answer cards (letter, title, description, "Suggested" hint, tick) — shown inside an
  * OptionDropdown, or on the page where every option should stay visible (Admin preview).
  */
-export function OptionCards({ options, selected, multiple, onToggle, hints }: {
+export function OptionCards({ options, selected, multiple, onToggle, hints, twoColumns }: {
   options: OptionCardItem[]; selected: string[]; multiple?: boolean; onToggle: (label: string) => void;
   /** option label → recorded finding that suggests it. */
   hints?: Record<string, string>;
+  /** Two columns on wider screens (on the page); otherwise one under another, A → Z. */
+  twoColumns?: boolean;
 }) {
   const t = useTranslations("clinic.asbab");
   return (
-    <div className="grid sm:grid-cols-2 gap-2">
+    <div className={cn("grid gap-2", twoColumns && "sm:grid-cols-2")}>
       {options.map((o, i) => {
         const on = selected.includes(o.label);
         const hint = hints?.[o.label];
@@ -105,7 +107,7 @@ export function OptionDropdown({ id, options, value, onChange, multiple, hints, 
           <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="max-h-[60vh] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto p-3">
+      <PopoverContent align="end" className="max-h-[60vh] w-[max(var(--radix-popover-trigger-width),20rem)] max-w-[calc(100vw-2rem)] overflow-y-auto p-2">
         <OptionCards options={options} selected={value} multiple={multiple} onToggle={toggle} hints={hints} />
       </PopoverContent>
     </Popover>
