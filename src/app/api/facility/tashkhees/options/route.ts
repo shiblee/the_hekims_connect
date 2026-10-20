@@ -10,8 +10,9 @@ export async function GET(req: NextRequest) {
     // Doctors only see approved options (Usool-e-Ilaj drafts await physician review).
     db.tashkheesOption.findMany({ where: { active: true, reviewStatus: "approved" }, orderBy: [{ list: "asc" }, { sortOrder: "asc" }], select: { id: true, list: true, label: true, localName: true, description: true, imageUrl: true, imageCredit: true, category: true, foodMizaj: true, appliesTo: true } }),
     db.medicationTag.findMany({
-      where: { kind: "supplement", active: true }, orderBy: { label: "asc" },
-      select: { id: true, label: true, profile: { select: { herbType: true, dosageForms: true } } },
+      // Unani medicines & supplements, and allopathic medicines ("medication") for the prescription picker.
+      where: { kind: { in: ["supplement", "medication"] }, active: true }, orderBy: { label: "asc" },
+      select: { id: true, label: true, kind: true, profile: { select: { herbType: true, dosageForms: true, genericName: true } } },
     }),
     // Amraz catalogue for the diagnosis picker — unverified entries included, labelled on screen.
     db.marzEntry.findMany({ where: { active: true, reviewStatus: { not: "rejected" } }, orderBy: { label: "asc" }, select: { id: true, label: true, localName: true, category: true, sabab: true, reviewStatus: true } }),
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     herbs: herbs.map((h) => {
       let forms: string[] = [];
       try { forms = JSON.parse(h.profile?.dosageForms || "[]"); } catch { /* ignore */ }
-      return { id: h.id, label: h.label, category: h.profile?.herbType ?? null, forms };
+      return { id: h.id, label: h.label, kind: h.kind, generic: h.profile?.genericName ?? null, category: h.profile?.herbType ?? null, forms };
     }),
   });
 }

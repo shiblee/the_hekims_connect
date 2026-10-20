@@ -13,6 +13,7 @@ import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { OptionDropdown, QuestionRow } from "@/components/shared/option-dropdown";
 import { MedicineInfoButton } from "@/components/facility/views/medicine-info";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { foodThumb } from "@/lib/food-thumb";
 import { MarzSection, type AmrazOption, type DossierDiagnosis } from "@/components/facility/views/marz-diagnosis";
 import { SafetyReviewPanel } from "@/components/facility/views/safety-review-panel";
@@ -50,7 +51,7 @@ const EMPTY: Dossier = {
   organs: [], diagnosisNote: null, usool: [], usoolNote: null, ghizaRecommended: [], ghizaAvoid: [], ghizaNote: null,
   tadbeer: [], prescriptions: [], diagnoses: [], sabab: [], icdCode: null, icdLabel: null, prognosis: null, followUpDate: null, followUpNote: null, urgentDirectives: null, priority: "routine", handoverNote: null,
 };
-interface Herb { id: string; label: string; category: string | null; forms: string[] }
+interface Herb { id: string; label: string; kind: string; generic?: string | null; category: string | null; forms: string[] }
 type Warn = { level: "high" | "caution" | "info"; text: string; verified: boolean };
 /** Colour of a "safety notes" link: red if any is high, amber if any caution, otherwise plain information. */
 const noteTone = (notes: { level: string }[]) => notes.some((x) => x.level === "high") ? "text-destructive" : notes.some((x) => x.level === "caution") ? "text-amber-700 dark:text-amber-400" : "text-primary";
@@ -835,23 +836,36 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
 function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string | null; label: string; forms: string[] }) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"unani" | "allo">("unani");
   const td = useTranslations("clinic.dossier");
-  const results = herbs.filter((h) => !q.trim() || h.label.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 60);
+  const ql = q.trim().toLowerCase();
+  const results = herbs
+    .filter((h) => (tab === "allo") === (h.kind === "medication"))
+    .filter((h) => !ql || `${h.label} ${h.generic ?? ""}`.toLowerCase().includes(ql)).slice(0, 60);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_medicine")}</Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-2" align="start">
-        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={td("search_medicines")} className="h-9 mb-2" />
+      <PopoverContent className="w-96 p-2" align="end">
+        <div className="mb-2 grid grid-cols-2 rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
+          {(["unani", "allo"] as const).map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+              className={cn("rounded-md px-2 py-1 text-[13px] font-medium transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+              {k === "unani" ? td("picker_unani") : td("picker_allo")}
+            </button>
+          ))}
+        </div>
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "unani" ? td("search_medicines") : td("search_allo")} className="h-9 mb-2" />
         <div className="max-h-64 overflow-y-auto space-y-0.5">
           {results.map((h) => (
             <button key={h.id} type="button" onClick={() => { onPick({ id: h.id, label: h.label, forms: h.forms }); setOpen(false); setQ(""); }}
               className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
-              {h.label}{h.category && <span className="block text-[11px] text-muted-foreground">{h.category}</span>}
+              {h.label}{h.generic && h.generic.toLowerCase() !== h.label.toLowerCase() && <span className="ms-1.5 text-xs text-muted-foreground">{h.generic}</span>}
+              {h.category && <span className="block text-[11px] text-muted-foreground">{h.category}</span>}
             </button>
           ))}
-          {q.trim() && !herbs.some((h) => h.label.toLowerCase() === q.trim().toLowerCase()) && (
+          {q.trim() && !herbs.some((h) => h.label.toLowerCase() === ql) && (
             <button type="button" onClick={() => { onPick({ id: null, label: q.trim(), forms: [] }); setOpen(false); setQ(""); }}
               className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60 text-primary">{td("add_not_catalogue", { q: q.trim() })}</button>
           )}
@@ -1088,6 +1102,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
   const [failed, setFailed] = useState(false);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -1189,7 +1204,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           ))}
           <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
             {([["unani", td("tab_unani", { count: counts.unani })], ["allopathic", td("tab_allo", { count: counts.allopathic })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(k === "unani" || k === "allopathic" || k === "supplements"); }}
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { if (k === "safety") { setSafetyOpen(true); return; } setTab(k); setOpen(k === "unani" || k === "allopathic" || k === "supplements"); }}
                 className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? (k === "safety" ? "bg-destructive text-white" : k === "info" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>{l}</button>
             ))}
           </div>
@@ -1215,24 +1230,27 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
               </div>
             );
           })()}
-          {tab === "safety" && (
+          <Dialog open={safetyOpen} onOpenChange={setSafetyOpen}>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+              <DialogHeader><DialogTitle>{td("tab_safety", { count: counts.safety })}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{td("current_meds")}</p>
                 {r.currentMeds.length ? (
-                  <div className="flex flex-wrap gap-1.5">{r.currentMeds.map((m) => <span key={m.label} className={cn("rounded-full border px-2.5 py-0.5 text-xs", m.matched ? "border-border/60" : "border-amber-500/50 text-amber-700 dark:text-amber-400")} title={m.matched ? td("med_matched") : td("med_unmatched")}>{m.label}{!m.matched && " ⚠"}</span>)}</div>
-                ) : <p className="text-xs text-muted-foreground">{td("none_recorded")}</p>}
+                  <div className="flex flex-wrap gap-1.5">{r.currentMeds.map((m) => <span key={m.label} className={cn("rounded-full border px-2.5 py-0.5 text-sm", m.matched ? "border-border/60" : "border-amber-500/50 text-amber-700 dark:text-amber-400")} title={m.matched ? td("med_matched") : td("med_unmatched")}>{m.label}{!m.matched && " ⚠"}</span>)}</div>
+                ) : <p className="text-sm text-muted-foreground">{td("none_recorded")}</p>}
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{td("excluded", { count: r.excluded.length })}</p>
                 {r.excluded.length ? (
-                  <ul className="space-y-1">{r.excluded.map((e) => (
-                    <li key={e.tagId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs"><span className="font-semibold">{e.label}</span> <span className="text-destructive">— {e.reason}</span>{!e.verified && <span className="text-muted-foreground">{td("unverified_paren")}</span>}</li>
+                  <ul className="space-y-1.5">{r.excluded.map((e) => (
+                    <li key={e.tagId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm"><span className="font-semibold">{e.label}</span> <span className="text-destructive">— {e.reason}</span>{!e.verified && <span className="text-muted-foreground">{td("unverified_paren")}</span>}</li>
                   ))}</ul>
-                ) : <p className="text-xs text-muted-foreground">{td("nothing_excluded")}</p>}
+                ) : <p className="text-sm text-muted-foreground">{td("nothing_excluded")}</p>}
               </div>
             </div>
-          )}
+            </DialogContent>
+          </Dialog>
           {tab === "info" && (r.infoNeeded.length ? <ul className="space-y-1.5">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</ul> : <p className="text-sm text-muted-foreground">{td("nothing_missing")}</p>)}
 
         </>
@@ -1295,7 +1313,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
               return (
                 <div key={i} className={cn("rounded-xl border p-3 space-y-2.5", w.some((x) => x.level === "high") ? "border-destructive/40 bg-card" : "border-border/50 bg-card")}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[15px] font-semibold flex flex-wrap items-center gap-1.5"><Leaf className="h-4 w-4 text-primary" />{p.name}{p.tagId && (w.length > 0
+                    <p className="text-[15px] font-semibold flex flex-wrap items-center gap-1.5">{herbs.find((h) => h.id === p.tagId)?.kind === "medication" ? <Pill className="h-4 w-4 text-sky-600" /> : <Leaf className="h-4 w-4 text-primary" />}{p.name}{p.tagId && (w.length > 0
                       ? <MedicineInfoButton tagId={p.tagId} name={p.name} patientNotes={w}
                           className={cn("ms-1 inline-flex items-center gap-1.5 text-[13px] font-medium", noteTone(w))}>
                           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: w.length })}
