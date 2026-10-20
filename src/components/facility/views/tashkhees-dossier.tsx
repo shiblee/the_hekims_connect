@@ -1108,7 +1108,12 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
         <div className="space-y-1">
           <div className="min-w-0">
             <p className="text-[15px] font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}
-              {c.safety.length === 0 && <span className="ms-1 inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>}</p>
+              {c.safety.length === 0
+                ? <span className="ms-1 inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>
+                : <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
+                    className={cn("ms-1.5 inline-flex items-center gap-1 align-middle text-[13px] font-medium", c.safety.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
+                  </MedicineInfoButton>}</p>
             <p className="text-xs text-muted-foreground">{[c.herbType, c.mizaj].filter(Boolean).join(" · ")}</p>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -1118,12 +1123,6 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           </div>
         </div>
         <ul className="space-y-0.5">{c.reasons.map((x) => <li key={x} className="text-xs text-foreground/85">• {x}</li>)}</ul>
-        {c.safety.length > 0 && (
-          <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
-            className={cn("flex items-center gap-1.5 text-[13px] font-medium", c.safety.some((x) => x.level === "high") ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
-          </MedicineInfoButton>
-        )}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
           <span className="text-[11px] text-muted-foreground me-auto">{td("profile_pct", { pct: c.completeness })}{dec ? ` · ${dec.action === "added_to_prescription" ? td("dec_rx") : dec.action === "accepted" ? td("dec_accepted") : dec.action === "considered" ? td("dec_considered") : dec.action === "rejected" ? td("dec_rejected") : dec.action}` : ""}</span>
           {rejecting?.tagId === c.tagId ? (
