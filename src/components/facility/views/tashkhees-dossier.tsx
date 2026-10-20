@@ -128,6 +128,16 @@ export function useTashkhees(visitId: string | undefined) {
     }
   };
 
+  // Draft autosave: a minute after the last change, quietly save a draft (never a finalised or submitted dossier).
+  const [autoSavedAt, setAutoSavedAt] = useState<Date | null>(null);
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    if (!dirty || !options || saving || dossier.status !== "draft") return;
+    const timer = setTimeout(() => { saveRef.current(false).then((ok) => { if (ok) setAutoSavedAt(new Date()); }); }, 60_000);
+    return () => clearTimeout(timer);
+  }, [dossier, dirty, options, saving]);
+
   /** A senior sends a submitted dossier back with a note. */
   const sendBack = async (note: string) => {
     if (!visitId) return false;
@@ -141,7 +151,7 @@ export function useTashkhees(visitId: string | undefined) {
     }
   };
 
-  return { dalail, options, herbs, amraz, dossier, set, sendBack, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload, safety, setSafety, safetyBlocking, setSafetyBlocking };
+  return { dalail, options, herbs, amraz, dossier, set, sendBack, autoSavedAt, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload, safety, setSafety, safetyBlocking, setSafetyBlocking };
 }
 type TashkheesState = ReturnType<typeof useTashkhees>;
 
@@ -1417,6 +1427,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
           title={td("title")}
           right={
             <span className="flex items-center gap-1.5 shrink-0">
+              {state.autoSavedAt && d.status === "draft" && <span className="hidden sm:inline text-[11px] text-muted-foreground">{td("autosaved", { time: state.autoSavedAt.toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) })}</span>}
               <Badge variant="outline">{td("n_steps", { n: doneCount, total: TABS.length })}</Badge>
               {d.status === "finalized"
                 ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}{d.versions?.[0] ? ` · ${td("version_n", { n: d.versions[0].version })}` : ""}</Badge>
@@ -1470,7 +1481,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
       <section id="tashkhees" className="scroll-mt-20" ref={(el) => { refs.current.tashkhees = el; }}><TashkheesTab state={state} visitId={visitId} /></section>
       <section id="usool" className="scroll-mt-20" ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} visitId={visitId} /></section>
       <section id="ilaj" className="scroll-mt-20" ref={(el) => { refs.current.ilaj = el; }}><IlajTab state={state} patientId={patientId} visitId={visitId} /></section>
-      <section id="safety" className="scroll-mt-20" ref={(el) => { refs.current.safety = el; }}>
+      <section id="safety" data-tour="dossier.safety" className="scroll-mt-20" ref={(el) => { refs.current.safety = el; }}>
         <SafetyReviewPanel visitId={visitId} refreshKey={`${d.revision ?? 0}|${d.prescriptions.map((p) => p.tagId).join(",")}`} onBlocking={state.setSafetyBlocking} />
       </section>
       <section id="handover" className="scroll-mt-20" ref={(el) => { refs.current.handover = el; }}><HandoverTab state={state} /></section>

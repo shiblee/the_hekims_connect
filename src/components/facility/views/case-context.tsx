@@ -151,7 +151,7 @@ function Block({ title, kind, href, stage, children, empty }: { title: string; k
       <div className="flex items-center gap-2 mb-1.5">
         <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
         <Kind k={kind} />
-        {href && stage && <Link href={href} className="ms-auto text-[11px] font-medium text-primary hover:underline">{t("stage_n", { n: stage })}</Link>}
+        {href && stage && <Link href={href} className="ms-auto shrink-0 whitespace-nowrap text-[11px] font-medium text-primary hover:underline">{t("stage_n", { n: stage })}</Link>}
       </div>
       {empty ? <p className="text-[13px] text-muted-foreground italic">{t("none_yet")}</p> : children}
     </div>
@@ -196,7 +196,7 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
   const h = ctx.history;
 
   return (
-    <Card className="p-5 gap-3 border-border/50 bg-card/60" id="khulasa">
+    <Card className="p-5 gap-3 border-border/50 bg-card/60" id="khulasa" data-tour="case.summary">
       <SectionHeading icon={ClipboardList} title={<>{t("summary")} <span className="text-muted-foreground font-normal text-base">· {t("summary_local")}</span></>}
         right={<button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="rounded-md p-1 text-muted-foreground hover:bg-muted"><ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} /></button>} />
       {open && (

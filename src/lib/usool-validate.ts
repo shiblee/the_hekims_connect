@@ -8,7 +8,7 @@ export function cleanUsoolRule(r: any): UsoolRule {
   const out: UsoolRule = {};
   if (!r || typeof r !== "object") return out;
   if (r.always) out.always = true;
-  for (const k of ["mizaj", "organs", "categories", "complaints", "symptoms", "regions", "avoidIf"] as const) { const l = list(r[k]); if (l.length) out[k] = l; }
+  for (const k of ["mizaj", "organs", "categories", "complaints", "symptoms", "regions", "avoidIf", "marz"] as const) { const l = list(r[k]); if (l.length) out[k] = l; }
   if (r.type === "Sada" || r.type === "Maddi") out.type = r.type;
   const d = Number(r.minDarja); if (Number.isFinite(d) && d >= 1 && d <= 4) out.minDarja = Math.round(d);
   if (r.sex === "male" || r.sex === "female") out.sex = r.sex;

@@ -22,6 +22,7 @@ import { runTashkheesEngine } from "@/lib/tashkhees-engine";
 import { CONDITIONS, conditionLabel, conditionsIn } from "@/lib/ghiza-conditions";
 import type { GhizaRule } from "@/lib/ghiza-seed";
 import { rankGhizaFoods } from "@/lib/gemini";
+import { MARZ_CONDITIONS } from "@/lib/marz-links";
 
 export interface GhizaConfig { maxRecommended: number; maxAvoid: number; ranking: boolean }
 export const DEFAULT_GHIZA_CONFIG: GhizaConfig = { maxRecommended: 8, maxAvoid: 8, ranking: true };
@@ -65,7 +66,7 @@ export async function runGhizaEngine(visitId: string, facilityId: string) {
     db.visit.findFirst({
       where: { id: visitId, facilityId },
       select: {
-        tashkheesDossier: { select: { suMizajQuality: true, organs: true } },
+        tashkheesDossier: { select: { suMizajQuality: true, organs: true, diagnoses: { where: { role: { in: ["working", "secondary"] } }, select: { marz: { select: { key: true } } } } } },
         intake: { select: { allergies: true, medications: true } },
         patient: { select: { chronicConditions: true, medicalHistory: true, allergies: true, currentMedications: true, familyHistory: true } },
       },
@@ -94,7 +95,9 @@ export async function runGhizaEngine(visitId: string, facilityId: string) {
   try { intakeAllergies = JSON.parse(visit.intake?.allergies || "[]"); } catch { /* none */ }
   try { intakeMeds = (JSON.parse(visit.intake?.medications || "[]") as { label: string }[]).map((m) => m.label); } catch { /* none */ }
   const historyText = [p?.chronicConditions, p?.medicalHistory, p?.currentMedications, ...intakeMeds, ...ctx.complaints.map((c) => c.label)].filter(Boolean).join(" ; ");
-  const conditions = conditionsIn(historyText);
+  // History conditions, plus those of the confirmed diagnosis (e.g. Humuzat-e-Meda → acidity).
+  const marzConditions = (visit.tashkheesDossier?.diagnoses ?? []).flatMap((d) => (d.marz?.key && MARZ_CONDITIONS[d.marz.key]) || []);
+  const conditions = [...new Set([...conditionsIn(historyText), ...marzConditions])];
   const allergyText = [p?.allergies, ...intakeAllergies].filter(Boolean).join(" ; ").toLowerCase();
   const allergies = [...new Set(intakeAllergies.concat(p?.allergies ? p.allergies.split(/[,;]/).map((x) => x.trim()) : []).filter((a) => a && !/^none/i.test(a)))];
 

@@ -16,7 +16,7 @@ import { AlertTriangle, CheckCircle2, Loader2, Pencil, Plus, Sparkles } from "lu
 
 interface Rule {
   always?: boolean; mizaj?: string[]; type?: "Sada" | "Maddi"; minDarja?: number; organs?: string[]; categories?: string[];
-  complaints?: string[]; symptoms?: string[]; regions?: string[]; sex?: "male" | "female"; phase?: number;
+  complaints?: string[]; symptoms?: string[]; regions?: string[]; sex?: "male" | "female"; phase?: number; marz?: string[];
   avoidIf?: string[]; cautionBelowAge?: number; cautionAboveAge?: number;
 }
 interface Principle { id: string; label: string; localName: string | null; description: string | null; priority: number; reviewStatus: string; active: boolean; appliesTo: string }
@@ -57,7 +57,8 @@ export function UsoolAdmin() {
   const [cfg, setCfg] = useState<{ maxPrinciples: number; ranking: boolean }>({ maxPrinciples: 6, ranking: true });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
-  const [q, setQ] = useState({ complaints: "", symptoms: "", regions: "", avoid: "" });
+  const [q, setQ] = useState({ complaints: "", symptoms: "", regions: "", avoid: "", marz: "" });
+  const [amraz, setAmraz] = useState<{ key: string; label: string }[]>([]);
 
   const load = () => adminApi.get<{ config: typeof cfg; principles: Principle[]; mizaj: string[]; organs: string[]; findings: string[] }>("/api/admin/usool-engine")
     .then((r) => { setRows(r.principles); setCfg(r.config); setMizaj(r.mizaj); setOrgans(r.organs); setFindings(r.findings); })
@@ -65,6 +66,7 @@ export function UsoolAdmin() {
   useEffect(() => {
     load();
     adminApi.get<Masters>("/api/admin/asbab/selection-masters").then(setMasters).catch(() => {});
+    adminApi.get<{ entries: { key: string; label: string; reviewStatus: string }[] }>("/api/admin/amraz").then((r) => setAmraz(r.entries.filter((e) => e.reviewStatus !== "rejected"))).catch(() => {});
   }, []);
 
   if (!rows) return <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
@@ -109,7 +111,7 @@ export function UsoolAdmin() {
     return parts.length ? parts.join(" · ") : "No conditions — never suggested";
   };
   const open = (p?: Principle) => {
-    setQ({ complaints: "", symptoms: "", regions: "", avoid: "" });
+    setQ({ complaints: "", symptoms: "", regions: "", avoid: "", marz: "" });
     setDraft(p
       ? { id: p.id, label: p.label, localName: p.localName || "", description: p.description || "", priority: p.priority, reviewStatus: p.reviewStatus, active: p.active, rule: parseRule(p.appliesTo) }
       : { id: null, label: "", localName: "", description: "", priority: 3, reviewStatus: "draft", active: true, rule: { phase: 4 } });
@@ -225,6 +227,12 @@ export function UsoolAdmin() {
                       query={q.complaints} onQueryChange={(v) => setQ((x) => ({ ...x, complaints: v }))}
                       results={masters.complaints.filter((c) => !(draft.rule.complaints || []).includes(c.key) && (!q.complaints.trim() || c.label.toLowerCase().includes(q.complaints.trim().toLowerCase()))).slice(0, 12).map((c) => ({ id: c.key, label: c.label }))}
                       onPick={(k) => setR({ complaints: [...(draft.rule.complaints || []), k] })} placeholder="Type a complaint…" />
+                    <FloatingMultiSelect id="usMarz" label="Diseases (Amraz) — matches the working diagnosis" openOnFocus
+                      selected={(draft.rule.marz || []).map((k) => ({ id: k, label: amraz.find((m) => m.key === k)?.label ?? k }))}
+                      onRemove={(k) => setR({ marz: (draft.rule.marz || []).filter((x) => x !== k) })}
+                      query={q.marz} onQueryChange={(v) => setQ((x) => ({ ...x, marz: v }))}
+                      results={amraz.filter((m) => !(draft.rule.marz || []).includes(m.key) && (!q.marz.trim() || m.label.toLowerCase().includes(q.marz.trim().toLowerCase()))).slice(0, 12).map((m) => ({ id: m.key, label: m.label }))}
+                      onPick={(k) => setR({ marz: [...(draft.rule.marz || []), k] })} placeholder="Type a disease…" />
                     <FloatingMultiSelect id="usSymptoms" label="Other symptoms" openOnFocus
                       selected={(draft.rule.symptoms || []).map((x) => ({ id: x, label: x }))}
                       onRemove={(x) => setR({ symptoms: (draft.rule.symptoms || []).filter((y) => y !== x) })}

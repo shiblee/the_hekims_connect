@@ -510,6 +510,19 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                         </div>
                         {dos.organs?.length > 0 && <p className="mt-1 text-[10pt]"><span className="text-[#6b7280]">{t("organs")} </span><b>{dos.organs.join(", ")}</b></p>}
                         {dos.diagnosisNote && <p className="mt-1 text-[10.5pt] italic text-[#374151]">“{dos.diagnosisNote}”</p>}
+                        {dos.versions?.[0] && (
+                          <p className="mt-1.5 text-[9.5pt] text-[#4c1d95]">
+                            {t("signed_off", { n: dos.versions[0].version, name: dos.versions[0].byName || "—", date: fmtDateTime(dos.versions[0].createdAt) })}
+                            {dos.versions[0].kind === "amended" && dos.versions[0].reason ? ` · ${t("amended_reason", { reason: dos.versions[0].reason })}` : ""}
+                            {dos.submittedByName ? ` · ${t("prepared_by", { name: dos.submittedByName })}` : ""}
+                          </p>
+                        )}
+                        {dos.safetyAcks?.length > 0 && (
+                          <div className="mt-1.5 rounded border border-[#fecaca] bg-[#fef2f2] px-2.5 py-1.5">
+                            <p className="text-[9pt] uppercase tracking-wide font-semibold text-[#991b1b]">{t("safety_acks")}</p>
+                            {dos.safetyAcks.map((a: R, i: number) => <p key={i} className="text-[9.5pt]"><b>{a.level === "high" ? "⚠" : "•"} {a.text}</b> — {a.reason} <span className="text-[#6b7280]">({a.byName}, {fmtDateTime(a.createdAt)})</span></p>)}
+                          </div>
+                        )}
                       </div>
                     )}
 

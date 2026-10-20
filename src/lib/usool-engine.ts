@@ -32,6 +32,7 @@ export interface UsoolRule {
   symptoms?: string[];
   regions?: string[];
   sex?: "male" | "female";
+  marz?: string[]; // Amraz catalogue keys — matches the working / secondary diagnosis
   phase?: number;
   avoidIf?: string[]; // findings / symptoms / regions / categories that call for caution
   cautionBelowAge?: number;
@@ -48,7 +49,7 @@ export async function getUsoolConfig(): Promise<UsoolConfig> {
 
 export interface PlanItem { label: string; localName: string | null; description: string | null; phase: number; reason: string; score: number; caution?: string }
 export interface UsoolPlan {
-  basis: { suMizaj: string | null; type: string | null; darja: number | null; organs: string[]; fromEngine: boolean };
+  basis: { suMizaj: string | null; type: string | null; darja: number | null; organs: string[]; fromEngine: boolean; marz?: string[]; sabab?: string[] };
   plan: PlanItem[];
   cautions: PlanItem[];
   insufficient: string[];
@@ -64,7 +65,7 @@ export async function runUsoolEngine(visitId: string, facilityId: string) {
     db.visit.findFirst({
       where: { id: visitId, facilityId },
       select: {
-        tashkheesDossier: { select: { suMizajQuality: true, suMizajType: true, suMizajGrade: true, organs: true } },
+        tashkheesDossier: { select: { suMizajQuality: true, suMizajType: true, suMizajGrade: true, organs: true, sabab: true, diagnoses: { where: { role: { in: ["working", "secondary"] } }, select: { label: true, marz: { select: { key: true, organs: true } } } } } },
         asbabAssessments: { select: { responses: { select: { selectedOptions: true } } } },
       },
     }),
@@ -83,6 +84,13 @@ export async function runUsoolEngine(visitId: string, facilityId: string) {
     const su = t?.suggestion.suMizaj;
     if (su?.label) basis = { suMizaj: su.label, type: su.type, darja: su.darja, organs: organs.length ? organs : t!.suggestion.organs.map((o) => o.label), fromEngine: true };
   }
+  // The confirmed disease and its causes shape the plan too: its organs join the basis when none are chosen.
+  const dx = dos?.diagnoses ?? [];
+  const marzKeys = dx.map((d) => d.marz?.key).filter(Boolean) as string[];
+  let sabab: string[] = [];
+  try { sabab = JSON.parse(dos?.sabab || "[]"); } catch { sabab = []; }
+  if (!basis.organs.length) { const o = [...new Set(dx.flatMap((d) => { try { return JSON.parse(d.marz?.organs || "[]") as string[]; } catch { return []; } }))]; if (o.length) basis = { ...basis, organs: o }; }
+  basis = { ...basis, marz: dx.map((d) => d.label), sabab };
 
   // ---- Signals for cautions: answered findings, symptoms, regions, complaint categories
   const answered = visit.asbabAssessments.flatMap((a) => a.responses.flatMap((r) => {
@@ -118,6 +126,8 @@ export async function runUsoolEngine(visitId: string, facilityId: string) {
     }
     const catHits = (r.categories || []).filter((c) => cats.has(norm(c)));
     if (catHits.length) { score += 3; why.push(catHits[0]); }
+    const marzHit = (r.marz || []).find((k) => marzKeys.includes(k));
+    if (marzHit) { score += 6; why.push(dx.find((d) => d.marz?.key === marzHit)!.label); }
     const compHits = ctx.complaints.filter((c) => c.key && (r.complaints || []).includes(c.key)).map((c) => c.label);
     if (compHits.length) { score += 5; why.push(compHits[0]); }
     const symHits = (r.symptoms || []).filter((s) => syms.has(norm(s)));
@@ -138,7 +148,7 @@ export async function runUsoolEngine(visitId: string, facilityId: string) {
 
     scored.push({
       label: p.label, localName: p.localName, description: p.description, phase: r.phase || 6, score,
-      reason: matched ? `For ${[...new Set(why)].slice(0, 3).join(" · ")}` : "Foundation of every plan",
+      reason: (matched ? `For ${[...new Set(why)].slice(0, 3).join(" · ")}` : "Foundation of every plan") + ((r.phase || 6) === 1 && sabab.length ? ` — recorded Sabab: ${sabab.slice(0, 3).join(", ")}` : ""),
       caution,
     });
   }

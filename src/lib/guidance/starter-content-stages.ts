@@ -53,6 +53,18 @@ export const STAGE_TOURS: StarterTour[] = [
       { id: "actions", route: "/facility/tashkhees", target: "stage.actions", placement: "top", title: "Finalise and hand over", body: "**Finalise Dossier & Hand Over** completes the visit. You can still update it afterwards. The print button gives the full assessment report." },
     ],
   },
+  {
+    key: "stage5ws", moduleKey: "clinic.tashkhees", name: "Stage 5 — the new diagnosis workspace", audience: [], trigger: "first_visit",
+    title: "Stage 5: the new diagnosis workspace",
+    steps: [
+      { id: "readiness", route: "/facility/tashkhees", target: "case.readiness", title: "Case readiness", body: "What's done and what's missing before you decide, with alerts such as a declined referral or abnormal vitals. A red dot marks what a safe plan needs." },
+      { id: "summary", route: "/facility/tashkhees", target: "case.summary", title: "Case summary (Khulasa)", body: "Everything recorded so far on one screen. Each finding says whether it was reported, examined or measured, and links to where it came from." },
+      { id: "reasoning", route: "/facility/tashkhees", target: "dossier.reasoning", title: "Hakeem Insight: clinical reasoning", body: "When it's switched on for your clinic: an AI reading of the whole case, with a summary, contradictions, missing information, differentials and a draft statement. Suggestions only; you decide." },
+      { id: "marz", route: "/facility/tashkhees", target: "dossier.diagnosis", title: "Marz, Sabab and the differential", body: "The differential lists diseases that fit, with the evidence for and against and what to ask next. Set the working diagnosis, add differentials and record the cause." },
+      { id: "safety", route: "/facility/tashkhees", target: "dossier.safety", title: "Safety review", body: "High-risk items, such as allergies, interactions, pregnancy or warning signs, each need your reason before the dossier can be finalised." },
+      { id: "signoff", route: "/facility/tashkhees", target: "stage.actions", placement: "top", title: "Finalise, sign off or submit", body: "Senior Hakims finalise, and later amend with a reason; every version is kept. Without sign-off permission, the dossier goes to a senior." },
+    ],
+  },
 ];
 
 export const STAGE_DOCS: StarterDoc[] = [

@@ -126,6 +126,7 @@ export const CLINIC_DOSSIER = defineStrings("clinic.dossier", {
   version_n: ["v{n}", "v{n}", "v{n}", "v{n}", "v{n}"],
   ver_finalized: ["v{n} finalised by {by} · {when}", "v{n} {by} द्वारा अंतिम · {when}", "v{n} {by} نے حتمی کیا · {when}", "v{n} اعتمده {by} · {when}", "v{n} نهایی‌شده توسط {by} · {when}"],
   ver_amended: ["v{n} amended by {by} · {when} · {reason}", "v{n} {by} द्वारा संशोधित · {when} · {reason}", "v{n} {by} نے ترمیم کی · {when} · {reason}", "v{n} عدّله {by} · {when} · {reason}", "v{n} اصلاح‌شده توسط {by} · {when} · {reason}"],
+  autosaved: ["Draft saved automatically at {time}", "ड्राफ़्ट {time} पर अपने-आप सहेजा गया", "ڈرافٹ {time} پر خودکار محفوظ ہوا", "حُفظت المسودة تلقائيًا في {time}", "پیش‌نویس در {time} خودکار ذخیره شد"],
   no_suggestion: ["No suggestion", "कोई सुझाव नहीं", "کوئی تجویز نہیں", "لا اقتراح", "پیشنهادی نیست"],
   su_head: ["Su-e-Mizaj · present dyscrasia", "सू-ए-मिज़ाज · वर्तमान विकार", "سوءِ مزاج · موجودہ بگاڑ", "سوء المزاج · الاعتلال الحالي", "سوء مزاج · ناهنجاری فعلی"],
   darja_n: ["Darja {n}", "दर्जा {n}", "درجہ {n}", "الدرجة {n}", "درجه {n}"],

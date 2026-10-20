@@ -50,7 +50,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       anatomicalRegionSelection: { select: { regions: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
       chronology: { select: { onsetPatterns: true, durationValue: true, durationUnit: true, onsetDate: true, note: true, durationSource: true, sourceComplaint: true, updatedAt: true, recordedBy: { select: { name: true, designation: true } } } },
       asbabAssessments: { where: { framework: "asbab" }, select: { status: true, completedAt: true, updatedAt: true, humoral: true, recordedBy: { select: { name: true } }, responses: { select: { pillarKey: true, questionLabel: true, value: true } } } },
-      tashkheesDossier: { include: { recordedBy: { select: { name: true } }, diagnoses: { orderBy: { sortOrder: "asc" }, select: { label: true, localName: true, role: true, certainty: true, note: true } }, prescriptions: { orderBy: { sortOrder: "asc" }, select: { name: true, form: true, dose: true, timing: true, duration: true, adjuvant: true, instructions: true } } } },
+      tashkheesDossier: { include: { recordedBy: { select: { name: true } }, diagnoses: { orderBy: { sortOrder: "asc" }, select: { label: true, localName: true, role: true, certainty: true, note: true } }, versions: { orderBy: { version: "desc" }, take: 1, select: { version: true, kind: true, reason: true, byName: true, createdAt: true } }, prescriptions: { orderBy: { sortOrder: "asc" }, select: { name: true, form: true, dose: true, timing: true, duration: true, adjuvant: true, instructions: true } } } },
     },
   });
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
@@ -176,6 +176,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         ...visit.tashkheesDossier,
         organs: parse<string[]>(visit.tashkheesDossier.organs, []),
         sabab: parse<string[]>(visit.tashkheesDossier.sabab, []),
+        safetyAcks: await db.safetyAcknowledgement.findMany({ where: { visitId: id }, orderBy: { createdAt: "asc" }, select: { level: true, text: true, reason: true, byName: true, createdAt: true } }),
         usool: parse<string[]>(visit.tashkheesDossier.usool, []),
         ghizaRecommended: parse<string[]>(visit.tashkheesDossier.ghizaRecommended, []),
         ghizaAvoid: parse<string[]>(visit.tashkheesDossier.ghizaAvoid, []),
