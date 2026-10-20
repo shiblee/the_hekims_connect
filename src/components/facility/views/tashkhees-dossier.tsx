@@ -10,6 +10,7 @@ import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerL
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
 import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
+import { foodThumb } from "@/lib/food-thumb";
 import { MarzSection, type AmrazOption, type DossierDiagnosis } from "@/components/facility/views/marz-diagnosis";
 import { SafetyReviewPanel } from "@/components/facility/views/safety-review-panel";
 import { ReasoningPanel } from "@/components/facility/views/reasoning-panel";
@@ -861,9 +862,15 @@ function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string
 // ---------------------------------------------------------------- Ilaj-bil-Ghiza engine card
 
 /** A food photo (with its credit as a tooltip), or a neutral tile when there's none. */
+/** Food photo: the small thumbnail first, the full photo if that fails, then a food icon — never a blank box. */
 function FoodThumb({ src, alt, credit, className }: { src?: string | null; alt: string; credit?: string | null; className?: string }) {
-  return src
-    ? <img src={src} alt={alt} title={credit || undefined} loading="lazy" className={cn("shrink-0 rounded-lg object-cover bg-muted", className)} />
+  const thumb = foodThumb(src);
+  const [stage, setStage] = useState<0 | 1 | 2>(0); // 0 thumbnail, 1 full photo, 2 icon
+  const url = stage === 0 ? thumb : stage === 1 && src !== thumb ? src : null;
+  return url
+    ? <img src={url} alt={alt} title={credit || undefined} loading="lazy" decoding="async" width={64} height={64}
+        onError={() => setStage((s) => (s === 0 && src && src !== thumb ? 1 : 2))}
+        className={cn("shrink-0 rounded-lg object-cover bg-muted", className)} />
     : <span className={cn("shrink-0 rounded-lg bg-muted flex items-center justify-center text-muted-foreground", className)}><Utensils className="h-4 w-4" /></span>;
 }
 

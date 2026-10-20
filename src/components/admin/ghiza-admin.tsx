@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { foodThumb } from "@/lib/food-thumb";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { cn } from "@/lib/utils";
@@ -166,7 +167,7 @@ export function GhizaAdmin() {
             <Card key={f.id} className={cn("overflow-hidden border-border/50 bg-card/60 p-0 gap-0", !f.active && "opacity-50")}>
               <div className="relative h-40 w-full shrink-0 overflow-hidden bg-muted">
                 {f.imageUrl
-                  ? <img src={f.imageUrl} alt={f.label} title={f.imageCredit || undefined} loading="lazy" className="h-full w-full object-cover" />
+                  ? <img src={foodThumb(f.imageUrl) ?? f.imageUrl} alt={f.label} title={f.imageCredit || undefined} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   : <div className="flex h-full items-center justify-center text-muted-foreground"><Utensils className="h-8 w-8" /></div>}
                 <Badge variant="outline" className={cn("absolute left-2 top-2 text-[10px] capitalize backdrop-blur", STATUS[f.reviewStatus])}>{f.reviewStatus}</Badge>
                 {f.foodMizaj && <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">{f.foodMizaj}</span>}
