@@ -222,7 +222,7 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
           </Block>
 
           {(ctx.reports.length > 0 || ctx.mizajAssessment) && (
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid gap-3">
               {ctx.reports.length > 0 && (
                 <Block title={t("s_reports")} kind="document" href={s2} stage={2}>
                   <ul className="space-y-1.5 text-[13px]">

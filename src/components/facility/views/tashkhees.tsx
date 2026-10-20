@@ -134,7 +134,6 @@ function TashkheesStage({ patientId }: { patientId: string }) {
               {canSignOff && <Button size="sm" variant="outline" onClick={() => finalize()}>{tcase("review_amend")}</Button>}
             </div>
           )}
-          {latestVisit && <CaseSummaryPanel state={cc} />}
           {latestVisit && <FollowUpCard state={cc} response={t.dossier.treatmentResponse ?? null} note={t.dossier.treatmentResponseNote ?? null} onChange={(p) => t.set(p)} />}
           {latestVisit
             ? <div data-tour="dossier.panel"><TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} /></div>
@@ -143,6 +142,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
         <div ref={spacerRef} className="relative min-w-0">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
             {latestVisit && <CaseReadinessCard state={cc} />}
+            {latestVisit && <CaseSummaryPanel state={cc} />}
             {latestVisit && <div data-tour="stage.insight"><HakeemInsightPanel visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} /></div>}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />
