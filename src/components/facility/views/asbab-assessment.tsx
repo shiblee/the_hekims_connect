@@ -201,7 +201,7 @@ export function QuestionCard({ q, index, count, pillarLabel, pillarKey, value, o
         </div>
         {q.required && !answered && (inline || !choice) && <Badge variant="outline" className="shrink-0 text-[11px] font-normal border-amber-500/40 text-amber-700 dark:text-amber-400">{t("required")}</Badge>}
         {choice && !inline && (
-          <div className="w-full sm:w-[22rem] sm:shrink-0">
+          <div className="w-full sm:w-[60%] sm:shrink-0">
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button id={`asbab-${q.id}`} type="button" aria-expanded={open} className={cn(
