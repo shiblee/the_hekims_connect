@@ -21,6 +21,7 @@ import { FloatingTextarea } from "@/components/shared/floating-field";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TashkheesDossierPanel, useTashkhees } from "@/components/facility/views/tashkhees-dossier";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
+import { CaseReadinessCard, CaseSummaryPanel, useCaseContext } from "@/components/facility/views/case-context";
 
 /**
  * Stage 5 — Tashkhees & Handover Dossier. Same header as Stages 3–4; the
@@ -46,6 +47,8 @@ export function TashkheesView({ patientId }: { patientId?: string }) {
 function TashkheesStage({ patientId }: { patientId: string }) {
   const { loading, patient, setPatient, visits, sortedVisits, latestVisit, loadError, reload, refreshVisits } = useStagePatient(patientId);
   const t = useTashkhees(latestVisit?.id);
+  // The sourced case picture (Khulasa) and readiness checks — refreshed after every save.
+  const cc = useCaseContext(latestVisit?.id);
   const tr = useTranslations("clinic.stage5");
   const ts = useTranslations("clinic.stage");
   const ta = useTranslations("clinic.asbab");
@@ -83,6 +86,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   const finalized = t.dossier.status === "finalized";
   const saveDraft = async () => {
     const [ok, note] = await Promise.all([t.save(false), saveNote()]);
+    cc.reload();
     if (ok && note) t.msg.success(ts("draft_saved"), savedAt());
   };
   const finalize = async (reason?: string) => {
@@ -97,6 +101,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       return;
     }
     const [ok, note] = await Promise.all([t.save(true, reason), saveNote()]);
+    cc.reload();
     if (ok) setAmendOpen(false);
     if (ok && note) t.msg.success(finalized ? tr("final_updated") : tr("finalised"), savedAt());
   };
@@ -107,13 +112,15 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
       <div className="mb-6 grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 min-w-0">
+        <div className="lg:col-span-2 min-w-0 space-y-5">
+          {latestVisit && <CaseSummaryPanel state={cc} />}
           {latestVisit
             ? <div data-tour="dossier.panel"><TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} /></div>
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{ta("no_visit")}</Card>}
         </div>
         <div ref={spacerRef} className="relative min-w-0">
           <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
+            {latestVisit && <CaseReadinessCard state={cc} />}
             {latestVisit && <div data-tour="stage.insight"><HakeemInsightPanel visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} /></div>}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />

@@ -66,7 +66,7 @@ const READ_LISTS = R("/api/facility/(acute-symptoms|allergies|anatomical-regions
 const V = "/api/facility/visits/[^/]+";
 const TRIAGE = R(`${V}/(vitals|screening|complaint-assessments|red-flag-screening|acute-symptoms|humoral-assessment|clinical-routing-insight|humoral-clues-insight)`);
 const MIZAJ = R(`${V}/(anatomical-regions|chronology)`);
-const DIAG = R(`${V}/(dalail-selection|dossier|tashkhees-engine|usool-engine|ghiza-engine|clinical-assessment|treatment-plan|clinical-summary)`);
+const DIAG = R(`${V}/(dalail-selection|dossier|tashkhees-engine|usool-engine|ghiza-engine|clinical-assessment|treatment-plan|clinical-summary|case-context|differentials|reasoning)`);
 
 /** What a staff member needs for this API request. Reads of a visit need "View patients"; changes need the stage's permission. */
 export function requiredPermission(path: string, method: string): Need {

@@ -338,6 +338,9 @@ model Visit {
   // the Facility account itself rather than a logged-in staff member.
   registeredById String?
   reasonForVisit String?
+  // Stage 5 case readiness: "pregnant" | "breastfeeding" | "neither" | "unknown"; history reliability: "reliable" | "limited" | "unreliable".
+  pregnancyStatus    String?
+  historyReliability String?
   status         String   @default("registered")
   visitDate      DateTime @default(now())
   createdAt      DateTime @default(now())
@@ -685,6 +688,9 @@ model TashkheesDossier {
   suMizajGrade     Int? // Darja 1-4
   organs           String    @default("[]")
   diagnosisNote    String?
+  sabab            String    @default("[]") // causes (Asbab) of the illness, chosen by the Hakim
+  icdCode          String? // optional biomedical diagnosis, kept separate from the Unani one
+  icdLabel         String?
   usool            String    @default("[]")
   usoolNote        String?
   ghizaRecommended String    @default("[]")
@@ -709,6 +715,60 @@ model TashkheesDossier {
   recordedBy    Staff?                @relation(fields: [recordedById], references: [id], onDelete: SetNull)
   prescriptions DossierPrescription[]
   versions      DossierVersion[]
+  diagnoses     DossierDiagnosis[]
+}
+
+// The disease part of Tashkhees: working, secondary and differential diagnoses
+// (and ones ruled out), each with its certainty and the evidence for and against.
+model DossierDiagnosis {
+  id              String   @id @default(cuid())
+  dossierId       String
+  marzId          String? // Amraz catalogue entry, when chosen from it
+  label           String
+  localName       String?
+  role            String // "working" | "secondary" | "differential" | "ruled_out"
+  certainty       String? // "suspected" | "probable" | "confirmed"
+  evidenceFor     String   @default("[]")
+  evidenceAgainst String   @default("[]")
+  note            String?
+  source          String   @default("hakim") // "hakim" | "engine" | "ai" — who first proposed it
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  dossier TashkheesDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  marz    MarzEntry?       @relation(fields: [marzId], references: [id], onDelete: SetNull)
+}
+
+// Amraz catalogue — the diseases the differential engine and the reasoning
+// assistant may suggest. Drafted entries are marked unverified until a
+// physician approves them in Admin; rejected entries are never suggested.
+model MarzEntry {
+  id             String    @id @default(cuid())
+  key            String    @unique
+  label          String // English / transliterated name
+  localName      String? // Urdu / Arabic name
+  category       String? // organ system group, e.g. "Amraz-e-Hazm (digestive)"
+  description    String?
+  icd            String? // nearest biomedical code, for reference only
+  organs         String    @default("[]") // organ labels (Tashkhees organ list)
+  mizaj          String    @default("[]") // typical Su-e-Mizaj qualities, e.g. ["Safrawi","Haar"]
+  suMizajType    String? // "Sada" | "Maddi" when typical
+  sabab          String    @default("[]") // typical causes
+  appliesTo      String    @default("{}") // complaints / categories / symptoms / regions that suggest it
+  signs          String    @default("[]") // [{ text, weight, match }] — supporting findings
+  against        String    @default("[]") // [{ text, weight, match }] — findings that argue against
+  dontMiss       String    @default("[]") // [{ label, why }] — serious alternatives to rule out
+  investigations String    @default("[]") // suggested tests / examinations
+  sources        String    @default("[]") // [{ title, url? }]
+  reviewStatus   String    @default("draft") // "draft" (unverified) | "approved" | "rejected"
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  active         Boolean   @default(true)
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  diagnoses DossierDiagnosis[]
 }
 
 // A snapshot of the dossier each time it is finalised or amended — a finalised

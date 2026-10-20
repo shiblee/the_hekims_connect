@@ -1432,11 +1432,11 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
         )}
       </Card>
 
-      <section ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} visitId={visitId} /></section>
-      <section ref={(el) => { refs.current.tashkhees = el; }}><TashkheesTab state={state} visitId={visitId} /></section>
-      <section ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} visitId={visitId} /></section>
-      <section ref={(el) => { refs.current.ilaj = el; }}><IlajTab state={state} patientId={patientId} visitId={visitId} /></section>
-      <section ref={(el) => { refs.current.handover = el; }}><HandoverTab state={state} /></section>
+      <section id="dalail" className="scroll-mt-20" ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} visitId={visitId} /></section>
+      <section id="tashkhees" className="scroll-mt-20" ref={(el) => { refs.current.tashkhees = el; }}><TashkheesTab state={state} visitId={visitId} /></section>
+      <section id="usool" className="scroll-mt-20" ref={(el) => { refs.current.usool = el; }}><UsoolTab state={state} visitId={visitId} /></section>
+      <section id="ilaj" className="scroll-mt-20" ref={(el) => { refs.current.ilaj = el; }}><IlajTab state={state} patientId={patientId} visitId={visitId} /></section>
+      <section id="handover" className="scroll-mt-20" ref={(el) => { refs.current.handover = el; }}><HandoverTab state={state} /></section>
 
       {/* Where to next */}
       <div className={cn("flex items-center justify-between gap-3 flex-wrap rounded-xl border px-4 py-3",
