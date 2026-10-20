@@ -11,6 +11,7 @@ import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment
 import { Card } from "@/components/ui/card";
 import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { FloatingCombobox } from "@/components/shared/combobox";
+import { OptionDropdown, QuestionRow } from "@/components/shared/option-dropdown";
 import { foodThumb } from "@/lib/food-thumb";
 import { MarzSection, type AmrazOption, type DossierDiagnosis } from "@/components/facility/views/marz-diagnosis";
 import { SafetyReviewPanel } from "@/components/facility/views/safety-review-panel";
@@ -25,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
-  ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
+  Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -169,70 +170,13 @@ function Panel({ icon: Icon, title, aside, tour, children }: { icon: typeof Acti
   );
 }
 
-function Label({ children, required }: { children: ReactNode; required?: boolean }) {
-  return <p className="text-[15px] font-semibold mb-2">{children}{required && <span className="text-destructive"> *</span>}</p>;
+/** A question's text in a question row. */
+function Q({ children, required }: { children: ReactNode; required?: boolean }) {
+  return <p className="pt-2.5 text-[15px] font-semibold leading-snug">{children}{required && <span className="text-destructive">&nbsp;*</span>}</p>;
 }
-
-/** Selectable chips (single or multi) — same visual language as the other selectors. */
-function Chips({ items, selected, onToggle, tone = "emerald" }: {
-  items: { label: string; sub?: string | null; tip?: string | null }[]; selected: string[]; onToggle: (label: string) => void; tone?: "emerald" | "red";
-}) {
-  return (
-    <div className="flex flex-wrap content-start items-start self-start gap-2">
-      {items.map((it) => {
-        const on = selected.includes(it.label);
-        return (
-          <button key={it.label} type="button" onClick={() => onToggle(it.label)} aria-pressed={on} title={it.tip || it.sub || undefined}
-            className={cn(
-              "rounded-full border px-3 py-1 text-sm leading-snug transition-colors text-start",
-              on ? (tone === "red" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")
-                : "border-border/60 bg-background/40 hover:border-primary/40",
-            )}>
-            {it.label}{it.sub && <span className="text-xs text-muted-foreground"> · {it.sub}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Choice box: the question sits above (as a heading, rendered by the caller), the box shows what's
- * chosen, and clicking it opens the same descriptive chips (name · detail) in a pop-up. Single
- * choice closes on pick; multiple choice stays open so several can be ticked.
- */
-function ChipSelect({ id, items, value, onChange, multiple, placeholder }: {
-  id: string; items: { label: string; sub?: string | null; tip?: string | null }[];
-  value: string[]; onChange: (v: string[]) => void; multiple?: boolean; placeholder: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const chosen = value.map((v) => items.find((i) => i.label === v) ?? { label: v, sub: null });
-  const toggle = (l: string) => {
-    if (multiple) onChange(value.includes(l) ? value.filter((x) => x !== l) : [...value, l]);
-    else { onChange(value[0] === l ? [] : [l]); setOpen(false); }
-  };
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button id={id} type="button" aria-expanded={open}
-          className={cn("flex min-h-12 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 py-2 text-start transition-colors", open ? "border-primary" : "border-input hover:border-primary/40")}>
-          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-            {chosen.length === 0 ? <span className="text-muted-foreground">{placeholder}</span>
-              : multiple ? chosen.map((c) => (
-                <span key={c.label} className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-sm text-emerald-800 dark:text-emerald-300">
-                  {c.label}{c.sub && <span className="text-xs text-muted-foreground"> · {c.sub}</span>}
-                </span>
-              ))
-                : <span className="text-base"><span className="font-medium">{chosen[0].label}</span>{chosen[0].sub && <span className="text-sm text-muted-foreground"> · {chosen[0].sub}</span>}</span>}
-          </span>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-3">
-        <Chips items={items} selected={value} onToggle={toggle} />
-      </PopoverContent>
-    </Popover>
-  );
+/** A part of a question (e.g. Su-e-Mizaj → type, quality, degree). */
+function Sub({ children }: { children: ReactNode }) {
+  return <p className="ps-4 pt-2.5 text-sm text-muted-foreground">{children}</p>;
 }
 
 function Segmented<T extends string | number>({ value, options, onChange }: { value: T | null; options: { value: T; label: string }[]; onChange: (v: T | null) => void }) {
@@ -273,12 +217,10 @@ function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
 }) {
   const td = useTranslations("clinic.dossier");
   const sel = Array.isArray(value) ? value : [];
-  const toggle = (l: string) => onChange(q.type === "multi_select" ? (sel.includes(l) ? sel.filter((x) => x !== l) : [...sel, l]) : (sel.includes(l) ? [] : [l]));
   return (
-    <div className="grid md:grid-cols-[230px_1fr] gap-x-4 gap-y-2 py-3 border-t border-border/40 first:border-t-0">
-      <div>
+    <QuestionRow className="py-3 border-t border-border/40 first:border-t-0" question={<>
         <p className="text-[15px] font-medium">
-          {q.label}{q.required && <span className="text-destructive"> *</span>}
+          {q.label}{q.required && <span className="text-destructive">&nbsp;*</span>}
           {tag === "safety" && <span className="ms-1.5 align-middle rounded-full bg-destructive/10 border border-destructive/30 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-destructive">{td("safety")}</span>}
           {tag === "new" && <span className="ms-1.5 align-middle rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">{td("new")}</span>}
         </p>
@@ -292,11 +234,12 @@ function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
           </p>
         )}
         {tag === "earlier" && <p className="mt-0.5 text-xs text-muted-foreground">{td("earlier")}</p>}
-      </div>
+      </>}>
       {q.type === "text"
         ? <FloatingField id={`dalail-${q.id}`} label={td("describe")} maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-        : <Chips items={q.options.map((o) => ({ label: o.label, tip: o.description }))} selected={sel} onToggle={toggle} />}
-    </div>
+        : <OptionDropdown id={`dalail-${q.id}`} options={q.options.map((o) => ({ label: o.label, description: o.description }))} value={sel}
+            multiple={q.type === "multi_select"} onChange={onChange} />}
+    </QuestionRow>
   );
 }
 
@@ -693,7 +636,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
 
 function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
-  const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, sub: o.localName || o.description }));
+  const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, description: [o.localName, o.description].filter(Boolean).join(" — ") || null }));
   const td = useTranslations("clinic.dossier");
   return (
     <Panel icon={FileSignature} tour="dossier.diagnosis" title={td("tashkhees_title")}>
@@ -703,28 +646,27 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
       <MarzSection visitId={visitId} d={d} set={set} amraz={state.amraz} rerun={() => state.save(false)} />
       <div className="border-t border-border/50" />
       <EngineCard state={state} visitId={visitId} />
-      {/* Each question first, then a box that opens its descriptive chips */}
-      <div>
-        <Label required>{td("asli_label")}</Label>
-        <ChipSelect id="mizajAsli" items={mizaj} value={d.mizajAsli ? [d.mizajAsli] : []} onChange={(v) => set({ mizajAsli: v[0] ?? null })} placeholder={td("choose_one")} />
-      </div>
-      <div className="space-y-3">
-        <Label required>{td("su_label")}</Label>
-        <div className="flex flex-wrap items-center gap-3">
-          <Segmented value={d.suMizajType} options={SU_MIZAJ_TYPES.map((t) => ({ value: t.value, label: t.value }))} onChange={(v) => set({ suMizajType: v })} />
-          <span className="text-[13px] text-muted-foreground">{d.suMizajType === "Sada" ? td("sada_desc") : d.suMizajType === "Maddi" ? td("maddi_desc") : td("su_default")}</span>
-        </div>
-        <ChipSelect id="suMizajQuality" items={mizaj} value={d.suMizajQuality ? [d.suMizajQuality] : []} onChange={(v) => set({ suMizajQuality: v[0] ?? null })} placeholder={td("choose_quality")} />
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">{td("darja")}</span>
+      {/* Each question on the left, its answer box on the right — the box opens the answer cards */}
+      <QuestionRow question={<Q required>{td("asli_label")}</Q>}>
+        <OptionDropdown id="mizajAsli" options={mizaj} value={d.mizajAsli ? [d.mizajAsli] : []} onChange={(v) => set({ mizajAsli: v[0] ?? null })} placeholder={td("choose_one")} />
+      </QuestionRow>
+      <div className="space-y-2.5">
+        <Q required>{td("su_label")}</Q>
+        <QuestionRow question={<Sub>{td("su_type")}</Sub>}>
+          <OptionDropdown id="suMizajType" options={SU_MIZAJ_TYPES.map((t) => ({ label: t.value, description: td(t.value === "Sada" ? "sada_desc" : "maddi_desc") }))}
+            value={d.suMizajType ? [d.suMizajType] : []} onChange={(v) => set({ suMizajType: (v[0] as typeof d.suMizajType) ?? null })} placeholder={td("su_default")} />
+        </QuestionRow>
+        <QuestionRow question={<Sub>{td("su_quality")}</Sub>}>
+          <OptionDropdown id="suMizajQuality" options={mizaj} value={d.suMizajQuality ? [d.suMizajQuality] : []} onChange={(v) => set({ suMizajQuality: v[0] ?? null })} placeholder={td("choose_quality")} />
+        </QuestionRow>
+        <QuestionRow question={<Sub>{td("darja")}</Sub>}>
           <Segmented value={d.suMizajGrade} options={DARJA.map((n) => ({ value: n, label: `${n}` }))} onChange={(v) => set({ suMizajGrade: v })} />
-        </div>
+        </QuestionRow>
       </div>
-      <div>
-        <Label>{td("organs_label")}</Label>
-        <ChipSelect id="organs" multiple items={(options?.organ || []).map((o) => ({ label: o.label, sub: o.description }))} value={d.organs}
+      <QuestionRow question={<Q>{td("organs_label")}</Q>}>
+        <OptionDropdown id="organs" multiple options={(options?.organ || []).map((o) => ({ label: o.label, description: o.description }))} value={d.organs}
           onChange={(v) => set({ organs: v })} placeholder={td("choose_many")} />
-      </div>
+      </QuestionRow>
       <FloatingTextarea id="tashkhees-statement" label={td("statement")} rows={3} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })}
         title={td("statement_eg")} />
     </Panel>
@@ -1396,9 +1338,10 @@ function HandoverTab({ state }: { state: TashkheesState }) {
   return (
     <Panel icon={CalendarDays} tour="dossier.handover" title={td("handover_title")}
       aside={d.status === "finalized" ? <Badge variant="outline" className="mt-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}</Badge> : undefined}>
-      <div><Label>{td("prognosis")}</Label>
-        <Chips items={(options?.prognosis || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.prognosis ? [d.prognosis] : []}
-          onToggle={(l) => set({ prognosis: d.prognosis === l ? null : l })} /></div>
+      <QuestionRow question={<Q>{td("prognosis")}</Q>}>
+        <OptionDropdown id="prognosis" options={(options?.prognosis || []).map((o) => ({ label: o.label, description: o.description }))} value={d.prognosis ? [d.prognosis] : []}
+          onChange={(v) => set({ prognosis: v[0] ?? null })} placeholder={td("choose_one")} />
+      </QuestionRow>
       <div className="grid sm:grid-cols-[220px_1fr] gap-3 pt-1">
         <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
           <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 ms-3.5" />
@@ -1410,8 +1353,9 @@ function HandoverTab({ state }: { state: TashkheesState }) {
         <FloatingField id="followup-note" label={td("followup_plan")} maxLength={500} value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })}
           title={td("followup_eg")} />
       </div>
-      <div><Label>{td("priority")}</Label>
-        <Segmented value={d.priority} options={PRIORITIES.map((o) => ({ value: o.value, label: td(`pr_${o.value}`) }))} onChange={(v) => set({ priority: v ?? "routine" })} /></div>
+      <QuestionRow question={<Q>{td("priority")}</Q>}>
+        <Segmented value={d.priority} options={PRIORITIES.map((o) => ({ value: o.value, label: td(`pr_${o.value}`) }))} onChange={(v) => set({ priority: v ?? "routine" })} />
+      </QuestionRow>
       <FloatingTextarea id="urgent-directives" label={td("urgent_directives")} rows={2} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })}
         title={td("urgent_eg")} />
       <FloatingTextarea id="handover-note" label={td("handover_note")} rows={4} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })}
