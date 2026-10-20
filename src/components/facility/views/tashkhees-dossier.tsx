@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { FloatingField, FloatingSelect, FloatingTextarea } from "@/components/shared/floating-field";
+import { FloatingField, FloatingMultiSelect, FloatingSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { sortLabels } from "@/lib/sort-options";
 import {
@@ -782,78 +782,41 @@ function UsoolEngineCard({ state, visitId }: { state: TashkheesState; visitId: s
 function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
   const td = useTranslations("clinic.dossier");
-  const [browse, setBrowse] = useState(false);
   const [q, setQ] = useState("");
   const all = options?.usool || [];
   const phaseOf = (label: string) => all.find((o) => o.label === label)?.phase ?? 6;
-  const toggle = (label: string) => set({ usool: d.usool.includes(label) ? d.usool.filter((x) => x !== label) : [...d.usool, label] });
-  // The chosen plan, in classical order; any principle no longer in the list keeps its place at the end.
+  const stepName = (n: number) => td("step", { n, phase: td(`phase_${n}`) });
+  const add = (label: string) => { if (!d.usool.includes(label)) set({ usool: [...d.usool, label] }); };
+  const remove = (label: string) => set({ usool: d.usool.filter((x) => x !== label) });
+  // The chosen plan in classical order (Izala-e-Sabab first … symptomatic relief last).
   const chosen = [...d.usool].sort((a, b) => phaseOf(a) - phaseOf(b));
-  const steps = [1, 2, 3, 4, 5, 6];
   const ql = q.trim().toLowerCase();
-  const shown = all.filter((o) => !ql || `${o.label} ${o.localName ?? ""} ${o.description ?? ""}`.toLowerCase().includes(ql));
+  const results = all
+    .filter((o) => !d.usool.includes(o.label) && (!ql || `${o.label} ${o.localName ?? ""} ${o.description ?? ""} ${td(`phase_${o.phase ?? 6}`)}`.toLowerCase().includes(ql)))
+    .sort((a, b) => (a.phase ?? 6) - (b.phase ?? 6) || a.label.localeCompare(b.label))
+    .map((o) => ({ id: o.label, label: o.label, description: o.description, phase: o.phase ?? 6 }));
   return (
     <Panel icon={ClipboardCheck} tour="dossier.usool" title={td("usool_title")}>
       <UsoolEngineCard state={state} visitId={visitId} />
 
-      {/* Your plan — only what's chosen, grouped by classical step */}
+      {/* One search box to pick any number of principles; the chosen ones sit right under it */}
       <div className="space-y-2">
-        <p className="text-sm font-medium">{td("usool_yours")}</p>
+        <FloatingMultiSelect id="usoolPick" label={td("usool_add")} placeholder={td("usool_search")} openOnFocus keepOrder
+          selected={[]} onRemove={() => {}}
+          query={q} onQueryChange={setQ} results={results} onPick={add}
+          describe={(o) => `${stepName(o.phase)}${o.description ? ` · ${o.description}` : ""}`} />
         {chosen.length === 0 ? <p className="text-[13px] text-muted-foreground">{td("usool_none")}</p> : (
-          <div className="space-y-1.5">
-            {steps.filter((n) => chosen.some((l) => phaseOf(l) === n)).map((n) => (
-              <div key={n} className="flex flex-wrap items-center gap-1.5">
-                <span className="w-full sm:w-44 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("step", { n, phase: td(`phase_${n}`) })}</span>
-                {chosen.filter((l) => phaseOf(l) === n).map((l) => (
-                  <button key={l} type="button" onClick={() => toggle(l)} title={all.find((o) => o.label === l)?.description ?? undefined}
-                    className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20">
-                    {l} <X className="h-3 w-3" />
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Every approved principle — collapsed; searchable, grouped by step, one line each */}
-      <div className="rounded-xl border border-border/50 bg-background/30">
-        <button type="button" onClick={() => setBrowse((v) => !v)} aria-expanded={browse}
-          className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium hover:bg-muted/40 rounded-xl">
-          <span className="flex items-center gap-1.5"><Plus className="h-3.5 w-3.5" /> {td("usool_browse", { count: all.length })}</span>
-          <ArrowRight className={cn("h-3.5 w-3.5 transition-transform", browse && "rotate-90")} />
-        </button>
-        {browse && (
-          <div className="border-t border-border/50 p-3 space-y-3">
-            <div className="relative">
-              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input id="usoolSearch" value={q} onChange={(e) => setQ(e.target.value)} placeholder={td("usool_search")} aria-label={td("usool_search")}
-                className="h-9 w-full rounded-lg border border-input bg-background ps-8 pe-3 text-sm" />
-            </div>
-            {steps.map((n) => {
-              const rows = shown.filter((o) => (o.phase ?? 6) === n);
-              if (!rows.length) return null;
+          <div className="flex flex-wrap gap-1.5" aria-label={td("usool_yours")}>
+            {chosen.map((l) => {
+              const n = phaseOf(l);
               return (
-                <div key={n}>
-                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("step", { n, phase: td(`phase_${n}`) })}</p>
-                  <ul className="divide-y divide-border/40 rounded-lg border border-border/40">
-                    {rows.map((o) => {
-                      const on = d.usool.includes(o.label);
-                      return (
-                        <li key={o.id}>
-                          <button type="button" aria-pressed={on} onClick={() => toggle(o.label)}
-                            className={cn("flex w-full items-center gap-2.5 px-3 py-1.5 text-start transition-colors", on ? "bg-emerald-500/10" : "hover:bg-muted/40")}>
-                            <span className={cn("h-4 w-4 rounded-full border shrink-0 flex items-center justify-center", on ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40")}>{on && <Check className="h-2.5 w-2.5" />}</span>
-                            <span className="min-w-0 flex-1 truncate text-[13px]"><span className="font-semibold">{o.label}</span>{o.description && <span className="text-muted-foreground"> · {o.description}</span>}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
+                <button key={l} type="button" onClick={() => remove(l)} title={`${stepName(n)}${all.find((o) => o.label === l)?.description ? ` · ${all.find((o) => o.label === l)!.description}` : ""}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 ps-1 pe-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">{n}</span>
+                  {l} <X className="h-3 w-3" />
+                </button>
               );
             })}
-            {!shown.length && <p className="text-[13px] text-muted-foreground">{td("usool_no_match")}</p>}
           </div>
         )}
       </div>
