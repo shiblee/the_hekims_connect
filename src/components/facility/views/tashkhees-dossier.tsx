@@ -306,10 +306,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
     ? allQs.map(({ q }) => q.id)
     : allQs.filter(({ q }) => picked.has(q.id) || isAnswered(answers[q.id])).map(({ q }) => q.id));
   const sections = pillars.map((p) => ({ p, qs: p.questions.filter((q) => visibleIds.has(q.id) && questionVisible(q, answers)) })).filter((x) => x.qs.length);
-  const shown = sections.flatMap((x) => x.qs);
-  const answeredN = shown.filter((q) => isAnswered(answers[q.id])).length;
   const hasSigns = drift && AKHLAT.some((h) => drift.total[h.key] > 0);
-  const jump = (k: string) => { const el = refs.current[k]; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 64, behavior: "smooth" }); };
   const tagFor = (id: string): "new" | "added" | "safety" | "earlier" | undefined => {
     if (!sel || mode === "all") return undefined;
     if (sel.safetyIds.includes(id) && sel.questionIds.includes(id)) return "safety";
@@ -328,22 +325,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
   const addable = allQs.filter(({ q }) => !visibleIds.has(q.id) && (!aq || q.label.toLowerCase().includes(aq) || q.options.some((o) => o.label.toLowerCase().includes(aq))));
 
   return (
-    <Panel icon={Stethoscope} tour="dossier.dalail" title={td("dalail_title")}
-      aside={
-        <span className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          {sel && !selError && (
-            <span className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label={td("which_signs")}>
-              {([["selected", td("for_patient", { count: sel.questionIds.length + sel.addedIds.filter((x) => !sel.questionIds.includes(x)).length })], ["all", td("all_n", { count: allQs.length })]] as const).map(([m, label]) => (
-                <button key={m} type="button" onClick={() => setView(m)} aria-pressed={view === m}
-                  className={cn("rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", view === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-                  {label}
-                </button>
-              ))}
-            </span>
-          )}
-          <Badge variant="outline" className="tabular-nums">{td("n_recorded", { n: answeredN, total: shown.length })}</Badge>
-        </span>
-      }>
+    <Panel icon={Stethoscope} tour="dossier.dalail" title={td("dalail_title")}>
 
       {/* What the selection was based on */}
       {sel && !selError && mode === "selected" && (
@@ -364,11 +346,6 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
               <span className="text-xs text-muted-foreground">{td("no_context")}</span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {td("sel_summary", { n: sel.questionIds.length, eligible: sel.eligibleCount, bank: sel.bankSize })}
-            {" · "}{sel.method === "ranked" ? td("by_insight") : td("by_rules")}
-            {sel.method === "rules-fallback" && td("insight_down")}
-          </p>
         </div>
       )}
       {selError && (
@@ -377,22 +354,6 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
         </p>
       )}
 
-      {/* Jump bar */}
-      {sections.length > 1 && (
-        <div className="flex flex-wrap gap-1.5">
-          {sections.map(({ p, qs }) => {
-            const a = qs.filter((q) => isAnswered(answers[q.id])).length;
-            const done = a === qs.length;
-            return (
-              <button key={p.key} type="button" onClick={() => jump(p.key)}
-                className={cn("rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                  done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border/50 bg-background/40 hover:border-primary/40")}>
-                {p.label} <span className="text-xs tabular-nums opacity-80">{done ? "✓" : `${a}/${qs.length}`}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {!sel && !selError ? <Loading /> : (
         <div className="space-y-4">
@@ -421,7 +382,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
       )}
 
       {/* Doctor control: add any approved question */}
-      {mode === "selected" && sel && (
+      {sel && !selError && (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <Popover open={addOpen} onOpenChange={setAddOpen}>
             <PopoverTrigger asChild>
@@ -440,7 +401,9 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
               </div>
             </PopoverContent>
           </Popover>
-          <button type="button" onClick={() => setView("all")} className="text-[13px] text-primary font-medium hover:underline">{td("show_all", { count: allQs.length })}</button>
+          {mode === "selected"
+            ? <button type="button" onClick={() => setView("all")} className="text-[13px] text-primary font-medium hover:underline">{td("show_all", { count: allQs.length })}</button>
+            : <button type="button" onClick={() => setView("selected")} className="text-[13px] text-primary font-medium hover:underline">{td("show_for_patient")}</button>}
         </div>
       )}
 
