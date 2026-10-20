@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Check, HelpCircle, Plus, ShieldAlert, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Check, HelpCircle, Plus, Search, ShieldAlert, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { FloatingField } from "@/components/shared/floating-field";
 import type { DifferentialResult, Differential } from "@/lib/differential-engine";
@@ -27,89 +28,126 @@ function Pill({ className, children, title }: { className?: string; children: Re
   return <span title={title} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", className)}>{children}</span>;
 }
 
-/** Differential diagnosis (rules) for the visit — each candidate with its evidence, plus what to ask next and what not to miss. */
+/**
+ * Differential diagnosis (rules) for the visit: a search box whose drop-down lists each candidate with its
+ * evidence and the choices (working / differential / rule out); "Don't miss" opens in a pop-up.
+ */
 function DifferentialCard({ visitId, d, add, rerun }: { visitId: string; d: MarzState; add: (x: Differential, role: DiagnosisRole) => void; rerun: () => Promise<unknown> }) {
   const t = useTranslations("clinic.marz");
   const [data, setData] = useState<(DifferentialResult & { catalogueSize: number }) | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [missOpen, setMissOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   const fetchIt = useCallback(() => api.get<DifferentialResult & { catalogueSize: number }>(`/api/facility/visits/${visitId}/differentials`)
     .then((r) => { setData(r); setFailed(false); }).catch(() => setFailed(true)), [visitId]);
   useEffect(() => { fetchIt(); }, [fetchIt]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
   const recheck = async () => { setRunning(true); try { await rerun(); await fetchIt(); } finally { setRunning(false); } };
+  const ql = q.trim().toLowerCase();
+  const rows = (data?.differentials ?? []).filter((x) => !ql || `${x.label} ${x.localName ?? ""} ${x.for.join(" ")}`.toLowerCase().includes(ql));
 
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {t("engine")}</p>
-        <button type="button" onClick={recheck} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? t("rechecking") : t("recheck")}</button>
+        <span className="flex items-center gap-3">
+          {data && data.dontMiss.length > 0 && (
+            <button type="button" onClick={() => setMissOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-2.5 py-0.5 text-xs font-semibold text-destructive hover:bg-destructive/15">
+              <ShieldAlert className="h-3.5 w-3.5" /> {t("dont_miss")} · {data.dontMiss.length}
+            </button>
+          )}
+          <button type="button" onClick={recheck} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? t("rechecking") : t("recheck")}</button>
+        </span>
       </div>
       {failed ? (
         <p className="text-sm text-muted-foreground">{t.rich("failed", { retry: (c) => <button type="button" onClick={() => fetchIt()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !data ? <div className="h-16 animate-pulse rounded-lg bg-muted/50" /> : (
         <>
           {data.differentials.length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : (
-            <ul className="divide-y divide-border/40 rounded-lg border border-border/50 bg-background/50">
-              {data.differentials.map((x) => {
-                const chosen = d.diagnoses.find((y) => (x.marzId && y.marzId === x.marzId) || y.label === x.label);
-                return (
-                  <li key={x.key} className="p-3 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold">{x.label}</span>
-                      {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
-                      <Pill className={CERT_STYLE[x.certainty]}>{t(`cert_${x.certainty}`)}</Pill>
-                      {x.unverified && <Pill className="border-border/60 text-muted-foreground font-medium" title={t("unverified_hint")}><HelpCircle className="h-3 w-3" />{t("unverified")}</Pill>}
-                      {x.mizajFit && <span className={cn("text-[11px]", x.mizajFit === "against" ? "text-destructive" : "text-muted-foreground")}>{t(`fit_${x.mizajFit}`)}</span>}
-                    </div>
-                    {x.for.length > 0 && <p className="text-xs"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{t("for")}:</span> {x.for.join(" · ")}</p>}
-                    {x.against.length > 0 && <p className="text-xs"><span className="font-semibold text-destructive">{t("against")}:</span> {x.against.join(" · ")}</p>}
-                    {x.missing.length > 0 && <p className="text-xs text-muted-foreground"><span className="font-semibold">{t("not_checked")}:</span> {x.missing.slice(0, 3).join(" · ")}</p>}
-                    {x.typicalMizaj.length > 0 && <p className="text-[11px] text-muted-foreground">{t("typical", { mizaj: x.typicalMizaj.join(", ") })}{x.organs.length ? ` · ${x.organs.join(", ")}` : ""}</p>}
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {chosen ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> {t("added_as", { role: t(`role_${chosen.role}`).toLowerCase() })}</span>
-                      ) : (
-                        <>
-                          <Button size="sm" variant="outline" className="h-7" onClick={() => add(x, d.diagnoses.some((y) => y.role === "working") ? "secondary" : "working")}>{t("as_working")}</Button>
-                          <Button size="sm" variant="outline" className="h-7" onClick={() => add(x, "differential")}>{t("as_differential")}</Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-muted-foreground" onClick={() => add(x, "ruled_out")}>{t("rule_out")}</Button>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          {(data.nextQuestions.length > 0 || data.dontMiss.length > 0) && (
-            <div className="grid sm:grid-cols-2 gap-2.5">
-              {data.nextQuestions.length > 0 && (
-                <div className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t("ask_next")}</p>
-                  <ul className="space-y-1">
-                    {data.nextQuestions.map((q) => (
-                      <li key={q.questionId} className="text-xs">
-                        <a href="#dalail" className="font-medium text-primary hover:underline">{q.sectionLabel} — {q.question}</a>
-                        <span className="block text-muted-foreground">{t("helps", { items: q.helps.join(", ") })}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {data.dontMiss.length > 0 && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-destructive mb-1 flex items-center gap-1"><ShieldAlert className="h-3 w-3" /> {t("dont_miss")}</p>
-                  <ul className="space-y-1">
-                    {data.dontMiss.map((x) => <li key={x.label} className="text-xs"><span className="font-medium">{x.label}</span><span className="block text-muted-foreground">{x.why}</span></li>)}
-                  </ul>
+            <div ref={boxRef} className="relative">
+              <FloatingField id="ddxSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
+                label={t("ddx_search", { count: data.differentials.length })}
+                onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onClick={() => setOpen(true)}
+                onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
+              {open && (
+                <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[440px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
+                  <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ddx_hint")}</p>
+                  {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{t("ddx_no_match", { q })}</p>}
+                  {rows.map((x) => {
+                    const chosen = d.diagnoses.find((y) => (x.marzId && y.marzId === x.marzId) || y.label === x.label);
+                    return (
+                      <div key={x.key} className={cn("px-3 py-2.5 space-y-1", chosen && "bg-emerald-500/5")}>
+                        <div className="flex items-start gap-3">
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <span className="text-sm font-semibold">{x.label}</span>
+                              {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
+                              <Pill className={CERT_STYLE[x.certainty]}>{t(`cert_${x.certainty}`)}</Pill>
+                              {x.unverified && <Pill className="border-border/60 text-muted-foreground font-medium" title={t("unverified_hint")}><HelpCircle className="h-3 w-3" />{t("unverified")}</Pill>}
+                              {x.mizajFit && <span className={cn("text-[11px]", x.mizajFit === "against" ? "text-destructive" : "text-muted-foreground")}>{t(`fit_${x.mizajFit}`)}</span>}
+                            </p>
+                            {x.for.length > 0 && <p className="text-xs"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{t("for")}:</span> {x.for.join(" · ")}</p>}
+                            {x.against.length > 0 && <p className="text-xs"><span className="font-semibold text-destructive">{t("against")}:</span> {x.against.join(" · ")}</p>}
+                            {x.missing.length > 0 && <p className="text-xs text-muted-foreground"><span className="font-semibold">{t("not_checked")}:</span> {x.missing.slice(0, 3).join(" · ")}</p>}
+                            {x.typicalMizaj.length > 0 && <p className="text-[11px] text-muted-foreground">{t("typical", { mizaj: x.typicalMizaj.join(", ") })}{x.organs.length ? ` · ${x.organs.join(", ")}` : ""}</p>}
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            {chosen ? (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/60 bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white"><Check className="h-3 w-3" /> {t(`role_${chosen.role}`)}</span>
+                            ) : (
+                              <>
+                                <button type="button" onClick={() => add(x, d.diagnoses.some((y) => y.role === "working") ? "secondary" : "working")}
+                                  className="rounded-md border border-primary/50 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10">{d.diagnoses.some((y) => y.role === "working") ? t("role_secondary") : t("as_working")}</button>
+                                <button type="button" onClick={() => add(x, "differential")} className="rounded-md border border-border/60 px-2.5 py-1 text-xs font-medium hover:bg-muted/60">{t("as_differential")}</button>
+                                <button type="button" onClick={() => add(x, "ruled_out")} className="rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/60">{t("rule_out")}</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground">
-            {t("engine_note", { n: data.catalogueSize })} {data.basis.from === "hakim" ? t("basis_hakim") : data.basis.from === "engine" ? t("basis_engine") : ""}
-          </p>
+
+          {data.nextQuestions.length > 0 && (
+            <div className="rounded-lg border border-border/50 bg-background/50 p-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t("ask_next")}</p>
+              <ul className="space-y-1">
+                {data.nextQuestions.map((nq) => (
+                  <li key={nq.questionId} className="text-xs">
+                    <a href="#dalail" className="font-medium text-primary hover:underline">{nq.sectionLabel} — {nq.question}</a>
+                    <span className="text-muted-foreground"> · {t("helps", { items: nq.helps.join(", ") })}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <Dialog open={missOpen} onOpenChange={setMissOpen}>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+              <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><ShieldAlert className="h-5 w-5" /> {t("dont_miss")}</DialogTitle></DialogHeader>
+              <ul className="space-y-2">
+                {data.dontMiss.map((x) => (
+                  <li key={x.label} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                    <p className="text-sm font-semibold">{x.label}</p>
+                    <p className="text-sm text-muted-foreground">{x.why}</p>
+                  </li>
+                ))}
+              </ul>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
