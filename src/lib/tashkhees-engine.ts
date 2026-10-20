@@ -18,7 +18,8 @@ const HUMOUR_LABEL: Record<Humour, string> = { safra: "Safra", dam: "Dam", balgh
 export const MIZAJ_OF: Record<Humour, string> = { safra: "Safrawi", dam: "Damawi", balgham: "Balghami", sauda: "Saudawi" };
 
 export interface EngineConfig {
-  weights: { complaints: number; asbab: number; dalail: number };
+  /** assessment = the patient's Mizaj assessment (Stage 3), used for Mizaj-e-Asli only. */
+  weights: { complaints: number; asbab: number; dalail: number; assessment: number };
   /** Sections (Dala'il or Asbab-e-Sittah keys) whose answers describe the constitution, for Mizaj-e-Asli. */
   constitutionalSections: string[];
   /** Minimum evidence (summed humoral points) before any temperament is suggested. */
@@ -36,7 +37,7 @@ export interface EngineConfig {
 }
 
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
-  weights: { complaints: 1, asbab: 0.75, dalail: 1.25 },
+  weights: { complaints: 1, asbab: 0.75, dalail: 1.25, assessment: 1 },
   constitutionalSections: ["zahiri", "nabz", "harkat_nafsani", "naum"],
   minEvidence: 3,
   balancedMargin: 8,
@@ -61,6 +62,9 @@ const pct = (p: Points): Points => { const s = sum(p); const o = zero(); if (s >
 const parse = <T,>(raw: string | null | undefined, fb: T): T => { try { return raw ? (JSON.parse(raw) as T) : fb; } catch { return fb; } };
 
 export interface Evidence { label: string; humour: Humour; points: number }
+export type ReadingKey = "complaints" | "asbab" | "dalail" | "assessment";
+/** Sections that count as a core examination for Mizaj-e-Asli (pulse, physique / complexion). */
+export const CORE_EXAM_SECTIONS = ["nabz", "zahiri"];
 export interface TemperamentSuggestion {
   label: string | null; // option label, e.g. "Safrawi", "Haar", "Mu'tadil"
   humour: Humour | null;
@@ -69,6 +73,12 @@ export interface TemperamentSuggestion {
   confidence: "strong" | "moderate" | "weak";
   evidence: Evidence[];
   note?: string;
+  /** The readings point to different humours — shown so the Hakim resolves it; label is null when nothing leads. */
+  conflict?: { leans: { source: ReadingKey; humour: Humour }[] };
+  /** Why confidence was capped: no examination at all, or no core examination (pulse / physique). */
+  cap?: "no_exam" | "no_core_exam";
+  /** Mizaj-e-Asli: the Stage 3 Mizaj assessment that was blended in. */
+  assessment?: { percent: Points; date: string } | null;
 }
 export interface Suggestion {
   sources: { key: "complaints" | "asbab" | "dalail"; label: string; percent: Points | null; weight: number }[];
@@ -105,10 +115,10 @@ const SUPPORT: Record<string, Humour[]> = {
   Safrawi: ["safra"], Damawi: ["dam"], Balghami: ["balgham"], Saudawi: ["sauda"],
   Haar: ["safra", "dam"], Barid: ["balgham", "sauda"], Ratab: ["dam", "balgham"], Yabis: ["safra", "sauda"],
 };
-const leanOf = (p: Points) => HUMOUR_LABEL[[...HUMOURS].sort((a, b) => p[b] - p[a])[0]];
 
 export interface EngineInput {
   complaints: Points | null; // percentages from the complaint humoral assessment
+  assessment?: { points: Points; date: string } | null; // latest Mizaj assessment for the patient (Stage 3)
   severity: number | null; // primary complaint severity
   responses: { framework: string; section: string; question: string; weight: number; options: { label: string; safra: number; dam: number; balgham: number; sauda: number; maddi: number }[] }[];
   ctx: DalailContext;
@@ -123,17 +133,20 @@ export async function loadEngineInput(visitId: string, facilityId: string): Prom
       select: {
         humoralAssessment: { select: { safraPercent: true, damPercent: true, balghamPercent: true, saudaPercent: true } },
         complaintAssessments: { orderBy: { sortOrder: "asc" }, take: 1, select: { severityScore: true } },
+        patientId: true,
         asbabAssessments: { select: { framework: true, responses: { select: { questionId: true, pillarKey: true, questionLabel: true, weight: true, selectedOptions: true } } } },
       },
     }),
   ]);
   if (!ctx || !visit) return null;
+  const ma = await db.mizajAssessment.findFirst({ where: { patientId: visit.patientId, facilityId }, orderBy: { createdAt: "desc" }, select: { dam: true, saffra: true, balgham: true, sauda: true, createdAt: true } });
   // Current morbid-matter weights for the selected options (by question + label).
   const qIds = visit.asbabAssessments.flatMap((a) => a.responses.map((r) => r.questionId).filter(Boolean)) as string[];
   const opts = qIds.length ? await db.asbabOption.findMany({ where: { questionId: { in: qIds } }, select: { questionId: true, label: true, maddi: true } }) : [];
   const h = visit.humoralAssessment;
   return {
     complaints: h ? { safra: h.safraPercent, dam: h.damPercent, balgham: h.balghamPercent, sauda: h.saudaPercent } : null,
+    assessment: ma && ma.dam + ma.saffra + ma.balgham + ma.sauda > 0 ? { points: { safra: ma.saffra, dam: ma.dam, balgham: ma.balgham, sauda: ma.sauda }, date: ma.createdAt.toISOString() } : null,
     severity: visit.complaintAssessments[0]?.severityScore ?? null,
     responses: visit.asbabAssessments.flatMap((a) => a.responses.map((r) => ({
       framework: a.framework, section: r.pillarKey, question: r.questionLabel, weight: r.weight || 1,
@@ -190,7 +203,16 @@ export function computeSuggestion(input: EngineInput, cfg: EngineConfig, organOp
       darja = c.lead >= b4 ? 4 : c.lead >= b3 ? 3 : c.lead >= b2 ? 2 : 1;
       if (cfg.severityBoost && (input.severity ?? 0) >= 7) darja = Math.min(4, darja + 1);
     }
-    const confidence = confidenceOf(c.lead, present.length, findingsAll);
+    // Readings that each clearly lean one way, but to different humours, are a conflict — not balance.
+    const leans = present.map((x) => {
+      const sorted = [...HUMOURS].sort((a, b) => x.percent![b] - x.percent![a]);
+      return { source: x.key as ReadingKey, humour: sorted[0], clear: x.percent![sorted[0]] - x.percent![sorted[1]] >= cfg.balancedMargin };
+    }).filter((x) => x.clear).map(({ source, humour }) => ({ source, humour }));
+    const conflict = new Set(leans.map((l) => l.humour)).size >= 2 ? { leans } : undefined;
+    let confidence = confidenceOf(c.lead, present.length, findingsAll);
+    // No examination yet, or the readings disagree: the suggestion can only be weak.
+    const cap = dalail.findings === 0 ? "no_exam" as const : undefined;
+    if (cap || conflict) confidence = "weak";
     // Thin evidence can't justify a high degree.
     if (darja != null) darja = Math.min(darja, confidence === "weak" ? 2 : confidence === "moderate" ? 3 : 4);
     const support = SUPPORT[c.label ?? ""] || [];
@@ -198,25 +220,40 @@ export function computeSuggestion(input: EngineInput, cfg: EngineConfig, organOp
       ? [...dalail.evidence, ...asbab.evidence].filter((e) => support.includes(e.humour)).sort((a, b) => b.points - a.points).slice(0, 5)
       : [];
     // Balanced: say why — usually the readings point different ways.
-    const note = c.label === "Mu'tadil"
-      ? `No single humour leads${present.length > 1 ? ` — the readings differ: ${present.map((x) => `${x.key === "complaints" ? "complaints" : x.key === "asbab" ? "lifestyle" : "signs"} lean ${leanOf(x.percent!)}`).join(", ")}` : ""}. Review the examination before accepting.`
-      : undefined;
+    const undetermined = c.label === "Mu'tadil" && !!conflict;
+    const note = c.label === "Mu'tadil" && !conflict ? "The readings are evenly balanced. Review the examination before accepting." : undefined;
     suMizaj = {
-      ...c, lead: round1(c.lead), darja, type: maddiScore >= cfg.maddiThreshold ? "Maddi" : "Sada", maddiScore, maddiSigns: maddiSigns.map((x) => x.label),
-      confidence, evidence: ev, note,
+      ...c, label: undetermined ? null : c.label, humour: undetermined ? null : c.humour, lead: round1(c.lead), darja: undetermined ? null : darja,
+      type: maddiScore >= cfg.maddiThreshold ? "Maddi" : "Sada", maddiScore, maddiSigns: maddiSigns.map((x) => x.label),
+      confidence, evidence: undetermined ? [] : ev, note, conflict, cap,
     };
   }
 
-  // ---- Mizaj-e-Asli: constitutional sections only
+  // ---- Mizaj-e-Asli: constitutional sections, blended with the patient's Mizaj assessment (Stage 3) when there is one
   let mizajAsli: Suggestion["mizajAsli"] = null;
-  const consti = pointsOf(input.responses.filter((r) => cfg.constitutionalSections.includes(r.section)));
-  if (sum(consti.points) < cfg.minEvidence) {
+  const constiResponses = input.responses.filter((r) => cfg.constitutionalSections.includes(r.section));
+  const consti = pointsOf(constiResponses);
+  const constiOk = sum(consti.points) >= cfg.minEvidence;
+  const assess = input.assessment && sum(input.assessment.points) > 0 ? input.assessment : null;
+  if (!constiOk && !assess) {
     insufficient.push("Not enough constitutional signs for Mizaj-e-Asli — record complexion, build, skin, pulse, temperament or sleep findings.");
   } else {
-    const c = classify(consti.points, cfg);
+    const blend = zero();
+    if (constiOk) { const p = pct(consti.points); for (const h of HUMOURS) blend[h] += p[h] * Math.max(0.25, evidenceFactor(consti.findings)); }
+    if (assess) { const p = pct(assess.points); for (const h of HUMOURS) blend[h] += p[h] * cfg.weights.assessment; }
+    const c = classify(blend, cfg);
+    const sections = new Set(constiResponses.filter((r) => r.options.length).map((r) => r.section)).size + (assess ? 1 : 0);
+    let confidence = confidenceOf(c.lead, sections, consti.findings + (assess ? 3 : 0));
+    // A constitution needs a core examination (pulse or physique) — or a formal Mizaj assessment.
+    const coreExam = input.responses.some((r) => r.framework === "dalail" && CORE_EXAM_SECTIONS.includes(r.section) && r.options.length > 0);
+    const cap = coreExam || assess ? undefined : dalail.findings === 0 ? "no_exam" as const : "no_core_exam" as const;
+    if (cap) confidence = "weak";
+    const support = SUPPORT[c.label ?? ""] || [];
+    const evidence = consti.evidence.filter((e) => support.includes(e.humour)).sort((a, b) => b.points - a.points).slice(0, 5);
+    if (assess && c.humour) evidence.unshift({ label: `Mizaj assessment: ${MIZAJ_OF[c.humour]} ${Math.round(pct(assess.points)[c.humour])}%`, humour: c.humour, points: 0 });
     mizajAsli = {
-      ...c, lead: round1(c.lead), confidence: confidenceOf(c.lead, new Set(input.responses.filter((r) => cfg.constitutionalSections.includes(r.section) && r.options.length).map((r) => r.section)).size, consti.findings),
-      evidence: consti.evidence.filter((e) => (SUPPORT[c.label ?? ""] || []).includes(e.humour)).sort((a, b) => b.points - a.points).slice(0, 5),
+      ...c, lead: round1(c.lead), confidence, evidence, cap,
+      assessment: assess ? { percent: pct(assess.points), date: assess.date } : null,
       note: c.label === "Mu'tadil" ? "Constitutional signs are evenly balanced." : undefined,
     };
   }
@@ -279,7 +316,7 @@ export async function runTashkheesEngine(visitId: string, facilityId: string): P
 
   return {
     suggestion, method,
-    contextHash: hash({ r: input.responses, c: input.complaints, x: input.ctx }),
+    contextHash: hash({ r: input.responses, c: input.complaints, x: input.ctx, a: input.assessment }),
     configVersion: hash({ cfg, o: organOptions }),
     latencyMs: Date.now() - started,
   };

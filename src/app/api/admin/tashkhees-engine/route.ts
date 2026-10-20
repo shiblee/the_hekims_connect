@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest) {
   const d = DEFAULT_ENGINE_CONFIG;
   const bands = Array.isArray(c.darjaBands) ? c.darjaBands.map((x: unknown, i: number) => n(x, 1, 90, d.darjaBands[i])) : d.darjaBands;
   const cfg: EngineConfig = {
-    weights: { complaints: n(c.weights?.complaints, 0, 3, d.weights.complaints), asbab: n(c.weights?.asbab, 0, 3, d.weights.asbab), dalail: n(c.weights?.dalail, 0, 3, d.weights.dalail) },
+    weights: { complaints: n(c.weights?.complaints, 0, 3, d.weights.complaints), asbab: n(c.weights?.asbab, 0, 3, d.weights.asbab), dalail: n(c.weights?.dalail, 0, 3, d.weights.dalail), assessment: n(c.weights?.assessment, 0, 3, d.weights.assessment) },
     constitutionalSections: Array.isArray(c.constitutionalSections) ? c.constitutionalSections.filter((x: unknown) => typeof x === "string").slice(0, 30) : d.constitutionalSections,
     minEvidence: n(c.minEvidence, 0, 30, d.minEvidence),
     balancedMargin: n(c.balancedMargin, 1, 50, d.balancedMargin),

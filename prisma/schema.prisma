@@ -700,12 +700,33 @@ model TashkheesDossier {
   finalizedAt      DateTime?
   finalizedByName  String?
   recordedById     String?
+  // Bumped on every save — a save based on an older revision is refused (two people editing at once).
+  revision         Int       @default(0)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   visit         Visit                 @relation(fields: [visitId], references: [id], onDelete: Cascade)
   recordedBy    Staff?                @relation(fields: [recordedById], references: [id], onDelete: SetNull)
   prescriptions DossierPrescription[]
+  versions      DossierVersion[]
+}
+
+// A snapshot of the dossier each time it is finalised or amended — a finalised
+// record is never silently overwritten; every change keeps the one before it.
+model DossierVersion {
+  id        String   @id @default(cuid())
+  dossierId String
+  version   Int
+  kind      String // "finalized" | "amended"
+  reason    String? // required for amendments
+  snapshot  String // JSON of the dossier as finalised
+  byName    String?
+  byStaffId String?
+  createdAt DateTime @default(now())
+
+  dossier TashkheesDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@unique([dossierId, version])
 }
 
 // Ilaj-bil-Dawa lines — a table (not JSON) so pharmacy/dispensing can build

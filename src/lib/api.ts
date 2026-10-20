@@ -58,7 +58,8 @@ async function request<T = any>(
 
   if (!res.ok) {
     const msg = (data as any)?.error || `Request failed (${res.status})`;
-    throw new Error(translateError(msg));
+    // status + body travel with the error so callers can branch without matching (translated) text.
+    throw Object.assign(new Error(translateError(msg)), { status: res.status, data });
   }
   return data as T;
 }

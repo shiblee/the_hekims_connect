@@ -9,7 +9,7 @@ import { AKHLAT, isAnswered, questionVisible, type AsbabAnswer, type AsbabQuesti
 import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerLine, type TashkheesOptionRow } from "@/lib/tashkhees";
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
-import { LoadFailed, useNotice } from "@/components/shared/inline-notice";
+import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ interface Dossier {
   tadbeer: TadbeerLine[]; prescriptions: PrescriptionLine[];
   prognosis: string | null; followUpDate: string | null; followUpNote: string | null;
   urgentDirectives: string | null; priority: string; handoverNote: string | null;
+  revision?: number;
+  versions?: { version: number; kind: "finalized" | "amended"; reason: string | null; byName: string | null; createdAt: string }[];
 }
 const EMPTY: Dossier = {
   status: "draft", finalizedAt: null, finalizedByName: null, mizajAsli: null, suMizajType: null, suMizajQuality: null, suMizajGrade: null,
@@ -52,6 +54,8 @@ export function useTashkhees(visitId: string | undefined) {
   const [saving, setSaving] = useState<"draft" | "finalize" | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  // Medicine safety check for the current medicine lines — finalising waits for it to have run.
+  const [safety, setSafety] = useState<"idle" | "checking" | "ok" | "failed">("idle");
   const msg = useNotice();
   const td = useTranslations("clinic.dossier");
   const tc = useTranslations("common");
@@ -76,15 +80,17 @@ export function useTashkhees(visitId: string | undefined) {
 
   const set = useCallback((patch: Partial<Dossier>) => { setDossier((d) => ({ ...d, ...patch })); setDirty(true); }, []);
 
-  const save = async (finalize: boolean) => {
+  /** Saves the dossier (and the Dala'il answers). A finalised dossier is only changed by amending it (finalize + reason). */
+  const save = async (finalize: boolean, amendReason?: string) => {
     if (!visitId) return false;
+    const locked = dossier.status === "finalized" && !finalize;
     setSaving(finalize ? "finalize" : "draft");
     try {
       const [res, dalailOk] = await Promise.all([
-        api.post<{ dossier: Dossier }>(`/api/facility/visits/${visitId}/dossier`, { ...dossier, finalize }),
+        locked ? Promise.resolve(null) : api.post<{ dossier: Dossier }>(`/api/facility/visits/${visitId}/dossier`, { ...dossier, finalize, amendReason }),
         dalail.save(false),
       ]);
-      setDossier({ ...EMPTY, ...res.dossier, followUpDate: res.dossier.followUpDate ? res.dossier.followUpDate.slice(0, 10) : null });
+      if (res) setDossier({ ...EMPTY, ...res.dossier, followUpDate: res.dossier.followUpDate ? res.dossier.followUpDate.slice(0, 10) : null });
       setDirty(false);
       dalail.msg.clear();
       if (!dalailOk) {
@@ -94,6 +100,10 @@ export function useTashkhees(visitId: string | undefined) {
       msg.clear();
       return true;
     } catch (e: any) {
+      if (e?.status === 409 && e?.data?.conflict) {
+        msg.error(td("conflict_title"), td("conflict_hint"), { retry: reload, retryLabel: td("reload") });
+        return false;
+      }
       msg.error(
         finalize ? td("not_finalised") : td("draft_not_saved"),
         td("on_screen", { error: e.message || tc("network_error") }),
@@ -105,7 +115,7 @@ export function useTashkhees(visitId: string | undefined) {
     }
   };
 
-  return { dalail, options, herbs, dossier, set, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload };
+  return { dalail, options, herbs, dossier, set, dirty: dirty || dalail.dirty, saving, save, msg, loadError: loadError || dalail.loadError, reload, safety, setSafety };
 }
 type TashkheesState = ReturnType<typeof useTashkhees>;
 
@@ -413,7 +423,12 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
 // ---------------------------------------------------------------- Tashkhees engine card
 
 type EngPoints = Record<"safra" | "dam" | "balgham" | "sauda", number>;
-interface EngTemperament { label: string | null; humour: string | null; percent: EngPoints; lead: number; confidence: "strong" | "moderate" | "weak"; evidence: { label: string; humour: string; points: number }[]; note?: string }
+interface EngTemperament {
+  label: string | null; humour: string | null; percent: EngPoints; lead: number; confidence: "strong" | "moderate" | "weak"; evidence: { label: string; humour: string; points: number }[]; note?: string;
+  conflict?: { leans: { source: "complaints" | "asbab" | "dalail" | "assessment"; humour: string }[] };
+  cap?: "no_exam" | "no_core_exam";
+  assessment?: { percent: EngPoints; date: string } | null;
+}
 interface EngSuggestion {
   sources: { key: string; label: string; percent: EngPoints | null; weight: number }[];
   mizajAsli: EngTemperament | null;
@@ -436,6 +451,7 @@ const CONF_STYLE = {
  */
 function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, options } = state;
+  const dl = useDateLocale();
   const [data, setData] = useState<{ suggestion: EngSuggestion; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
@@ -486,6 +502,15 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
       })}
     </ul>
   ) : null;
+  const humourName = (h: string) => AKHLAT.find((x) => x.key === h)?.label ?? h;
+  // Why a suggestion is uncertain: conflicting readings, a capped confidence, the Mizaj assessment used.
+  const Why = ({ t: m }: { t: EngTemperament }) => (
+    <>
+      {m.conflict && m.label && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{td("conflict_leans", { items: m.conflict.leans.map((l) => td("lean_item", { source: td(`src_${l.source}`), humour: humourName(l.humour) })).join(" · ") })}</p>}
+      {m.cap && <p className="mt-1 text-xs text-muted-foreground">{td(`cap_${m.cap}`)}</p>}
+      {m.assessment && <p className="mt-1 text-xs text-muted-foreground">{td("uses_assessment", { date: new Date(m.assessment.date).toLocaleDateString(dl) })}</p>}
+    </>
+  );
   const Apply = ({ applied, onClick, label = td("accept") }: { applied: boolean; onClick: () => void; label?: string }) => applied
     ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> {td("applied")}</span>
     : <Button size="sm" variant="outline" className="h-7" onClick={onClick}>{label}</Button>;
@@ -524,6 +549,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
                   <>
                     <p className="mt-0.5 flex flex-wrap items-center gap-2"><span className="text-base font-semibold">{asli.label}</span>{local(asli.label) && <span className="text-xs text-muted-foreground">{local(asli.label)}</span>}<Conf c={asli.confidence} /></p>
                     {asli.note && <p className="mt-1 text-xs text-muted-foreground">{asli.note}</p>}
+                    <Why t={asli} />
                     <Ev items={asli.evidence} />
                   </>
                 ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Mizaj-e-Asli")) || td("no_suggestion")}</p>}
@@ -545,7 +571,14 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{td("maddi_signs", { items: su.maddiSigns.slice(0, 3).join("; ") })}</p>
                     )}
                     {su.note && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{su.note}</p>}
+                    <Why t={su} />
                     <Ev items={su.evidence} />
+                  </>
+                ) : su?.conflict ? (
+                  <>
+                    <p className="mt-0.5 text-base font-semibold text-amber-700 dark:text-amber-400">{td("undetermined")}</p>
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{td("conflict_leans", { items: su.conflict.leans.map((l) => td("lean_item", { source: td(`src_${l.source}`), humour: humourName(l.humour) })).join(" · ") })}</p>
+                    {su.cap && <p className="mt-1 text-xs text-muted-foreground">{td(`cap_${su.cap}`)}</p>}
                   </>
                 ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Su-e-Mizaj")) || td("no_suggestion")}</p>}
               </div>
@@ -1045,19 +1078,23 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
 function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const { dossier: d, set, options, herbs } = state;
   const [warnings, setWarnings] = useState<Record<string, Warn[]>>({});
+  const [checkTick, setCheckTick] = useState(0);
   const tagKey = d.prescriptions.map((p) => p.tagId).filter(Boolean).join(",");
   const reqRef = useRef(0);
   const td = useTranslations("clinic.dossier");
+  const { setSafety } = state;
 
-  // Safety check whenever the set of catalogue medicines changes.
+  // Safety check whenever the set of catalogue medicines changes. A failed check is shown —
+  // never mistaken for "no warnings" — and finalising waits until it has run.
   useEffect(() => {
     const ids = tagKey ? tagKey.split(",") : [];
     const n = ++reqRef.current;
-    if (!ids.length) { queueMicrotask(() => setWarnings({})); return; }
+    if (!ids.length) { queueMicrotask(() => { setWarnings({}); setSafety("idle"); }); return; }
+    queueMicrotask(() => setSafety("checking"));
     api.post<{ warnings: Record<string, Warn[]> }>("/api/facility/tashkhees/prescription-check", { patientId, visitId, tagIds: ids })
-      .then((r) => { if (n === reqRef.current) setWarnings(r.warnings); })
-      .catch(() => {});
-  }, [tagKey, patientId, visitId]);
+      .then((r) => { if (n === reqRef.current) { setWarnings(r.warnings); setSafety("ok"); } })
+      .catch(() => { if (n === reqRef.current) setSafety("failed"); });
+  }, [tagKey, patientId, visitId, checkTick, setSafety]);
 
   const [foodQuery, setFoodQuery] = useState("");
   const fq = foodQuery.trim().toLowerCase();
@@ -1132,6 +1169,10 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       {/* Ilaj-bil-Dawa */}
       <Panel icon={Pill} tour="dossier.dawa" title={td("dawa_title")}
         aside={<HerbPicker herbs={herbs} onPick={(h) => set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] })} />}>
+        {state.safety === "failed" && (
+          <InlineNotice tone="error" title={td("safety_failed")} detail={td("safety_failed_hint")}
+            action={<Button size="sm" variant="outline" onClick={() => setCheckTick((n) => n + 1)}>{td("check_again")}</Button>} />
+        )}
         {d.prescriptions.length === 0 ? <p className="text-sm text-muted-foreground">{td("no_meds")}</p> : (
           <div className="space-y-3">
             {d.prescriptions.map((p, i) => {
@@ -1262,6 +1303,7 @@ const TABS = [
  */
 export function TashkheesDossierPanel({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const d = state.dossier;
+  const dl = useDateLocale();
   const td = useTranslations("clinic.dossier");
   // Unani step names stay as they are; their plain-language descriptions are translated.
   const tabLabel = (k: string, label: string) => (k === "handover" ? td("tab_prognosis") : label);
@@ -1343,7 +1385,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
             <span className="flex items-center gap-1.5 shrink-0">
               <Badge variant="outline">{td("n_steps", { n: doneCount, total: TABS.length })}</Badge>
               {d.status === "finalized"
-                ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}</Badge>
+                ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}{d.versions?.[0] ? ` · ${td("version_n", { n: d.versions[0].version })}` : ""}</Badge>
                 : <Badge variant="outline">{td("draft")}</Badge>}
             </span>
           }
@@ -1373,6 +1415,21 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
             );
           })}
         </div></div>
+        {/* Version history — every finalisation and amendment, newest first */}
+        {!!d.versions?.length && (
+          <ul className="mt-3 space-y-0.5 border-t border-border/40 pt-2.5">
+            {d.versions.slice(0, 4).map((v) => {
+              const when = new Date(v.createdAt).toLocaleString(dl, { dateStyle: "medium", timeStyle: "short" });
+              return (
+                <li key={v.version} className="text-xs text-muted-foreground">
+                  {v.kind === "amended"
+                    ? td("ver_amended", { n: v.version, by: v.byName || "—", when, reason: v.reason || "" })
+                    : td("ver_finalized", { n: v.version, by: v.byName || "—", when })}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
 
       <section ref={(el) => { refs.current.dalail = el; }}><DalailTab state={state} visitId={visitId} /></section>

@@ -98,7 +98,9 @@ export function requiredPermission(path: string, method: string): Need {
   if (MIZAJ.test(path) || /^\/api\/mizaj(\/|$)/.test(path)) return rw(["patients.view"], ["mizaj"]);
   if (R(`${V}/asbab`).test(path)) return rw(["patients.view"], ["asbab"]);
   if (DIAG.test(path)) return rw(["patients.view"], ["diagnosis"]);
-  if (R(`${V}/cds`).test(path) || R("/api/facility/tashkhees/prescription-check").test(path)) return ["prescribe"];
+  if (R(`${V}/cds`).test(path)) return ["prescribe"];
+  // Read-only safety check: whoever can write medicine lines in the dossier must be able to check them.
+  if (R("/api/facility/tashkhees/prescription-check").test(path)) return ["prescribe", "diagnosis"];
   if (/^\/api\/prescriptions(\/|$)/.test(path)) return rw(["patients.view"], ["prescribe"]);
   if (R(`${V}/referral`).test(path)) return rw(["patients.view"], ["refer"]);
   if (R(`${V}/report`).test(path)) return ["reports"];

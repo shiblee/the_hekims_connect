@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!tagIds.length) return NextResponse.json({ warnings: {} });
 
   const [patient, intake, profiles] = await Promise.all([
-    db.patient.findUnique({ where: { id: b.patientId }, select: { allergies: true, gender: true, dob: true } }),
+    db.patient.findUnique({ where: { id: b.patientId }, select: { allergies: true, gender: true, dob: true, currentMedications: true } }),
     typeof b.visitId === "string" ? db.visitIntake.findUnique({ where: { visitId: b.visitId }, select: { allergies: true, medications: true } }) : null,
     db.supplementProfile.findMany({
       where: { tagId: { in: tagIds } },
@@ -41,8 +41,11 @@ export async function POST(req: NextRequest) {
     ...(parse(intake?.allergies) as string[]),
   ].map((a) => String(a).replace(/\(.*?\)/g, "").trim()).filter((a) => a && !NONE.test(a));
   const allergyKeys = new Set(allergyNames.flatMap((a) => nameKeys(a)));
-  const meds = (parse(intake?.medications) as { label: string; kind: string }[])
-    .filter((m) => m?.kind === "medication" && m.label && !NONE.test(m.label));
+  // Current medicines from today's intake and from the patient's own record.
+  const meds = [
+    ...(parse(intake?.medications) as { label: string; kind: string }[]).filter((m) => m?.kind === "medication"),
+    ...(patient?.currentMedications || "").split(/[,;\n]/).map((label) => ({ label: label.replace(/\(.*?\)/g, "").trim(), kind: "medication" })),
+  ].filter((m, i, all) => m.label && !NONE.test(m.label) && all.findIndex((x) => x.label.toLowerCase() === m.label.toLowerCase()) === i);
   const medKeys = new Set(meds.flatMap((m) => nameKeys(m.label)));
   const female = (patient?.gender || "").toLowerCase() === "female";
   const ageYears = patient?.dob ? (Date.now() - new Date(patient.dob).getTime()) / (365.25 * 86400000) : null;

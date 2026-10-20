@@ -88,7 +88,8 @@ export async function recomputeHumoralAssessment(visitId: string) {
     weightRules,
     complaints.map((c) => ({
       manifestations: JSON.parse(c.associatedManifestations || "[]"),
-      factors: [...JSON.parse(c.aggravatingFactors || "[]"), ...JSON.parse(c.relievingFactors || "[]")],
+      factors: JSON.parse(c.aggravatingFactors || "[]"),
+      relieving: JSON.parse(c.relievingFactors || "[]"),
       severityScore: c.severityScore,
       onsetPattern: c.onsetPattern,
     }))

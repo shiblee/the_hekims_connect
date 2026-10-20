@@ -16,7 +16,7 @@ import { FloatingField, FloatingMultiSelect, FloatingSelect } from "@/components
 import { ChevronDown, ChevronRight, ChevronUp, Lock, Loader2, Pencil, Plus, Save, Sparkles } from "lucide-react";
 
 interface Config {
-  weights: { complaints: number; asbab: number; dalail: number };
+  weights: { complaints: number; asbab: number; dalail: number; assessment?: number };
   constitutionalSections: string[];
   minEvidence: number; balancedMargin: number; darjaBands: [number, number, number];
   severityBoost: boolean; maddiThreshold: number; maxOrgans: number; ranking: boolean;
@@ -173,6 +173,7 @@ export function TashkheesEngineAdmin() {
             <Num label="Complaints (Stages 2–3)" value={cfg.weights.complaints} step={0.25} min={0} max={3} onChange={(v) => setC({ weights: { ...cfg.weights, complaints: v } })} suffix="×" />
             <Num label="Asbab-e-Sittah lifestyle (Stage 4)" value={cfg.weights.asbab} step={0.25} min={0} max={3} onChange={(v) => setC({ weights: { ...cfg.weights, asbab: v } })} suffix="×" />
             <Num label="Dala'il clinical signs (Stage 5)" value={cfg.weights.dalail} step={0.25} min={0} max={3} onChange={(v) => setC({ weights: { ...cfg.weights, dalail: v } })} suffix="×" />
+            <Num label="Mizaj assessment (Stage 3) — Mizaj-e-Asli only" value={cfg.weights.assessment ?? 1} step={0.25} min={0} max={3} onChange={(v) => setC({ weights: { ...cfg.weights, assessment: v } })} suffix="×" />
           </div>
         </Block>
 

@@ -22,7 +22,14 @@ export interface HumorWeightRuleInput {
 
 export interface ComplaintHumorInput {
   manifestations: string[];
+  /** Aggravating factors — score with the factor's own weights. */
   factors: string[];
+  /**
+   * Relieving factors — relief by a quality points to the opposite temperament (Ilaj bil Zid:
+   * "better with cold" → a hot dyscrasia), so they score with the factor's weights inverted
+   * (Safra ↔ Balgham, Dam ↔ Sauda).
+   */
+  relieving?: string[];
   severityScore: number | null; // 0-10, converted to a band internally
   onsetPattern: string | null;
 }
@@ -80,6 +87,10 @@ export function computeHumorBreakdown(rules: HumorWeightRuleInput[], inputs: Com
   for (const input of inputs) {
     for (const m of input.manifestations) apply(`Manifestation: ${m}`, ruleFor("manifestation", m));
     for (const f of input.factors) apply(`Factor: ${f}`, ruleFor("factor", f));
+    for (const f of input.relieving || []) {
+      const r = ruleFor("factor", f);
+      apply(`Relieved by: ${f}`, r && { ...r, safraPoints: r.balghamPoints, balghamPoints: r.safraPoints, damPoints: r.saudaPoints, saudaPoints: r.damPoints });
+    }
     const band = severityBandFor(input.severityScore);
     if (band) apply(`Severity: ${band}`, ruleFor("severity_band", band));
     if (input.onsetPattern) apply(`Onset: ${input.onsetPattern}`, ruleFor("onset_pattern", input.onsetPattern));

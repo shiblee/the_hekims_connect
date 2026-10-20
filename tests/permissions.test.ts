@@ -21,3 +21,11 @@ describe("intake rules", () => {
   it("roles without registration or triage can't change it", () => assert.equal(can("Cashier / Accounts", "POST", `${V}/intake`), false));
   it("receptionists still can't record vitals", () => assert.equal(can("Receptionist", "POST", `${V}/vitals`), false));
 });
+
+describe("Stage 5 medicine safety", () => {
+  it("anyone who can write dossier medicines can run the safety check", () => {
+    assert.equal(can("Junior Hakim / Intern", "POST", `${V}/dossier`), true);
+    assert.equal(can("Junior Hakim / Intern", "POST", "/api/facility/tashkhees/prescription-check"), true);
+  });
+  it("reception can't", () => assert.equal(can("Receptionist", "POST", "/api/facility/tashkhees/prescription-check"), false));
+});
