@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useDateLocale, useListFormat, useValueLabel } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
 import { InlineNotice, LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
@@ -61,7 +61,11 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   onReferralChange?: () => void;
   /** Render only the referral / AMA pop-ups (for later stages, which refer without showing the signs list). */
   dialogsOnly?: boolean;
-}>(function RedFlagScreeningPanel({ visitId, onReferralChange, dialogsOnly }, ref) {
+  /** Called when the patient / family declines the referral offered on "Proceed", so the page moves on to the next stage. */
+  onContinue?: () => void;
+}>(function RedFlagScreeningPanel({ visitId, onReferralChange, dialogsOnly, onContinue }, ref) {
+  // Set while the referral pop-up was opened by "Proceed": a recorded decline then carries on to the next stage.
+  const fromProceed = useRef(false);
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [screening, setScreening] = useState<Screening | null>(null);
   const [present, setPresent] = useState<Record<string, boolean>>({});
@@ -138,6 +142,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
     setReferDialogOpen(true);
   };
   const openReferDialog = () => {
+    fromProceed.current = false;
     setEditingReferral(false);
     setConfirmRemove(false);
     setReferReason(flaggedSummary());
@@ -177,6 +182,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
       } else if (outcome === "continued_ama") {
         setAmaDialogOpen(false);
         msg.success(t("ama_saved"), t("ama_saved_hint"));
+        if (fromProceed.current && onContinue) { fromProceed.current = false; onContinue(); }
       } else {
         // Clearing happens on "Proceed", which then opens Stage 3 — say it there.
         setFlash({ tone: "success", title: t("cleared"), detail: t("cleared_hint") });
@@ -245,6 +251,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
     }
     if (screening?.outcome === "referred" || screening?.outcome === "continued_ama") return true;
     openReferDialog();
+    fromProceed.current = true;
     return false;
   };
 
@@ -392,6 +399,21 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
                 </div>
               }
             />
+          )}
+          {/* Patient / family won't go — record it and carry on with treatment here */}
+          {!editingReferral && anyPresent && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+              <span className="text-[13px] text-amber-800 dark:text-amber-300">{t("decline_q")}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-500/50 text-amber-700 hover:bg-amber-500/15 hover:text-amber-800 dark:text-amber-400"
+                onClick={() => { const keep = fromProceed.current; setReferDialogOpen(false); openAmaDialog(); fromProceed.current = keep; }}
+                disabled={saving}
+              >
+                <ShieldQuestion className="h-3.5 w-3.5" /> {t("family_declines")}
+              </Button>
+            </div>
           )}
           <NoticeSlot state={dialogMsg} />
           <DialogFooter className="sm:justify-between gap-2">

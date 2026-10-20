@@ -307,7 +307,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
               intakeComplaints={intakeComplaints}
             /></div>
           )}
-          {latestVisit && <div data-tour="record.redflags"><RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} onReferralChange={refreshVisits} /></div>}
+          {latestVisit && <div data-tour="record.redflags"><RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} onReferralChange={refreshVisits} onContinue={() => router.push(`/facility/mizaj?patientId=${patientId}`)} /></div>}
           {latestVisit && <div data-tour="record.symptoms"><AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} /></div>}
         </div>
         <div ref={rightRailSpacerRef} className="relative">
