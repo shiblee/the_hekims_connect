@@ -197,31 +197,39 @@ function Chips({ items, selected, onToggle, tone = "emerald" }: {
 }
 
 /**
- * A single choice shown as a compact box; clicking it opens the same descriptive chips as before
- * (name · qualities) in a pop-up, and picking one closes it — the layout of the options is unchanged.
+ * Choice box: the question sits above (as a heading, rendered by the caller), the box shows what's
+ * chosen, and clicking it opens the same descriptive chips (name · detail) in a pop-up. Single
+ * choice closes on pick; multiple choice stays open so several can be ticked.
  */
-function ChipSelect({ id, label, required, items, value, onChange }: {
-  id: string; label: string; required?: boolean;
-  items: { label: string; sub?: string | null; tip?: string | null }[]; value: string | null; onChange: (v: string | null) => void;
+function ChipSelect({ id, items, value, onChange, multiple, placeholder }: {
+  id: string; items: { label: string; sub?: string | null; tip?: string | null }[];
+  value: string[]; onChange: (v: string[]) => void; multiple?: boolean; placeholder: string;
 }) {
   const [open, setOpen] = useState(false);
-  const cur = items.find((i) => i.label === value);
+  const chosen = value.map((v) => items.find((i) => i.label === v) ?? { label: v, sub: null });
+  const toggle = (l: string) => {
+    if (multiple) onChange(value.includes(l) ? value.filter((x) => x !== l) : [...value, l]);
+    else { onChange(value[0] === l ? [] : [l]); setOpen(false); }
+  };
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button id={id} type="button" aria-expanded={open}
-          className={cn("relative flex h-14 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 text-start transition-colors", open ? "border-primary" : "border-input hover:border-primary/40")}>
-          <span className={cn("absolute -top-2.5 start-3 bg-card px-1.5 text-sm font-semibold", open ? "text-primary" : "text-muted-foreground")}>
-            {label}{required && <span className="text-destructive"> *</span>}
-          </span>
-          <span className="min-w-0 truncate text-base">
-            {cur ? <><span className="font-medium">{cur.label}</span>{cur.sub && <span className="text-sm text-muted-foreground"> · {cur.sub}</span>}</> : <span className="text-muted-foreground">{"—"}</span>}
+          className={cn("flex min-h-12 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 py-2 text-start transition-colors", open ? "border-primary" : "border-input hover:border-primary/40")}>
+          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {chosen.length === 0 ? <span className="text-muted-foreground">{placeholder}</span>
+              : multiple ? chosen.map((c) => (
+                <span key={c.label} className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-sm text-emerald-800 dark:text-emerald-300">
+                  {c.label}{c.sub && <span className="text-xs text-muted-foreground"> · {c.sub}</span>}
+                </span>
+              ))
+                : <span className="text-base"><span className="font-medium">{chosen[0].label}</span>{chosen[0].sub && <span className="text-sm text-muted-foreground"> · {chosen[0].sub}</span>}</span>}
           </span>
           <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-3">
-        <Chips items={items} selected={value ? [value] : []} onToggle={(l) => { onChange(value === l ? null : l); setOpen(false); }} />
+        <Chips items={items} selected={value} onToggle={toggle} />
       </PopoverContent>
     </Popover>
   );
@@ -695,23 +703,28 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
       <MarzSection visitId={visitId} d={d} set={set} amraz={state.amraz} rerun={() => state.save(false)} />
       <div className="border-t border-border/50" />
       <EngineCard state={state} visitId={visitId} />
-      {/* Mizaj-e-Asli: a compact box that opens the same descriptive chips */}
-      <ChipSelect id="mizajAsli" label={td("asli_label")} required items={mizaj} value={d.mizajAsli} onChange={(v) => set({ mizajAsli: v })} />
+      {/* Each question first, then a box that opens its descriptive chips */}
+      <div>
+        <Label required>{td("asli_label")}</Label>
+        <ChipSelect id="mizajAsli" items={mizaj} value={d.mizajAsli ? [d.mizajAsli] : []} onChange={(v) => set({ mizajAsli: v[0] ?? null })} placeholder={td("choose_one")} />
+      </div>
       <div className="space-y-3">
         <Label required>{td("su_label")}</Label>
         <div className="flex flex-wrap items-center gap-3">
           <Segmented value={d.suMizajType} options={SU_MIZAJ_TYPES.map((t) => ({ value: t.value, label: t.value }))} onChange={(v) => set({ suMizajType: v })} />
           <span className="text-[13px] text-muted-foreground">{d.suMizajType === "Sada" ? td("sada_desc") : d.suMizajType === "Maddi" ? td("maddi_desc") : td("su_default")}</span>
         </div>
-        <Chips items={mizaj} selected={d.suMizajQuality ? [d.suMizajQuality] : []} onToggle={(l) => set({ suMizajQuality: d.suMizajQuality === l ? null : l })} />
+        <ChipSelect id="suMizajQuality" items={mizaj} value={d.suMizajQuality ? [d.suMizajQuality] : []} onChange={(v) => set({ suMizajQuality: v[0] ?? null })} placeholder={td("choose_quality")} />
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{td("darja")}</span>
           <Segmented value={d.suMizajGrade} options={DARJA.map((n) => ({ value: n, label: `${n}` }))} onChange={(v) => set({ suMizajGrade: v })} />
         </div>
       </div>
-      <div><Label>{td("organs_label")}</Label>
-        <Chips items={(options?.organ || []).map((o) => ({ label: o.label, sub: o.description }))} selected={d.organs}
-          onToggle={(l) => set({ organs: d.organs.includes(l) ? d.organs.filter((x) => x !== l) : [...d.organs, l] })} /></div>
+      <div>
+        <Label>{td("organs_label")}</Label>
+        <ChipSelect id="organs" multiple items={(options?.organ || []).map((o) => ({ label: o.label, sub: o.description }))} value={d.organs}
+          onChange={(v) => set({ organs: v })} placeholder={td("choose_many")} />
+      </div>
       <FloatingTextarea id="tashkhees-statement" label={td("statement")} rows={3} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })}
         title={td("statement_eg")} />
     </Panel>
