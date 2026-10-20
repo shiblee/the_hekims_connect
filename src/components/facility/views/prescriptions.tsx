@@ -86,7 +86,6 @@ export function PrescriptionsView() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-xl font-bold">{t("title")}</h2>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button onClick={() => { dialogMsg.clear(); setOpen(true); }} className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="h-4 w-4" /> {t("new")}</Button>
       </div>

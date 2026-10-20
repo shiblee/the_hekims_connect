@@ -27,7 +27,6 @@ export const CLINIC_APPOINTMENTS = defineStrings("clinic.appointments", {
 // Messages page.
 export const CLINIC_MESSAGES = defineStrings("clinic.messages", {
   title: ["Secure Messages", "सुरक्षित संदेश", "محفوظ پیغامات", "الرسائل الآمنة", "پیام‌های امن"],
-  subtitle: ["Real-time conversation with your patients.", "अपने मरीज़ों से तुरंत बातचीत।", "اپنے مریضوں سے فوری بات چیت۔", "محادثة فورية مع مرضاك.", "گفت‌وگوی هم‌زمان با بیمارانتان."],
 });
 
 // Pharmacy.
@@ -88,7 +87,6 @@ export const CLINIC_PRESCRIPTIONS = defineStrings("clinic.prescriptions", {
   still_filled: ["{error}. Everything is still filled in — try again.", "{error}। सब कुछ अभी भरा है — फिर से कोशिश करें।", "{error}۔ سب کچھ ابھی بھرا ہوا ہے — دوبارہ کوشش کریں۔", "{error}. كل شيء لا يزال معبأً — أعد المحاولة.", "{error}. همه‌چیز هنوز پر است — دوباره تلاش کنید."],
   not_created: ["The prescription wasn't created", "नुस्ख़ा नहीं बना", "نسخہ نہیں بنا", "لم تُنشأ الوصفة", "نسخه ایجاد نشد"],
   title: ["Prescriptions", "नुस्ख़े", "نسخے", "الوصفات", "نسخه‌ها"],
-  subtitle: ["Classical Unani formulations prescribed to your patients.", "आपके मरीज़ों को दी गई पारंपरिक यूनानी दवाएँ।", "آپ کے مریضوں کو تجویز کردہ کلاسیکی یونانی ادویات۔", "المركّبات اليونانية الكلاسيكية الموصوفة لمرضاك.", "ترکیبات کلاسیک یونانی تجویزشده برای بیمارانتان."],
   new: ["New Prescription", "नया नुस्ख़ा", "نیا نسخہ", "وصفة جديدة", "نسخهٔ جدید"],
   what: ["prescriptions", "नुस्ख़े", "نسخے", "الوصفات", "نسخه‌ها"],
   none: ["No prescriptions yet. Create your first one.", "अभी कोई नुस्ख़ा नहीं। पहला बनाएँ।", "ابھی کوئی نسخہ نہیں۔ پہلا بنائیں۔", "لا وصفات بعد. أنشئ أول وصفة.", "هنوز نسخه‌ای نیست. نخستین را ایجاد کنید."],
