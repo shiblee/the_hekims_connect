@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SessionBoundary } from "@/components/providers/session-boundary";
 import { getEnabledLanguages } from "@/lib/i18n/languages";
 import { AREA_NAMESPACES, pickNamespaces } from "@/lib/i18n/app-strings";
+import { ApiErrorTranslator } from "@/components/providers/api-error-translator";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -77,6 +78,7 @@ export default async function RootLayout({
         className={`${poppins.variable} ${geistMono.variable} ${ptSerif.variable} ${notoSansArabic.variable} antialiased bg-background text-foreground min-h-screen`}
       >
         <NextIntlClientProvider messages={pickNamespaces(messages, area)}>
+          <ApiErrorTranslator />
           <ThemeProvider>
             <SessionBoundary>{children}</SessionBoundary>
           </ThemeProvider>

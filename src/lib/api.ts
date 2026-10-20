@@ -5,6 +5,12 @@ import { useAppStore } from "@/lib/store";
 
 const TOKEN_KEY = "hekims-connect-token";
 
+// Server errors are English sentences; the app swaps in the viewer's language (see ApiErrorTranslator).
+let translateError = (msg: string) => msg;
+export function setApiErrorTranslator(fn: (msg: string) => string) {
+  translateError = fn;
+}
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
@@ -47,12 +53,12 @@ async function request<T = any>(
   // login screen immediately rather than leaving them on a broken dashboard.
   if (res.status === 401 && token) {
     useAppStore.getState().logout();
-    toast.error("Your session has ended. Please log in again.");
+    toast.error(translateError("Your session has ended. Please log in again."));
   }
 
   if (!res.ok) {
     const msg = (data as any)?.error || `Request failed (${res.status})`;
-    throw new Error(msg);
+    throw new Error(translateError(msg));
   }
   return data as T;
 }
