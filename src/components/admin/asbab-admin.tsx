@@ -451,7 +451,7 @@ export function AsbabAdmin({ framework = "asbab" }: { framework?: "asbab" | "dal
               {preview && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview — as the doctor sees it</p>
-                  <QuestionCard q={preview} index={0} count={1} pillarLabel={active?.label ?? ""} value={previewAnswer} onChange={setPreviewAnswer} />
+                  <QuestionCard inline q={preview} index={0} count={1} pillarLabel={active?.label ?? ""} value={previewAnswer} onChange={setPreviewAnswer} />
                 </div>
               )}
               {draft.id && <p className="text-[11px] text-muted-foreground">Saving a change to the wording, options or weights creates a new version — answers already recorded keep the wording they were given with.</p>}
