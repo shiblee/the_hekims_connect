@@ -22,6 +22,21 @@ export async function claudeStatus(): Promise<"on" | "off" | "no_key"> {
   return row.active ? "on" : "off";
 }
 
+/** Pilot control: which clinics may use clinical reasoning ("all", or the selected clinic ids). */
+export interface ReasoningPilot { mode: "all" | "selected"; clinics: string[] }
+export async function getReasoningPilot(): Promise<ReasoningPilot> {
+  const row = await db.portalSetting.findUnique({ where: { category_key: { category: "reasoning", key: "pilot" } } });
+  try { const v = JSON.parse(row?.value || "{}"); return { mode: v.mode === "all" ? "all" : "selected", clinics: Array.isArray(v.clinics) ? v.clinics.filter((x: unknown) => typeof x === "string") : [] }; }
+  catch { return { mode: "selected", clinics: [] }; }
+}
+/** On for this clinic: key saved, switched on, and the clinic is in the pilot (or the pilot is open to all). */
+export async function reasoningStatusFor(facilityId: string): Promise<"on" | "off" | "no_key" | "not_in_pilot"> {
+  const s = await claudeStatus();
+  if (s !== "on") return s;
+  const p = await getReasoningPilot();
+  return p.mode === "all" || p.clinics.includes(facilityId) ? "on" : "not_in_pilot";
+}
+
 export interface ClaudeResult { text: string; model: string; inputTokens: number; outputTokens: number; latencyMs: number }
 export type ClaudeFailure = { error: "off" | "quota" | "unavailable" | "timeout"; detail?: string };
 

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/request-info";
 import { decryptSecret, encryptSecret } from "@/lib/secret-crypto";
-import { testClaudeKey } from "@/lib/claude";
+import { getReasoningPilot, testClaudeKey } from "@/lib/claude";
 
 /**
  * Admin → Settings → AI services: the Anthropic (Claude) key for the Stage 5 clinical reasoning
@@ -12,7 +12,8 @@ import { testClaudeKey } from "@/lib/claude";
 async function summary() {
   const row = await db.integrationConfig.findUnique({ where: { provider: "anthropic" } });
   const key = row?.keyEnc ? decryptSecret(row.keyEnc) : null;
-  return { configured: !!key, active: !!row?.active && !!key, keyHint: key ? `•••• ${key.slice(-4)}` : null, updatedAt: row?.updatedAt ?? null };
+  const [pilot, clinics] = await Promise.all([getReasoningPilot(), db.facility.findMany({ where: { active: true }, select: { id: true, facilityName: true }, orderBy: { facilityName: "asc" } })]);
+  return { configured: !!key, active: !!row?.active && !!key, keyHint: key ? `•••• ${key.slice(-4)}` : null, updatedAt: row?.updatedAt ?? null, pilot, clinics: clinics.map((c) => ({ id: c.id, name: c.facilityName })) };
 }
 
 export async function GET(req: NextRequest) {
@@ -28,6 +29,13 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const data: { active?: boolean; keyEnc?: string | null } = {};
   const changes: string[] = [];
+  // Pilot: who may use it.
+  if (body.pilot && typeof body.pilot === "object") {
+    const pilot = { mode: body.pilot.mode === "all" ? "all" : "selected", clinics: Array.isArray(body.pilot.clinics) ? body.pilot.clinics.filter((x: unknown) => typeof x === "string").slice(0, 200) : [] };
+    await db.portalSetting.upsert({ where: { category_key: { category: "reasoning", key: "pilot" } }, create: { category: "reasoning", key: "pilot", value: JSON.stringify(pilot) }, update: { value: JSON.stringify(pilot) } });
+    await logAdminActivity(session.admin.id, "ai_service_updated", `Clinical reasoning available to: ${pilot.mode === "all" ? "all clinics" : `${pilot.clinics.length} selected clinic(s)`}`, getClientIp(req));
+    if (body.active === undefined && body.apiKey === undefined && body.removeKey === undefined) return NextResponse.json(await summary());
+  }
   if (body.removeKey === true) { data.keyEnc = null; data.active = false; changes.push("key removed, switched off"); }
   else if (typeof body.apiKey === "string") {
     const key = body.apiKey.trim();

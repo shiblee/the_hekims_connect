@@ -12,7 +12,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface State { configured: boolean; active: boolean; keyHint: string | null; updatedAt: string | null }
+interface State {
+  configured: boolean; active: boolean; keyHint: string | null; updatedAt: string | null;
+  pilot?: { mode: "all" | "selected"; clinics: string[] }; clinics?: { id: string; name: string }[];
+}
 
 const USES = [
   "Hakeem Insight — triage priority and humoral explanation",
@@ -93,6 +96,34 @@ export function AiServiceCard({ provider = "gemini" }: { provider?: keyof typeof
       </div>
       {test && <p className={cn("flex items-start gap-1.5 text-sm", test.ok ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>{test.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}{test.message}</p>}
       {!s.configured || !s.active ? null : <p className="text-xs text-muted-foreground">Tip: a saved key isn&apos;t used while the switch is off, so you can keep it here and turn AI on only when you need it.</p>}
+
+      {s.pilot && s.clinics && (
+        <div className="space-y-2 border-t border-input pt-4">
+          <p className="text-sm font-medium">Who can use it</p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            {(["selected", "all"] as const).map((m) => (
+              <label key={m} className="flex items-center gap-2">
+                <input type="radio" name={`${provider}-pilot`} checked={s.pilot!.mode === m} disabled={!!busy} onChange={() => put({ pilot: { ...s.pilot!, mode: m } }, "toggle", m === "all" ? "Available to all clinics" : "Available to selected clinics only")} />
+                {m === "all" ? "All clinics" : "Selected pilot clinics only"}
+              </label>
+            ))}
+          </div>
+          {s.pilot.mode === "selected" && (
+            <>
+              {s.pilot.clinics.length === 0 && <p className="text-xs text-amber-700 dark:text-amber-400">No clinic selected yet — no one can use it until you pick the pilot clinics.</p>}
+              <div className="grid sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto rounded-lg border border-input p-2">
+                {s.clinics.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={s.pilot!.clinics.includes(c.id)} disabled={!!busy}
+                      onChange={(e) => put({ pilot: { mode: "selected", clinics: e.target.checked ? [...s.pilot!.clinics, c.id] : s.pilot!.clinics.filter((x) => x !== c.id) } }, "toggle", "Pilot clinics updated")} />
+                    <span className="min-w-0 truncate">{c.name}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer font-medium text-foreground/80">What uses it</summary>

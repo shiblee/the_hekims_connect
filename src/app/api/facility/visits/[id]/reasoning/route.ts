@@ -5,7 +5,7 @@ import { buildCaseContext } from "@/lib/case-context";
 import { computeDifferentials } from "@/lib/differential-engine";
 import { loadCatalogue, loadDalailQuestions } from "@/lib/amraz";
 import { runTashkheesEngine } from "@/lib/tashkhees-engine";
-import { claudeMessage, claudeStatus, extractJson, type ClaudeMode } from "@/lib/claude";
+import { claudeMessage, extractJson, reasoningStatusFor, type ClaudeMode } from "@/lib/claude";
 import { buildReasoningInput, inputHash, PROMPT_VERSION, SYSTEM_PROMPT, validateReasoning } from "@/lib/reasoning-engine";
 
 const parse = <T,>(raw: string | null | undefined, fb: T): T => { try { return raw ? (JSON.parse(raw) as T) : fb; } catch { return fb; } };
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const visit = await db.visit.findFirst({ where: { id, facilityId: actor.facilityId }, select: { id: true } });
   if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
   const [status, run] = await Promise.all([
-    claudeStatus(),
+    reasoningStatusFor(actor.facilityId),
     db.aiReasoningRun.findFirst({ where: { visitId: id, status: "ok" }, orderBy: { createdAt: "desc" }, include: { feedback: { where: { byName: actor.name }, orderBy: { createdAt: "desc" }, take: 1, select: { rating: true } } } }),
   ]);
   return NextResponse.json({ status, run: run ? view(run) : null });
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: true });
   }
 
-  if ((await claudeStatus()) !== "on") return NextResponse.json({ error: "Clinical reasoning is switched off", off: true }, { status: 409 });
+  if ((await reasoningStatusFor(actor.facilityId)) !== "on") return NextResponse.json({ error: "Clinical reasoning is switched off", off: true }, { status: 409 });
   const mode: ClaudeMode = b.mode === "deep" ? "deep" : "standard";
   const ctx = await buildCaseContext(id, actor.facilityId);
   if (!ctx) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
