@@ -25,7 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
-  Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
+  ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -193,6 +193,37 @@ function Chips({ items, selected, onToggle, tone = "emerald" }: {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * A single choice shown as a compact box; clicking it opens the same descriptive chips as before
+ * (name · qualities) in a pop-up, and picking one closes it — the layout of the options is unchanged.
+ */
+function ChipSelect({ id, label, required, items, value, onChange }: {
+  id: string; label: string; required?: boolean;
+  items: { label: string; sub?: string | null; tip?: string | null }[]; value: string | null; onChange: (v: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const cur = items.find((i) => i.label === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button id={id} type="button" aria-expanded={open}
+          className={cn("relative flex h-14 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 text-start transition-colors", open ? "border-primary" : "border-input hover:border-primary/40")}>
+          <span className={cn("absolute -top-2.5 start-3 bg-card px-1.5 text-sm font-semibold", open ? "text-primary" : "text-muted-foreground")}>
+            {label}{required && <span className="text-destructive"> *</span>}
+          </span>
+          <span className="min-w-0 truncate text-base">
+            {cur ? <><span className="font-medium">{cur.label}</span>{cur.sub && <span className="text-sm text-muted-foreground"> · {cur.sub}</span>}</> : <span className="text-muted-foreground">{"—"}</span>}
+          </span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-3">
+        <Chips items={items} selected={value ? [value] : []} onToggle={(l) => { onChange(value === l ? null : l); setOpen(false); }} />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -664,10 +695,8 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
       <MarzSection visitId={visitId} d={d} set={set} amraz={state.amraz} rerun={() => state.save(false)} />
       <div className="border-t border-border/50" />
       <EngineCard state={state} visitId={visitId} />
-      {/* Mizaj-e-Asli as a dropdown (classical order), each temperament with its qualities */}
-      <FloatingCombobox id="mizajAsli" label={td("asli_label")} required keepOrder value={d.mizajAsli ?? ""}
-        onValueChange={(v) => set({ mizajAsli: v || null })}
-        options={mizaj.map((m) => ({ value: m.label, label: m.sub ? `${m.label} · ${m.sub}` : m.label }))} />
+      {/* Mizaj-e-Asli: a compact box that opens the same descriptive chips */}
+      <ChipSelect id="mizajAsli" label={td("asli_label")} required items={mizaj} value={d.mizajAsli} onChange={(v) => set({ mizajAsli: v })} />
       <div className="space-y-3">
         <Label required>{td("su_label")}</Label>
         <div className="flex flex-wrap items-center gap-3">
