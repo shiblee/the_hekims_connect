@@ -137,6 +137,7 @@ export function FloatingSplitField({
   selectValue,
   onSelectChange,
   selectOptions,
+  selectLabel,
   selectPlaceholder = "—",
   selectWidthClassName = "w-24",
   inputId,
@@ -150,6 +151,8 @@ export function FloatingSplitField({
   selectValue: string;
   onSelectChange: (value: string) => void;
   selectOptions: string[];
+  /** Shown text for an option (the value itself is kept as-is, e.g. a translated unit). */
+  selectLabel?: (option: string) => string;
   selectPlaceholder?: string;
   selectWidthClassName?: string;
   inputId: string;
@@ -169,7 +172,7 @@ export function FloatingSplitField({
         <SelectValue placeholder={selectPlaceholder} />
       </SelectTrigger>
       <SelectContent>
-        {selectOptions.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        {selectOptions.map((o) => <SelectItem key={o} value={o}>{selectLabel ? selectLabel(o) : o}</SelectItem>)}
       </SelectContent>
     </Select>
   );

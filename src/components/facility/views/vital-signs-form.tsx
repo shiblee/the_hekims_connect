@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { setFlash } from "@/lib/flash";
@@ -47,6 +49,7 @@ function RangeHint({
   field: string; value: string;
   normalRanges: Record<string, [number, number]>; entryBounds: Record<string, [number, number]>;
 }) {
+  const tv = useTranslations("clinic.visit");
   const range = normalRanges[field];
   const entryBound = entryBounds[field];
   if (!range && !entryBound) return null;
@@ -59,15 +62,15 @@ function RangeHint({
   return (
     <div className="flex items-center justify-between mt-1 px-0.5">
       <span className="text-[11px] text-muted-foreground">
-        {range ? `Range: ${range[0]}–${range[1]}` : `Accepted range: ${entryBound![0]}–${entryBound![1]}`}
+        {range ? tv("range", { range: `${range[0]}–${range[1]}` }) : tv("accepted", { range: `${entryBound![0]}–${entryBound![1]}` })}
       </span>
       {outOfEntryBound ? (
         <span className="text-[11px] text-destructive font-medium flex items-center gap-0.5">
-          <AlertTriangle className="h-3 w-3" /> Out of range
+          <AlertTriangle className="h-3 w-3" /> {tv("out_of_range")}
         </span>
       ) : outOfNormal ? (
         <span className="text-[11px] text-destructive font-medium flex items-center gap-0.5">
-          <AlertTriangle className="h-3 w-3" /> Please verify
+          <AlertTriangle className="h-3 w-3" /> {tv("verify")}
         </span>
       ) : null}
     </div>
@@ -87,6 +90,11 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const msg = useNotice();
+  const tv = useTranslations("clinic.visit");
+  const tc = useTranslations("common");
+  const vl = useValueLabel();
+  const dl = useDateLocale();
+  const ts = useTranslations("clinic.vital_status");
   const [visit, setVisit] = useState<VisitInfo | null>(null);
   const [locked, setLocked] = useState(false);
   const [hasVitals, setHasVitals] = useState(false);
@@ -142,7 +150,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         setHeightCm(lastHeight?.toString() ?? "");
         setWeightKg(lastWeight?.toString() ?? "");
       })
-      .catch((e) => setLoadError(e.message || "Network error"))
+      .catch((e) => setLoadError(e.message || tc("network_error")))
       .finally(() => setLoading(false));
   }, [visitId]);
 
@@ -171,8 +179,8 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
     // wrong place) before it ever reaches the database, not a clinical
     // "normal" range (that's what RangeHint/the out-of-range badges are for).
     const FIELD_LABELS: Record<string, string> = {
-      bpSystolic: "BP Systolic", bpDiastolic: "BP Diastolic", temperatureF: "Temperature",
-      pulse: "Pulse", spo2: "SpO₂",
+      bpSystolic: tv("f_bp_sys"), bpDiastolic: tv("f_bp_dia"), temperatureF: tv("f_temp"),
+      pulse: tv("f_pulse"), spo2: "SpO₂",
     };
     const entryValues: Record<string, number | null> = {
       bpSystolic: bpSystolic === "" ? null : parseFloat(bpSystolic),
@@ -184,15 +192,15 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
     const outOfBounds = Object.entries(entryBounds).flatMap(([field, [min, max]]) => {
       const value = entryValues[field];
       return value != null && (value < min || value > max)
-        ? [`${FIELD_LABELS[field]} must be between ${min} and ${max}${field === "temperatureF" ? "°F" : ""}`]
+        ? [tv("must_between", { field: FIELD_LABELS[field], min, max: `${max}${field === "temperatureF" ? "°F" : ""}` })]
         : [];
     });
     if (entryValues.bpSystolic != null && entryValues.bpDiastolic != null && entryValues.bpDiastolic >= entryValues.bpSystolic) {
-      outOfBounds.push("BP Diastolic (lower number) must be below Systolic — check the two numbers aren't swapped");
+      outOfBounds.push(tv("dia_below"));
     }
     if (outOfBounds.length) {
       msg.warning(
-        outOfBounds.length === 1 ? "One value looks like a typo — please check it" : `${outOfBounds.length} values look like typos — please check them`,
+        tv("typos", { count: outOfBounds.length }),
         outOfBounds.join(" · "),
       );
       return;
@@ -208,11 +216,11 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
       });
       msg.clear();
       if (visit) {
-        setFlash({ tone: "success", title: "Vitals saved", detail: `Recorded for ${visit.patient.name} — shown in the vitals panel below.` });
+        setFlash({ tone: "success", title: tv("vitals_saved"), detail: tv("vitals_saved_hint", { name: visit.patient.name }) });
         router.push(`/facility/patients/${visit.patient.id}/record`);
       }
     } catch (e: any) {
-      msg.error("The vitals weren't saved", `${e.message || "Network error"}. Everything you entered is still in the form — try again.`, { retry: save, retryLabel: "Save again" });
+      msg.error(tv("vitals_not_saved"), tv("in_form", { error: e.message || tc("network_error") }), { retry: save, retryLabel: tv("save_again") });
     } finally {
       setSaving(false);
     }
@@ -221,12 +229,12 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-12">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
       </div>
     );
   }
   if (!visit) {
-    return loadError ? <LoadFailed what="this visit" detail={loadError} /> : <p className="text-muted-foreground text-sm">Visit not found.</p>;
+    return loadError ? <LoadFailed what={tv("this_visit")} detail={loadError} /> : <p className="text-muted-foreground text-sm">{tv("not_found")}</p>;
   }
 
   const { patient } = visit;
@@ -234,11 +242,11 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
   return (
     <div className="w-full">
       <button onClick={() => router.push("/facility/patients")} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
-        <ChevronLeft className="h-4 w-4" /> Back to Patients
+        <ChevronLeft className="h-4 w-4" /> {tv("back")}
       </button>
 
       <div className="mb-4">
-        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">Basic Assessment</h1>
+        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">{tv("basic")}</h1>
       </div>
 
       <PatientStageTracker
@@ -260,11 +268,11 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         )}
         <div className="h-5 w-px bg-border shrink-0" />
         <p className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-          {patient.gender || "—"} · {formatAge(patient.dob)} · {patient.bloodGroup || "Blood group —"} · {patient.phone || "—"}
+          {patient.gender ? vl(patient.gender) : "—"} · {formatAge(patient.dob)} · {patient.bloodGroup || tv("blood_none")} · {patient.phone || "—"}
         </p>
         <div className="flex-1 min-w-4" />
         <div className="h-5 w-px bg-border shrink-0" />
-        <p className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">{new Date(visit.visitDate).toLocaleDateString()}</p>
+        <p className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">{new Date(visit.visitDate).toLocaleDateString(dl)}</p>
       </Card>
 
       {previous && (() => {
@@ -273,13 +281,13 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         return (
           <Card className="p-3 mb-5 border-border/50 bg-card/60 flex flex-row items-center flex-wrap gap-x-5 gap-y-1.5">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 shrink-0">
-              <History className="h-3 w-3" /> Previous Visit — {daysAgo(previous.visitDate)}
+              <History className="h-3 w-3" /> {tv("previous", { when: daysAgo(previous.visitDate) })}
             </p>
             <p className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-              {(previous.bpSystolic != null || previous.bpDiastolic != null) && <span className={cn(bpOut && "text-destructive font-semibold")}>BP: {previous.bpSystolic ?? "—"}/{previous.bpDiastolic ?? "—"} mmHg</span>}
-              {previous.pulse != null && <span className={cn(isOutOfRange(normalRanges, "pulse", previous.pulse) && "text-destructive font-semibold")}>Pulse: {previous.pulse} bpm</span>}
+              {(previous.bpSystolic != null || previous.bpDiastolic != null) && <span className={cn(bpOut && "text-destructive font-semibold")}>{tv("prev_bp", { value: `${previous.bpSystolic ?? "—"}/${previous.bpDiastolic ?? "—"}` })}</span>}
+              {previous.pulse != null && <span className={cn(isOutOfRange(normalRanges, "pulse", previous.pulse) && "text-destructive font-semibold")}>{tv("prev_pulse", { value: previous.pulse })}</span>}
               {previous.spo2 != null && <span className={cn(isOutOfRange(normalRanges, "spo2", previous.spo2) && "text-destructive font-semibold")}>SpO₂: {previous.spo2}%</span>}
-              {previous.temperatureF != null && <span className={cn(tempOut && "text-destructive font-semibold")}>Temp: {previous.temperatureF}°F</span>}
+              {previous.temperatureF != null && <span className={cn(tempOut && "text-destructive font-semibold")}>{tv("prev_temp", { value: previous.temperatureF })}</span>}
             </p>
           </Card>
         );
@@ -289,9 +297,9 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         <Card className="p-4 mb-5 border-amber-400/30 bg-amber-400/5 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold">This assessment is locked</p>
+            <p className="text-sm font-semibold">{tv("locked")}</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              It was recorded more than {editWindowMinutes} minute{editWindowMinutes === 1 ? "" : "s"} ago and can no longer be edited (set by your clinic&apos;s admin). Start a new visit to record fresh vitals.
+              {tv("locked_hint", { count: editWindowMinutes })}
             </p>
           </div>
         </Card>
@@ -303,25 +311,25 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         <fieldset disabled={locked} className="contents">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <FloatingField id="bpSystolic" label="BP Systolic (Dabao-e-Khoon)" type="number" inputMode="decimal" min={0} max={300} value={bpSystolic} onChange={(e) => touch(setBpSystolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
+            <FloatingField id="bpSystolic" label={tv("l_bp_sys")} type="number" inputMode="decimal" min={0} max={300} value={bpSystolic} onChange={(e) => touch(setBpSystolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
             <RangeHint field="bpSystolic" value={bpSystolic} normalRanges={normalRanges} entryBounds={entryBounds} />
           </div>
           <div>
-            <FloatingField id="bpDiastolic" label="BP Diastolic (Dabao-e-Khoon)" type="number" inputMode="decimal" min={0} max={200} value={bpDiastolic} onChange={(e) => touch(setBpDiastolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
+            <FloatingField id="bpDiastolic" label={tv("l_bp_dia")} type="number" inputMode="decimal" min={0} max={200} value={bpDiastolic} onChange={(e) => touch(setBpDiastolic)(e.target.value)} endAdornment={unitAdornment("mmHg")} />
             <RangeHint field="bpDiastolic" value={bpDiastolic} normalRanges={normalRanges} entryBounds={entryBounds} />
           </div>
           <div>
-            <FloatingField id="pulse" label="Pulse (Nabz)" type="number" inputMode="decimal" value={pulse} onChange={(e) => touch(setPulse)(e.target.value)} endAdornment={unitAdornment("bpm")} />
+            <FloatingField id="pulse" label={tv("l_pulse")} type="number" inputMode="decimal" value={pulse} onChange={(e) => touch(setPulse)(e.target.value)} endAdornment={unitAdornment("bpm")} />
             <RangeHint field="pulse" value={pulse} normalRanges={normalRanges} entryBounds={entryBounds} />
           </div>
 
           <div>
-            <FloatingField id="spo2" label="SpO₂ (Oxygen)" type="number" inputMode="decimal" value={spo2} onChange={(e) => touch(setSpo2)(e.target.value)} endAdornment={unitAdornment("%")} />
+            <FloatingField id="spo2" label={tv("l_spo2")} type="number" inputMode="decimal" value={spo2} onChange={(e) => touch(setSpo2)(e.target.value)} endAdornment={unitAdornment("%")} />
             <RangeHint field="spo2" value={spo2} normalRanges={normalRanges} entryBounds={entryBounds} />
           </div>
           <div>
             <FloatingSplitField
-              label="Temperature (Hararat)"
+              label={tv("l_temp")}
               inputId="temperature"
               type="number"
               step="any"
@@ -342,10 +350,10 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
               const outOfBounds = temperatureValue !== "" && !Number.isNaN(num) && (num < lo || num > hi);
               return (
                 <div className="flex items-center justify-between mt-1 px-0.5">
-                  <span className="text-[11px] text-muted-foreground">Accepted range: {label}</span>
+                  <span className="text-[11px] text-muted-foreground">{tv("accepted", { range: label })}</span>
                   {outOfBounds && (
                     <span className="text-[11px] text-destructive font-medium flex items-center gap-0.5">
-                      <AlertTriangle className="h-3 w-3" /> Out of range
+                      <AlertTriangle className="h-3 w-3" /> {tv("out_of_range")}
                     </span>
                   )}
                 </div>
@@ -353,7 +361,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
             })()}
           </div>
           <div>
-            <FloatingField id="heightCm" label="Height (Qad)" type="number" inputMode="decimal" value={heightCm} onChange={(e) => touch(setHeightCm)(e.target.value)} endAdornment={unitAdornment("cm")} />
+            <FloatingField id="heightCm" label={tv("l_height")} type="number" inputMode="decimal" value={heightCm} onChange={(e) => touch(setHeightCm)(e.target.value)} endAdornment={unitAdornment("cm")} />
             {(() => {
               const h = parseFloat(heightCm);
               return !Number.isNaN(h) && h > 0 ? (
@@ -364,14 +372,14 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
             })()}
           </div>
           <div>
-            <FloatingField id="weightKg" label="Weight (Wazan)" type="number" inputMode="decimal" value={weightKg} onChange={(e) => touch(setWeightKg)(e.target.value)} endAdornment={unitAdornment("kg")} />
+            <FloatingField id="weightKg" label={tv("l_weight")} type="number" inputMode="decimal" value={weightKg} onChange={(e) => touch(setWeightKg)(e.target.value)} endAdornment={unitAdornment("kg")} />
             {(() => {
               const bmi = calculateBmi(parseFloat(heightCm) || null, parseFloat(weightKg) || null);
               const band = bmiBand(bmi);
               return bmi != null && band ? (
                 <div className="flex items-center justify-between mt-1 px-0.5">
-                  <span className="text-[11px] text-muted-foreground">BMI: {bmi.toFixed(1)}</span>
-                  <span className={cn("text-[11px] font-medium", band.tint)}>{band.label}</span>
+                  <span className="text-[11px] text-muted-foreground">{tv("bmi", { value: bmi.toFixed(1) })}</span>
+                  <span className={cn("text-[11px] font-medium", band.tint)}>{ts(({ Underweight: "underweight", Normal: "normal", Overweight: "overweight", Obese: "obese" } as Record<string, string>)[band.label] ?? "normal")}</span>
                 </div>
               ) : null;
             })()}
@@ -381,7 +389,7 @@ export function VitalSignsForm({ visitId }: { visitId: string }) {
         <NoticeSlot state={msg} />
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button size="lg" onClick={save} disabled={saving || locked}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Vitals
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {tv("save_vitals")}
           </Button>
         </div>
         </fieldset>

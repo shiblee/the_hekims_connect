@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { daysAgo } from "@/lib/age";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ interface ConsultationVisit {
 export function ConsultationCard({ visits, showStartButton = true }: { visits: ConsultationVisit[]; showStartButton?: boolean }) {
   const router = useRouter();
 
+  const tv = useTranslations("clinic.visit");
   const latest = [...visits]
     .filter((v) => v.clinicalAssessment || v.treatmentPlan)
     .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0];
@@ -35,10 +37,10 @@ export function ConsultationCard({ visits, showStartButton = true }: { visits: C
     return (
       <Card className="p-5 border-border/50 bg-card/60 text-center">
         <Stethoscope className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-        <p className="text-sm text-muted-foreground mb-3">No doctor review recorded yet.</p>
+        <p className="text-sm text-muted-foreground mb-3">{tv("no_review")}</p>
         {showStartButton && latestActiveVisit && (
           <Button size="sm" onClick={goToConsultation}>
-            <Stethoscope className="h-3.5 w-3.5" /> Start Doctor Review
+            <Stethoscope className="h-3.5 w-3.5" /> {tv("start_review")}
           </Button>
         )}
       </Card>
@@ -54,19 +56,19 @@ export function ConsultationCard({ visits, showStartButton = true }: { visits: C
             <Stethoscope className="h-4.5 w-4.5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground leading-tight">Doctor Review</p>
+            <p className="text-sm font-semibold text-foreground leading-tight">{tv("review")}</p>
             <p className="text-[11px] text-muted-foreground leading-tight">{daysAgo(latest.visitDate)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {latest.clinicalAssessment?.requiresUrgentReferral && (
             <Badge variant="outline" className="border text-xs font-medium bg-destructive/15 text-destructive border-destructive/30">
-              <ShieldAlert className="h-3 w-3" /> Urgent Referral
+              <ShieldAlert className="h-3 w-3" /> {tv("urgent_referral")}
             </Badge>
           )}
           {showStartButton && (
             <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={goToConsultation}>
-              <ArrowRight className="h-3 w-3" /> Continue
+              <ArrowRight className="h-3 w-3" /> {tv("continue")}
             </Button>
           )}
         </div>
@@ -77,7 +79,7 @@ export function ConsultationCard({ visits, showStartButton = true }: { visits: C
       )}
       {latest.treatmentPlan?.referralRequired && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Badge variant="outline" className="text-[11px] font-normal">Referral noted</Badge>
+          <Badge variant="outline" className="text-[11px] font-normal">{tv("referral_noted")}</Badge>
         </div>
       )}
     </Card>

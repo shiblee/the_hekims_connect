@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -22,9 +24,11 @@ const HUMOURS = [
 ];
 const PILLAR_EMOJI: Record<string, string> = { hawa: "🌬️", makool: "🍽️", harkat_badani: "🏃", harkat_nafsani: "🧠", naum: "😴", ihtibas: "💧" };
 
-const ONSET: Record<string, string> = { "<24h": "Under 24 hours", "1-7d": "1–7 days", ">1m": "Over 1 month" };
-const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—");
-const fmtDateTime = (d?: string | null) => (d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
+const ONSET: Record<string, string> = { "<24h": "onset_24h", "1-7d": "onset_7d", ">1m": "onset_1m" };
+/** Dates follow the page language (set on <html lang>), with Western digits; English uses Indian day-month order. */
+const reportLocale = () => { const l = typeof document !== "undefined" ? document.documentElement.lang : "en"; return !l || l === "en" ? "en-IN" : `${l}-u-nu-latn`; };
+const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString(reportLocale(), { day: "numeric", month: "short", year: "numeric" }) : "—");
+const fmtDateTime = (d?: string | null) => (d ? new Date(d).toLocaleString(reportLocale(), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
 
 function parseInsight(text: string | null | undefined) {
   if (!text) return null;
@@ -45,6 +49,13 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   const router = useRouter();
   const [data, setData] = useState<R | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("clinic.report");
+  const tc = useTranslations("common");
+  const t3 = useTranslations("clinic.stage3");
+  const ts = useTranslations("clinic.vital_status");
+  const vl = useValueLabel();
+  const UNITS = ["hours", "days", "weeks", "months", "years"];
+  const dur = (n: number, u: string | null | undefined) => (u && UNITS.includes(u) ? t3(`n_${u}`, { count: n }) : `${n} ${u ?? ""}`.trim());
 
   useEffect(() => {
     let cancelled = false;
@@ -55,18 +66,18 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
           const v = await api.get<{ visits: { id: string; visitDate: string }[] }>(`/api/facility/visits?patientId=${patientId}`);
           vid = [...(v.visits || [])].sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())[0]?.id;
         }
-        if (!vid) throw new Error("This patient has no visit to report on yet");
+        if (!vid) throw new Error(t("no_visit"));
         const res = await api.get<R>(`/api/facility/visits/${vid}/report`);
         if (!cancelled) setData(res);
       } catch (e: any) {
-        if (!cancelled) setError(e.message || "Network error");
+        if (!cancelled) setError(e.message || tc("network_error"));
       }
     })();
     return () => { cancelled = true; };
   }, [patientId, visitId]);
 
-  if (error) return <div className="max-w-3xl"><LoadFailed what="the assessment report" detail={error} /></div>;
-  if (!data) return <div className="flex items-center gap-2 text-sm text-muted-foreground py-12"><Loader2 className="h-4 w-4 animate-spin" /> Preparing the report…</div>;
+  if (error) return <div className="max-w-3xl"><LoadFailed what={t("the_report")} detail={error} /></div>;
+  if (!data) return <div className="flex items-center gap-2 text-sm text-muted-foreground py-12"><Loader2 className="h-4 w-4 animate-spin" /> {t("preparing")}</div>;
 
   // ---------------------------------------------------------------- status
   const ws = data.warningSigns;
@@ -84,15 +95,15 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   const seniorDoctor = [data.later?.regionsRecordedBy, chron?.recordedBy, data.visit.doctor].find((d: R) => d?.name)?.name || null;
   const stage3UpdatedAt = [data.later?.regionsUpdatedAt, chron?.updatedAt].filter(Boolean).sort().pop() || null;
   const missing = [
-    !data.vitals && "Vital signs",
-    !(data.complaints?.length) && "Main complaints",
-    !decided && "Emergency warning signs",
-    !data.otherSymptoms && "Other symptoms",
+    !data.vitals && t("m_vitals"),
+    !(data.complaints?.length) && t("m_complaints"),
+    !decided && t("m_signs"),
+    !data.otherSymptoms && t("m_other"),
   ].filter(Boolean) as string[];
   const complete = missing.length === 0;
   const stage3 = data.later?.regions?.length > 0 || !!chron;
   const stage4 = data.later?.asbab?.status === "completed";
-  const statusLabel = data.referral ? "Referred" : data.later?.dossier?.status === "finalized" ? "Finalised — dossier handed over" : complete ? (stage4 ? "Stage 4 assessment recorded" : stage3 ? "Stage 3 assessment recorded" : "Stage 2 assessment complete") : "DRAFT — INCOMPLETE ASSESSMENT";
+  const statusLabel = data.referral ? t("st_referred") : data.later?.dossier?.status === "finalized" ? t("st_final") : complete ? (stage4 ? t("st_4") : stage3 ? t("st_3") : t("st_2")) : t("st_draft");
 
   const p = data.patient;
   const v = data.vitals || {};
@@ -110,21 +121,21 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
   const year = new Date(data.report.generatedAt).getFullYear();
 
   const vitalRows: { label: string; value: string; unit: string; status: VitalStatus | null; note?: string }[] = [
-    { label: "Blood pressure", value: v.bpSystolic != null || v.bpDiastolic != null ? `${v.bpSystolic ?? "—"}/${v.bpDiastolic ?? "—"}` : "", unit: "mmHg", status: bpStatus(v.bpSystolic ?? null, v.bpDiastolic ?? null, nr) },
-    { label: "Pulse (Nabz)", value: v.pulse != null ? String(v.pulse) : "", unit: "bpm", status: pulseStatus(v.pulse ?? null, nr) },
-    { label: "SpO₂", value: v.spo2 != null ? String(v.spo2) : "", unit: "%", status: spo2Status(v.spo2 ?? null, nr), note: v.spo2Context || undefined },
-    { label: "Temperature", value: v.temperatureF != null ? String(v.temperatureF) : "", unit: "°F", status: temperatureStatus(v.temperatureF ?? null, nr), note: v.temperatureC != null ? `${v.temperatureC} °C` : undefined },
-    { label: "Height", value: heightCm != null ? String(heightCm) : "", unit: "cm", status: null, note: measureCarried && heightCm != null ? `From visit ${data.carriedMeasure.visitCode}` : undefined },
-    { label: "Weight", value: weightKg != null ? String(weightKg) : "", unit: "kg", status: null, note: measureCarried && weightKg != null ? `From visit ${data.carriedMeasure.visitCode}` : undefined },
-    { label: "BMI", value: bmi != null ? bmi.toFixed(1) : "", unit: "kg/m²", status: isChild ? null : bmiStatus(bmi), note: bmi != null && isChild ? "Adult BMI bands not applied (under 18)" : bmi != null ? "Calculated: weight ÷ height²" : undefined },
+    { label: t("v_bp"), value: v.bpSystolic != null || v.bpDiastolic != null ? `${v.bpSystolic ?? "—"}/${v.bpDiastolic ?? "—"}` : "", unit: "mmHg", status: bpStatus(v.bpSystolic ?? null, v.bpDiastolic ?? null, nr, ts) },
+    { label: t("v_pulse"), value: v.pulse != null ? String(v.pulse) : "", unit: "bpm", status: pulseStatus(v.pulse ?? null, nr, ts) },
+    { label: "SpO₂", value: v.spo2 != null ? String(v.spo2) : "", unit: "%", status: spo2Status(v.spo2 ?? null, nr, ts), note: v.spo2Context || undefined },
+    { label: t("v_temp"), value: v.temperatureF != null ? String(v.temperatureF) : "", unit: "°F", status: temperatureStatus(v.temperatureF ?? null, nr, ts), note: v.temperatureC != null ? `${v.temperatureC} °C` : undefined },
+    { label: t("v_height"), value: heightCm != null ? String(heightCm) : "", unit: "cm", status: null, note: measureCarried && heightCm != null ? t("from_visit", { code: data.carriedMeasure.visitCode }) : undefined },
+    { label: t("v_weight"), value: weightKg != null ? String(weightKg) : "", unit: "kg", status: null, note: measureCarried && weightKg != null ? t("from_visit", { code: data.carriedMeasure.visitCode }) : undefined },
+    { label: "BMI", value: bmi != null ? bmi.toFixed(1) : "", unit: "kg/m²", status: isChild ? null : bmiStatus(bmi, ts), note: bmi != null && isChild ? t("bmi_child") : bmi != null ? t("bmi_calc") : undefined },
   ];
-  if (v.heartRate != null) vitalRows.splice(2, 0, { label: "Heart rate (monitor)", value: String(v.heartRate), unit: "bpm", status: null });
+  if (v.heartRate != null) vitalRows.splice(2, 0, { label: t("v_hr"), value: String(v.heartRate), unit: "bpm", status: null });
 
   const l1 = parseInsight(data.l1Screening?.insight);
   const pageCss = `
     @page { size: A4; margin: 15mm 13mm 17mm 13mm;
-      @bottom-left { content: "${data.report.id.replace(/"/g, "")} · Confidential"; font: 8.5pt system-ui, sans-serif; color: #6b7280; }
-      @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8.5pt system-ui, sans-serif; color: #6b7280; }
+      @bottom-left { content: "${data.report.id.replace(/"/g, "")} · ${t("page_footer").replace(/"/g, "")}"; font: 8.5pt system-ui, sans-serif; color: #6b7280; }
+      @bottom-right { content: "${t("page_of").replace(/"/g, "")} " counter(page) " ${t("of").replace(/"/g, "")} " counter(pages); font: 8.5pt system-ui, sans-serif; color: #6b7280; }
     }
     /* Printing uses a copy mounted straight on <body>, so the app's own
        scrolling layout can't clip the report to a single page. */
@@ -151,7 +162,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     <img src="/brand/hekim-globe-icon.png" alt="" className="h-4 w-4" />
                     {b.portal_name}
                   </span>
-                  <span>{b.report_title} · {p.name}{p.patientCode ? ` (${p.patientCode})` : ""} · Visit {data.visit.visitCode}</span>
+                  <span>{b.report_title} · {p.name}{p.patientCode ? ` (${p.patientCode})` : ""} · {t("visit_n", { code: data.visit.visitCode })}</span>
                 </div>
               </td></tr>
             </thead>
@@ -173,194 +184,194 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
 
               {/* Identification */}
               <div className="rpt-keep mt-3 grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-x-4 gap-y-1.5 text-[10pt]">
-                <IdField label="Report ID" value={data.report.id} mono />
-                <IdField label="Patient ID" value={p.patientCode || "—"} mono />
-                <IdField label="Visit" value={data.visit.visitCode} mono />
-                <IdField label="Assessment date" value={fmtDate(data.visit.visitDate)} />
-                <IdField label="Generated" value={fmtDateTime(data.report.generatedAt)} />
-                <IdField label="Generated by" value={data.report.generatedBy || "—"} />
-                <IdField label="Version" value="Live report (v1)" />
-                <IdField label="Report status" value={statusLabel} strong />
+                <IdField label={t("report_id")} value={data.report.id} mono />
+                <IdField label={t("patient_id")} value={p.patientCode || "—"} mono />
+                <IdField label={t("visit")} value={data.visit.visitCode} mono />
+                <IdField label={t("assessment_date")} value={fmtDate(data.visit.visitDate)} />
+                <IdField label={t("generated")} value={fmtDateTime(data.report.generatedAt)} />
+                <IdField label={t("generated_by")} value={data.report.generatedBy || "—"} />
+                <IdField label={t("version")} value={t("live_v1")} />
+                <IdField label={t("status")} value={statusLabel} strong />
               </div>
 
               {/* Status banner */}
               {!complete && !data.referral ? (
                 <div className="rpt-keep mt-3 rounded border-2 border-dashed border-[#b45309] bg-[#fffbeb] px-3 py-2">
-                  <p className="text-[11.5pt] font-bold tracking-wide text-[#92400e]">DRAFT — INCOMPLETE ASSESSMENT</p>
-                  <p className="text-[10pt] text-[#78350f]">Not a finalized clinical assessment. Not yet recorded: {missing.join(", ")}.</p>
+                  <p className="text-[11.5pt] font-bold tracking-wide text-[#92400e]">{t("st_draft")}</p>
+                  <p className="text-[10pt] text-[#78350f]">{t("draft_banner_hint", { items: missing.join(", ") })}</p>
                 </div>
               ) : null}
 
               {/* Emergency banner */}
               {(data.referral || ws?.present?.length > 0) && (
                 <div className="rpt-keep mt-3 rounded border-2 border-[#b91c1c] bg-[#fef2f2] px-3 py-2">
-                  <p className="text-[11.5pt] font-bold text-[#991b1b]">⚠ EMERGENCY WARNING{data.referral ? ` — PATIENT REFERRED (${String(data.referral.urgency).toUpperCase()})` : ""}</p>
-                  {ws?.present?.length > 0 && <p className="text-[10.5pt] text-[#7f1d1d]">Signs present: {ws.present.map((s: R) => s.label).join("; ")}.</p>}
-                  {data.referral && <p className="text-[10.5pt] text-[#7f1d1d]">Referred to <b>{data.referral.referredTo}</b> on {fmtDateTime(data.referral.createdAt)}.</p>}
+                  <p className="text-[11.5pt] font-bold text-[#991b1b]">{t("emergency")}{data.referral ? t("referred_banner", { urgency: vl(String(data.referral.urgency)).toLocaleUpperCase() }) : ""}</p>
+                  {ws?.present?.length > 0 && <p className="text-[10.5pt] text-[#7f1d1d]">{t("signs_present", { items: ws.present.map((s: R) => s.label).join("; ") })}</p>}
+                  {data.referral && <p className="text-[10.5pt] text-[#7f1d1d]">{t.rich("referred_to_on", { to: data.referral.referredTo, date: fmtDateTime(data.referral.createdAt), b: (c) => <b>{c}</b> })}</p>}
                 </div>
               )}
 
               {/* Allergy alert */}
               {allergies.length > 0 && (
                 <div className="rpt-keep mt-3 rounded border-2 border-[#b91c1c] px-3 py-1.5 text-[11pt]">
-                  <b className="text-[#991b1b]">⚠ ALLERGY ALERT:</b> {allergies.join(", ")} <span className="text-[9.5pt] text-[#6b7280]">(as reported; see Allergies)</span>
+                  <b className="text-[#991b1b]">{t("allergy_alert")}</b> {allergies.join(", ")} <span className="text-[9.5pt] text-[#6b7280]">{t("as_reported")}</span>
                 </div>
               )}
 
               {/* ================= PART A ================= */}
-              <PartDivider letter="A" emoji="🏥" title="Registration & triage" sub="Stages 1–2 · recorded at the front desk and the triage booth" />
+              <PartDivider letter="A" emoji="🏥" title={t("part_a")} sub={t("part_a_sub")} />
 
               {/* ---------------- Patient & clinician ---------------- */}
               <div className="grid grid-cols-2 gap-5">
-                <Section emoji="👤" title="Patient" n={1}>
+                <Section emoji="👤" title={t("s_patient")} n={1}>
                   <Facts rows={[
-                    ["Name", `${p.titlePrefix ? `${p.titlePrefix} ` : ""}${p.name}`],
-                    ["Patient ID", p.patientCode],
-                    ["Age / sex", `${formatAge(p.dob)}${p.dobApprox ? " (approx.)" : ""} · ${p.gender || "Sex not recorded"}`],
-                    ["Marital status", p.maritalStatus],
-                    ["Blood group", p.bloodGroup],
-                    ["Mobile", p.phone],
-                    ["Location", [p.city, p.state].filter(Boolean).join(", ") || null],
-                    ["Emergency contact", p.emergencyContactName || p.emergencyContact ? `${p.emergencyContactName || "Contact"}${p.emergencyRelationship ? ` (${p.emergencyRelationship})` : ""}${p.emergencyContact ? ` · ${p.emergencyContact}` : ""}` : null],
-                    ["Registered", fmtDate(p.createdAt)],
-                    ["Earlier visits here", String(p.previousVisitCount)],
+                    [t("f_name"), `${p.titlePrefix ? `${p.titlePrefix} ` : ""}${p.name}`],
+                    [t("patient_id"), p.patientCode],
+                    [t("f_age_sex"), `${formatAge(p.dob)}${p.dobApprox ? t("approx") : ""} · ${p.gender ? vl(p.gender) : t("sex_none")}`],
+                    [t("f_marital"), p.maritalStatus ? vl(p.maritalStatus) : null],
+                    [t("f_blood"), p.bloodGroup],
+                    [t("f_mobile"), p.phone],
+                    [t("f_location"), [p.city, p.state].filter(Boolean).join(", ") || null],
+                    [t("f_emergency"), p.emergencyContactName || p.emergencyContact ? `${p.emergencyContactName || t("contact")}${p.emergencyRelationship ? ` (${vl(p.emergencyRelationship)})` : ""}${p.emergencyContact ? ` · ${p.emergencyContact}` : ""}` : null],
+                    [t("f_registered"), fmtDate(p.createdAt)],
+                    [t("f_earlier"), String(p.previousVisitCount)],
                   ]} />
                 </Section>
-                <Section emoji="🩺" title="Clinician & facility" n={2}>
+                <Section emoji="🩺" title={t("s_clinician")} n={2}>
                   <Facts rows={[
-                    ["Treating doctor", doctor ? doctor.name : "No doctor assigned to this visit"],
-                    ["Designation", doctor ? [doctor.designation, doctor.specialization].filter(Boolean).join(" · ") || null : null],
-                    ["Qualification", doctor?.qualification],
-                    ["Registration no.", doctor?.registrationNumber],
-                    ["Staff ID", doctor?.staffCode],
-                    ["Facility", data.facility?.registeredFacilityName || data.facility?.facilityName],
-                    ["Facility type", data.facility?.facilityType],
-                    ["HFR number", data.facility?.hfrNumber],
-                    ["Address", [data.facility?.addressLine1, data.facility?.locality, data.facility?.city, data.facility?.state, data.facility?.pincode].filter(Boolean).join(", ") || null],
-                    ["Contact", [data.facility?.phone, data.facility?.email].filter(Boolean).join(" · ") || null],
-                    ["Registered by", data.visit.registeredBy?.name],
+                    [t("f_doctor"), doctor ? doctor.name : t("no_doctor")],
+                    [t("f_designation"), doctor ? [doctor.designation, doctor.specialization].filter(Boolean).join(" · ") || null : null],
+                    [t("f_qualification"), doctor?.qualification],
+                    [t("f_regno"), doctor?.registrationNumber],
+                    [t("f_staff"), doctor?.staffCode],
+                    [t("f_facility"), data.facility?.registeredFacilityName || data.facility?.facilityName],
+                    [t("f_facility_type"), data.facility?.facilityType],
+                    [t("f_hfr"), data.facility?.hfrNumber],
+                    [t("f_address"), [data.facility?.addressLine1, data.facility?.locality, data.facility?.city, data.facility?.state, data.facility?.pincode].filter(Boolean).join(", ") || null],
+                    [t("contact"), [data.facility?.phone, data.facility?.email].filter(Boolean).join(" · ") || null],
+                    [t("f_registered_by"), data.visit.registeredBy?.name],
                   ]} />
                 </Section>
               </div>
 
               {/* ---------------- Vitals ---------------- */}
-              <Section emoji="❤️" title="Vital signs & measurements" n={3} meta={data.vitals ? `Recorded ${fmtDateTime(v.updatedAt)}` : undefined}>
-                {!data.vitals && !data.carriedMeasure ? <Empty>Vital signs not recorded for this visit.</Empty> : (
+              <Section emoji="❤️" title={t("s_vitals")} n={3} meta={data.vitals ? t("recorded_at", { date: fmtDateTime(v.updatedAt) }) : undefined}>
+                {!data.vitals && !data.carriedMeasure ? <Empty>{t("no_vitals")}</Empty> : (
                   <div className="grid grid-cols-4 gap-1.5">
                     {vitalRows.map((r) => (
                       <div key={r.label} className={`rpt-keep rounded border px-2 py-1.5 ${r.status && r.status.tone !== "ok" ? "border-[#b91c1c] bg-[#fef2f2]" : "border-[#d1d5db]"}`}>
                         <p className="text-[9pt] uppercase tracking-wide text-[#6b7280]">{r.label}</p>
-                        <p className="text-[13.5pt] font-bold leading-tight">{r.value ? <>{r.value} <span className="text-[9.5pt] font-normal text-[#6b7280]">{r.unit}</span></> : <span className="text-[10.5pt] font-normal text-[#9ca3af]">Not recorded</span>}</p>
+                        <p className="text-[13.5pt] font-bold leading-tight">{r.value ? <>{r.value} <span className="text-[9.5pt] font-normal text-[#6b7280]">{r.unit}</span></> : <span className="text-[10.5pt] font-normal text-[#9ca3af]">{t("not_recorded")}</span>}</p>
                         {r.status && <p className={`text-[9pt] font-semibold ${r.status.tone === "ok" ? "text-[#047857]" : "text-[#b91c1c]"}`}>{r.status.tone === "ok" ? "✓" : "▲"} {r.status.label}</p>}
                         {r.note && <p className="text-[8.5pt] text-[#6b7280]">{r.note}</p>}
                       </div>
                     ))}
                   </div>
                 )}
-                <p className="mt-1 text-[9pt] text-[#6b7280]">Status words compare each value with the normal ranges configured for this platform; they are not a diagnosis. Respiratory rate is not captured by this platform.</p>
+                <p className="mt-1 text-[9pt] text-[#6b7280]">{t("vitals_note")}</p>
                 {(v.painNotes || v.primaryFocusArea || v.triageRemarks || v.consciousnessLevel || v.mood) && (
                   <Facts className="mt-2" rows={[
-                    ["Consciousness", v.consciousnessLevel], ["Mood", v.mood],
-                    ["Pain notes", v.painNotes], ["Primary focus area", v.primaryFocusArea], ["Triage remarks", v.triageRemarks],
+                    [t("f_consciousness"), v.consciousnessLevel], [t("f_mood"), v.mood],
+                    [t("f_pain"), v.painNotes], [t("f_focus"), v.primaryFocusArea], [t("f_remarks"), v.triageRemarks],
                   ]} />
                 )}
               </Section>
 
               {/* ---------------- Reason for visit ---------------- */}
-              <Section emoji="📝" title="Reason for visit & main complaints" n={4}>
+              <Section emoji="📝" title={t("s_reason")} n={4}>
                 {data.complaints?.length ? (
                   <>
                     <div className="rpt-keep rounded bg-[#f0fdfa] border border-[#99f6e4] px-3 py-2 mb-2">
-                      <p className="text-[9pt] uppercase tracking-wide text-[#0f766e] font-semibold">Primary complaint</p>
+                      <p className="text-[9pt] uppercase tracking-wide text-[#0f766e] font-semibold">{t("primary_complaint")}</p>
                       <p className="text-[13.5pt] font-bold">{data.complaints[0].chiefComplaintLabel}</p>
                       <p className="text-[10pt] text-[#374151]">
-                        {data.complaints[0].onsetValue != null ? `For ${data.complaints[0].onsetValue} ${data.complaints[0].onsetUnit || ""}` : "Duration not recorded"}
-                        {" · "}{data.complaints[0].severityScore != null ? `Severity ${data.complaints[0].severityScore}/10${sev(data.complaints[0].severityScore) ? ` (${sev(data.complaints[0].severityScore)})` : ""}` : "Severity not recorded"}
+                        {data.complaints[0].onsetValue != null ? t("for_dur", { value: dur(data.complaints[0].onsetValue, data.complaints[0].onsetUnit) }) : t("dur_none")}
+                        {" · "}{data.complaints[0].severityScore != null ? t("severity_n", { value: `${data.complaints[0].severityScore}/10${sev(data.complaints[0].severityScore) ? ` (${sev(data.complaints[0].severityScore)})` : ""}` }) : t("sev_none")}
                       </p>
                     </div>
                     <table className="w-full text-[10pt] border-collapse">
                       <thead><tr className="text-start text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
-                        <th className="py-1 pe-2 font-semibold">Complaint</th><th className="py-1 pe-2 font-semibold">Duration</th><th className="py-1 pe-2 font-semibold">Severity</th><th className="py-1 pe-2 font-semibold">Worse with (Muharrikat)</th><th className="py-1 font-semibold">Better with (Musakkinat)</th>
+                        <th className="py-1 pe-2 font-semibold">{t("th_complaint")}</th><th className="py-1 pe-2 font-semibold">{t("th_duration")}</th><th className="py-1 pe-2 font-semibold">{t("th_severity")}</th><th className="py-1 pe-2 font-semibold">{t("th_worse")}</th><th className="py-1 font-semibold">{t("th_better")}</th>
                       </tr></thead>
                       <tbody>
                         {data.complaints.map((c: R, i: number) => (
                           <tr key={i} className="align-top border-b border-[#f3f4f6]">
-                            <td className="py-1 pe-2 font-medium">{c.chiefComplaintLabel}{i === 0 && <span className="ms-1 text-[8.5pt] text-[#0f766e]">PRIMARY</span>}{c.clinicalNotes && <div className="text-[9pt] text-[#6b7280] font-normal">{c.clinicalNotes}</div>}</td>
-                            <td className="py-1 pe-2">{c.onsetValue != null ? `${c.onsetValue} ${c.onsetUnit || ""}` : <Dim>Not recorded</Dim>}</td>
-                            <td className="py-1 pe-2">{c.severityScore != null ? `${c.severityScore}/10${sev(c.severityScore) ? ` · ${sev(c.severityScore)}` : ""}` : <Dim>Not recorded</Dim>}</td>
-                            <td className="py-1 pe-2">{c.aggravatingFactors.length ? c.aggravatingFactors.join(", ") : <Dim>None recorded</Dim>}</td>
-                            <td className="py-1">{c.relievingFactors.length ? c.relievingFactors.join(", ") : <Dim>None recorded</Dim>}</td>
+                            <td className="py-1 pe-2 font-medium">{c.chiefComplaintLabel}{i === 0 && <span className="ms-1 text-[8.5pt] text-[#0f766e]">{t("primary")}</span>}{c.clinicalNotes && <div className="text-[9pt] text-[#6b7280] font-normal">{c.clinicalNotes}</div>}</td>
+                            <td className="py-1 pe-2">{c.onsetValue != null ? dur(c.onsetValue, c.onsetUnit) : <Dim>{t("not_recorded")}</Dim>}</td>
+                            <td className="py-1 pe-2">{c.severityScore != null ? `${c.severityScore}/10${sev(c.severityScore) ? ` · ${sev(c.severityScore)}` : ""}` : <Dim>{t("not_recorded")}</Dim>}</td>
+                            <td className="py-1 pe-2">{c.aggravatingFactors.length ? c.aggravatingFactors.join(", ") : <Dim>{t("none_recorded")}</Dim>}</td>
+                            <td className="py-1">{c.relievingFactors.length ? c.relievingFactors.join(", ") : <Dim>{t("none_recorded")}</Dim>}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </>
-                ) : <Empty>Main complaints not yet assessed by the doctor.</Empty>}
+                ) : <Empty>{t("complaints_none")}</Empty>}
                 {data.intake && (
                   <Facts className="mt-2" rows={[
-                    ["Complaints at registration", data.intake.chiefComplaints.join(", ") || null],
-                    ["Started", data.intake.onsetTimeline ? ONSET[data.intake.onsetTimeline] || data.intake.onsetTimeline : null],
-                    ["Arrived", data.intake.mobility === "wheelchair" ? "Needs a wheelchair" : data.intake.mobility === "independent" ? "Walking on their own" : null],
+                    [t("f_at_reg"), data.intake.chiefComplaints.join(", ") || null],
+                    [t("f_started"), data.intake.onsetTimeline ? (ONSET[data.intake.onsetTimeline] ? t(ONSET[data.intake.onsetTimeline]) : data.intake.onsetTimeline) : null],
+                    [t("f_arrived"), data.intake.mobility === "wheelchair" ? t("wheelchair") : data.intake.mobility === "independent" ? t("walking") : null],
                   ]} />
                 )}
                 {data.intake?.narrative && (
                   <blockquote className="rpt-keep mt-2 border-s-4 border-[#d1d5db] ps-3 text-[10.5pt] italic text-[#374151]">
-                    <span className="not-italic text-[9pt] uppercase tracking-wide text-[#6b7280] block">In the patient&apos;s own words</span>
+                    <span className="not-italic text-[9pt] uppercase tracking-wide text-[#6b7280] block">{t("own_words")}</span>
                     “{data.intake.narrative}”
                   </blockquote>
                 )}
               </Section>
 
               {/* ---------------- Warning signs ---------------- */}
-              <Section emoji="🚨" title="Emergency warning signs" n={5} meta={ws?.updatedAt ? `Updated ${fmtDateTime(ws.updatedAt)}` : undefined}>
-                {!ws ? <Empty tone="warn">Warning-sign assessment not done — absence of warning signs cannot be assumed.</Empty>
+              <Section emoji="🚨" title={t("s_signs")} n={5} meta={ws?.updatedAt ? t("updated_at", { date: fmtDateTime(ws.updatedAt) }) : undefined}>
+                {!ws ? <Empty tone="warn">{t("signs_not_done")}</Empty>
                   : !decided ? (
                     <>
-                      <Empty tone="warn">Warning-sign assessment incomplete — no decision recorded yet.</Empty>
+                      <Empty tone="warn">{t("signs_incomplete")}</Empty>
                       {ws.present.length > 0 && <SignList items={ws.present} />}
                     </>
                   ) : ws.present.length > 0 ? (
                     <>
-                      <p className="text-[10.5pt] font-semibold text-[#991b1b]">Warning signs recorded — clinical review required.</p>
+                      <p className="text-[10.5pt] font-semibold text-[#991b1b]">{t("signs_review")}</p>
                       <SignList items={ws.present} />
                     </>
                   ) : (
-                    <p className="text-[10.5pt]">No warning signs marked. {ws.reviewed} of {ws.criteriaCount} listed signs were reviewed on {fmtDateTime(ws.updatedAt)}.</p>
+                    <p className="text-[10.5pt]">{t("signs_none", { reviewed: ws.reviewed, count: ws.criteriaCount, date: fmtDateTime(ws.updatedAt) })}</p>
                   )}
                 {data.referral && (
                   <div className="rpt-keep mt-2 rounded border border-[#fca5a5] px-3 py-2">
-                    <p className="text-[9.5pt] uppercase tracking-wide font-semibold text-[#991b1b]">Referral</p>
+                    <p className="text-[9.5pt] uppercase tracking-wide font-semibold text-[#991b1b]">{t("referral")}</p>
                     <Facts rows={[
-                      ["Referred to", data.referral.referredTo], ["Urgency", data.referral.urgency], ["Reason", data.referral.reason],
-                      ["Notes for receiving doctor", data.referral.notes], ["Referred on", fmtDateTime(data.referral.createdAt)], ["Referred by", data.referral.referredBy?.name],
+                      [t("f_referred_to"), data.referral.referredTo], [t("f_urgency"), vl(data.referral.urgency)], [t("f_reason"), data.referral.reason],
+                      [t("f_notes_rx"), data.referral.notes], [t("f_referred_on"), fmtDateTime(data.referral.createdAt)], [t("f_referred_by"), data.referral.referredBy?.name],
                     ]} />
                   </div>
                 )}
                 {data.amaDecline && (
                   <div className="rpt-keep mt-2 rounded border border-[#fcd34d] px-3 py-2">
-                    <p className="text-[9.5pt] uppercase tracking-wide font-semibold text-[#92400e]">Referral declined — continuing against medical advice</p>
-                    <Facts rows={[["Referral recommended for", data.amaDecline.reason], ["Patient's reason", data.amaDecline.patientReason], ["Recorded", fmtDateTime(data.amaDecline.createdAt)]]} />
+                    <p className="text-[9.5pt] uppercase tracking-wide font-semibold text-[#92400e]">{t("ama")}</p>
+                    <Facts rows={[[t("f_ama_reason"), data.amaDecline.reason], [t("f_patient_reason"), data.amaDecline.patientReason], [t("f_recorded"), fmtDateTime(data.amaDecline.createdAt)]]} />
                   </div>
                 )}
               </Section>
 
               {/* ---------------- Other symptoms ---------------- */}
-              <Section emoji="🔎" title="Other symptoms (Alamat-e-Izafiya)" n={6}>
-                {!data.otherSymptoms ? <Empty>Not assessed.</Empty>
+              <Section emoji="🔎" title={t("s_other")} n={6}>
+                {!data.otherSymptoms ? <Empty>{t("not_assessed")}</Empty>
                   : data.otherSymptoms.symptoms.length ? <p className="text-[10.5pt]">{data.otherSymptoms.symptoms.join(" · ")}</p>
-                    : <p className="text-[10.5pt]">None marked at assessment ({fmtDateTime(data.otherSymptoms.updatedAt)}).</p>}
+                    : <p className="text-[10.5pt]">{t("none_marked", { date: fmtDateTime(data.otherSymptoms.updatedAt) })}</p>}
               </Section>
 
               {/* ================= PART B — senior doctor ================= */}
-              <PartDivider letter="B" emoji="👨‍⚕️" title="Senior doctor's assessment" sub="Stages 3–5 · Mizaj & Morphometry, Asbab-e-Sittah and Tashkhees & Ilaj — recorded by the senior (main) doctor" tone="senior" />
+              <PartDivider letter="B" emoji="👨‍⚕️" title={t("part_b")} sub={t("part_b_sub")} tone="senior" />
 
-              <Section emoji="🧍" tone="senior" title="Body regions, onset & course" n={7}
-                meta={stage3UpdatedAt ? `Updated ${fmtDateTime(stage3UpdatedAt)}` : undefined}>
+              <Section emoji="🧍" tone="senior" title={t("s_body")} n={7}
+                meta={stage3UpdatedAt ? t("updated_at", { date: fmtDateTime(stage3UpdatedAt) }) : undefined}>
                 <p className="rpt-keep mb-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-[#c4b5fd] bg-white px-3 py-1 text-[9.5pt] text-[#5b21b6]">
-                  🩺 <b>Recorded by the senior doctor</b>
+                  🩺 <b>{t("by_senior")}</b>
                   {seniorDoctor && <span>· {seniorDoctor}</span>}
                 </p>
-                {!data.later.regions?.length && !chron && !mz ? <Empty>Stage 3 not yet recorded for this visit.</Empty> : (
+                {!data.later.regions?.length && !chron && !mz ? <Empty>{t("stage3_none")}</Empty> : (
                   <>
                     {data.later.regions?.length > 0 && (
                       <div className="rpt-keep grid grid-cols-[auto_1fr] gap-5 items-start">
@@ -369,13 +380,13 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                           <BodyFigure view="back" items={regionItems} width={118} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold mb-1.5">Body regions & organ systems involved</p>
+                          <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold mb-1.5">{t("regions_involved")}</p>
                           <ol className="space-y-1.5">
                             {regionItems.map((r: R, i: number) => (
                               <li key={r.label} className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 ${r.primary ? "border-[#059669] bg-[#ecfdf5]" : "border-[#e5e7eb] bg-white"}`}>
                                 <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8.5pt] font-bold ${r.primary ? "bg-[#059669] text-white" : "border border-[#059669] text-[#059669]"}`}>{i + 1}</span>
                                 <span className="min-w-0">
-                                  <span className="block text-[10.5pt] font-semibold text-[#111827]">{r.label}{r.primary && <span className="ms-1.5 rounded bg-[#059669] px-1.5 py-px text-[7.5pt] font-bold tracking-wide text-white align-middle">PRIMARY</span>}</span>
+                                  <span className="block text-[10.5pt] font-semibold text-[#111827]">{r.label}{r.primary && <span className="ms-1.5 rounded bg-[#059669] px-1.5 py-px text-[7.5pt] font-bold tracking-wide text-white align-middle">{t("primary")}</span>}</span>
                                   {r.localTerms && <span className="block text-[9pt] text-[#6b7280]">{r.localTerms}</span>}
                                 </span>
                               </li>
@@ -387,53 +398,53 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
 
                     <div className="rpt-keep mt-4 grid grid-cols-2 gap-3">
                       <div className="rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">⚡ Onset & rhythm</p>
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("onset_rhythm")}</p>
                         {chron?.onsetPatterns?.length
                           ? <div className="flex flex-wrap gap-1">{chron.onsetPatterns.map((o: string) => <span key={o} className="rounded-full border border-[#c4b5fd] bg-[#f5f3ff] px-2 py-0.5 text-[10pt] text-[#4c1d95]">{o}</span>)}</div>
-                          : <Empty>Not recorded.</Empty>}
+                          : <Empty>{t("not_recorded_dot")}</Empty>}
                       </div>
                       <div className="rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">⏳ How long</p>
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("how_long")}</p>
                         {chron?.durationValue != null ? (
                           <>
-                            <p className="text-[12pt] font-bold text-[#111827]">{chron.durationValue} {chron.durationUnit || ""}
-                              {course && <span className="ms-2 rounded px-1.5 py-0.5 text-[9pt] font-semibold" style={{ background: `${course.style.dot}22`, color: course.style.dot }}>{course.label} · {course.unani}</span>}
+                            <p className="text-[12pt] font-bold text-[#111827]">{dur(chron.durationValue, chron.durationUnit)}
+                              {course && <span className="ms-2 rounded px-1.5 py-0.5 text-[9pt] font-semibold" style={{ background: `${course.style.dot}22`, color: course.style.dot }}>{t3(`course_${course.key}`)} · {course.unani}</span>}
                             </p>
                             <p className="text-[9.5pt] text-[#4b5563]">
-                              {chron.onsetDate && <>Started around <b>{fmtDate(chron.onsetDate)}</b></>}
-                              {chron.durationSource === "auto" && chron.sourceComplaint && <> · from the longest complaint, {chron.sourceComplaint}</>}
+                              {chron.onsetDate && t.rich("started_around", { date: fmtDate(chron.onsetDate), b: (c) => <b>{c}</b> })}
+                              {chron.durationSource === "auto" && chron.sourceComplaint && t("from_longest", { label: chron.sourceComplaint })}
                             </p>
-                            {course && <p className="text-[9pt] text-[#6b7280]">{course.range} — {course.hint}</p>}
+                            {course && <p className="text-[9pt] text-[#6b7280]">{t3(`course_${course.key}_range`)} — {t3(`course_${course.key}_hint`)}</p>}
                           </>
-                        ) : <Empty>Not recorded.</Empty>}
+                        ) : <Empty>{t("not_recorded_dot")}</Empty>}
                       </div>
                     </div>
 
                     {(chron?.note || mz) && (
                       <Facts className="rpt-keep mt-3" rows={[
-                        ["📝 Chronology note", chron?.note],
-                        ["🌡️ Latest Mizaj assessment", mz ? `${mz.result.split(" — ")[0]} · Damawi ${mz.dam}% · Safrawi ${mz.saffra}% · Balghami ${mz.balgham}% · Saudawi ${mz.sauda}% (${fmtDate(mz.createdAt)})` : null],
-                        ["💓 Nabz (pulse)", mz?.pulse],
-                        ["Mizaj notes", mz?.notes],
+                        [t("f_chrono_note"), chron?.note],
+                        [t("f_mizaj"), mz ? `${mz.result.split(" — ")[0]} · Damawi ${mz.dam}% · Safrawi ${mz.saffra}% · Balghami ${mz.balgham}% · Saudawi ${mz.sauda}% (${fmtDate(mz.createdAt)})` : null],
+                        [t("f_nabz"), mz?.pulse],
+                        [t("f_mizaj_notes"), mz?.notes],
                       ]} />
                     )}
-                    <p className="mt-2 text-[9pt] text-[#6b7280]">Acute / subacute / chronic is a guide from the recorded duration. The main complaints in section 04 include the senior doctor&apos;s Stage 3 edits.</p>
+                    <p className="mt-2 text-[9pt] text-[#6b7280]">{t("course_note")}</p>
                   </>
                 )}
               </Section>
 
               {/* ---------------- Stage 4: Asbab-e-Sittah ---------------- */}
-              <Section emoji="🌬️" tone="senior" title="Asbab-e-Sittah Zarooriya — lifestyle factors" n={8}
-                meta={asbab ? (asbab.status === "completed" ? `Completed ${fmtDateTime(asbab.completedAt)}` : `Draft · updated ${fmtDateTime(asbab.updatedAt)}`) : undefined}>
+              <Section emoji="🌬️" tone="senior" title={t("s_asbab")} n={8}
+                meta={asbab ? (asbab.status === "completed" ? t("completed_at", { date: fmtDateTime(asbab.completedAt) }) : t("draft_updated", { date: fmtDateTime(asbab.updatedAt) })) : undefined}>
                 <p className="rpt-keep mb-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-[#c4b5fd] bg-white px-3 py-1 text-[9.5pt] text-[#5b21b6]">
-                  🩺 <b>Recorded by the senior doctor</b>
+                  🩺 <b>{t("by_senior")}</b>
                   {(asbab?.recordedBy?.name || seniorDoctor) && <span>· {asbab?.recordedBy?.name || seniorDoctor}</span>}
                 </p>
-                {!asbab || !asbabAnswered ? <Empty>Asbab-e-Sittah review not yet recorded for this visit.</Empty> : (
+                {!asbab || !asbabAnswered ? <Empty>{t("asbab_none")}</Empty> : (
                   <>
                     {drift && (
                       <div className="rpt-keep mb-3 rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1.5">⚖️ Humoral drift from lifestyle{driftLead && <span className="ms-1 normal-case tracking-normal text-[#111827]">— leaning towards <b>{driftLead}</b></span>}</p>
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1.5">{t("drift")}{driftLead && <span className="ms-1 normal-case tracking-normal text-[#111827]">{t.rich("leaning", { name: driftLead, b: (c) => <b>{c}</b> })}</span>}</p>
                         <div className="grid grid-cols-4 gap-3">
                           {HUMOURS.map((h) => (
                             <div key={h.key}>
@@ -457,33 +468,33 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                                 </div>
                               ))}
                             </dl>
-                          ) : <p className="mt-1 text-[9.5pt] italic text-[#6b7280]">Not answered.</p>}
+                          ) : <p className="mt-1 text-[9.5pt] italic text-[#6b7280]">{t("not_answered")}</p>}
                         </div>
                       ))}
                     </div>
-                    <p className="mt-2 text-[9pt] text-[#6b7280]">Humoral drift is weighted from each answer&apos;s humoral points set in Admin — a guide for the Hakim, not a diagnosis.</p>
+                    <p className="mt-2 text-[9pt] text-[#6b7280]">{t("drift_note")}</p>
                   </>
                 )}
               </Section>
 
               {/* ---------------- Stage 5: Tashkhees & Ilaj ---------------- */}
-              <Section emoji="⚕️" tone="senior" title="Tashkhees & Ilaj — diagnosis, treatment & handover" n={9}
-                meta={dos ? (dos.status === "finalized" ? `Finalised ${fmtDateTime(dos.finalizedAt)}` : `Draft · updated ${fmtDateTime(dos.updatedAt)}`) : undefined}>
+              <Section emoji="⚕️" tone="senior" title={t("s_tashkhees")} n={9}
+                meta={dos ? (dos.status === "finalized" ? t("finalised_at", { date: fmtDateTime(dos.finalizedAt) }) : t("draft_updated", { date: fmtDateTime(dos.updatedAt) })) : undefined}>
                 <p className="rpt-keep mb-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-[#c4b5fd] bg-white px-3 py-1 text-[9.5pt] text-[#5b21b6]">
-                  🩺 <b>{dos?.status === "finalized" ? "Finalised by the senior doctor" : "Recorded by the senior doctor"}</b>
+                  🩺 <b>{dos?.status === "finalized" ? t("final_senior") : t("by_senior")}</b>
                   {(dos?.finalizedByName || dos?.recordedBy?.name || seniorDoctor) && <span>· {dos?.finalizedByName || dos?.recordedBy?.name || seniorDoctor}</span>}
                 </p>
-                {!dos && !dalail ? <Empty>Tashkhees &amp; Ilaj not yet recorded for this visit.</Empty> : (
+                {!dos && !dalail ? <Empty>{t("tashkhees_none")}</Empty> : (
                   <div className="space-y-3">
                     {/* Diagnosis */}
                     {dos && (
                       <div className="rpt-keep rounded-lg border-2 border-[#7c3aed] bg-white px-3.5 py-2.5">
-                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">🧾 Tashkhees (diagnosis)</p>
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("diagnosis")}</p>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                          <div><p className="text-[9pt] text-[#6b7280]">Mizaj-e-Asli (baseline temperament)</p><p className="text-[12pt] font-bold">{dos.mizajAsli || <Dim>Not recorded</Dim>}</p></div>
-                          <div><p className="text-[9pt] text-[#6b7280]">Su-e-Mizaj (present dyscrasia)</p><p className="text-[12pt] font-bold">{[dos.suMizajType, dos.suMizajQuality, dos.suMizajGrade ? `Darja ${dos.suMizajGrade}` : null].filter(Boolean).join(" · ") || <Dim>Not recorded</Dim>}</p></div>
+                          <div><p className="text-[9pt] text-[#6b7280]">{t("asli")}</p><p className="text-[12pt] font-bold">{dos.mizajAsli || <Dim>{t("not_recorded")}</Dim>}</p></div>
+                          <div><p className="text-[9pt] text-[#6b7280]">{t("su")}</p><p className="text-[12pt] font-bold">{[dos.suMizajType, dos.suMizajQuality, dos.suMizajGrade ? t("darja", { n: dos.suMizajGrade }) : null].filter(Boolean).join(" · ") || <Dim>{t("not_recorded")}</Dim>}</p></div>
                         </div>
-                        {dos.organs?.length > 0 && <p className="mt-1 text-[10pt]"><span className="text-[#6b7280]">Affected organs (Udw-e-Mutathir): </span><b>{dos.organs.join(", ")}</b></p>}
+                        {dos.organs?.length > 0 && <p className="mt-1 text-[10pt]"><span className="text-[#6b7280]">{t("organs")} </span><b>{dos.organs.join(", ")}</b></p>}
                         {dos.diagnosisNote && <p className="mt-1 text-[10.5pt] italic text-[#374151]">“{dos.diagnosisNote}”</p>}
                       </div>
                     )}
@@ -491,7 +502,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                     {/* Dala'il */}
                     {dalail?.sections?.length > 0 && (
                       <div className="rpt-keep rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">🔍 Dala&apos;il — clinical signs on examination</p>
+                        <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("dalail")}</p>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                           {dalail.sections.map((sec: R) => (
                             <div key={sec.key}>
@@ -510,7 +521,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                         {/* Usool */}
                         {(dos.usool?.length > 0 || dos.usoolNote) && (
                           <div className="rpt-keep rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                            <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">📐 Usool-e-Ilaj — principles of treatment</p>
+                            <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("usool")}</p>
                             <div className="flex flex-wrap gap-1">{dos.usool.map((u: string) => <span key={u} className="rounded-full border border-[#c4b5fd] bg-[#f5f3ff] px-2 py-0.5 text-[10pt] text-[#4c1d95]">{u}</span>)}</div>
                             {dos.usoolNote && <p className="mt-1 text-[10pt] text-[#374151]">{dos.usoolNote}</p>}
                           </div>
@@ -518,11 +529,11 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
 
                         {/* Ilaj-bil-Dawa */}
                         <div className="rpt-keep rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                          <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">💊 Ilaj-bil-Dawa — medicines prescribed</p>
+                          <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("dawa")}</p>
                           {dos.prescriptions?.length ? (
                             <table className="w-full text-[10pt] border-collapse">
                               <thead><tr className="text-start text-[8.5pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
-                                <th className="py-1 pe-2 font-semibold">#</th><th className="py-1 pe-2 font-semibold">Medicine</th><th className="py-1 pe-2 font-semibold">Form</th><th className="py-1 pe-2 font-semibold">Dose</th><th className="py-1 pe-2 font-semibold">Timing</th><th className="py-1 pe-2 font-semibold">Duration</th><th className="py-1 font-semibold">With</th>
+                                <th className="py-1 pe-2 font-semibold">#</th><th className="py-1 pe-2 font-semibold">{t("th_medicine")}</th><th className="py-1 pe-2 font-semibold">{t("th_form")}</th><th className="py-1 pe-2 font-semibold">{t("th_dose")}</th><th className="py-1 pe-2 font-semibold">{t("th_timing")}</th><th className="py-1 pe-2 font-semibold">{t("th_duration")}</th><th className="py-1 font-semibold">{t("th_with")}</th>
                               </tr></thead>
                               <tbody>
                                 {dos.prescriptions.map((rx: R, i: number) => (
@@ -534,123 +545,123 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                                 ))}
                               </tbody>
                             </table>
-                          ) : <Empty>No medicines prescribed.</Empty>}
+                          ) : <Empty>{t("no_meds")}</Empty>}
                         </div>
 
                         {/* Ghiza + Tadbeer */}
                         <div className="rpt-keep grid grid-cols-2 gap-3">
                           <div className="rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                            <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">🍽️ Ilaj-bil-Ghiza — diet</p>
-                            <p className="text-[9.5pt]"><span className="font-semibold text-[#047857]">✓ Recommended: </span>{dos.ghizaRecommended?.join(", ") || <Dim>—</Dim>}</p>
-                            <p className="text-[9.5pt] mt-0.5"><span className="font-semibold text-[#b91c1c]">✕ Parhez (avoid): </span>{dos.ghizaAvoid?.join(", ") || <Dim>—</Dim>}</p>
+                            <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("ghiza")}</p>
+                            <p className="text-[9.5pt]"><span className="font-semibold text-[#047857]">{t("recommended")} </span>{dos.ghizaRecommended?.join(", ") || <Dim>—</Dim>}</p>
+                            <p className="text-[9.5pt] mt-0.5"><span className="font-semibold text-[#b91c1c]">{t("avoid")} </span>{dos.ghizaAvoid?.join(", ") || <Dim>—</Dim>}</p>
                             {dos.ghizaNote && <p className="mt-1 text-[9.5pt] text-[#374151]">{dos.ghizaNote}</p>}
                           </div>
                           <div className="rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                            <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">🫧 Ilaj-bil-Tadbeer — regimens</p>
-                            {dos.tadbeer?.length ? dos.tadbeer.map((t: R) => (
-                              <p key={t.label} className="text-[9.5pt]"><b>{t.label}</b>{[t.frequency, t.duration, t.notes].filter(Boolean).length ? ` — ${[t.frequency, t.duration, t.notes].filter(Boolean).join(" · ")}` : ""}</p>
-                            )) : <p className="text-[9.5pt] text-[#6b7280]">None.</p>}
+                            <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("tadbeer")}</p>
+                            {dos.tadbeer?.length ? dos.tadbeer.map((td: R) => (
+                              <p key={td.label} className="text-[9.5pt]"><b>{td.label}</b>{[td.frequency, td.duration, td.notes].filter(Boolean).length ? ` — ${[td.frequency, td.duration, td.notes].filter(Boolean).join(" · ")}` : ""}</p>
+                            )) : <p className="text-[9.5pt] text-[#6b7280]">{t("none")}</p>}
                           </div>
                         </div>
 
                         {/* Prognosis & handover */}
                         <div className="rpt-keep rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">
-                          <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">📅 Prognosis, follow-up &amp; handover</p>
+                          <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("prognosis_section")}</p>
                           <Facts rows={[
-                            ["Prognosis (Inzar)", dos.prognosis],
-                            ["Priority", dos.priority ? dos.priority.charAt(0).toUpperCase() + dos.priority.slice(1) : null],
-                            ["Follow-up", dos.followUpDate || dos.followUpNote ? [dos.followUpDate ? fmtDate(dos.followUpDate) : null, dos.followUpNote].filter(Boolean).join(" — ") : null],
+                            [t("f_prognosis"), dos.prognosis],
+                            [t("f_priority"), dos.priority ? (["routine", "priority", "urgent"].includes(dos.priority) ? t(`pr_${dos.priority}`) : dos.priority) : null],
+                            [t("f_followup"), dos.followUpDate || dos.followUpNote ? [dos.followUpDate ? fmtDate(dos.followUpDate) : null, dos.followUpNote].filter(Boolean).join(" — ") : null],
                           ]} />
-                          {dos.urgentDirectives && <p className="mt-1.5 rounded border border-[#fca5a5] bg-[#fef2f2] px-2 py-1 text-[10pt] text-[#991b1b]"><b>🚨 Urgent — return immediately if:</b> {dos.urgentDirectives}</p>}
-                          {dos.handoverNote && <p className="mt-1.5 text-[10pt] text-[#374151] whitespace-pre-wrap"><span className="font-semibold text-[#111827]">Handover note: </span>{dos.handoverNote}</p>}
+                          {dos.urgentDirectives && <p className="mt-1.5 rounded border border-[#fca5a5] bg-[#fef2f2] px-2 py-1 text-[10pt] text-[#991b1b]"><b>{t("urgent_return")}</b> {dos.urgentDirectives}</p>}
+                          {dos.handoverNote && <p className="mt-1.5 text-[10pt] text-[#374151] whitespace-pre-wrap"><span className="font-semibold text-[#111827]">{t("handover_note")} </span>{dos.handoverNote}</p>}
                         </div>
                       </>
                     )}
-                    <p className="text-[9pt] text-[#6b7280]">Doses and regimens are the treating Hakim&apos;s own entries, reproduced unchanged.</p>
+                    <p className="text-[9pt] text-[#6b7280]">{t("doses_note")}</p>
                   </div>
                 )}
               </Section>
 
               {/* ================= PART C ================= */}
-              <PartDivider letter="C" emoji="📚" title="History, notes & decision support" sub="Allergies, medicines, background, clinical notes and Hakeem Insight" />
+              <PartDivider letter="C" emoji="📚" title={t("part_c")} sub={t("part_c_sub")} />
 
               {/* ---------------- Allergies & medicines ---------------- */}
               <div className="grid grid-cols-2 gap-4">
-                <Section emoji="⚠️" title="Allergies & sensitivities" n={10}>
+                <Section emoji="⚠️" title={t("s_allergies")} n={10}>
                   {allergies.length ? (
-                    <ul className="text-[10.5pt] space-y-0.5">{allergies.map((a) => <li key={a}>• <b>{a}</b> <span className="text-[9pt] text-[#6b7280]">— patient-reported; reaction & severity not recorded</span></li>)}</ul>
-                  ) : data.intake ? <Empty>No allergies were reported at registration. This is not a confirmed absence of allergies.</Empty>
-                    : <Empty>Allergy information not recorded.</Empty>}
+                    <ul className="text-[10.5pt] space-y-0.5">{allergies.map((a) => <li key={a}>• <b>{a}</b> <span className="text-[9pt] text-[#6b7280]">{t("allergy_reported")}</span></li>)}</ul>
+                  ) : data.intake ? <Empty>{t("allergy_none")}</Empty>
+                    : <Empty>{t("allergy_unknown")}</Empty>}
                 </Section>
-                <Section emoji="💊" title="Current medicines & herbs" n={11}>
+                <Section emoji="💊" title={t("s_meds")} n={11}>
                   {data.intake?.medications?.length || p.currentMedications ? (
                     <>
                       {data.intake?.medications?.length > 0 && (
-                        <ul className="text-[10.5pt] space-y-0.5">{data.intake.medications.map((m: R) => <li key={`${m.kind}${m.label}`}>• <b>{m.label}</b> <span className="text-[9pt] text-[#6b7280]">— {m.kind === "medication" ? "allopathic medication" : "supplement / herb"}, reported by patient</span></li>)}</ul>
+                        <ul className="text-[10.5pt] space-y-0.5">{data.intake.medications.map((m: R) => <li key={`${m.kind}${m.label}`}>• <b>{m.label}</b> <span className="text-[9pt] text-[#6b7280]">{m.kind === "medication" ? t("med_allo") : t("med_herb")}</span></li>)}</ul>
                       )}
-                      {p.currentMedications && <p className="text-[10pt] mt-1"><Dim>Profile note:</Dim> {p.currentMedications}</p>}
-                      <p className="mt-1 text-[9pt] text-[#6b7280]">Dose, frequency and start date were not recorded.</p>
+                      {p.currentMedications && <p className="text-[10pt] mt-1"><Dim>{t("profile_note")}</Dim> {p.currentMedications}</p>}
+                      <p className="mt-1 text-[9pt] text-[#6b7280]">{t("med_details")}</p>
                     </>
-                  ) : data.intake ? <Empty>None reported at registration.</Empty> : <Empty>Medication information not recorded.</Empty>}
+                  ) : data.intake ? <Empty>{t("med_none_reg")}</Empty> : <Empty>{t("med_unknown")}</Empty>}
                 </Section>
               </div>
 
               {/* ---------------- Background ---------------- */}
-              <Section emoji="📋" title="Medical background" n={12}>
+              <Section emoji="📋" title={t("s_background")} n={12}>
                 {[p.chronicConditions, p.medicalHistory, p.surgicalHistory, p.familyHistory, p.lifestyle, p.occupation].some(Boolean) ? (
                   <Facts rows={[
-                    ["Chronic conditions", p.chronicConditions], ["Medical history", p.medicalHistory], ["Surgical history", p.surgicalHistory],
-                    ["Family history", p.familyHistory], ["Lifestyle", p.lifestyle], ["Occupation", p.occupation],
+                    [t("f_chronic"), p.chronicConditions], [t("f_medical"), p.medicalHistory], [t("f_surgical"), p.surgicalHistory],
+                    [t("f_family"), p.familyHistory], [t("f_lifestyle"), p.lifestyle], [t("f_occupation"), p.occupation],
                   ]} />
-                ) : <Empty>No medical, surgical or family history recorded. This does not mean there is none.</Empty>}
+                ) : <Empty>{t("background_none")}</Empty>}
               </Section>
 
               {/* ---------------- Doctor notes ---------------- */}
-              <Section emoji="🗒️" title="Doctor's observations & clinical notes" n={13} meta={data.residentNotes?.updatedAt ? `Updated ${fmtDateTime(data.residentNotes.updatedAt)}` : undefined}>
+              <Section emoji="🗒️" title={t("s_notes")} n={13} meta={data.residentNotes?.updatedAt ? t("updated_at", { date: fmtDateTime(data.residentNotes.updatedAt) }) : undefined}>
                 {data.residentNotes?.points?.length ? (
                   <ul className="text-[10.5pt] space-y-0.5 list-disc ps-5">{data.residentNotes.points.map((pt: string, i: number) => <li key={i}>{pt}</li>)}</ul>
-                ) : <Empty>No clinical notes recorded.</Empty>}
-                <p className="mt-1 text-[9pt] text-[#6b7280]">Recorded by the clinical team, reproduced unchanged.</p>
+                ) : <Empty>{t("notes_none")}</Empty>}
+                <p className="mt-1 text-[9pt] text-[#6b7280]">{t("notes_unchanged")}</p>
               </Section>
 
               {/* ---------------- Unani context ---------------- */}
-              <Section emoji="🌿" title="Unani assessment context" n={14}>
+              <Section emoji="🌿" title={t("s_unani")} n={14}>
                 <Facts rows={[
-                  ["Recorded Mizaj (profile)", p.mizaj],
-                  ["Humoral balance (computed)", data.humoral ? `Damawi ${Math.round(data.humoral.damPercent)}% · Safrawi ${Math.round(data.humoral.safraPercent)}% · Balghami ${Math.round(data.humoral.balghamPercent)}% · Saudawi ${Math.round(data.humoral.saudaPercent)}%` : null],
-                  ["Dominant humour", data.humoral ? `${data.humoral.dominantOverride ?? data.humoral.dominant}${data.humoral.dominantOverride ? ` (doctor's pick; computed: ${data.humoral.dominant})` : " (computed from recorded complaints)"}` : null],
-                  ["Asbab-e-Sittah review", data.later.asbab ? (data.later.asbab.status === "completed" ? `Completed ${fmtDate(data.later.asbab.completedAt)}` : "In progress") : null],
-                  ["Tashkhees (diagnosis)", data.later.dossier?.mizajAsli || data.later.dossier?.suMizajQuality ? [data.later.dossier.mizajAsli && `Mizaj-e-Asli: ${data.later.dossier.mizajAsli}`, data.later.dossier.suMizajQuality && `Su-e-Mizaj: ${[data.later.dossier.suMizajType, data.later.dossier.suMizajQuality, data.later.dossier.suMizajGrade ? `Darja ${data.later.dossier.suMizajGrade}` : null].filter(Boolean).join(" ")}`].filter(Boolean).join(" · ") + (data.later.dossier.status === "finalized" ? ` — finalised by ${data.later.dossier.finalizedByName || "doctor"}` : " — draft") : null],
-                  ["Diagnosis note", data.later.dossier?.diagnosisNote],
-                ]} empty="No Unani-specific findings recorded yet for this visit." />
+                  [t("f_recorded_mizaj"), p.mizaj],
+                  [t("f_balance"), data.humoral ? `Damawi ${Math.round(data.humoral.damPercent)}% · Safrawi ${Math.round(data.humoral.safraPercent)}% · Balghami ${Math.round(data.humoral.balghamPercent)}% · Saudawi ${Math.round(data.humoral.saudaPercent)}%` : null],
+                  [t("f_dominant"), data.humoral ? `${data.humoral.dominantOverride ?? data.humoral.dominant}${data.humoral.dominantOverride ? t("doctor_pick", { name: data.humoral.dominant }) : t("computed_from")}` : null],
+                  [t("f_asbab"), data.later.asbab ? (data.later.asbab.status === "completed" ? t("completed_at", { date: fmtDate(data.later.asbab.completedAt) }) : t("in_progress")) : null],
+                  [t("f_tashkhees"), data.later.dossier?.mizajAsli || data.later.dossier?.suMizajQuality ? [data.later.dossier.mizajAsli && `Mizaj-e-Asli: ${data.later.dossier.mizajAsli}`, data.later.dossier.suMizajQuality && `Su-e-Mizaj: ${[data.later.dossier.suMizajType, data.later.dossier.suMizajQuality, data.later.dossier.suMizajGrade ? t("darja", { n: data.later.dossier.suMizajGrade }) : null].filter(Boolean).join(" ")}`].filter(Boolean).join(" · ") + (data.later.dossier.status === "finalized" ? t("finalised_by", { name: data.later.dossier.finalizedByName || t("doctor_word") }) : t("draft_suffix")) : null],
+                  [t("f_dx_note"), data.later.dossier?.diagnosisNote],
+                ]} empty={t("unani_none")} />
               </Section>
 
               {/* ---------------- Hakeem Insight ---------------- */}
-              <Section emoji="✨" title="Hakeem Insight — automated decision support" n={15}>
-                <p className="mb-2 rounded bg-[#f3f4f6] px-2 py-1 text-[9pt] text-[#4b5563]">Generated automatically from this visit&apos;s recorded data. Not verified by a doctor; not a diagnosis or prescription.</p>
-                {!l1 && !data.routing && !data.humoral?.aiClue && !data.vitalsInsight ? <Empty>No Hakeem Insight was generated for this visit.</Empty> : (
+              <Section emoji="✨" title={t("s_insight")} n={15}>
+                <p className="mb-2 rounded bg-[#f3f4f6] px-2 py-1 text-[9pt] text-[#4b5563]">{t("insight_note")}</p>
+                {!l1 && !data.routing && !data.humoral?.aiClue && !data.vitalsInsight ? <Empty>{t("insight_none")}</Empty> : (
                   <div className="space-y-2">
                     {data.routing && (
-                      <Insight title="Triage priority" when={data.routing.updatedAt || data.routing.generatedAt}>
-                        <p><b>{data.routing.priorityLevel}</b> · Next step: {data.routing.triageStream}</p>
+                      <Insight title={t("i_triage")} when={data.routing.updatedAt || data.routing.generatedAt}>
+                        <p><b>{data.routing.priorityLevel}</b> · {t("next_step")} {data.routing.triageStream}</p>
                         <p className="text-[#4b5563]">{data.routing.justification}</p>
                       </Insight>
                     )}
                     {data.humoral?.aiClue && (
-                      <Insight title={`Humoral reading — why ${data.humoral.dominantOverride ?? data.humoral.dominant}`} when={data.humoral.aiClueGeneratedAt}>
+                      <Insight title={t("i_humoral", { name: data.humoral.dominantOverride ?? data.humoral.dominant })} when={data.humoral.aiClueGeneratedAt}>
                         <p>{data.humoral.aiClue}</p>
                       </Insight>
                     )}
                     {l1 && (
-                      <Insight title="L1 screening note" when={data.l1Screening?.updatedAt}>
+                      <Insight title={t("i_l1")} when={data.l1Screening?.updatedAt}>
                         <p className="font-medium">{l1.headline}</p>
                         {l1.findings?.length > 0 && <ul className="list-disc ps-5">{l1.findings.map((f, i) => <li key={i}>{f.severity === "red" ? "▲ " : ""}{f.text}</li>)}</ul>}
-                        {l1.priority && <p><Dim>Check first:</Dim> {l1.priority}</p>}
-                        {l1.unani && <p><Dim>Unani note:</Dim> {l1.unani}</p>}
+                        {l1.priority && <p><Dim>{t("check_first")}</Dim> {l1.priority}</p>}
+                        {l1.unani && <p><Dim>{t("unani_note")}</Dim> {l1.unani}</p>}
                       </Insight>
                     )}
                     {data.vitalsInsight && (
-                      <Insight title="Vitals trend" when={data.vitalsInsight.updatedAt || data.vitalsInsight.generatedAt}>
+                      <Insight title={t("i_vitals")} when={data.vitalsInsight.updatedAt || data.vitalsInsight.generatedAt}>
                         <p>{data.vitalsInsight.insight}</p>
                       </Insight>
                     )}
@@ -659,50 +670,50 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
               </Section>
 
               {/* ---------------- Reports ---------------- */}
-              <Section emoji="📁" title="Patient reports on file" n={16}>
+              <Section emoji="📁" title={t("s_reports")} n={16}>
                 {data.reports?.length ? (
                   <table className="w-full text-[10pt] border-collapse">
                     <thead><tr className="text-start text-[9pt] uppercase tracking-wide text-[#6b7280] border-b border-[#d1d5db]">
-                      <th className="py-1 pe-2 font-semibold">Report</th><th className="py-1 pe-2 font-semibold">Date</th><th className="py-1 pe-2 font-semibold">Result</th><th className="py-1 font-semibold">Review</th>
+                      <th className="py-1 pe-2 font-semibold">{t("th_report")}</th><th className="py-1 pe-2 font-semibold">{t("th_date")}</th><th className="py-1 pe-2 font-semibold">{t("th_result")}</th><th className="py-1 font-semibold">{t("th_review")}</th>
                     </tr></thead>
                     <tbody>{data.reports.map((r: R, i: number) => (
                       <tr key={i} className="align-top border-b border-[#f3f4f6]">
                         <td className="py-1 pe-2"><b>{r.title}</b>{r.source && <span className="text-[#6b7280]"> · {r.source}</span>}{r.findings && <div className="text-[9pt] text-[#4b5563]">{r.findings}</div>}</td>
                         <td className="py-1 pe-2">{fmtDate(r.reportDate || r.createdAt)}</td>
-                        <td className={`py-1 pe-2 ${r.resultFlag === "critical" || r.resultFlag === "abnormal" ? "font-semibold text-[#b91c1c]" : ""}`}>{r.resultFlag === "unknown" ? "Not stated" : r.resultFlag}</td>
-                        <td className="py-1">{r.status === "reviewed" ? `Reviewed${r.reviewedByName ? ` by ${r.reviewedByName}` : ""}` : "Awaiting doctor review"}</td>
+                        <td className={`py-1 pe-2 ${r.resultFlag === "critical" || r.resultFlag === "abnormal" ? "font-semibold text-[#b91c1c]" : ""}`}>{r.resultFlag === "unknown" ? t("not_stated") : r.resultFlag}</td>
+                        <td className="py-1">{r.status === "reviewed" ? (r.reviewedByName ? t("reviewed_by", { name: r.reviewedByName }) : t("reviewed")) : t("awaiting")}</td>
                       </tr>
                     ))}</tbody>
                   </table>
-                ) : <Empty>No reports uploaded for this patient.</Empty>}
-                <p className="mt-1 text-[9pt] text-[#6b7280]">Report files are kept in the patient&apos;s record and are not reproduced here.</p>
+                ) : <Empty>{t("reports_none")}</Empty>}
+                <p className="mt-1 text-[9pt] text-[#6b7280]">{t("reports_note")}</p>
               </Section>
 
               {/* ---------------- Authorization ---------------- */}
               <section className="rpt-keep mt-5 grid grid-cols-2 gap-6 border-t-2 border-[#0f766e] pt-4">
                 <div>
-                  <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold">Treating doctor</p>
+                  <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold">{t("treating")}</p>
                   <div className="mt-8 border-b border-[#9ca3af]" />
-                  <p className="mt-1 text-[10.5pt] font-semibold">{doctor?.name || "Doctor not assigned"}</p>
+                  <p className="mt-1 text-[10.5pt] font-semibold">{doctor?.name || t("not_assigned")}</p>
                   <p className="text-[9.5pt] text-[#4b5563]">{[doctor?.designation, doctor?.qualification].filter(Boolean).join(" · ") || " "}</p>
-                  {doctor?.registrationNumber && <p className="text-[9.5pt] text-[#4b5563]">Reg. no. {doctor.registrationNumber}</p>}
-                  <p className="mt-1 text-[9.5pt] font-semibold text-[#92400e]">Signature pending — no digital signature on record.</p>
+                  {doctor?.registrationNumber && <p className="text-[9.5pt] text-[#4b5563]">{t("reg_no", { value: doctor.registrationNumber })}</p>}
+                  <p className="mt-1 text-[9.5pt] font-semibold text-[#92400e]">{t("sig_pending")}</p>
                 </div>
                 <div className="text-[9.5pt] text-[#4b5563]">
-                  <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold">Report details</p>
-                  <p className="mt-1">Report ID: <span className="font-mono text-[#111827]">{data.report.id}</span></p>
-                  <p>Generated {fmtDateTime(data.report.generatedAt)}{data.report.generatedBy ? ` by ${data.report.generatedBy}` : ""}.</p>
-                  <p>Built from the live record at that moment; a later edit to the assessment produces a different report.</p>
-                  <p className="mt-2">Prepared on the {b.portal_name} platform. Platform branding does not indicate clinical approval of the contents.</p>
+                  <p className="text-[9pt] uppercase tracking-wide text-[#6b7280] font-semibold">{t("details")}</p>
+                  <p className="mt-1">{t("id_line")} <span className="font-mono text-[#111827]">{data.report.id}</span></p>
+                  <p>{data.report.generatedBy ? t("gen_line_by", { date: fmtDateTime(data.report.generatedAt), name: data.report.generatedBy }) : t("gen_line", { date: fmtDateTime(data.report.generatedAt) })}</p>
+                  <p>{t("live_note")}</p>
+                  <p className="mt-2">{t("prepared_on", { portal: b.portal_name })}</p>
                 </div>
               </section>
 
               {/* ---------------- Footer ---------------- */}
               <footer className="rpt-keep mt-5 border-t border-[#d1d5db] pt-2 text-[9pt] text-[#6b7280] space-y-1">
-                <p><b className="text-[#374151]">Confidential.</b> {b.confidentiality}</p>
+                <p><b className="text-[#374151]">{t("confidential")}</b> {b.confidentiality}</p>
                 <p>{b.insight_disclaimer}</p>
                 <p className="flex justify-between gap-3 flex-wrap">
-                  <span>© {year} {b.copyright_owner}. All rights reserved.</span>
+                  <span>{t("rights", { year, owner: b.copyright_owner })}</span>
                   <span>{b.website_url.replace(/^https?:\/\//, "")}{b.support_email ? ` · ${b.support_email}` : ""}{b.support_phone ? ` · ${b.support_phone}` : ""}</span>
                 </p>
               </footer>
@@ -718,20 +729,20 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
       {/* Toolbar — screen only */}
       <div className="rpt-noprint sticky top-0 z-20 -mx-4 lg:-mx-6 mb-5 px-4 lg:px-6 py-3 border-b border-border/60 bg-background/90 backdrop-blur flex items-center gap-3 flex-wrap">
         <Button variant="outline" size="sm" onClick={() => router.push(`/facility/patients/${patientId}/record`)}>
-          <ArrowLeft className="h-4 w-4" /> Return to assessment
+          <ArrowLeft className="h-4 w-4" /> {t("return")}
         </Button>
         <div className="min-w-0">
-          <p className="text-sm font-semibold truncate">Assessment report · {p.name}</p>
-          <p className="text-xs text-muted-foreground">{data.report.id} · generated {fmtDateTime(data.report.generatedAt)} · shows saved data only — Save Draft on the assessment, then refresh, to include new edits</p>
+          <p className="text-sm font-semibold truncate">{t("toolbar_title", { name: p.name })}</p>
+          <p className="text-xs text-muted-foreground">{t("toolbar_hint", { id: data.report.id, date: fmtDateTime(data.report.generatedAt) })}</p>
         </div>
         <span className={`ms-auto rounded-full border px-2.5 py-1 text-xs font-semibold ${complete || data.referral ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10" : "border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10"}`}>
-          {complete || data.referral ? statusLabel : "Draft — incomplete"}
+          {complete || data.referral ? statusLabel : t("draft_short")}
         </span>
-        <Button variant="outline" size="sm" onClick={() => window.print()} title="Choose “Save as PDF” as the printer">
-          <Download className="h-4 w-4" /> Save as PDF
+        <Button variant="outline" size="sm" onClick={() => window.print()} title={t("pdf_title")}>
+          <Download className="h-4 w-4" /> {t("save_pdf")}
         </Button>
         <Button size="sm" onClick={() => window.print()}>
-          <Printer className="h-4 w-4" /> Print
+          <Printer className="h-4 w-4" /> {t("print")}
         </Button>
       </div>
 
@@ -767,12 +778,13 @@ function Section({ title, n, meta, emoji, tone, children }: { title: string; n: 
 
 /** A banner that splits the report into parts (who recorded what). */
 function PartDivider({ letter, emoji, title, sub, tone }: { letter: string; emoji: string; title: string; sub: string; tone?: "senior" }) {
+  const t = useTranslations("clinic.report");
   const senior = tone === "senior";
   return (
     <div className={`rpt-keep mt-8 flex items-center gap-3 rounded-lg px-3.5 py-2.5 ${senior ? "bg-[#5b21b6] text-white" : "bg-[#0f766e] text-white"}`} style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
       <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-[15pt]" aria-hidden>{emoji}</span>
       <div className="min-w-0">
-        <p className="text-[8.5pt] font-semibold uppercase tracking-[0.18em] opacity-80">Part {letter}</p>
+        <p className="text-[8.5pt] font-semibold uppercase tracking-[0.18em] opacity-80">{t("part", { letter })}</p>
         <p className="font-serif text-[13.5pt] font-bold leading-tight">{title}</p>
         <p className="text-[9.5pt] opacity-85">{sub}</p>
       </div>
@@ -813,19 +825,21 @@ function Dim({ children }: { children: ReactNode }) {
 }
 
 function SignList({ items }: { items: { label: string; custom: boolean }[] }) {
+  const t = useTranslations("clinic.report");
   return (
     <ul className="mt-1 text-[10.5pt] space-y-0.5">
-      {items.map((s) => <li key={s.label} className="font-semibold text-[#991b1b]">▲ {s.label}{s.custom && <span className="font-normal text-[9pt] text-[#6b7280]"> — added by staff</span>}</li>)}
+      {items.map((s) => <li key={s.label} className="font-semibold text-[#991b1b]">▲ {s.label}{s.custom && <span className="font-normal text-[9pt] text-[#6b7280]">{t("added_by_staff")}</span>}</li>)}
     </ul>
   );
 }
 
 function Insight({ title, when, children }: { title: string; when?: string | null; children: ReactNode }) {
+  const t = useTranslations("clinic.report");
   return (
     <div className="rpt-keep rounded border border-[#c7d2fe] px-3 py-1.5 text-[10.5pt]">
       <p className="flex justify-between gap-2 text-[9pt] uppercase tracking-wide font-semibold text-[#4338ca]">
         <span>✦ {title}</span>
-        <span className="font-normal normal-case tracking-normal text-[#6b7280]">Hakeem Insight · {when ? fmtDateTime(when) : "time not recorded"}</span>
+        <span className="font-normal normal-case tracking-normal text-[#6b7280]">{t("insight_label")} · {when ? fmtDateTime(when) : t("time_none")}</span>
       </p>
       <div className="mt-0.5 space-y-0.5">{children}</div>
     </div>

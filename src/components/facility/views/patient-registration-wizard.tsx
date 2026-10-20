@@ -1,6 +1,8 @@
 "use client";
 
 import { useAppStore } from "@/lib/store";
+import { useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { FeeAmountFields, newPaymentKey, useFeesAndModes } from "@/components/facility/payments/payment-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -36,7 +38,7 @@ const PHONE_PATTERN = /^[6-9]\d{9}$/;
 // `kind` marks notices that resolve themselves as the form is corrected.
 type ActionNotice = Notice & { retry?: () => void; retryLabel?: string; kind?: "fields" | "missing" };
 
-const FIELD_LABELS: Record<string, string> = { name: "Patient name", phone: "Mobile number", emergencyContact: "Emergency contact number" };
+const FIELD_LABELS: Record<string, string> = { name: "f_name", phone: "f_phone", emergencyContact: "f_emergency" };
 
 /** Scrolls a field (or a section) into view and puts the cursor in it. */
 function jumpTo(id: string) {
@@ -74,9 +76,9 @@ interface MedicationOption { id: string; kind: string; label: string }
 interface MedicationEntry { label: string; kind: "supplement" | "medication" }
 
 const ONSET_OPTIONS = [
-  { value: "<24h", label: "Today", hint: "< 24 hours" },
-  { value: "1-7d", label: "This week", hint: "1 – 7 days" },
-  { value: ">1m", label: "Long-term", hint: "1 month +" },
+  { value: "<24h", key: "today" },
+  { value: "1-7d", key: "week" },
+  { value: ">1m", key: "long" },
 ];
 
 interface Result {
@@ -116,6 +118,9 @@ function genderForRelationship(relationship: string, options: string[]): string 
 
 export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: string; patientId?: string } = {}) {
   const router = useRouter();
+  const t = useTranslations("clinic.register");
+  const tc = useTranslations("common");
+  const vl = useValueLabel();
   const goToPatients = () => router.push("/facility/patients");
   // Reopened either for one specific visit (doctor's "Edit Registration" link)
   // or for a patient (clicking them on the Patients list) — the latter
@@ -312,9 +317,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     api.get(`/api/facility/visits/${visitId}/registration`)
       .then((res: any) => applyRegistrationPrefill(res))
       .catch((e: any) => setLoadNotice({
-        tone: "error", title: "This visit's registration couldn't be loaded",
-        detail: `${e.message || "Network error"}. The form below may be incomplete — don't save until it loads.`,
-        retry: () => window.location.reload(), retryLabel: "Reload",
+        tone: "error", title: t("load_visit_failed"),
+        detail: t("incomplete", { error: e.message || tc("network_error") }),
+        retry: () => window.location.reload(), retryLabel: tc("reload"),
       }))
       .finally(() => setLoadingVisit(false));
   }, [visitId]);
@@ -339,9 +344,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         }
       } catch (e: any) {
         setLoadNotice({
-          tone: "error", title: "This patient's details couldn't be loaded",
-          detail: `${e.message || "Network error"}. The form below may be incomplete — don't save until it loads.`,
-          retry: () => window.location.reload(), retryLabel: "Reload",
+          tone: "error", title: t("load_patient_failed"),
+          detail: t("incomplete", { error: e.message || tc("network_error") }),
+          retry: () => window.location.reload(), retryLabel: tc("reload"),
         });
       } finally {
         setLoadingVisit(false);
@@ -404,14 +409,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   // Contact (Section 2), Doctor, and Payment are explicitly optional
   // elsewhere in the form, so they're excluded from this gate.
   const readiness = [
-    { label: "Patient name", ok: !!name.trim(), target: "name" },
-    { label: "Mobile number", ok: !!phone.trim(), target: "phone" },
-    { label: "Gender", ok: !!gender, target: "gender" },
-    { label: "Age", ok: !!approxAge, target: "approxAge" },
-    { label: "Address", ok: !!address.trim(), target: "address" },
-    { label: "Symptoms", ok: chiefComplaintIds.length > 0, target: "reg-complaints" },
-    { label: "When it started", ok: !!onsetTimeline, target: "reg-onset" },
-    { label: "How they arrived", ok: !!mobility, target: "reg-mobility" },
+    { label: t("f_name"), ok: !!name.trim(), target: "name" },
+    { label: t("f_phone"), ok: !!phone.trim(), target: "phone" },
+    { label: t("r_gender"), ok: !!gender, target: "gender" },
+    { label: t("r_age"), ok: !!approxAge, target: "approxAge" },
+    { label: t("r_address"), ok: !!address.trim(), target: "address" },
+    { label: t("r_symptoms"), ok: chiefComplaintIds.length > 0, target: "reg-complaints" },
+    { label: t("r_onset"), ok: !!onsetTimeline, target: "reg-onset" },
+    { label: t("r_mobility"), ok: !!mobility, target: "reg-mobility" },
   ];
   const mandatoryChecklist = readiness.map((r) => r.ok);
 
@@ -422,7 +427,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     if (!missing.length) return null;
     return {
       tone: "warning",
-      title: `${missing.length} required ${missing.length === 1 ? "field is" : "fields are"} still empty`,
+      title: t("missing", { count: missing.length }),
       detail: (
         <span className="flex flex-wrap items-center gap-1.5 mt-1">
           {missing.map((m) => (
@@ -447,12 +452,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       ? openFieldErrors.length
         ? {
           ...actionNotice,
-          title: openFieldErrors.length === 1 ? "1 field needs fixing before saving" : `${openFieldErrors.length} fields need fixing before saving`,
+          title: t("fix_fields", { count: openFieldErrors.length }),
           detail: (
             <span className="flex flex-wrap gap-x-3 gap-y-1">
               {openFieldErrors.map(([k, msg]) => (
                 <button key={k} type="button" onClick={() => jumpTo(k)} className="underline underline-offset-2 hover:text-foreground">
-                  {FIELD_LABELS[k]}: {msg}
+                  {t(FIELD_LABELS[k])}: {msg}
                 </button>
               ))}
             </span>
@@ -471,13 +476,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     try {
       qrDataUrl = await QRCode.toDataURL(qrValue, { width: 220, margin: 1 });
     } catch {
-      return { tone: "error", title: "The wristband barcode couldn't be generated", detail: "The patient is registered — try printing again." };
+      return { tone: "error", title: t("qr_failed"), detail: t("qr_failed_hint") };
     }
     const win = window.open("", "_blank", "width=420,height=640");
     if (!win) {
       return {
-        tone: "warning", title: "The print window was blocked",
-        detail: "Your browser stopped the wristband window from opening. Allow pop-ups for this site (icon at the right of the address bar), then print again.",
+        tone: "warning", title: t("popup"),
+        detail: t("popup_hint"),
       };
     }
     const escaped = data.patientLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -565,15 +570,15 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     if (!searchMobile && !searchName.trim()) {
       setSearchNotice({
         tone: "warning", empty: true,
-        title: "Enter a mobile number or name to search",
-        detail: "Either one is enough — the mobile number gives the most accurate match. If the patient is new here, use Add New Patient instead.",
+        title: t("search_empty"),
+        detail: t("search_empty_hint"),
       });
       document.getElementById("searchMobile")?.focus();
       return;
     }
     setSearchNotice(null);
     if (searchMobile && !PHONE_PATTERN.test(searchMobile)) {
-      setFieldErrors((prev) => ({ ...prev, searchMobile: "Enter a valid 10-digit mobile number" }));
+      setFieldErrors((prev) => ({ ...prev, searchMobile: t("valid_mobile") }));
       return;
     }
     setFieldErrors((prev) => ({ ...prev, searchMobile: "" }));
@@ -587,9 +592,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     } catch (e: any) {
       setCandidates(null);
       setSearchNotice({
-        tone: "error", title: "The search didn't go through",
-        detail: `${e.message || "Network error"}. Nothing was changed — try again.`,
-        retry: () => runSearch(), retryLabel: "Search again",
+        tone: "error", title: t("search_failed"),
+        detail: t("nothing_changed", { error: e.message || tc("network_error") }),
+        retry: () => runSearch(), retryLabel: t("search_again"),
       });
     } finally {
       setSearching(false);
@@ -638,10 +643,10 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
   const submitWith = async (mode: "hold" | "print" | "transfer") => {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "Name is required";
-    if (!phone.trim()) errs.phone = "Mobile number is required";
-    else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = "Enter a valid 10-digit mobile number";
-    if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = "Enter a valid 10-digit mobile number";
+    if (!name.trim()) errs.name = t("name_required");
+    if (!phone.trim()) errs.phone = t("phone_required");
+    else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = t("valid_mobile");
+    if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = t("valid_mobile");
     setFieldErrors(errs);
     if (Object.keys(errs).length) { showFieldErrors(errs); return; }
     if (mode === "transfer" && !mandatoryDone) {
@@ -721,7 +726,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         // are frequently handled by different staff at different times, not
         // one continuous sitting — so hand control back to the patient list
         // rather than forcing whoever's at the desk into the Vitals page.
-        setFlash({ tone: "success", title: `${pLabel} registered`, detail: "Ready for Triage & Vitals — they now appear in the patient list below." });
+        setFlash({ tone: "success", title: t("registered", { label: pLabel }), detail: t("registered_hint") });
         router.push("/facility/patients");
         return;
       }
@@ -737,9 +742,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       setPrintNotice(printProblem);
     } catch (e: any) {
       setActionNotice({
-        tone: "error", title: "Registration wasn't completed",
-        detail: `${e.message || "Network error"}. Everything you entered is still here — check it and try again.`,
-        retry: () => submitWith(mode), retryLabel: "Try again",
+        tone: "error", title: t("not_completed"),
+        detail: t("still_here", { error: e.message || tc("network_error") }),
+        retry: () => submitWith(mode), retryLabel: tc("retry"),
       });
     } finally {
       setSubmitting(false);
@@ -753,10 +758,10 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   // is still the only thing that advances the visit itself).
   const saveAndReturn = async () => {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "Name is required";
-    if (!phone.trim()) errs.phone = "Mobile number is required";
-    else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = "Enter a valid 10-digit mobile number";
-    if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = "Enter a valid 10-digit mobile number";
+    if (!name.trim()) errs.name = t("name_required");
+    if (!phone.trim()) errs.phone = t("phone_required");
+    else if (!PHONE_PATTERN.test(phone.trim())) errs.phone = t("valid_mobile");
+    if (emergencyContact.trim() && !PHONE_PATTERN.test(emergencyContact.trim())) errs.emergencyContact = t("valid_mobile");
     setFieldErrors(errs);
     if (Object.keys(errs).length) { showFieldErrors(errs); return; }
     if (!editingId || !resolvedVisitId) return;
@@ -796,13 +801,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         emergencyContact, emergencyContactName, address, cityState, doctorId,
         chiefComplaintIds, narrative, onsetTimeline, allergies, medications, mobility, amount, paymentMode,
       });
-      setFlash({ tone: "success", title: "Registration updated", detail: `Changes to ${name.trim()}'s registration were saved.` });
+      setFlash({ tone: "success", title: t("updated"), detail: t("updated_hint", { name: name.trim() }) });
       router.push(`/facility/patients/${editingId}/record`);
     } catch (e: any) {
       setActionNotice({
-        tone: "error", title: "Your changes weren't saved",
-        detail: `${e.message || "Network error"}. Everything you entered is still here — try saving again.`,
-        retry: () => saveAndReturn(), retryLabel: "Save again",
+        tone: "error", title: t("not_saved"),
+        detail: t("save_try", { error: e.message || tc("network_error") }),
+        retry: () => saveAndReturn(), retryLabel: t("save_again"),
       });
     } finally {
       setSubmitting(false);
@@ -812,7 +817,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   if (loadingVisit) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-12">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
       </div>
     );
   }
@@ -820,17 +825,17 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   return (
     <div className="w-full">
       <button onClick={() => guardedNavigate(goToPatients)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
-        <ChevronLeft className="h-4 w-4" /> Back to Patients
+        <ChevronLeft className="h-4 w-4" /> {t("back")}
       </button>
 
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5 flex-wrap">
           <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">
-            {directEntry ? "Review & Edit Registration" : "Register Patient"}
+            {directEntry ? t("title_edit") : t("title_new")}
           </h1>
           {isDirty && (
             <Badge variant="outline" className="bg-amber-500/15 text-amber-600 border-amber-500/30 text-[10px] font-semibold uppercase tracking-wide">
-              Unsaved Changes
+              {t("unsaved_badge")}
             </Badge>
           )}
         </div>
@@ -839,13 +844,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
             onClick={() => guardedNavigate(() => router.push(`/facility/patients/${editingId}/record`))}
             className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
           >
-            View Full Clinical Record <ArrowRight className="h-3.5 w-3.5" />
+            {t("view_record")} <ArrowRight className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
 
       <PatientStageTracker
-        steps={PATIENT_JOURNEY_STEPS.map((s) => (s.key === "registration" && isDirty ? { ...s, variant: "warning" as const, variantLabel: "Unsaved changes" } : s))}
+        steps={PATIENT_JOURNEY_STEPS.map((s) => (s.key === "registration" && isDirty ? { ...s, variant: "warning" as const, variantLabel: t("unsaved_step") } : s))}
         activeKey="registration"
         completedKeys={[]}
         onNavigate={(href) => guardedNavigate(() => router.push(href))}
@@ -857,7 +862,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
           className="mb-4"
           action={loadNotice.retry && (
             <Button size="sm" variant="outline" onClick={loadNotice.retry}>
-              <RotateCw className="h-3.5 w-3.5" /> {loadNotice.retryLabel ?? "Try again"}
+              <RotateCw className="h-3.5 w-3.5" /> {loadNotice.retryLabel ?? tc("retry")}
             </Button>
           )}
         />
@@ -870,16 +875,16 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
           <div className="text-center space-y-4 py-6">
             <PartyPopper className="h-10 w-10 text-primary mx-auto" />
             <div>
-              <h3 className="font-serif text-lg font-semibold">Patient Registered Successfully</h3>
+              <h3 className="font-serif text-lg font-semibold">{t("success")}</h3>
               <p className="text-sm text-muted-foreground mt-1">{result.patientLabel}</p>
             </div>
             <Card className="p-4 gap-1 border-border/50 bg-card/60 text-start text-sm max-w-sm mx-auto">
-              <p><span className="text-muted-foreground">Visit ID:</span> {result.visitCode}</p>
-              {result.doctorName && <p><span className="text-muted-foreground">Doctor:</span> {result.doctorName}</p>}
+              <p><span className="text-muted-foreground">{t("visit_id")}</span> {result.visitCode}</p>
+              {result.doctorName && <p><span className="text-muted-foreground">{t("doctor")}</span> {result.doctorName}</p>}
               {result.paymentRecorded ? (
-                <p><span className="text-muted-foreground">Payment:</span> ₹{result.paymentRecorded.amount} ({result.paymentRecorded.mode})</p>
+                <p><span className="text-muted-foreground">{t("payment")}</span> ₹{result.paymentRecorded.amount} ({vl(result.paymentRecorded.mode)})</p>
               ) : (
-                <p className="text-muted-foreground italic">No payment recorded yet.</p>
+                <p className="text-muted-foreground italic">{t("no_payment")}</p>
               )}
             </Card>
             {printNotice && (
@@ -890,16 +895,16 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                   <Button size="sm" variant="outline" onClick={async () => {
                     setPrintNotice(await printWristband({ patientLabel: result.patientLabel, patientCode: result.patientCode, visitCode: result.visitCode }));
                   }}>
-                    <QrCode className="h-3.5 w-3.5" /> Print again
+                    <QrCode className="h-3.5 w-3.5" /> {t("print_again")}
                   </Button>
                 }
               />
             )}
             <div className="flex items-center justify-center gap-3 flex-wrap">
-              <Button variant="outline" onClick={resetAll}>Register Another Patient</Button>
-              <Button variant="outline" onClick={goToPatients}>View Patient</Button>
+              <Button variant="outline" onClick={resetAll}>{t("another")}</Button>
+              <Button variant="outline" onClick={goToPatients}>{t("view_patient")}</Button>
               <Button onClick={() => router.push(`/facility/visits/${result.visitId}/vitals`)}>
-                Continue to Assessment
+                {t("continue")}
               </Button>
             </div>
           </div>
@@ -909,19 +914,19 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
             {!directEntry && !formOpen && (
             <section className="space-y-3 animate-in fade-in duration-200">
               <div>
-                <h2 data-tour="register.search" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Find Existing Patient</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">Search first so the same patient isn&apos;t registered twice.</p>
+                <h2 data-tour="register.search" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("find")}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t("find_hint")}</p>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <FloatingField
-                  id="searchName" label="Patient Name" value={searchName}
+                  id="searchName" label={t("patient_name")} value={searchName}
                   onChange={(e) => { setSearchName(e.target.value); if (searchNotice?.empty) setSearchNotice(null); }}
                   onKeyDown={(e) => { if (e.key === "Enter") runSearch(); }}
                   error={!!searchNotice?.empty}
                 />
                 <div>
                   <FloatingField
-                    id="searchMobile" label="Mobile number" value={searchMobile}
+                    id="searchMobile" label={t("f_phone")} value={searchMobile}
                     onChange={(e) => {
                       setSearchMobile(e.target.value.replace(/\D/g, "").slice(0, 10));
                       clearFieldError("searchMobile");
@@ -936,14 +941,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
               </div>
               <div className="flex flex-wrap gap-3 justify-end">
                 <Button onClick={runSearch} disabled={searching} variant="secondary">
-                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
+                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} {t("search")}
                 </Button>
                 {/* One Add New Patient button; it's highlighted when the search found nobody. */}
                 <Button
                   onClick={openNewPatient}
                   className={cn(candidates?.length === 0 && !formOpen && "ring-2 ring-primary/40 ring-offset-2 ring-offset-card animate-pulse [animation-iteration-count:2]")}
                 >
-                  <UserPlus className="h-4 w-4" /> Add New Patient
+                  <UserPlus className="h-4 w-4" /> {t("add_new")}
                 </Button>
               </div>
 
@@ -953,7 +958,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                   onDismiss={() => setSearchNotice(null)}
                   action={searchNotice.retry && (
                     <Button size="sm" variant="outline" onClick={searchNotice.retry}>
-                      <RotateCw className="h-3.5 w-3.5" /> {searchNotice.retryLabel ?? "Try again"}
+                      <RotateCw className="h-3.5 w-3.5" /> {searchNotice.retryLabel ?? tc("retry")}
                     </Button>
                   )}
                 />
@@ -964,8 +969,8 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                   {candidates.length === 0 ? (
                     <InlineNotice
                       tone="info"
-                      title="No existing patient matches this search"
-                      detail="Check the spelling or the number. If this is their first visit here, use Add New Patient above — what you searched for is carried into the form."
+                      title={t("no_match")}
+                      detail={t("no_match_hint")}
                     />
                   ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -984,7 +989,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{c.name}</p>
-                              {c.otherClinic && <p className="text-xs text-sky-700 dark:text-sky-400">Registered at another clinic — exact match</p>}
+                              {c.otherClinic && <p className="text-xs text-sky-700 dark:text-sky-400">{t("other_clinic")}</p>}
                               {c.patientCode && (
                                 <Badge className="mt-0.5 bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono text-sm">
                                   {c.patientCode}
@@ -993,18 +998,18 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
-                            {c.gender || "—"} · {formatAge(c.dob)} · {c.phone || "—"}
+                            {c.gender ? vl(c.gender) : "—"} · {formatAge(c.dob)} · {c.phone || "—"}
                           </p>
                           <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
                             <History className="h-3 w-3 shrink-0" />
-                            {c.lastVisitAt ? `Last visit: ${daysAgo(c.lastVisitAt)}` : "No prior visit here"}
+                            {c.lastVisitAt ? t("last_visit", { when: daysAgo(c.lastVisitAt) }) : t("no_prior")}
                           </p>
                           <div className="flex items-center justify-between gap-2 mt-auto">
                             {typeof c.matchScore === "number" ? (
-                              <Badge variant="outline" className="text-sm shrink-0">Match {c.matchScore}%</Badge>
+                              <Badge variant="outline" className="text-sm shrink-0">{t("match", { pct: c.matchScore })}</Badge>
                             ) : <span />}
                             <Button size="sm" variant={editingId === c.id ? "default" : "outline"} onClick={(e) => { e.stopPropagation(); selectCandidate(c); }}>
-                              {editingId === c.id ? "Selected" : "Select"}
+                              {editingId === c.id ? t("selected") : t("select")}
                             </Button>
                           </div>
                         </Card>
@@ -1026,35 +1031,35 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         onClick={() => backToSearch()}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:border-border transition-colors"
                       >
-                        <ChevronLeft className="h-4 w-4" /> Back to search
+                        <ChevronLeft className="h-4 w-4" /> {t("back_search")}
                       </button>
                       {editingId ? (
                         <div className="flex items-center gap-2 flex-wrap min-w-0">
-                          <span className="text-sm text-muted-foreground">Existing patient</span>
+                          <span className="text-sm text-muted-foreground">{t("existing")}</span>
                           <span className="text-sm font-semibold truncate">{name || "—"}</span>
                           <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono flex items-center gap-1">
                             <IdCard className="h-3 w-3" /> {editingCode}
                           </Badge>
                           <Badge variant="outline" className="text-xs flex items-center gap-1">
-                            <History className="h-3 w-3" /> {lastVisitAt ? `Last visit ${daysAgo(lastVisitAt)}` : "First visit here"}
+                            <History className="h-3 w-3" /> {lastVisitAt ? t("last_visit_badge", { when: daysAgo(lastVisitAt) }) : t("first_here")}
                           </Badge>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center"><UserPlus className="h-3.5 w-3.5" /></span>
-                          <span className="text-sm font-semibold">New patient registration</span>
+                          <span className="text-sm font-semibold">{t("new_reg")}</span>
                         </div>
                       )}
                     </div>
                     {confirmBack && (
                       <InlineNotice
                         tone="warning"
-                        title="Leave this registration?"
-                        detail="What you've entered on this form will be cleared. Your search and its results are kept."
+                        title={t("leave_q")}
+                        detail={t("leave_hint")}
                         action={
                           <div className="flex gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => setConfirmBack(false)}>Keep editing</Button>
-                            <Button size="sm" variant="outline" onClick={() => backToSearch(true)}>Discard &amp; go back</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmBack(false)}>{t("keep_editing")}</Button>
+                            <Button size="sm" variant="outline" onClick={() => backToSearch(true)}>{t("discard_back")}</Button>
                           </div>
                         }
                       />
@@ -1063,7 +1068,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                 )}
                 <SectionHeading
                   icon={User}
-                  title="Patient Details"
+                  title={t("details")}
                   right={directEntry && editingId && (
                     <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono flex items-center gap-1">
                       <IdCard className="h-3 w-3" /> {editingCode}
@@ -1077,7 +1082,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       <div className="lg:col-span-2">
                         <FloatingField
                           id="name"
-                          label="Patient Name"
+                          label={t("patient_name")}
                           autoComplete="off"
                           value={name}
                           onChange={(e) => { setName(e.target.value); clearFieldError("name"); }}
@@ -1090,7 +1095,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       {meta.relationship && (
                         <FloatingCombobox
                           id="relationship"
-                          label="Relationship to Patient"
+                          label={t("relationship")}
                           value={relationship}
                           onValueChange={(v) => {
                             setRelationship(v);
@@ -1099,22 +1104,22 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                             if (g) { setGender(g); clearFieldError("gender"); }
                           }}
                           options={meta.relationship.options}
-                          placeholder="Search relationship…"
+                          placeholder={t("relationship_ph")}
                         />
                       )}
 
                       {meta.gender && (
-                        <FloatingSelect id="gender" label="Gender" value={gender} onValueChange={setGender} placeholder="Select" required>
-                          {meta.gender.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        <FloatingSelect id="gender" label={t("r_gender")} value={gender} onValueChange={setGender} placeholder={t("select_ph")} required>
+                          {meta.gender.options.map((o) => <SelectItem key={o} value={o}>{vl(o)}</SelectItem>)}
                         </FloatingSelect>
                       )}
                       {meta.marital_status && (
-                        <FloatingSelect id="maritalStatus" label="Marital Status" value={maritalStatus} onValueChange={setMaritalStatus} placeholder="Select">
-                          {meta.marital_status.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        <FloatingSelect id="maritalStatus" label={t("marital")} value={maritalStatus} onValueChange={setMaritalStatus} placeholder={t("select_ph")}>
+                          {meta.marital_status.options.map((o) => <SelectItem key={o} value={o}>{vl(o)}</SelectItem>)}
                         </FloatingSelect>
                       )}
                       <FloatingSplitField
-                        label="Age"
+                        label={t("r_age")}
                         inputId="approxAge"
                         type="number"
                         step="any"
@@ -1126,12 +1131,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         selectValue={ageUnit}
                         onSelectChange={setAgeUnit}
                         selectOptions={["Years", "Months", "Days"]}
+                        selectLabel={(o) => t(`u_${o}`)}
                         required
                       />
 
                       <div>
                         <FloatingField
-                          id="phone" label="Mobile number" value={phone}
+                          id="phone" label={t("f_phone")} value={phone}
                           onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); clearFieldError("phone"); }}
                           error={!!fieldErrors.phone}
                           type="tel" inputMode="numeric" maxLength={10}
@@ -1140,17 +1146,17 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         <FieldError message={fieldErrors.phone} />
                       </div>
                       <div className="lg:col-span-2">
-                        <FloatingField id="address" label="Address" value={address} onChange={(e) => setAddress(e.target.value)} required />
+                        <FloatingField id="address" label={t("r_address")} value={address} onChange={(e) => setAddress(e.target.value)} required />
                       </div>
                     </div>
 
                     <section className="space-y-3 pt-4 border-t border-border/50">
-                      <SectionHeading icon={Contact} title="Emergency Contact" />
+                      <SectionHeading icon={Contact} title={t("emergency")} />
                       <div className="grid sm:grid-cols-2 gap-4">
-                        <FloatingField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
+                        <FloatingField id="emergencyContactName" label={t("name")} value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
                         <div>
                           <FloatingField
-                            id="emergencyContact" label="Mobile number" value={emergencyContact}
+                            id="emergencyContact" label={t("f_phone")} value={emergencyContact}
                             onChange={(e) => { setEmergencyContact(e.target.value.replace(/\D/g, "").slice(0, 10)); clearFieldError("emergencyContact"); }}
                             error={!!fieldErrors.emergencyContact}
                             type="tel" inputMode="numeric" maxLength={10}
@@ -1161,21 +1167,21 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     </section>
 
                     <section className="space-y-3 pt-4 border-t border-border/50">
-                      <SectionHeading icon={QrCode} title="Doctor & Payment" />
-                      <FloatingSelect id="doctorId" label="Preferred Doctor (optional)" value={doctorId} onValueChange={setDoctorId} placeholder="Any available doctor">
+                      <SectionHeading icon={QrCode} title={t("doctor_payment")} />
+                      <FloatingSelect id="doctorId" label={t("pref_doctor")} value={doctorId} onValueChange={setDoctorId} placeholder={t("any_doctor")}>
                         {doctors.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}{d.designation ? ` — ${d.designation}` : ""}</SelectItem>)}
                       </FloatingSelect>
                     </section>
 
                     {canCollect && <section className="space-y-3">
-                      <h2 data-tour="register.payment" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payment (optional)</h2>
+                      <h2 data-tour="register.payment" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("payment_opt")}</h2>
                       {existingPayment && (
-                        <p className="text-sm text-muted-foreground">Already collected: ₹{existingPayment.amount} ({existingPayment.mode}). Fields below add another payment, if needed.</p>
+                        <p className="text-sm text-muted-foreground">{t("already", { amount: existingPayment.amount, mode: vl(existingPayment.mode) })}</p>
                       )}
                       <FeeAmountFields fees={feeList} feeId={feeId} setFeeId={setFeeId} amount={amount} setAmount={setAmount} reason={overrideReason} setReason={setOverrideReason} />
                       {meta.payment_mode && (
-                        <FloatingSelect id="paymentMode" label="Payment Mode" value={paymentMode} onValueChange={setPaymentMode} placeholder="Select">
-                          {meta.payment_mode.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        <FloatingSelect id="paymentMode" label={t("mode")} value={paymentMode} onValueChange={setPaymentMode} placeholder={t("select_ph")}>
+                          {meta.payment_mode.options.map((o) => <SelectItem key={o} value={o}>{vl(o)}</SelectItem>)}
                         </FloatingSelect>
                       )}
                     </section>}
@@ -1183,12 +1189,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
                   <div className="lg:col-span-3">
                     <section className="space-y-4 lg:sticky lg:top-4">
-                      <SectionHeading icon={BriefcaseMedical} title="Reason for Visit" />
+                      <SectionHeading icon={BriefcaseMedical} title={t("reason")} />
 
                       <div id="reg-complaints" className="scroll-mt-24">
                         <FloatingMultiSelect
                           id="complaintSearch"
-                          label="What are the symptoms?"
+                          label={t("symptoms_q")}
                           required
                           selected={chiefComplaintIds.flatMap((cid) => complaintOptions.filter((o) => o.id === cid))}
                           onRemove={toggleComplaint}
@@ -1201,14 +1207,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
                       <FloatingTextarea
                         id="narrative"
-                        label="In the patient's own words"
+                        label={t("own_words")}
                         value={narrative}
                         onChange={(e) => setNarrative(e.target.value)}
                         rows={3}
                       />
 
                       <div id="reg-onset" className="scroll-mt-24">
-                        <p className="text-sm font-medium text-muted-foreground mb-2">When did it start? <span className="text-destructive">*</span></p>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">{t("when_start")} <span className="text-destructive">*</span></p>
                         <div className="grid grid-cols-3 gap-2">
                           {ONSET_OPTIONS.map((o) => (
                             <button
@@ -1222,8 +1228,8 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                                   : "border-border/60 text-muted-foreground hover:border-border"
                               )}
                             >
-                              <span className="block">{o.label}</span>
-                              <span className={cn("block text-[11px] mt-0.5", onsetTimeline === o.value ? "opacity-80" : "text-muted-foreground/70")}>{o.hint}</span>
+                              <span className="block">{t(o.key)}</span>
+                              <span className={cn("block text-[11px] mt-0.5", onsetTimeline === o.value ? "opacity-80" : "text-muted-foreground/70")}>{t(`${o.key}_hint`)}</span>
                             </button>
                           ))}
                         </div>
@@ -1231,11 +1237,11 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
 
                       <FloatingMultiSelect
                         id="allergySearch"
-                        label="Allergies & sensitivities"
+                        label={t("allergies")}
                         tone="destructive"
                         labelIcon={TriangleAlert}
                         itemIcon={TriangleAlert}
-                        placeholder="Type an allergy…"
+                        placeholder={t("allergy_ph")}
                         selected={allergies.map((a) => ({ id: a, label: a }))}
                         onRemove={(label) => setAllergies((cur) => cur.filter((x) => x !== label))}
                         query={allergyInput}
@@ -1243,12 +1249,12 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         results={allergySearchResults}
                         onPick={(aid) => addAllergy(allergyOptions.find((o) => o.id === aid)?.label)}
                         onCreate={(text) => addAllergy(text)}
-                        createLabel={(q) => `Add "${q}" as a custom allergy`}
+                        createLabel={(q) => t("allergy_add", { q })}
                       />
 
                       <div className="space-y-2">
-                      <div role="tablist" aria-label="Medicine type" className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5">
-                        {([["supplement", "Unani", Leaf], ["medication", "Allopathic", Pill]] as const).map(([k, l, Icon]) => (
+                      <div role="tablist" aria-label={t("med_type")} className="inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5">
+                        {([["supplement", t("unani"), Leaf], ["medication", t("allopathic"), Pill]] as const).map(([k, l, Icon]) => (
                           <button key={k} type="button" role="tab" aria-selected={medicationTab === k}
                             onClick={() => { setMedicationTab(k); setMedicationInput(""); }}
                             className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors",
@@ -1261,8 +1267,8 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       </div>
                       <FloatingMultiSelect
                         id="medicationSearch"
-                        label={medicationTab === "supplement" ? "Unani Medicine" : "Allopathic Medicine"}
-                        placeholder={medicationTab === "supplement" ? "Type a Unani medicine, herb or supplement…" : "Type an allopathic medicine…"}
+                        label={medicationTab === "supplement" ? t("unani_med") : t("allo_med")}
+                        placeholder={medicationTab === "supplement" ? t("unani_ph") : t("allo_ph")}
                         selected={medications.map((m) => ({ id: `${m.kind}:${m.label}`, label: m.label, kind: m.kind }))}
                         onRemove={(mid) => setMedications((cur) => cur.filter((m) => `${m.kind}:${m.label}` !== mid))}
                         query={medicationInput}
@@ -1276,14 +1282,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           ? "bg-primary/10 border-primary/30 text-primary"
                           : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"}
                         createOptions={(q) => [medicationTab === "supplement"
-                          ? { key: "supplement", label: "Add as Unani medicine / herb", icon: <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />, onCreate: () => addMedication(q, "supplement") }
-                          : { key: "medication", label: "Add as allopathic medicine", icon: <Pill className="h-3 w-3 shrink-0 text-primary" />, onCreate: () => addMedication(q, "medication") },
+                          ? { key: "supplement", label: t("add_unani"), icon: <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />, onCreate: () => addMedication(q, "supplement") }
+                          : { key: "medication", label: t("add_allo"), icon: <Pill className="h-3 w-3 shrink-0 text-primary" />, onCreate: () => addMedication(q, "medication") },
                         ]}
                       />
                       </div>
 
                       <div id="reg-mobility" className="scroll-mt-24">
-                        <p className="text-sm font-medium text-muted-foreground mb-2">How did the patient arrive? <span className="text-destructive">*</span></p>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">{t("arrive_q")} <span className="text-destructive">*</span></p>
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
@@ -1295,7 +1301,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                                 : "border-border/60 text-muted-foreground hover:border-border"
                             )}
                           >
-                            <PersonStanding className="h-4 w-4" /> Walking on their own
+                            <PersonStanding className="h-4 w-4" /> {t("walking")}
                           </button>
                           <button
                             type="button"
@@ -1307,7 +1313,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                                 : "border-border/60 text-muted-foreground hover:border-border"
                             )}
                           >
-                            <Accessibility className="h-4 w-4" /> Needs a wheelchair
+                            <Accessibility className="h-4 w-4" /> {t("wheelchair")}
                           </button>
                         </div>
                       </div>
@@ -1324,7 +1330,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                       onDismiss={() => setActionNotice(null)}
                       action={footerNotice.retry && (
                         <Button size="sm" variant="outline" onClick={footerNotice.retry}>
-                          <RotateCw className="h-3.5 w-3.5" /> {footerNotice.retryLabel ?? "Try again"}
+                          <RotateCw className="h-3.5 w-3.5" /> {footerNotice.retryLabel ?? tc("retry")}
                         </Button>
                       )}
                     />
@@ -1333,7 +1339,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                     <>
                       {isDirty && (
                         <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 me-auto">
-                          <TriangleAlert className="h-3.5 w-3.5" /> Unsaved changes — save before leaving this page
+                          <TriangleAlert className="h-3.5 w-3.5" /> {t("unsaved_leave")}
                         </p>
                       )}
                       <Button
@@ -1343,17 +1349,17 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         className="bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50"
                       >
                         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        Save &amp; Return to Clinical Record <ArrowRight className="h-4 w-4" />
+                        {t("save_return")} <ArrowRight className="h-4 w-4" />
                       </Button>
                     </>
                   ) : (
                     <>
                       <div className="flex items-center gap-2 flex-wrap me-auto">
                         <Button type="button" variant="outline" onClick={() => submitWith("hold")} disabled={submitting}>
-                          <Bookmark className="h-4 w-4" /> Hold in Waiting Queue
+                          <Bookmark className="h-4 w-4" /> {t("hold")}
                         </Button>
                         <Button type="button" variant="outline" onClick={() => submitWith("print")} disabled={submitting}>
-                          <QrCode className="h-4 w-4" /> Print Barcode &amp; Wristband
+                          <QrCode className="h-4 w-4" /> {t("print")}
                         </Button>
                       </div>
                       <Button
@@ -1364,7 +1370,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         className={cn("bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50", !mandatoryDone && "opacity-60")}
                       >
                         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                        Confirm &amp; Transfer to Triage &amp; Vitals Station <ArrowRight className="h-4 w-4" />
+                        {t("transfer")} <ArrowRight className="h-4 w-4" />
                       </Button>
                     </>
                   )}
@@ -1378,13 +1384,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
       <Dialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogTitle>{t("unsaved_title")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            You&apos;ve made changes to this patient&apos;s registration that haven&apos;t been saved yet. What would you like to do?
+            {t("unsaved_text")}
           </p>
           <DialogFooter className="flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setUnsavedDialogOpen(false)}>Keep Editing</Button>
+            <Button variant="outline" onClick={() => setUnsavedDialogOpen(false)}>{t("keep")}</Button>
             <Button
               variant="outline"
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
@@ -1395,7 +1401,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                 nav?.();
               }}
             >
-              Discard &amp; Leave
+              {t("discard_leave")}
             </Button>
             <Button
               onClick={async () => {
@@ -1406,7 +1412,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
               disabled={submitting}
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save &amp; Leave
+              {t("save_leave")}
             </Button>
           </DialogFooter>
         </DialogContent>

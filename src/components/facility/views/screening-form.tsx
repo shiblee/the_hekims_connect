@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
@@ -38,6 +40,10 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const msg = useNotice();        // beside the Complete Screening button
+  const tv = useTranslations("clinic.visit");
+  const tc = useTranslations("common");
+  const vl = useValueLabel();
+  const dl = useDateLocale();
   const voiceMsg = useNotice();   // under the complaint search box
   const [result, setResult] = useState<ScreeningResult | null>(null);
   const [complaintSearch, setComplaintSearch] = useState("");
@@ -57,7 +63,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
     }
     const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!Ctor) {
-      voiceMsg.info("Voice search isn't available in this browser", "Type the complaint instead — Chrome and Edge support voice search.");
+      voiceMsg.info(tv("voice_na"), tv("voice_na_hint"));
       return;
     }
     const recognition = new Ctor();
@@ -66,7 +72,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
     recognition.maxAlternatives = 1;
     recognition.onresult = (e: any) => setComplaintSearch(e.results[0][0].transcript);
     voiceMsg.clear();
-    recognition.onerror = () => { setListening(false); voiceMsg.warning("Didn't catch that", "Check the microphone is allowed for this site, then tap the mic and speak again — or type the complaint."); };
+    recognition.onerror = () => { setListening(false); voiceMsg.warning(tv("voice_miss"), tv("voice_miss_hint")); };
     recognition.onend = () => setListening(false);
     recognitionRef.current = recognition;
     recognition.start();
@@ -91,7 +97,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           setStep("results");
         }
       })
-      .catch((e) => setLoadError(e.message || "Network error"))
+      .catch((e) => setLoadError(e.message || tc("network_error")))
       .finally(() => setLoading(false));
   }, [visitId]);
 
@@ -125,7 +131,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
 
   const submit = async () => {
     if (selectedComplaintIds.length === 0) {
-      msg.warning("Select at least one chief complaint", "Go Back to the complaint list and pick what the patient came in with.");
+      msg.warning(tv("pick_one"), tv("pick_one_hint"));
       return;
     }
     setSubmitting(true);
@@ -137,7 +143,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
       setStep("results"); // the results screen itself confirms completion
       msg.clear();
     } catch (e: any) {
-      msg.error("The screening wasn't saved", `${e.message || "Network error"}. Your selection is still here — try again.`, { retry: submit, retryLabel: "Try again" });
+      msg.error(tv("screening_not_saved"), tv("selection_here", { error: e.message || tc("network_error") }), { retry: submit, retryLabel: tc("retry") });
     } finally {
       setSubmitting(false);
     }
@@ -154,22 +160,22 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-12">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
       </div>
     );
   }
   if (!patient || !visit || !config) {
-    return loadError ? <LoadFailed what="this screening" detail={loadError} /> : <p className="text-muted-foreground text-sm">Visit not found.</p>;
+    return loadError ? <LoadFailed what={tv("this_screening")} detail={loadError} /> : <p className="text-muted-foreground text-sm">{tv("not_found")}</p>;
   }
 
   return (
     <div className="w-full">
       <button onClick={() => router.push("/facility/patients")} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
-        <ChevronLeft className="h-4 w-4" /> Back to Patients
+        <ChevronLeft className="h-4 w-4" /> {tv("back")}
       </button>
 
       <div className="mb-4">
-        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">L1 Screening</h1>
+        <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">{tv("l1")}</h1>
       </div>
 
       {/* Patient header — single line, matches the vitals assessment page */}
@@ -185,11 +191,11 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
         )}
         <div className="h-5 w-px bg-border shrink-0" />
         <p className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-          {patient.gender || "—"} · {formatAge(patient.dob)} · {patient.bloodGroup || "Blood group —"} · {patient.phone || "—"}
+          {patient.gender ? vl(patient.gender) : "—"} · {formatAge(patient.dob)} · {patient.bloodGroup || tv("blood_none")} · {patient.phone || "—"}
         </p>
         <div className="flex-1 min-w-4" />
         <div className="h-5 w-px bg-border shrink-0" />
-        <p className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">{new Date(visit.visitDate).toLocaleDateString()}</p>
+        <p className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">{new Date(visit.visitDate).toLocaleDateString(dl)}</p>
       </Card>
 
       <AnimatePresence mode="wait">
@@ -197,11 +203,11 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
         <motion.div key="complaints" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}>
         <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-5">
           <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chief Complaint(s)</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tv("chief")}</p>
 
           {selectedComplaintIds.length > 0 && (
             <div>
-              <p className="text-[11px] text-muted-foreground mb-1.5">Selected</p>
+              <p className="text-[11px] text-muted-foreground mb-1.5">{tv("selected")}</p>
               <div className="flex flex-wrap gap-2">
                 {selectedComplaintIds.map((id) => {
                   const c = config.complaints.find((cc) => cc.id === id);
@@ -226,14 +232,14 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
             <Input
               value={complaintSearch}
               onChange={(e) => setComplaintSearch(e.target.value)}
-              placeholder="Search chief complaint…"
+              placeholder={tv("search_complaint")}
               className={cn("ps-9 bg-background/60", voiceSupported && "pe-10")}
             />
             {voiceSupported && (
               <button
                 type="button"
                 onClick={toggleVoiceSearch}
-                aria-label="Search by voice"
+                aria-label={tv("voice")}
                 className={cn(
                   "absolute end-2.5 top-1/2 -translate-y-1/2 transition-colors",
                   listening ? "text-destructive animate-pulse" : "text-muted-foreground hover:text-foreground"
@@ -264,14 +270,14 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
               </div>
             ))}
             {groupedComplaints.length === 0 && (
-              <p className="text-sm text-muted-foreground">No matching complaints{complaintSearch ? ` for "${complaintSearch}"` : ""}.</p>
+              <p className="text-sm text-muted-foreground">{complaintSearch ? tv("no_match_q", { q: complaintSearch }) : tv("no_match")}</p>
             )}
           </div>
 
           <NoticeSlot state={msg} />
           <div className="flex items-center justify-end pt-2">
             <Button size="lg" onClick={submit} disabled={submitting || selectedComplaintIds.length === 0}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Complete Screening
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {tv("complete")}
             </Button>
           </div>
         </Card>
@@ -283,7 +289,7 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
         <Card className="relative overflow-hidden p-6 sm:p-8 border-border/40 bg-card/95 shadow-xl shadow-black/5 rounded-2xl gap-5">
           <div className="absolute top-0 start-0 end-0 h-1 bg-gradient-to-r from-primary via-accent to-primary" />
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Screening Result</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tv("result")}</p>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
@@ -298,18 +304,18 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
           ) : (
             <Card className="p-4 border-primary/20 bg-primary/5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5 text-primary" /> Hakeem Insight
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> {tv("insight")}
               </p>
-              <p className="text-sm text-muted-foreground">Hakeem Insight isn&apos;t configured for this portal yet.</p>
+              <p className="text-sm text-muted-foreground">{tv("not_configured")}</p>
             </Card>
           )}
 
           <div className="flex items-center justify-between pt-2">
             <Button variant="outline" onClick={editScreening}>
-              <RotateCcw className="h-4 w-4" /> Edit Screening
+              <RotateCcw className="h-4 w-4" /> {tv("edit_screening")}
             </Button>
             <Button onClick={() => router.push(`/facility/patients/${patient.id}/record`)}>
-              Back to Patient
+              {tv("back_patient")}
             </Button>
           </div>
         </Card>

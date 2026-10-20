@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, FileSearch, TriangleAlert, Leaf, Target } from "lucide-react";
 
@@ -11,7 +12,6 @@ const FLAG_STYLE: Record<string, string> = {
 };
 const FINDING_STYLE: Record<string, string> = { ...FLAG_STYLE, neutral: "bg-muted/60 text-muted-foreground border-border/40" };
 const FINDING_DOT: Record<string, string> = { red: "bg-destructive", yellow: "bg-amber-400", green: "bg-emerald-500", neutral: "bg-muted-foreground/50" };
-const SEVERITY_LABEL: Record<string, string> = { red: "Severe", yellow: "Moderate", green: "Stable" };
 
 interface ScreeningInsightData {
   headline: string;
@@ -82,10 +82,13 @@ function parseInsight(text: string): ParsedInsight {
  */
 export function InsightBody({ aiSummary, flag }: { aiSummary: string; flag: string | null }) {
   const parsed = parseInsight(aiSummary);
+  const tv = useTranslations("clinic.visit");
+  // The AI writes these section labels in English; show them in the viewer's language.
+  const SECTION_KEY: Record<string, string> = { "Presenting Picture": "sec_picture", "Danger Signs": "sec_danger", "Unani Perspective": "sec_unani", "Priority for the Doctor": "sec_priority" };
   return (
     <div className="rounded-xl bg-gradient-to-br from-primary/[0.06] via-primary/[0.02] to-transparent border border-primary/15 p-3 space-y-2.5">
       <p className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-        <Sparkles className="h-3 w-3" /> Hakeem Insight
+        <Sparkles className="h-3 w-3" /> {tv("insight")}
       </p>
 
       {parsed.kind === "json" && (
@@ -100,7 +103,7 @@ export function InsightBody({ aiSummary, flag }: { aiSummary: string; flag: stri
                 </span>
                 {f.severity !== "neutral" && (
                   <Badge variant="outline" className={cn("border text-[9px] px-1.5 py-0 font-semibold uppercase tracking-wide shrink-0", FINDING_STYLE[f.severity])}>
-                    {SEVERITY_LABEL[f.severity]}
+                    {tv(`sev_${f.severity}`)}
                   </Badge>
                 )}
               </div>
@@ -132,7 +135,7 @@ export function InsightBody({ aiSummary, flag }: { aiSummary: string; flag: stri
             return (
               <div key={i} className={cn("rounded-lg p-2.5 border", boxClass)}>
                 <p className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 mb-1">
-                  {Icon && <Icon className="h-3 w-3 shrink-0" />} {s.label || "Note"}
+                  {Icon && <Icon className="h-3 w-3 shrink-0" />} {s.label ? tv(SECTION_KEY[s.label]) : tv("note")}
                 </p>
                 <p className={cn("text-[13px] leading-snug", isDanger ? "font-medium" : "text-foreground/90")}>{s.body}</p>
               </div>
@@ -145,7 +148,7 @@ export function InsightBody({ aiSummary, flag }: { aiSummary: string; flag: stri
         <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">{parsed.text}</p>
       )}
 
-      <p className="text-[10px] text-muted-foreground italic">Decision support only — not a diagnosis. Always verify clinically.</p>
+      <p className="text-[10px] text-muted-foreground italic">{tv("verify_note")}</p>
     </div>
   );
 }

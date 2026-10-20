@@ -1,15 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { Check } from "lucide-react";
 
 export type IntakeStep = "vitals" | "mizaj" | "handover";
 
-export const INTAKE_STEPS: { key: IntakeStep; label: string }[] = [
-  { key: "vitals", label: "Acute Vitals" },
-  { key: "mizaj", label: "Mizaj & Ajnas-e-Ashrah" },
-  { key: "handover", label: "Asbab-e-Sittah & Handover" },
-];
+export const INTAKE_STEPS: { key: IntakeStep }[] = [{ key: "vitals" }, { key: "mizaj" }, { key: "handover" }];
 
 export function IntakeStepper({
   step, onStepChange, completedSteps,
@@ -18,6 +15,7 @@ export function IntakeStepper({
   onStepChange: (s: IntakeStep) => void;
   completedSteps: IntakeStep[];
 }) {
+  const tv = useTranslations("clinic.visit");
   return (
     <div className="flex items-center flex-wrap gap-2 mb-5">
       {INTAKE_STEPS.map((s, i) => {
@@ -43,7 +41,7 @@ export function IntakeStepper({
               )}>
                 {isDone ? <Check className="h-3 w-3" /> : i + 1}
               </span>
-              {s.label}
+              {tv(`step_${s.key}`)}
             </button>
             {i < INTAKE_STEPS.length - 1 && <div className="h-px w-4 bg-border shrink-0" />}
           </div>

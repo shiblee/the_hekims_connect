@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useDateLocale } from "@/lib/i18n/use-date-locale";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
@@ -26,15 +28,17 @@ interface ScreeningVisit {
 /** One past screening's row inside the History dialog — collapsed summary, expands to the full insight. */
 function HistoryEntry({ visit, isCurrent }: { visit: ScreeningVisit; isCurrent: boolean }) {
   const screening = visit.l1Screening!;
+  const tv = useTranslations("clinic.visit");
+  const dl = useDateLocale();
   const chiefComplaints: string[] = (() => { try { return JSON.parse(screening.chiefComplaints); } catch { return []; } })();
 
   return (
     <AccordionItem value={visit.id} className="border border-border/40 rounded-lg px-3 mb-2 last:mb-0">
       <AccordionTrigger className="hover:no-underline py-2.5">
         <div className="flex items-center gap-2 flex-wrap text-start pe-2">
-          <span className="text-xs font-medium text-foreground">{new Date(visit.visitDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</span>
-          {isCurrent && <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Current</Badge>}
-          <span className="text-[11px] text-muted-foreground truncate">{chiefComplaints.join(", ") || "No complaints recorded"}</span>
+          <span className="text-xs font-medium text-foreground">{new Date(visit.visitDate).toLocaleDateString(dl, { day: "numeric", month: "short", year: "numeric" })}</span>
+          {isCurrent && <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">{tv("current")}</Badge>}
+          <span className="text-[11px] text-muted-foreground truncate">{chiefComplaints.join(", ") || tv("no_complaints")}</span>
         </div>
       </AccordionTrigger>
       <AccordionContent className="pb-3 space-y-2.5">
@@ -63,6 +67,8 @@ export function ScreeningCard({
   const [starting, setStarting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const msg = useNotice();
+  const tv = useTranslations("clinic.visit");
+  const tc = useTranslations("common");
 
   const pastVisits = [...visits]
     .filter((v) => v.l1Screening)
@@ -75,7 +81,7 @@ export function ScreeningCard({
       const res = await apiClient.post<{ visit: { id: string } }>("/api/facility/visits", { patientId });
       router.push(`/facility/visits/${res.visit.id}/screening`);
     } catch (e: any) {
-      msg.error("A new screening couldn't be started", `${e.message || "Network error"}. Nothing was created — try again.`, { retry: startScreening, retryLabel: "Try again" });
+      msg.error(tv("start_failed"), tv("start_failed_hint", { error: e.message || tc("network_error") }), { retry: startScreening, retryLabel: tc("retry") });
       setStarting(false);
     }
   };
@@ -84,10 +90,10 @@ export function ScreeningCard({
     return (
       <Card className="p-5 border-border/50 bg-card/60 text-center">
         <ClipboardList className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-        <p className="text-sm text-muted-foreground mb-3">No L1 Screening recorded yet{showStartButton ? "." : " at any facility."}</p>
+        <p className="text-sm text-muted-foreground mb-3">{showStartButton ? tv("no_screening") : tv("no_screening_any")}</p>
         {showStartButton && (
           <Button size="sm" onClick={startScreening} disabled={starting}>
-            {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Start Screening
+            {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} {tv("start_screening")}
           </Button>
         )}
         <NoticeSlot state={msg} className="mt-3 text-start" />
@@ -109,14 +115,14 @@ export function ScreeningCard({
             <ShieldCheck className="h-4.5 w-4.5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground leading-tight">L1 Screening</p>
+            <p className="text-sm font-semibold text-foreground leading-tight">{tv("l1")}</p>
             <p className="text-[11px] text-muted-foreground leading-tight">{daysAgo(latest.visitDate)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {showStartButton && (
             <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={startScreening} disabled={starting}>
-              {starting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />} New Screening
+              {starting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />} {tv("new_screening")}
             </Button>
           )}
         </div>
@@ -140,7 +146,7 @@ export function ScreeningCard({
           className="h-7 px-2 text-xs text-muted-foreground self-start -mt-1"
           onClick={() => setHistoryOpen(true)}
         >
-          <History className="h-3 w-3" /> View {pastVisits.length - 1} earlier screening{pastVisits.length - 1 > 1 ? "s" : ""}
+          <History className="h-3 w-3" /> {tv("view_earlier", { count: pastVisits.length - 1 })}
         </Button>
       )}
 
@@ -148,7 +154,7 @@ export function ScreeningCard({
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-1.5"><History className="h-4 w-4" /> Screening History</DialogTitle>
+            <DialogTitle className="flex items-center gap-1.5"><History className="h-4 w-4" /> {tv("history")}</DialogTitle>
           </DialogHeader>
           <Accordion type="single" collapsible defaultValue={pastVisits[0]?.id}>
             {pastVisits.map((v, i) => (

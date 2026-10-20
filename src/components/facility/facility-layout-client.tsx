@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useRequireFacility } from "@/lib/use-require-session";
 import { FacilityShell } from "@/components/facility/facility-shell";
@@ -10,6 +11,7 @@ import { HelpButton, HelpPanel } from "@/components/guidance/help-panel";
 import { api } from "@/lib/api";
 
 function LoadingScreen() {
+  const tc = useTranslations("common");
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4">
       <div className="animate-pulse">
@@ -17,7 +19,7 @@ function LoadingScreen() {
       </div>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        Loading…
+        {tc("loading")}
       </div>
     </div>
   );
