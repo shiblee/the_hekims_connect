@@ -53,7 +53,6 @@ export function SafetyReviewPanel({ visitId, refreshKey, onBlocking }: { visitId
     <Card className="p-5 gap-3 border-border/50 bg-card/60">
       <SectionHeading icon={data && data.blocking === 0 ? ShieldCheck : ShieldAlert} tone={data && data.blocking === 0 ? "success" : "danger"} title={t("title")}
         right={data ? <span className={cn("text-xs font-medium", data.blocking ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>{data.blocking ? t("n_to_review", { count: data.blocking }) : risky.length ? t("reviewed") : t("all_clear")}</span> : null} />
-      <p className="text-[13px] text-muted-foreground -mt-1">{t("hint")}</p>
       {failed ? <p className="text-sm text-muted-foreground">{t.rich("failed", { retry: (c) => <button type="button" onClick={() => load()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
         : !data ? <div className="h-12 animate-pulse rounded-lg bg-muted/50" /> : (
           <>
