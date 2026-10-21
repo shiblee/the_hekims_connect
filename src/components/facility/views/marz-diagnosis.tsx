@@ -24,7 +24,7 @@ interface MarzState { diagnoses: DossierDiagnosis[]; sabab: string[]; icdCode: s
 const ROLES: DiagnosisRole[] = ["working", "secondary", "differential", "ruled_out"];
 const CERTS = ["suspected", "probable", "confirmed"] as const;
 const CERT_STYLE = { suspected: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400", probable: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400", confirmed: "border-primary/40 bg-primary/10 text-primary" };
-const ROLE_STYLE: Record<DiagnosisRole, string> = { working: "border-primary/50 bg-primary/5", secondary: "border-border/60", differential: "border-dashed border-border/70", ruled_out: "border-border/40 opacity-70" };
+const ROLE_STYLE: Record<DiagnosisRole, string> = { working: "border-border/60", secondary: "border-border/60", differential: "border-border/60", ruled_out: "border-border/60 opacity-70" };
 
 function Pill({ className, children, title }: { className?: string; children: React.ReactNode; title?: string }) {
   return <span title={title} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", className)}>{children}</span>;
