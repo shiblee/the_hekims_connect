@@ -28,7 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
-  ChevronDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
+  ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -455,7 +455,14 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
   const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   const td = useTranslations("clinic.dossier");
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
 
   const fetchEngine = useCallback(() =>
     api.get<{ suggestion: EngSuggestion; method: string }>(`/api/facility/visits/${visitId}/tashkhees-engine`)
@@ -518,22 +525,14 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-1.5 text-start">
-          <ChevronDown className={cn("h-4 w-4 shrink-0 text-primary transition-transform", !open && "-rotate-90")} />
-          <span className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("engine")}</span>
-          {!open && s && (
-            <span className="ms-2 min-w-0 truncate text-[13px] text-muted-foreground">
-              {[asli?.label, su?.label ? [su.type, su.label, su.darja ? `Darja ${su.darja}` : null].filter(Boolean).join(" · ") : null, s.organs.length ? td("n_organs", { count: s.organs.length }) : null].filter(Boolean).join("  |  ")}
-            </span>
-          )}
-        </button>
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("engine")}</p>
         <span className="flex items-center gap-2">
           <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
           {canApplyAll && <Button size="sm" className="h-7" onClick={applyAll}>{td("accept_all")}</Button>}
         </span>
       </div>
 
-      {!open ? null : failed ? (
+      {failed ? (
         <p className="text-sm text-muted-foreground">{td.rich("engine_failed", { retry: (c) => <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !s ? <Loading /> : (
         <>
@@ -548,8 +547,20 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
             ))}
           </div>
 
-          {/* Suggestions */}
-          <div className="divide-y divide-border/40 rounded-lg border border-border/50 bg-background/50">
+          {/* Suggestions — a box with the summary that opens the three suggestions (like the other drop-downs) */}
+          <div ref={boxRef} className="relative">
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+            className={cn("flex min-h-12 w-full items-center justify-between gap-2 rounded-lg border bg-background/50 px-3.5 py-2 text-start transition-colors", open ? "border-primary" : "border-input hover:border-primary/40")}>
+            <span className="min-w-0">
+              <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("engine_suggests")}</span>
+              <span className="block truncate text-sm font-medium">
+                {[asli?.label, su?.label ? [su.type, su.label, su.darja ? `Darja ${su.darja}` : null].filter(Boolean).join(" · ") : null, s.organs.length ? td("n_organs", { count: s.organs.length }) : null].filter(Boolean).join("  |  ") || td("no_suggestion")}
+              </span>
+            </span>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+          {open && (
+          <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[460px] overflow-y-auto divide-y divide-border/40 rounded-xl border border-border/60 bg-popover shadow-xl">
             <div className="flex items-start justify-between gap-3 p-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{td("asli_head")}</p>
@@ -612,6 +623,8 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
               </div>
               {s.organs.length > 0 && <Apply applied={newOrgans.length === 0} onClick={applyOrgans} label={td("add_n", { count: newOrgans.length })} />}
             </div>
+          </div>
+          )}
           </div>
         </>
       )}
