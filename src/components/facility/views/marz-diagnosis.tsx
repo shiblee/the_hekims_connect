@@ -267,9 +267,8 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
       </div>
 
       {/* Sabab */}
-      <div className="space-y-1.5">
-        <p className="text-sm font-medium">{t("sabab")}</p>
-        <p className="text-[13px] text-muted-foreground">{t("sabab_hint")}</p>
+      <div className="space-y-2.5 border-t border-border/50 pt-4">
+        <p className="text-[15px] font-semibold">{t("sabab")}</p>
         <div className="flex flex-wrap gap-1.5">
           {d.sabab.map((s) => (
             <button key={s} type="button" onClick={() => toggleSabab(s)} className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-300">
@@ -283,7 +282,7 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
           ))}
         </div>
         <div className="flex items-end gap-2">
-          <div className="flex-1 min-w-0"><FloatingField id="sababAdd" label={t("sabab_add")} value={sababDraft} onChange={(e) => setSababDraft(e.target.value)} maxLength={160}
+          <div className="flex-1 min-w-0"><FloatingField id="sababAdd" label={t("sabab_hint")} value={sababDraft} onChange={(e) => setSababDraft(e.target.value)} maxLength={160}
             onKeyDown={(e) => { if (e.key === "Enter" && sababDraft.trim()) { e.preventDefault(); if (!d.sabab.includes(sababDraft.trim())) set({ sabab: [...d.sabab, sababDraft.trim()] }); setSababDraft(""); } }} /></div>
           <Button size="sm" variant="outline" disabled={!sababDraft.trim()} onClick={() => { if (!d.sabab.includes(sababDraft.trim())) set({ sabab: [...d.sabab, sababDraft.trim()] }); setSababDraft(""); }}>{t("add_btn")}</Button>
         </div>
