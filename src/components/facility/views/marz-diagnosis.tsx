@@ -101,7 +101,7 @@ function DifferentialCard({ visitId, d, add, rerun }: { visitId: string; d: Marz
                             {x.missing.length > 0 && <p className="text-xs text-muted-foreground"><span className="font-semibold">{t("not_checked")}:</span> {x.missing.slice(0, 3).join(" · ")}</p>}
                             {x.typicalMizaj.length > 0 && <p className="text-[11px] text-muted-foreground">{t("typical", { mizaj: x.typicalMizaj.join(", ") })}{x.organs.length ? ` · ${x.organs.join(", ")}` : ""}</p>}
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
+                          <div className="flex shrink-0 items-center gap-1">
                             {chosen ? (
                               <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/60 bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white"><Check className="h-3 w-3" /> {t(`role_${chosen.role}`)}</span>
                             ) : (
@@ -184,7 +184,6 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
     <div className="space-y-4">
       <div>
         <p className="text-sm font-semibold">{t("title")} <span className="text-destructive">*</span></p>
-        <p className="text-[13px] text-muted-foreground">{t("hint")}</p>
       </div>
       <DifferentialCard visitId={visitId} d={d} add={fromDifferential} rerun={rerun} />
 
