@@ -28,7 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
-  Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
+  ChevronDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -454,6 +454,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   const [data, setData] = useState<{ suggestion: EngSuggestion; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
+  const [open, setOpen] = useState(false);
   const td = useTranslations("clinic.dossier");
 
   const fetchEngine = useCallback(() =>
@@ -517,14 +518,22 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("engine")}</p>
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-1.5 text-start">
+          <ChevronDown className={cn("h-4 w-4 shrink-0 text-primary transition-transform", !open && "-rotate-90")} />
+          <span className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("engine")}</span>
+          {!open && s && (
+            <span className="ms-2 min-w-0 truncate text-[13px] text-muted-foreground">
+              {[asli?.label, su?.label ? [su.type, su.label, su.darja ? `Darja ${su.darja}` : null].filter(Boolean).join(" · ") : null, s.organs.length ? td("n_organs", { count: s.organs.length }) : null].filter(Boolean).join("  |  ")}
+            </span>
+          )}
+        </button>
         <span className="flex items-center gap-2">
           <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
           {canApplyAll && <Button size="sm" className="h-7" onClick={applyAll}>{td("accept_all")}</Button>}
         </span>
       </div>
 
-      {failed ? (
+      {!open ? null : failed ? (
         <p className="text-sm text-muted-foreground">{td.rich("engine_failed", { retry: (c) => <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !s ? <Loading /> : (
         <>
@@ -604,9 +613,6 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
               {s.organs.length > 0 && <Apply applied={newOrgans.length === 0} onClick={applyOrgans} label={td("add_n", { count: newOrgans.length })} />}
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            {td("engine_note", { ranked: data?.method === "ranked" ? td("organs_ranked") : "" })}
-          </p>
         </>
       )}
     </div>
