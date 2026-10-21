@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Check, HelpCircle, Plus, Search, ShieldAlert, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Check, HelpCircle, Plus, Search, ShieldAlert, Sparkles, Stethoscope, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FloatingCombobox } from "@/components/shared/combobox";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import { SelectItem } from "@/components/ui/select";
 import type { DifferentialResult, Differential } from "@/lib/differential-engine";
@@ -155,16 +156,45 @@ function DifferentialCard({ visitId, d, add, rerun }: { visitId: string; d: Marz
   );
 }
 
+/** "+ Add diagnosis": search the Amraz catalogue, or add a diagnosis that isn't in it — same pattern as Add medicine. */
+function DiagnosisPicker({ amraz, onPick, onFree }: { amraz: AmrazOption[]; onPick: (m: AmrazOption) => void; onFree: (label: string) => void }) {
+  const t = useTranslations("clinic.marz");
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ql = q.trim().toLowerCase();
+  const results = amraz.filter((m) => !ql || `${m.label} ${m.localName ?? ""} ${m.category ?? ""}`.toLowerCase().includes(ql)).slice(0, 60);
+  const close = () => { setOpen(false); setQ(""); };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {t("add_dx")}</Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96 p-2" align="end">
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("add_ph")} className="h-9 mb-2" />
+        <div className="max-h-72 overflow-y-auto space-y-0.5">
+          {results.map((m) => (
+            <button key={m.id} type="button" onClick={() => { onPick(m); close(); }} className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
+              {m.label}{m.localName && <span className="ms-1.5 text-xs text-muted-foreground">{m.localName}</span>}
+              {m.category && <span className="block text-[11px] text-muted-foreground">{m.category}</span>}
+            </button>
+          ))}
+          {q.trim() && !amraz.some((m) => m.label.toLowerCase() === ql) && (
+            <button type="button" onClick={() => { onFree(q.trim()); close(); }} className="w-full text-start rounded-md px-2 py-1.5 text-sm text-primary hover:bg-muted/60">{t("add_free_q", { q: q.trim() })}</button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** Marz & Sabab block of the Tashkhees section: the differential, the Hakim's diagnoses, causes and an optional ICD diagnosis. */
 export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string; d: MarzState; set: (p: Partial<MarzState>) => void; amraz: AmrazOption[]; rerun: () => Promise<unknown> }) {
   const t = useTranslations("clinic.marz");
-  const [pick, setPick] = useState("");
-  const [freeOpen, setFreeOpen] = useState(false);
-  const [free, setFree] = useState("");
   const [sababDraft, setSababDraft] = useState("");
   const [icdOpen, setIcdOpen] = useState(!!(d.icdCode || d.icdLabel));
 
-  const addDx = (x: DossierDiagnosis) => {
+  const addDx = (x: DossierDiagnosis | null) => {
+    if (!x) return;
     if (d.diagnoses.some((y) => (x.marzId && y.marzId === x.marzId) || y.label.toLowerCase() === x.label.toLowerCase())) return;
     set({ diagnoses: [...d.diagnoses, x] });
   };
@@ -188,18 +218,24 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
       <DifferentialCard visitId={visitId} d={d} add={fromDifferential} rerun={rerun} />
 
       {/* The Hakim's diagnoses */}
-      <div className="space-y-2">
-        <p className="text-sm font-medium">{t("yours")}</p>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[15px] font-semibold">{t("yours")}</p>
+          <DiagnosisPicker amraz={amraz} onPick={(m) => addDx(m
+            ? { marzId: m.id, label: m.label, localName: m.localName, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" }
+            : null)} onFree={(label) => addDx({ marzId: null, label, localName: null, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" })} />
+        </div>
         {d.diagnoses.length === 0 ? <p className="text-[13px] text-muted-foreground">{t("empty")}</p> : (
           <ul className="space-y-2">
             {sorted.map(({ x, i }) => (
-              <li key={`${x.label}${i}`} className={cn("rounded-xl border p-3 space-y-2", ROLE_STYLE[x.role])}>
+              <li key={`${x.label}${i}`} className={cn("rounded-xl border bg-card p-3 space-y-2.5", ROLE_STYLE[x.role])}>
                 <div className="flex flex-wrap items-center gap-2">
+                  <Stethoscope className="h-4 w-4 shrink-0 text-primary" />
                   <span className={cn("text-[15px] font-semibold min-w-0", x.role === "ruled_out" && "line-through")}>{x.label}</span>
                   {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
                   {x.source === "engine" && <span className="text-[11px] text-muted-foreground">· {t("from_engine")}</span>}
                   {amraz.find((m) => m.id === x.marzId)?.unverified && <Pill className="border-border/60 text-muted-foreground font-medium" title={t("unverified_hint")}>{t("unverified")}</Pill>}
-                  <button type="button" onClick={() => set({ diagnoses: d.diagnoses.filter((_, j) => j !== i) })} className="ms-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={t("remove")}><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => set({ diagnoses: d.diagnoses.filter((_, j) => j !== i) })} className="ms-auto text-muted-foreground hover:text-destructive" aria-label={t("remove")}><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
                 {/* Same floating-label fields as the rest of the form */}
                 <div className="grid gap-x-2 gap-y-4 pt-3 sm:grid-cols-[13rem_11rem_1fr]">
@@ -227,22 +263,6 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
         )}
         {d.diagnoses.length > 0 && !d.diagnoses.some((x) => x.role === "working") && (
           <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"><AlertTriangle className="h-3.5 w-3.5" /> {t("need_working")}</p>
-        )}
-        <div className="pt-3" />
-        <FloatingCombobox id="addMarz" label={t("add")} placeholder={t("add_ph")} value={pick}
-          options={amraz.map((m) => ({ value: m.id, label: m.localName ? `${m.label} · ${m.localName}` : m.label }))}
-          onValueChange={(id) => {
-            const m = amraz.find((x) => x.id === id);
-            if (m) addDx({ marzId: m.id, label: m.label, localName: m.localName, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" });
-            setPick("");
-          }} />
-        {freeOpen ? (
-          <div className="flex items-end gap-2">
-            <div className="flex-1 min-w-0"><FloatingField id="freeMarz" label={t("add_free_label")} value={free} onChange={(e) => setFree(e.target.value)} maxLength={200} /></div>
-            <Button size="sm" variant="outline" disabled={!free.trim()} onClick={() => { addDx({ marzId: null, label: free.trim(), localName: null, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" }); setFree(""); setFreeOpen(false); }}>{t("add_btn")}</Button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => setFreeOpen(true)} className="text-xs font-medium text-primary hover:underline">{t("add_free")}</button>
         )}
       </div>
 
