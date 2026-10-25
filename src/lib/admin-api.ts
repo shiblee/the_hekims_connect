@@ -61,6 +61,36 @@ export const adminApi = {
   delete: <T = any>(url: string) => request<T>(url, { method: "DELETE" }),
 };
 
+/** Multipart upload with progress (XHR — fetch can't report upload progress). */
+export function adminUpload<T = any>(url: string, form: FormData, onProgress?: (fraction: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    const token = getAdminToken();
+    if (token) xhr.setRequestHeader("x-hekim-admin-auth", token);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total); };
+    xhr.onload = () => {
+      let data: any = {};
+      try { data = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data as T);
+      else reject(new Error(data?.error || (xhr.status === 413 ? "The file is too large." : `Upload failed (${xhr.status})`)));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed — check the connection and try again."));
+    xhr.send(form);
+  });
+}
+
+/** Downloads a protected file (e.g. a book PDF) with the admin token. */
+export async function adminFetchBlob(url: string): Promise<Blob> {
+  const token = getAdminToken();
+  const res = await fetch(url, { headers: token ? { "x-hekim-admin-auth": token } : {} });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as any)?.error || `Request failed (${res.status})`);
+  }
+  return res.blob();
+}
+
 /** On admin panel boot, restore the session from the stored token. */
 export async function restoreAdminSession(): Promise<AdminUser | null> {
   const token = getAdminToken();

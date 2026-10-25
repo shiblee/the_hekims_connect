@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { ensureBookTypeSection } from "@/lib/books";
 
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
+  await ensureBookTypeSection(); // the Books category shows up without a separate seed run
   const sections = await db.metadataSection.findMany({
     orderBy: { sortOrder: "asc" },
     include: { _count: { select: { options: true } } },

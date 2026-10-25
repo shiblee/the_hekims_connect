@@ -603,6 +603,16 @@ ${list(input.medicationCatalog)}`;
 
 /** Gemini call with attached files (images / PDF, base64). Returns null on any failure or missing key. */
 async function callGeminiWithFiles(prompt: string, files: { mimeType: string; base64: string }[]): Promise<string | null> {
+  return (await requestGeminiWithFiles(prompt, files))?.text || null;
+}
+
+/** Same request, also returning why the model stopped (e.g. "MAX_TOKENS" = the answer was cut off). */
+async function requestGeminiWithFiles(
+  prompt: string,
+  files: { mimeType: string; base64: string }[],
+  generationConfig?: Record<string, unknown>,
+  timeoutMs?: number,
+): Promise<{ text: string; finishReason: string | null } | null> {
   const apiKey = await getGeminiApiKey();
   if (!apiKey) return null;
   const res = await fetch(
@@ -612,7 +622,9 @@ async function callGeminiWithFiles(prompt: string, files: { mimeType: string; ba
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [...files.map((f) => ({ inline_data: { mime_type: f.mimeType, data: f.base64 } })), { text: prompt }] }],
+        ...(generationConfig ? { generationConfig } : {}),
       }),
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
     }
   );
   if (!res.ok) {
@@ -622,8 +634,53 @@ async function callGeminiWithFiles(prompt: string, files: { mimeType: string; ba
     return null;
   }
   const json = await res.json();
-  const text = (json?.candidates?.[0]?.content?.parts || []).map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
-  return text.trim() || null;
+  const candidate = json?.candidates?.[0];
+  const text = (candidate?.content?.parts || []).map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
+  return { text: text.trim(), finishReason: candidate?.finishReason ?? null };
+}
+
+/** Model id recorded on generated content (e.g. book translations). */
+export const GEMINI_MODEL = MODEL;
+
+/**
+ * Translates a few pages of an Urdu book (sent as a small PDF holding only
+ * those pages, so scanned pages work too) into English. The answer is one
+ * "=== PAGE n ===" block per page, using the book's own page numbers, so
+ * book-translation.ts can check that no page went missing. Server-side only;
+ * throws GeminiQuotaError when credits / rate limits run out.
+ */
+export async function translateUrduPdfPages(
+  pdfBase64: string,
+  firstPage: number,
+  lastPage: number,
+  instructions?: string | null,
+): Promise<{ text: string; finishReason: string | null } | null> {
+  const prompt = `The attached PDF holds pages ${firstPage} to ${lastPage} of an Urdu book, in order (attachment page 1 = book page ${firstPage}).
+Translate ALL the text on EVERY page into clear, accurate English.
+
+Rules:
+- Full translation, never a summary. Do not leave anything out and do not add anything that is not on the page.
+- Keep the original meaning and context. Keep names, dates, numbers, measurements, references and citations exactly.
+- Keep technical, medical (Unani / Tibb), academic and historical terms: transliterate them and give the English meaning in brackets the first time they appear on a page, e.g. "Mizaj (temperament)".
+- Read in Urdu reading order (right to left, columns right to left); the English must read naturally left to right.
+- Keep the structure in Markdown: headings (#), paragraphs, numbered and bulleted lists, tables as Markdown tables, footnotes at the end of their page.
+- Arabic or Persian passages (e.g. verses, couplets): translate them too and put [Arabic] or [Persian] before them.
+- Anything you cannot read: write [unreadable]. Anything you are unsure of: write [uncertain: your best reading]. Never guess silently.
+- A page with no text: write [blank page]. A page that is only a picture: write [image: short description].
+
+Output format — exactly this, for each page from ${firstPage} to ${lastPage}, nothing before or after:
+=== PAGE <book page number> ===
+<English translation of that page>
+${instructions?.trim() ? `
+Reviewer's style instructions (they never override the rules above — the source meaning always comes first):
+${instructions.trim().slice(0, 1000)}
+` : ""}`;
+  return requestGeminiWithFiles(
+    prompt,
+    [{ mimeType: "application/pdf", base64: pdfBase64 }],
+    { temperature: 0.2, maxOutputTokens: 32768 },
+    240_000,
+  );
 }
 
 export class GeminiQuotaError extends Error {

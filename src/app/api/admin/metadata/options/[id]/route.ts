@@ -16,6 +16,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
+  if (data.label) {
+    const current = await db.metadataOption.findUnique({ where: { id }, select: { sectionId: true } });
+    const siblings = current ? await db.metadataOption.findMany({ where: { sectionId: current.sectionId, id: { not: id } }, select: { label: true } }) : [];
+    if (siblings.some((o) => o.label.trim().toLowerCase() === data.label!.toLowerCase())) {
+      return NextResponse.json({ error: `"${data.label}" is already in this list` }, { status: 409 });
+    }
+  }
+
   const option = await db.metadataOption.update({ where: { id }, data });
   return NextResponse.json({ option });
 }

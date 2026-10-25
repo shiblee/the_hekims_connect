@@ -28,6 +28,11 @@ model Admin {
   sessions                          AdminSession[]
   activityLogs                      AdminActivityLog[]
   reviewedChiefComplaintSuggestions ChiefComplaintSuggestion[]
+  booksCreated                      Book[]
+  bookFilesUploaded                 BookPdfFile[]
+  bookTranslationsCreated           BookTranslation[]          @relation("BookTranslationCreatedBy")
+  bookTranslationsEdited            BookTranslation[]          @relation("BookTranslationEditedBy")
+  bookTranslationsConfirmed         BookTranslation[]          @relation("BookTranslationConfirmedBy")
 }
 
 model AdminLoginEvent {
@@ -243,6 +248,7 @@ model MetadataOption {
   updatedAt DateTime @updatedAt
 
   section MetadataSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  books   Book[]
 }
 
 model Patient {
@@ -329,22 +335,22 @@ model Appointment {
 // day. Distinct from Appointment (which is the patient's own advance-booking
 // self-service flow) — the two aren't unified yet, see the Patient Module plan.
 model Visit {
-  id             String   @id @default(cuid())
-  visitCode      String   @unique
-  patientId      String
-  facilityId     String
-  doctorId       String?
+  id                 String   @id @default(cuid())
+  visitCode          String   @unique
+  patientId          String
+  facilityId         String
+  doctorId           String?
   // Staff.id of whoever registered this visit; null when the acting user was
   // the Facility account itself rather than a logged-in staff member.
-  registeredById String?
-  reasonForVisit String?
+  registeredById     String?
+  reasonForVisit     String?
   // Stage 5 case readiness: "pregnant" | "breastfeeding" | "neither" | "unknown"; history reliability: "reliable" | "limited" | "unreliable".
   pregnancyStatus    String?
   historyReliability String?
-  status         String   @default("registered")
-  visitDate      DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  status             String   @default("registered")
+  visitDate          DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   patient                   Patient                    @relation(fields: [patientId], references: [id], onDelete: Cascade)
   facility                  Facility                   @relation(fields: [facilityId], references: [id], onDelete: Cascade)
@@ -679,46 +685,46 @@ model TashkheesOption {
 // The Hakim's diagnosis, treatment plan and handover for a visit. Option
 // values are snapshotted by label (same convention as the rest of the visit).
 model TashkheesDossier {
-  id               String    @id @default(cuid())
-  visitId          String    @unique
-  status           String    @default("draft") // "draft" | "submitted" (awaiting senior sign-off) | "finalized"
-  mizajAsli        String?
-  suMizajType      String? // "Sada" | "Maddi"
-  suMizajQuality   String?
-  suMizajGrade     Int? // Darja 1-4
-  organs           String    @default("[]")
-  diagnosisNote    String?
-  sabab            String    @default("[]") // causes (Asbab) of the illness, chosen by the Hakim
-  icdCode          String? // optional biomedical diagnosis, kept separate from the Unani one
-  icdLabel         String?
-  usool            String    @default("[]")
-  usoolNote        String?
-  ghizaRecommended String    @default("[]")
-  ghizaAvoid       String    @default("[]")
-  ghizaNote        String?
-  tadbeer          String    @default("[]") // [{ label, frequency, duration, notes }]
-  prognosis        String?
-  followUpDate     DateTime?
-  followUpNote     String?
-  urgentDirectives String?
-  priority         String    @default("routine") // "routine" | "priority" | "urgent"
-  handoverNote     String?
-  finalizedAt      DateTime?
-  finalizedByName  String?
-  recordedById     String?
+  id                    String    @id @default(cuid())
+  visitId               String    @unique
+  status                String    @default("draft") // "draft" | "submitted" (awaiting senior sign-off) | "finalized"
+  mizajAsli             String?
+  suMizajType           String? // "Sada" | "Maddi"
+  suMizajQuality        String?
+  suMizajGrade          Int? // Darja 1-4
+  organs                String    @default("[]")
+  diagnosisNote         String?
+  sabab                 String    @default("[]") // causes (Asbab) of the illness, chosen by the Hakim
+  icdCode               String? // optional biomedical diagnosis, kept separate from the Unani one
+  icdLabel              String?
+  usool                 String    @default("[]")
+  usoolNote             String?
+  ghizaRecommended      String    @default("[]")
+  ghizaAvoid            String    @default("[]")
+  ghizaNote             String?
+  tadbeer               String    @default("[]") // [{ label, frequency, duration, notes }]
+  prognosis             String?
+  followUpDate          DateTime?
+  followUpNote          String?
+  urgentDirectives      String?
+  priority              String    @default("routine") // "routine" | "priority" | "urgent"
+  handoverNote          String?
+  finalizedAt           DateTime?
+  finalizedByName       String?
+  recordedById          String?
   // Bumped on every save — a save based on an older revision is refused (two people editing at once).
-  revision         Int       @default(0)
+  revision              Int       @default(0)
   // Senior sign-off: who submitted it for sign-off, and the note when a senior sends it back.
-  submittedAt      DateTime?
-  submittedByName  String?
-  returnNote       String?
+  submittedAt           DateTime?
+  submittedByName       String?
+  returnNote            String?
   // The prescription created from the medicine lines when the dossier is finalised.
-  prescriptionId   String?
+  prescriptionId        String?
   // Follow-up visits: how the patient responded to the previous plan.
   treatmentResponse     String? // "improved" | "partly" | "unchanged" | "worse" | "new_problem"
   treatmentResponseNote String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   visit         Visit                 @relation(fields: [visitId], references: [id], onDelete: Cascade)
   recordedBy    Staff?                @relation(fields: [recordedById], references: [id], onDelete: SetNull)
@@ -799,16 +805,16 @@ model SafetyAcknowledgement {
 // A snapshot of the dossier each time it is finalised or amended — a finalised
 // record is never silently overwritten; every change keeps the one before it.
 model DossierVersion {
-  id        String   @id @default(cuid())
-  dossierId String
-  version   Int
-  kind      String // "finalized" | "amended"
-  reason    String? // required for amendments
-  snapshot  String // JSON of the dossier as finalised
+  id          String   @id @default(cuid())
+  dossierId   String
+  version     Int
+  kind        String // "finalized" | "amended"
+  reason      String? // required for amendments
+  snapshot    String // JSON of the dossier as finalised
   contextHash String? // fingerprint of the case findings it was based on — later changes are flagged
-  byName    String?
-  byStaffId String?
-  createdAt DateTime @default(now())
+  byName      String?
+  byStaffId   String?
+  createdAt   DateTime @default(now())
 
   dossier TashkheesDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
 
@@ -2160,14 +2166,14 @@ model FacilityFee {
 // (src/lib/guidance/registry.ts) and mirrored here so admins can switch them on/off.
 
 model GuidanceModule {
-  key        String   @id // e.g. "clinic.reception"
-  app        String // "clinic" | "admin"
-  name       String
-  route      String
-  enabled    Boolean  @default(true)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  key       String   @id // e.g. "clinic.reception"
+  app       String // "clinic" | "admin"
+  name      String
+  route     String
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tours GuidanceTour[]
   docs  GuidanceDoc[]
@@ -2252,7 +2258,6 @@ model GuidanceProgress {
   @@unique([userKey, tourId])
 }
 
-
 // Stage 5 clinical reasoning assistant — every run, with exactly what was sent
 // (de-identified), what came back, what the safety check removed, and versions,
 // so any suggestion can be traced and reproduced.
@@ -2292,4 +2297,124 @@ model AiFeedback {
   createdAt DateTime @default(now())
 
   run AiReasoningRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------- Books
+// Admin library of (mostly Urdu) books. A book holds many PDFs; each PDF is
+// translated on its own, page by page, into numbered English versions.
+// The type is a Meta option (section "book_type") referenced by id, so
+// renaming a type never detaches its books; Restrict blocks deleting a type
+// that is in use. Files live in S3 (local folder in development) — the
+// database only keeps the storage key, size and checksum.
+
+model Book {
+  id          String   @id @default(cuid())
+  bookCode    String   @unique // "BK1"
+  title       String
+  description String?
+  bookTypeId  String
+  active      Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookType  MetadataOption @relation(fields: [bookTypeId], references: [id], onDelete: Restrict)
+  createdBy Admin?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  pdfs      BookPdf[]
+
+  @@index([bookTypeId])
+}
+
+model BookPdf {
+  id             String   @id @default(cuid())
+  pdfCode        String   @unique // "BP1"
+  bookId         String
+  title          String
+  // Which BookPdfFile version is current — bumped by "Replace PDF".
+  currentVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  book         Book              @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  files        BookPdfFile[]
+  translations BookTranslation[]
+
+  @@index([bookId])
+}
+
+// Every uploaded file is kept (replacing adds a version), so a translation
+// can always be read against the exact source it was made from.
+model BookPdfFile {
+  id               String   @id @default(cuid())
+  pdfId            String
+  version          Int
+  originalFilename String
+  storageKey       String
+  mimeType         String   @default("application/pdf")
+  fileSize         Int
+  checksum         String // sha256 hex
+  pageCount        Int
+  uploadedById     String?
+  createdAt        DateTime @default(now())
+
+  pdf        BookPdf @relation(fields: [pdfId], references: [id], onDelete: Cascade)
+  uploadedBy Admin?  @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@unique([pdfId, version])
+}
+
+// One translation version of one PDF source version. processingStatus is the
+// machine side (queued | processing | generated | partial | failed);
+// reviewStatus the human side (pending_review | in_review | confirmed |
+// changes_required). A confirmed version is never edited — further changes
+// start a new version copied from it.
+model BookTranslation {
+  id               String    @id @default(cuid())
+  pdfId            String
+  sourceVersion    Int
+  versionNumber    Int
+  // "gemini" (generated from the PDF) or "copy" (new draft copied from basedOnVersion).
+  method           String    @default("gemini")
+  basedOnVersion   Int?
+  modelIdentifier  String?
+  instructions     String?
+  processingStatus String    @default("queued")
+  reviewStatus     String    @default("pending_review")
+  reviewNote       String?
+  errorMessage     String?
+  createdById      String?
+  editedById       String?
+  editedAt         DateTime?
+  confirmedById    String?
+  confirmedAt      DateTime?
+  generatedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  pdf         BookPdf               @relation(fields: [pdfId], references: [id], onDelete: Cascade)
+  createdBy   Admin?                @relation("BookTranslationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  editedBy    Admin?                @relation("BookTranslationEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
+  confirmedBy Admin?                @relation("BookTranslationConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  pages       BookTranslationPage[]
+
+  @@unique([pdfId, versionNumber])
+  @@index([processingStatus])
+}
+
+// One source page of a translation. generatedText is what Gemini returned
+// (kept untouched); reviewedText is the proofread copy (null = unedited).
+model BookTranslationPage {
+  id            String   @id @default(cuid())
+  translationId String
+  pageNumber    Int
+  status        String   @default("pending") // pending | done | failed
+  generatedText String?
+  reviewedText  String?
+  error         String?
+  attempts      Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  translation BookTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  @@unique([translationId, pageNumber])
 }

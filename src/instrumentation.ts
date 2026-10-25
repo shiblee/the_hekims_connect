@@ -17,4 +17,10 @@ export async function register() {
   scheduleMedicationAssistant();
   // Supplement enrichment runs left "running" by a restart pick up where they stopped.
   void resumeEnrichmentJobs().catch((err) => console.error("[supplement-enrichment] resume failed:", err));
+  // Book translations interrupted by a restart carry on from their pending pages.
+  // (Inside this check so bundlers drop it — and pdf-lib / node:crypto — from the edge build.)
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { resumeBookTranslations } = await import("@/lib/book-translation");
+    void resumeBookTranslations().catch((err) => console.error("[book-translation] resume failed:", err));
+  }
 }

@@ -36,4 +36,6 @@ export async function proxy(req: NextRequest) {
   return NextResponse.json({ error: "You don't have permission for this. Ask the clinic owner to change your permissions." }, { status: 403 });
 }
 
-export const config = { matcher: ["/api/:path*", "/admin", "/admin/:path*"] };
+// Admin book routes are left out: they are admin-only (no staff checks to make) and
+// take PDF uploads larger than the proxy's 10 MB request-body limit.
+export const config = { matcher: ["/api/((?!admin/books).*)", "/admin", "/admin/:path*"] };

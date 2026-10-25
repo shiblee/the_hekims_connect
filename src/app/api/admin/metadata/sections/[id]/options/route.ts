@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 
-type ModelName = "facility" | "staff" | "patient" | "payment" | "vitals" | "referralDecline";
+type ModelName = "facility" | "staff" | "patient" | "payment" | "vitals" | "referralDecline" | "book";
 
 interface FieldConfig {
   model: ModelName;
@@ -11,6 +11,8 @@ interface FieldConfig {
   array?: boolean;
   // Non-nullable column — "unset" can only mean an empty string, never null.
   required?: boolean;
+  // Column holds the option's id rather than its label (survives renames).
+  byId?: boolean;
 }
 
 // Maps a Meta section key onto the real column it actually drives, so the
@@ -35,6 +37,7 @@ const FIELD_CONFIG: Record<string, FieldConfig> = {
   marital_status: { model: "patient", field: "maritalStatus" },
   payment_mode: { model: "payment", field: "mode", required: true },
   referral_decline_reason: { model: "referralDecline", field: "declineReason" },
+  book_type: { model: "book", field: "bookTypeId", required: true, byId: true },
 };
 
 async function countModel(model: ModelName, where: Record<string, unknown>): Promise<number> {
@@ -45,6 +48,7 @@ async function countModel(model: ModelName, where: Record<string, unknown>): Pro
     case "payment": return db.payment.count({ where });
     case "vitals": return db.vitalSigns.count({ where });
     case "referralDecline": return db.amaDecline.count({ where });
+    case "book": return db.book.count({ where });
   }
 }
 
@@ -65,7 +69,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const counted = await Promise.all(options.map(async (o) => {
     if (!config) return { ...o, count: 0 };
-    const where = config.array ? { [config.field]: { contains: `"${o.label}"` } } : { [config.field]: o.label };
+    const where = config.array ? { [config.field]: { contains: `"${o.label}"` } } : { [config.field]: config.byId ? o.id : o.label };
     const count = await countModel(config.model, where);
     return { ...o, count };
   }));
@@ -76,6 +80,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (config) {
     if (config.array) {
       unsetCount = await countModel(config.model, { OR: [{ [config.field]: null }, { [config.field]: "" }, { [config.field]: "[]" }] });
+    } else if (config.byId) {
+      unsetCount = 0; // a required foreign key — every record has one
     } else if (config.required) {
       unsetCount = await countModel(config.model, { [config.field]: "" });
     } else {
@@ -94,6 +100,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { label } = await req.json();
   if (!label || !String(label).trim()) {
     return NextResponse.json({ error: "Label is required" }, { status: 400 });
+  }
+
+  // Same name twice in one list only confuses whoever picks from it.
+  const siblings = await db.metadataOption.findMany({ where: { sectionId: id }, select: { label: true } });
+  if (siblings.some((o) => o.label.trim().toLowerCase() === String(label).trim().toLowerCase())) {
+    return NextResponse.json({ error: `"${String(label).trim()}" is already in this list` }, { status: 409 });
   }
 
   const maxOrder = await db.metadataOption.aggregate({ where: { sectionId: id }, _max: { sortOrder: true } });
