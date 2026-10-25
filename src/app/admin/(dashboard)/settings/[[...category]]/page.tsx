@@ -16,6 +16,7 @@ import { SupplementProfilesStatus } from "@/components/admin/supplement-profile-
 import { cn } from "@/lib/utils";
 import { VITALS_RANGE_FIELDS, type VitalsRangeField } from "@/lib/vitals-ranges";
 import { AiServiceCard } from "@/components/admin/ai-service-card";
+import { GeminiUsageDashboard } from "@/components/admin/gemini-usage-dashboard";
 
 interface SettingRow { id: string; category: string; key: string; value: string; updatedAt: string }
 
@@ -75,6 +76,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   subscription: { label: "Subscription", description: "Free trial length and paid plan pricing for Facility accounts." },
   patient_defaults: { label: "Patient Defaults", description: "Default address values pre-filled when registering a new patient." },
   vitals: { label: "Vitals", description: "Rules for how long a recorded vitals assessment stays editable." },
+  gemini_usage: { label: "Gemini Usage", description: "Every Gemini request this app makes — when, for what, tokens used and what it costs." },
   guidance: { label: "User Guidance", description: "Guided tours and module tutorials for clinic users. Write and publish the content in Admin → Guidance." },
   ...Object.fromEntries(Object.entries(ASSISTANTS).map(([k, a]) => [k, { label: a.label, description: a.description }])),
 };
@@ -93,7 +95,10 @@ const tabOf = (c: string) => (GENERAL_GROUP.includes(c) || c in SYSTEM ? "genera
 // Explicit order for the sidebar (the settings themselves load alphabetically
 // by category) so Vitals Validation sits right after General rather than
 // wherever its name happens to sort.
-const CATEGORY_ORDER = ["general", "report", "vitals_validation", "registration", "verification", "subscription", "patient_defaults", "vitals", "chief_complaint_assistant", "allergy_assistant", "supplement_assistant", "medication_assistant"];
+const CATEGORY_ORDER = ["general", "gemini_usage", "report", "vitals_validation", "registration", "verification", "subscription", "patient_defaults", "vitals", "chief_complaint_assistant", "allergy_assistant", "supplement_assistant", "medication_assistant"];
+
+// Tabs that aren't made of plain setting rows, so they show even before any row exists.
+const ALWAYS_TABS = ["gemini_usage"];
 
 const VITALS_FIELD_LABELS: Record<VitalsRangeField, string> = {
   pulse: "Pulse (bpm)",
@@ -201,7 +206,7 @@ export default function SettingsPage() {
       .then((res) => {
         setSettings(res.settings);
         setDraft(Object.fromEntries(res.settings.map((s) => [`${s.category}.${s.key}`, s.value])));
-        const cats = sortCategories(Array.from(new Set(res.settings.map((s) => tabOf(s.category)))));
+        const cats = sortCategories(Array.from(new Set([...res.settings.map((s) => tabOf(s.category)), ...ALWAYS_TABS])));
         // Old links to a merged section (e.g. /admin/settings/registration) open General at that section.
         if (urlCategory && tabOf(urlCategory) === "general" && urlCategory !== "general") {
           window.history.replaceState(null, "", `/admin/settings/general#${urlCategory}`);
@@ -214,7 +219,7 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const categories = sortCategories(Array.from(new Set(settings.map((s) => tabOf(s.category)))));
+  const categories = sortCategories(Array.from(new Set([...settings.map((s) => tabOf(s.category)), ...(settings.length ? ALWAYS_TABS : [])])));
   const selected = urlCategory && categories.includes(urlCategory) ? urlCategory : null;
   // pushState (synced by Next.js into usePathname) switches tabs without
   // remounting the page, so unsaved edits on other tabs aren't lost.
@@ -301,7 +306,7 @@ export default function SettingsPage() {
         <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
       </div>
 
-      <div className="grid md:grid-cols-[260px_1fr] gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-6">
         <Card className="p-2 border-border/50 bg-card/60 h-fit">
           <div className="space-y-1">
             {categories.map((c) => (
@@ -321,7 +326,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Slightly darker borders on this page (fields, switch tiles, dividers) for clarity. */}
-        <Card className="p-6 gap-4 border-border bg-card/60 [--border:#c6c6cd] [--input:#a6a6af] dark:[--border:oklch(0.38_0.012_165)] dark:[--input:oklch(0.42_0.012_165)]">
+        <Card className="min-w-0 p-6 gap-4 border-border bg-card/60 [--border:#c6c6cd] [--input:#a6a6af] dark:[--border:oklch(0.38_0.012_165)] dark:[--input:oklch(0.42_0.012_165)]">
           {!selected ? (
             <p className="text-muted-foreground text-sm">Select a section to manage its settings.</p>
           ) : (
@@ -338,7 +343,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className={selected === "vitals_validation" ? "divide-y divide-border/50" : "space-y-4 pt-2"}>
-                {assistant ? (
+                {selected === "gemini_usage" ? (
+                  <GeminiUsageDashboard />
+                ) : assistant ? (
                   <CatalogAssistantControls
                     config={assistant}
                     enabled={settingValue(`${selected}.enabled`, "false") === "true"}
@@ -414,13 +421,13 @@ export default function SettingsPage() {
                   </div>
                 ) : settings.filter((s) => s.category === selected).map(renderField)}
               </div>
-              <Button
+              {selected !== "gemini_usage" && <Button
                 className="self-end h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
                 disabled={saving === selected}
                 onClick={() => saveCategory(selected)}
               >
                 {saving === selected ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
-              </Button>
+              </Button>}
 
               {selected === "supplement_assistant" && <SupplementProfilesStatus key="supplement" kind="supplement" />}
               {selected === "medication_assistant" && <SupplementProfilesStatus key="medication" kind="medication" />}

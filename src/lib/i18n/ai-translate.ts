@@ -73,7 +73,7 @@ export async function translateGuideText(text: string, targetLanguageCode: strin
     // No Anthropic credentials on this server → use the platform's Gemini connection instead.
     if (!isMissingAnthropicCredentials(e)) throw e;
     const { geminiText } = await import("@/lib/gemini");
-    const out = await geminiText(`${GUIDE_SYSTEM}\n\nTranslate into ${targetLabel}.\nWhere it appears: ${context}\n\n${text}`);
+    const out = await geminiText(`${GUIDE_SYSTEM}\n\nTranslate into ${targetLabel}.\nWhere it appears: ${context}\n\n${text}`, "ui_translation");
     if (!out) throw e;
     return out;
   }

@@ -2418,3 +2418,29 @@ model BookTranslationPage {
 
   @@unique([translationId, pageNumber])
 }
+
+// One row per request to Gemini (Settings → Gemini Usage). Tokens come from
+// Gemini's own usageMetadata; costUsd is worked out at the time of the call
+// with the prices then in force (Settings can recalculate it). Failed calls
+// are kept too (Google doesn't bill them) so outages and quota hits show up.
+model GeminiUsageLog {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  feature        String
+  model          String
+  status         String // ok | error | quota | timeout
+  httpStatus     Int?
+  inputTokens    Int      @default(0)
+  cachedTokens   Int      @default(0)
+  outputTokens   Int      @default(0)
+  thinkingTokens Int      @default(0)
+  totalTokens    Int      @default(0)
+  searchRequests Int      @default(0)
+  billedSearches Int      @default(0)
+  costUsd        Float    @default(0)
+  durationMs     Int      @default(0)
+  errorMessage   String?
+
+  @@index([createdAt])
+  @@index([feature, createdAt])
+}

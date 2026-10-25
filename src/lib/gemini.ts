@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { decryptSecret } from "@/lib/secret-crypto";
+import { recordGeminiUsage } from "@/lib/gemini-usage";
+import type { GeminiFeature } from "@/lib/gemini-pricing";
 
 const MODEL = "gemini-3.8-flash";
 
@@ -28,30 +30,63 @@ export interface VitalsInsightVisit {
 let quotaHitAt = 0;
 export function geminiQuotaRecentlyHit() { return Date.now() - quotaHitAt < 120_000; }
 
-/** Plain text answer from Gemini (null when no key / any failure). Server-side only. */
-export async function geminiText(prompt: string): Promise<string | null> { return callGemini(prompt); }
+interface GeminiResponse { ok: boolean; status: number; json: any; errorText: string }
 
-async function callGemini(prompt: string): Promise<string | null> {
-  const apiKey = await getGeminiApiKey();
+/**
+ * The one place that talks to Gemini: every request goes through here so its
+ * tokens, cost and outcome are logged (Settings → Gemini Usage). Returns null
+ * when no key is configured; throws only on network errors / timeouts.
+ */
+async function geminiRequest(feature: GeminiFeature, body: unknown, opts: { apiKey?: string; timeoutMs?: number } = {}): Promise<GeminiResponse | null> {
+  const apiKey = opts.apiKey ?? (await getGeminiApiKey());
   if (!apiKey) return null;
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
-
+  const started = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        ...(opts.timeoutMs ? { signal: AbortSignal.timeout(opts.timeoutMs) } : {}),
+      }
+    );
+  } catch (err) {
+    const timeout = err instanceof Error && err.name === "TimeoutError";
+    await recordGeminiUsage({ feature, model: MODEL, status: timeout ? "timeout" : "error", durationMs: Date.now() - started, errorMessage: timeout ? "No answer before the time limit" : "Could not reach Google" });
+    throw err;
+  }
   if (!res.ok) {
-    if (res.status === 402 || res.status === 429) quotaHitAt = Date.now();
-    console.error("Gemini call error:", res.status, await res.text().catch(() => ""));
+    const errorText = await res.text().catch(() => "");
+    const quota = res.status === 402 || res.status === 429;
+    if (quota) quotaHitAt = Date.now();
+    let message = errorText.slice(0, 300);
+    try { message = String(JSON.parse(errorText)?.error?.message || message); } catch { /* not JSON */ }
+    await recordGeminiUsage({ feature, model: MODEL, status: quota ? "quota" : "error", httpStatus: res.status, durationMs: Date.now() - started, errorMessage: message });
+    return { ok: false, status: res.status, json: null, errorText };
+  }
+  const json = await res.json().catch(() => null);
+  const gm = json?.candidates?.[0]?.groundingMetadata;
+  const searched = !!gm && ((gm.webSearchQueries?.length ?? 0) > 0 || (gm.groundingChunks?.length ?? 0) > 0);
+  await recordGeminiUsage({
+    feature, model: MODEL, status: "ok", httpStatus: res.status, usageMetadata: json?.usageMetadata,
+    searchRequests: searched ? 1 : 0, durationMs: Date.now() - started,
+  });
+  return { ok: true, status: res.status, json, errorText: "" };
+}
+
+/** Plain text answer from Gemini (null when no key / any failure). Server-side only. */
+export async function geminiText(prompt: string, feature: GeminiFeature): Promise<string | null> { return callGemini(prompt, feature); }
+
+async function callGemini(prompt: string, feature: GeminiFeature): Promise<string | null> {
+  const res = await geminiRequest(feature, { contents: [{ parts: [{ text: prompt }] }] });
+  if (!res) return null;
+  if (!res.ok) {
+    console.error("Gemini call error:", res.status, res.errorText);
     return null;
   }
-
-  const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = res.json?.candidates?.[0]?.content?.parts?.[0]?.text;
   return typeof text === "string" ? text.trim() : null;
 }
 
@@ -86,7 +121,7 @@ ${rows}
 
 In 2-4 short sentences, summarize the overall trend and flag anything outside a normal adult range. Be factual and concise, plain text, no markdown, no diagnosis, no treatment recommendations — just observations a doctor should double-check.`;
 
-  return callGemini(prompt);
+  return callGemini(prompt, "vitals_insight");
 }
 
 export interface ScreeningInsight {
@@ -142,7 +177,7 @@ Rules for findings: include 2 to 5, ordered by clinical importance (most importa
 
 Never state or imply a definitive diagnosis, and never recommend a specific treatment or formulation.`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "screening_summary");
   if (!raw) return null;
   try {
     const parsed = JSON.parse(stripCodeFence(raw));
@@ -210,7 +245,7 @@ Respond with ONLY a single valid JSON object — no markdown code fences, no com
 
 Never state or imply a diagnosis, and never recommend a specific treatment.`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "clinical_routing");
   if (!raw) return null;
   try {
     const parsed = JSON.parse(stripCodeFence(raw));
@@ -251,7 +286,7 @@ ${breakdownLines || "none"}
 
 Write ONE short paragraph (2-3 sentences, plain text, no markdown) explaining why the findings point toward ${input.dominant} being dominant. Reference only the findings listed above — never invent a finding, a classical text, an author, or a quotation. Do not state or imply a diagnosis. Respond with the paragraph only, no preamble.`;
 
-  return callGemini(prompt);
+  return callGemini(prompt, "humoral_clues");
 }
 
 export interface ChiefComplaintSuggestionAi {
@@ -300,7 +335,7 @@ Respond with ONLY a single valid JSON array — no markdown code fences, no comm
 
 Never invent a classical term, a source, or a citation. If you cannot think of genuinely new, non-duplicate, Unani-relevant complaints, return an empty array [].`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "complaint_assistant");
   if (!raw) return null;
   try {
     const parsed = JSON.parse(stripCodeFence(raw));
@@ -351,7 +386,7 @@ Respond with ONLY a single valid JSON array — no markdown code fences, no comm
 
 Only suggest substances with a genuine, documented potential to cause allergic or hypersensitivity reactions — never a disease, symptom or drug class. Never invent a classical name, a source or a citation. If you cannot think of genuinely new, non-duplicate, relevant allergens, return an empty array [].`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "allergy_assistant");
   if (!raw) return null;
   try {
     const parsed = JSON.parse(stripCodeFence(raw));
@@ -405,7 +440,7 @@ Respond with ONLY a single valid JSON array — no markdown code fences, no comm
 
 Only suggest genuine herbs, herbal supplements or classical Unani preparations — never a modern prescription drug, a disease or a symptom. Never invent a name, a formulation, a source or a citation. If you cannot think of genuinely new, non-duplicate items, return an empty array [].`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "supplement_assistant");
   if (!raw) return null;
   try {
     const parsed = JSON.parse(stripCodeFence(raw));
@@ -428,24 +463,15 @@ export interface GroundedResult { text: string; chunks: GroundedChunk[]; support
  * asking the model to "cite" (which invites fabricated references).
  * Returns null on any failure or missing key. Server-side only.
  */
-async function callGeminiGrounded(prompt: string): Promise<GroundedResult | null> {
-  const apiKey = await getGeminiApiKey();
-  if (!apiKey) return null;
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] }),
-    }
-  );
+async function callGeminiGrounded(prompt: string, feature: GeminiFeature): Promise<GroundedResult | null> {
+  const res = await geminiRequest(feature, { contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] });
+  if (!res) return null;
   if (!res.ok) {
-    console.error("Gemini grounded call error:", res.status, await res.text().catch(() => ""));
+    console.error("Gemini grounded call error:", res.status, res.errorText);
     return null;
   }
 
-  const json = await res.json();
+  const json = res.json;
   const candidate = json?.candidates?.[0];
   const text = (candidate?.content?.parts || []).map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
   if (!text.trim()) return null;
@@ -528,7 +554,7 @@ ${list(input.medicationCatalog)}
 SUPPLEMENTS (other records in this database):
 ${list(input.supplementCatalog)}`;
 
-  return callGeminiGrounded(prompt);
+  return callGeminiGrounded(prompt, "supplement_research");
 }
 
 export interface MedicationResearchInput {
@@ -598,43 +624,34 @@ ${list(input.allergyCatalog)}
 MEDICATIONS (other allopathic records in this database):
 ${list(input.medicationCatalog)}`;
 
-  return callGeminiGrounded(prompt);
+  return callGeminiGrounded(prompt, "medication_research");
 }
 
 /** Gemini call with attached files (images / PDF, base64). Returns null on any failure or missing key. */
-async function callGeminiWithFiles(prompt: string, files: { mimeType: string; base64: string }[]): Promise<string | null> {
-  return (await requestGeminiWithFiles(prompt, files))?.text || null;
+async function callGeminiWithFiles(prompt: string, files: { mimeType: string; base64: string }[], feature: GeminiFeature): Promise<string | null> {
+  return (await requestGeminiWithFiles(prompt, files, feature))?.text || null;
 }
 
 /** Same request, also returning why the model stopped (e.g. "MAX_TOKENS" = the answer was cut off). */
 async function requestGeminiWithFiles(
   prompt: string,
   files: { mimeType: string; base64: string }[],
+  feature: GeminiFeature,
   generationConfig?: Record<string, unknown>,
   timeoutMs?: number,
 ): Promise<{ text: string; finishReason: string | null } | null> {
-  const apiKey = await getGeminiApiKey();
-  if (!apiKey) return null;
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [...files.map((f) => ({ inline_data: { mime_type: f.mimeType, data: f.base64 } })), { text: prompt }] }],
-        ...(generationConfig ? { generationConfig } : {}),
-      }),
-      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
-    }
-  );
+  const res = await geminiRequest(feature, {
+    contents: [{ parts: [...files.map((f) => ({ inline_data: { mime_type: f.mimeType, data: f.base64 } })), { text: prompt }] }],
+    ...(generationConfig ? { generationConfig } : {}),
+  }, { timeoutMs });
+  if (!res) return null;
   if (!res.ok) {
-    console.error("Gemini file call error:", res.status, await res.text().catch(() => ""));
+    console.error("Gemini file call error:", res.status, res.errorText);
     // Out of credits / rate-limited is worth telling the user plainly — they can act on it.
     if (res.status === 402 || res.status === 429) throw new GeminiQuotaError();
     return null;
   }
-  const json = await res.json();
-  const candidate = json?.candidates?.[0];
+  const candidate = res.json?.candidates?.[0];
   const text = (candidate?.content?.parts || []).map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
   return { text: text.trim(), finishReason: candidate?.finishReason ?? null };
 }
@@ -678,6 +695,7 @@ ${instructions.trim().slice(0, 1000)}
   return requestGeminiWithFiles(
     prompt,
     [{ mimeType: "application/pdf", base64: pdfBase64 }],
+    "book_translation",
     { temperature: 0.2, maxOutputTokens: 32768 },
     240_000,
   );
@@ -720,7 +738,7 @@ Return ONLY a single JSON object, no markdown fences:
 }
 
 Rules: transcribe exactly what is printed — never guess, invent or correct values, units, ranges, names or dates; use null when something is not on the document or unreadable. Set "flag" from the document's own H/L markers or by comparing to the printed range; null when there is no range. Never add a diagnosis, treatment or dosage.`;
-  const raw = await callGeminiWithFiles(prompt, files);
+  const raw = await callGeminiWithFiles(prompt, files, "report_reading");
   if (!raw) return null;
   try {
     const p = JSON.parse(stripCodeFence(raw));
@@ -780,7 +798,7 @@ Respond with ONLY a single valid JSON array — no markdown code fences, no comm
 
 Only suggest real, approved allopathic medicines — never a Unani/Ayurvedic/herbal product (those belong on a separate list), a disease or a symptom. Never invent a drug. If you cannot think of genuinely new, non-duplicate medicines, return an empty array [].`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "medication_assistant");
   if (!raw) return null;
   try {
     const parsed = JSON.parse(stripCodeFence(raw));
@@ -837,7 +855,7 @@ ${list}
 Pick at most ${limit}, most useful first. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences:
 {"selected":[{"id":"...","reason":"one short clinical reason, max 12 words, no diagnosis"}]}`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "dalail_ranking");
   if (!raw) return null;
   try {
     const parsed = JSON.parse(stripCodeFence(raw));
@@ -872,7 +890,7 @@ Candidates (id — organ):
 ${candidates.map((c) => `- ${c.id} — ${c.label}`).join("\n")}
 
 Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences: {"selected":["id", ...]}`;
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "tashkhees_ranking");
   if (!raw) return null;
   try {
     const sel = JSON.parse(stripCodeFence(raw))?.selected;
@@ -901,7 +919,7 @@ Candidates (id — principle):
 ${candidates.map((c) => `- ${c.id} — ${c.label}`).join("\n")}
 
 Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences: {"selected":["id", ...]}`;
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "usool_ranking");
   if (!raw) return null;
   try {
     const sel = JSON.parse(stripCodeFence(raw))?.selected;
@@ -930,7 +948,7 @@ Candidates (id — food):
 ${candidates.map((c) => `- ${c.id} — ${c.label}`).join("\n")}
 
 Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences: {"selected":["id", ...]}`;
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "ghiza_ranking");
   if (!raw) return null;
   try {
     const sel = JSON.parse(stripCodeFence(raw))?.selected;
@@ -960,7 +978,7 @@ Candidates (id — medicine — why it was found):
 ${candidates.map((c) => `- ${c.id} — ${c.label}`).join("\n")}
 
 Pick at most ${limit}. Use ONLY ids from the list. Respond with ONLY valid JSON, no code fences: {"selected":["id", ...]}`;
-  const raw = await callGemini(prompt);
+  const raw = await callGemini(prompt, "cds_ranking");
   if (!raw) return null;
   try {
     const sel = JSON.parse(stripCodeFence(raw))?.selected;
@@ -986,17 +1004,14 @@ export async function geminiUnavailableReason(): Promise<"off" | "quota" | "unav
 /** Checks a key with one tiny request (used by the admin "Test connection" button). Never logs the key. */
 export async function testGeminiKey(apiKey: string): Promise<{ ok: boolean; message: string }> {
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: "Reply with OK." }] }], generationConfig: { maxOutputTokens: 5 } }),
-    });
-    if (res.ok) return { ok: true, message: "Connected — the key works." };
-    const body = await res.json().catch(() => ({}));
-    const msg = String(body?.error?.message || "").slice(0, 200);
-    if (res.status === 402 || res.status === 429) return { ok: false, message: `The key works but the account is out of credits or over its limit. ${msg}`.trim() };
-    if (res.status === 400 || res.status === 401 || res.status === 403) return { ok: false, message: `Google rejected the key. ${msg}`.trim() };
-    return { ok: false, message: `Google answered with an error (${res.status}). ${msg}`.trim() };
+    const res = await geminiRequest("key_test", { contents: [{ parts: [{ text: "Reply with OK." }] }], generationConfig: { maxOutputTokens: 5 } }, { apiKey });
+    if (res?.ok) return { ok: true, message: "Connected — the key works." };
+    const status = res?.status ?? 0;
+    let msg = "";
+    try { msg = String(JSON.parse(res?.errorText || "{}")?.error?.message || "").slice(0, 200); } catch { /* not JSON */ }
+    if (status === 402 || status === 429) return { ok: false, message: `The key works but the account is out of credits or over its limit. ${msg}`.trim() };
+    if (status === 400 || status === 401 || status === 403) return { ok: false, message: `Google rejected the key. ${msg}`.trim() };
+    return { ok: false, message: `Google answered with an error (${status}). ${msg}`.trim() };
   } catch {
     return { ok: false, message: "Couldn't reach Google from the server — try again in a moment." };
   }
