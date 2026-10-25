@@ -145,6 +145,10 @@ async function processTranslation(id: string) {
       const res = await translate(chunk.toString("base64"), first, last, t.instructions);
       if (res?.text) {
         got = parsePageBlocks(res.text, first, last, res.finishReason === "MAX_TOKENS");
+        if (got.size < run.length) {
+          // Kept in the server log so a format the parser doesn't know can be diagnosed.
+          console.error(`[book-translation] pages ${first}-${last}: matched ${got.size}/${run.length} (finish ${res.finishReason}). Answer starts: ${JSON.stringify(res.text.slice(0, 400))}`);
+        }
         failure = res.finishReason === "MAX_TOKENS" ? "The answer was cut off." : "This page was missing from Gemini's answer.";
       }
     } catch (err) {

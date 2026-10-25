@@ -41,27 +41,52 @@ export function planChunks(pages: number[], size: number): number[][] {
   return runs;
 }
 
+/** Western, Arabic-Indic (٠-٩) and Urdu/Persian (۰-۹) digits → number. */
+function toNumber(digits: string) {
+  return Number(digits.replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)).replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0)));
+}
+
 /**
- * Reads Gemini's "=== PAGE n ===" blocks for pages first..last. Only pages
- * that came back are returned — a missing page is never filled in. When the
- * answer was cut off (truncated), the last block may be incomplete, so it is
- * dropped and retried.
+ * Reads Gemini's "=== PAGE n ===" blocks for pages first..last. Gemini is asked
+ * to number blocks by position in the attachment (1, 2, …), but it sometimes
+ * uses the book's numbering or the page number printed on the scan, so:
+ *  - numbers 1..k (starting at 1) → attachment positions; first..last (starting
+ *    at first) → book pages;
+ *  - otherwise, when the number of blocks matches, blocks are taken in order;
+ *  - anything still ambiguous is left out (and retried) — never guessed.
+ * When the answer was cut off (truncated), the last block may be incomplete,
+ * so it is dropped and retried.
  */
 export function parsePageBlocks(text: string, first: number, last: number, truncated: boolean): Map<number, string> {
   const out = new Map<number, string>();
-  const re = /^[ \t]*={2,}\s*PAGE\s+(\d+)\s*={2,}[ \t]*$/gim;
-  const marks: { page: number; start: number; end: number }[] = [];
+  const count = last - first + 1;
+  // Tolerates markdown around the marker (**, ##, >) and ===/--- fences.
+  const re = /^[ \t>#*_]*(?:={2,}|-{3,})?[ \t*_]*PAGE[ \t]+([0-9\u0660-\u0669\u06F0-\u06F9]+)[ \t*_]*(?:={2,}|-{3,})?[ \t*_]*$/gim;
+  const marks: { n: number; start: number; end: number }[] = [];
   let m: RegExpExecArray | null;
-  while ((m = re.exec(text))) marks.push({ page: Number(m[1]), start: m.index, end: m.index + m[0].length });
-  for (let i = 0; i < marks.length; i++) {
-    if (truncated && i === marks.length - 1) break;
-    const { page, end } = marks[i];
-    if (page < first || page > last || out.has(page)) continue;
-    const body = text.slice(end, i + 1 < marks.length ? marks[i + 1].start : undefined).trim();
-    if (body) out.set(page, body);
+  while ((m = re.exec(text))) marks.push({ n: toNumber(m[1]), start: m.index, end: m.index + m[0].length });
+
+  if (!marks.length) {
+    // A one-page request answered without the marker is still that page.
+    if (count === 1 && !truncated && text.trim()) out.set(first, text.trim());
+    return out;
   }
-  // A one-page request answered without the marker is still that page.
-  if (!marks.length && first === last && !truncated && text.trim()) out.set(first, text.trim());
+
+  const blocks = marks.map((mk, i) => ({ n: mk.n, body: text.slice(mk.end, i + 1 < marks.length ? marks[i + 1].start : undefined).trim() }));
+  const nums = blocks.map((b) => b.n);
+  const distinct = new Set(nums).size === nums.length;
+  let pageOf: ((n: number, i: number) => number) | null = null;
+  // Positions start at 1, book numbers at `first` — that tells the two apart even when an answer stops early.
+  if (distinct && nums[0] === 1 && nums.every((x) => x >= 1 && x <= count)) pageOf = (n) => first + n - 1;
+  else if (distinct && nums[0] === first && nums.every((x) => x >= first && x <= last)) pageOf = (n) => n;
+  else if (blocks.length === count) pageOf = (_n, i) => first + i;
+  if (!pageOf) return out;
+
+  blocks.forEach((b, i) => {
+    if (truncated && i === blocks.length - 1) return;
+    const page = pageOf!(b.n, i);
+    if (b.body && !out.has(page)) out.set(page, b.body);
+  });
   return out;
 }
 

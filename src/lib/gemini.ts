@@ -685,9 +685,10 @@ Rules:
 - Anything you cannot read: write [unreadable]. Anything you are unsure of: write [uncertain: your best reading]. Never guess silently.
 - A page with no text: write [blank page]. A page that is only a picture: write [image: short description].
 
-Output format — exactly this, for each page from ${firstPage} to ${lastPage}, nothing before or after:
-=== PAGE <book page number> ===
+Output format — exactly this, one block per page of the attachment (${lastPage - firstPage + 1} block${lastPage === firstPage ? "" : "s"}), nothing before or after:
+=== PAGE <position of the page in the attachment: 1, 2, 3 …> ===
 <English translation of that page>
+Number the blocks by position in the attachment only — NOT by any page number printed on the page itself (put printed page numbers in the translation if you like).
 ${instructions?.trim() ? `
 Reviewer's style instructions (they never override the rules above — the source meaning always comes first):
 ${instructions.trim().slice(0, 1000)}

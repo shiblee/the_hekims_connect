@@ -33,9 +33,31 @@ describe("parsePageBlocks", () => {
     const m = parsePageBlocks(answer, 6, 8, true);
     assert.deepEqual([...m.keys()], [6, 7]);
   });
-  it("ignores pages outside the requested range and empty blocks", () => {
+  it("ambiguous numbering is left out (retried), never guessed", () => {
     const m = parsePageBlocks("=== PAGE 3 ===\nX\n=== PAGE 6 ===\n\n=== PAGE 7 ===\nY", 6, 7, false);
+    assert.equal(m.size, 0);
+  });
+  it("skips an empty block", () => {
+    const m = parsePageBlocks("=== PAGE 1 ===\n\n=== PAGE 2 ===\nY", 6, 7, false);
     assert.deepEqual([...m.entries()], [[7, "Y"]]);
+  });
+  it("attachment positions 1..k map onto the requested book pages", () => {
+    const m = parsePageBlocks("=== PAGE 1 ===\nA\n=== PAGE 2 ===\nB", 11, 12, false);
+    assert.deepEqual([...m.entries()], [[11, "A"], [12, "B"]]);
+  });
+  it("the page number printed on a scan (e.g. 28) is matched by order", () => {
+    const m = parsePageBlocks("=== PAGE 28 ===\nA\n=== PAGE 29 ===\nB", 1, 2, false);
+    assert.deepEqual([...m.entries()], [[1, "A"], [2, "B"]]);
+    assert.equal(parsePageBlocks("=== PAGE 28 ===\nOnly page", 1, 1, false).get(1), "Only page");
+  });
+  it("bold / heading markers and Urdu digits are understood", () => {
+    const m = parsePageBlocks("**=== PAGE ۱ ===**\nA\n## === Page 2 ===\nB", 1, 2, false);
+    assert.deepEqual([...m.entries()], [[1, "A"], [2, "B"]]);
+  });
+  it("a cut-off answer in book numbering is not mistaken for positions", () => {
+    // pages 3–7 asked; answer stops after book pages 3, 4, 5 (5 cut off)
+    const m = parsePageBlocks("=== PAGE 3 ===\nA\n=== PAGE 4 ===\nB\n=== PAGE 5 ===\nC", 3, 7, true);
+    assert.deepEqual([...m.entries()], [[3, "A"], [4, "B"]]);
   });
   it("accepts a single-page answer without the marker", () => {
     assert.equal(parsePageBlocks("Just the text.", 4, 4, false).get(4), "Just the text.");
