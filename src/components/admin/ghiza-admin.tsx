@@ -18,7 +18,7 @@ import { sortLabels } from "@/lib/sort-options";
 import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 
 interface Side { symptoms?: string[]; conditions?: string[]; categories?: string[]; organs?: string[] }
-interface Rule { good?: Side; avoid?: Side; allergens?: string[]; heavy?: boolean; nafakh?: boolean }
+interface Rule { good?: Side; avoid?: Side; allergens?: string[]; heavy?: boolean; nafakh?: boolean; action?: string; use?: string; harm?: string }
 interface Food {
   id: string; label: string; description: string | null; category: string | null; foodMizaj: string | null; appliesTo: string;
   reviewStatus: string; active: boolean; imageUrl: string | null; imageCredit: string | null; imageSource: string | null;
@@ -202,6 +202,12 @@ export function GhizaAdmin() {
                 <div className="space-y-3">
                   <FloatingField id="gzLabel" label="Food (English · Unani / Urdu name)" required value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
                   <FloatingField id="gzDesc" label="Properties (shown to the doctor)" maxLength={300} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+                  {/* Shown in the doctor's three-column diet plan */}
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <FloatingField id="gzAction" label="Unani action (e.g. Mubarrid · Musakkin)" maxLength={160} value={draft.rule.action ?? ""} onChange={(e) => setDraft({ ...draft, rule: { ...draft.rule, action: e.target.value } })} />
+                    <FloatingField id="gzUse" label="How to take (when prescribed)" maxLength={160} value={draft.rule.use ?? ""} onChange={(e) => setDraft({ ...draft, rule: { ...draft.rule, use: e.target.value } })} />
+                    <FloatingField id="gzHarm" label="Why restricted (when Parhez)" maxLength={160} value={draft.rule.harm ?? ""} onChange={(e) => setDraft({ ...draft, rule: { ...draft.rule, harm: e.target.value } })} />
+                  </div>
                   <div className="grid sm:grid-cols-4 gap-3 pt-1">
                     <FloatingSelect id="gzGroup" label="Food group" value={draft.category || GROUPS[0]} onValueChange={(v) => setDraft({ ...draft, category: v })}>{sortLabels(GROUPS).map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</FloatingSelect>
                     <FloatingSelect id="gzHot" label="Hot / cold" value={draft.hot || "none"} onValueChange={(v) => setDraft({ ...draft, hot: v === "none" ? "" : v })}>

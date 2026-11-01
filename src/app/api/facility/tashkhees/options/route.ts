@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getClinicActor } from "@/lib/reports-server";
+import { conditionLabel } from "@/lib/ghiza-conditions";
 
 /** Active Stage 5 options, grouped by list, plus the Supplements & Herbs catalogue for prescriptions. */
 export async function GET(req: NextRequest) {
@@ -18,11 +19,17 @@ export async function GET(req: NextRequest) {
     db.marzEntry.findMany({ where: { active: true, reviewStatus: { not: "rejected" } }, orderBy: { label: "asc" }, select: { id: true, label: true, localName: true, category: true, sabab: true, reviewStatus: true } }),
   ]);
   // Principles carry their classical step (1–6) so the page can group them; other rules stay on the server.
-  const grouped: Record<string, (Omit<(typeof options)[number], "appliesTo"> & { phase?: number })[]> = {};
+  // Foods carry their action / how-to-take / restriction reason; meal rules, who they suit.
+  type Extra = { phase?: number; action?: string; use?: string; harm?: string; suits?: { mizaj?: string[]; conditions?: string[]; always?: boolean } };
+  const grouped: Record<string, (Omit<(typeof options)[number], "appliesTo"> & Extra)[]> = {};
   for (const { appliesTo, ...o } of options) {
-    let phase: number | undefined;
-    if (o.list === "usool") { try { phase = Number(JSON.parse(appliesTo || "{}").phase) || 6; } catch { phase = 6; } }
-    (grouped[o.list] ||= []).push(phase ? { ...o, phase } : o);
+    let rule: Record<string, any> = {};
+    try { rule = JSON.parse(appliesTo || "{}") || {}; } catch { rule = {}; }
+    const extra: Extra = {};
+    if (o.list === "usool") extra.phase = Number(rule.phase) || 6;
+    if (o.list === "ghiza") { if (rule.action) extra.action = rule.action; if (rule.use) extra.use = rule.use; if (rule.harm) extra.harm = rule.harm; }
+    if (o.list === "ghiza_rule") extra.suits = { ...(rule.suits ?? {}), conditions: (rule.suits?.conditions ?? []).map(conditionLabel) };
+    (grouped[o.list] ||= []).push({ ...o, ...extra });
   }
   return NextResponse.json({
     options: grouped,

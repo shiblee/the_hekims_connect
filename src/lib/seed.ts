@@ -607,6 +607,7 @@ export async function seedDatabase() {
   await seedTashkheesEngine();
   await seedUsoolBank();
   await seedGhizaBank();
+  await seedGhizaDetails();
   await seedMetaCatalogs(db);
   await seedFacilityMeta(db);
   await (await import("@/lib/staff-meta-seed")).seedStaffMeta(db);
@@ -989,6 +990,30 @@ export async function seedUsoolBank() {
 }
 
 /** Ghiza foods: details + photos for existing foods (where not set) and new foods as drafts — add-only. */
+/** Food actions / how-to-take / restriction reasons and the meal-timing rules. Only fills blanks; safe to re-run. */
+export async function seedGhizaDetails() {
+  const { FOOD_DETAILS, MEAL_RULES } = await import("@/lib/ghiza-details");
+  let foods = 0, rules = 0;
+  for (const o of await db.tashkheesOption.findMany({ where: { list: "ghiza" }, select: { id: true, label: true, appliesTo: true } })) {
+    const det = FOOD_DETAILS[o.label];
+    if (!det) continue;
+    let rule: Record<string, unknown> = {};
+    try { rule = JSON.parse(o.appliesTo || "{}") || {}; } catch { rule = {}; }
+    const add = Object.fromEntries(Object.entries(det).filter(([k]) => !rule[k]));
+    if (!Object.keys(add).length) continue;
+    await db.tashkheesOption.update({ where: { id: o.id }, data: { appliesTo: JSON.stringify({ ...rule, ...add }) } });
+    foods++;
+  }
+  const max = await db.tashkheesOption.aggregate({ where: { list: "ghiza_rule" }, _max: { sortOrder: true } });
+  let order = (max._max.sortOrder ?? -1) + 1;
+  for (const r of MEAL_RULES) {
+    if (await db.tashkheesOption.findFirst({ where: { list: "ghiza_rule", label: r.label } })) continue;
+    await db.tashkheesOption.create({ data: { list: "ghiza_rule", label: r.label, description: r.description, category: r.kind, appliesTo: JSON.stringify({ suits: r.suits ?? {} }), sortOrder: order++ } });
+    rules++;
+  }
+  return { foods, rules };
+}
+
 export async function seedGhizaBank() {
   const { EXISTING_FOODS, NEW_FOODS } = await import("@/lib/ghiza-seed");
   const images = (await import("@/lib/ghiza-images.json")).default as Record<string, { url: string; credit: string; source: string }>;

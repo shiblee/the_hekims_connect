@@ -9,7 +9,8 @@
 import type { ConditionKey } from "@/lib/ghiza-conditions";
 
 export interface FoodSide { symptoms?: string[]; conditions?: ConditionKey[]; categories?: string[]; organs?: string[] }
-export interface GhizaRule { good?: FoodSide; avoid?: FoodSide; allergens?: string[]; heavy?: boolean; nafakh?: boolean }
+// action / use / harm: the food's Unani action, how to take it, why it is restricted (see ghiza-details.ts).
+export interface GhizaRule { good?: FoodSide; avoid?: FoodSide; allergens?: string[]; heavy?: boolean; nafakh?: boolean; action?: string; use?: string; harm?: string }
 export interface FoodSeed { label: string; category: string; mizaj: string; description: string; wiki: string; rule: GhizaRule }
 
 const G = "Grains & breads", P = "Pulses", V = "Vegetables", L = "Leafy greens & herbs", F = "Fruits", N = "Dry fruits, nuts & seeds",

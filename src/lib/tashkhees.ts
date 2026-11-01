@@ -5,6 +5,7 @@ export const TASHKHEES_LISTS = [
   { key: "organ", label: "Udw (Organs)", hint: "Affected organs (Udw-e-Mutathir)." },
   { key: "usool", label: "Usool-e-Ilaj (Principles)", hint: "Principles of treatment." },
   { key: "ghiza", label: "Ghiza (Foods)", hint: "Foods the Hakim recommends or restricts (Parhez)." },
+  { key: "ghiza_rule", label: "Meal Timing & Hydration", hint: "Meal-timing and hydration rules prescribed with the diet (Ilaj-bil-Ghiza)." },
   { key: "tadbeer", label: "Tadbeer (Regimens)", hint: "Regimenal therapies — Ilaj-bil-Tadbeer." },
   { key: "dosage_form", label: "Dosage Forms", hint: "Forms offered on prescription lines." },
   { key: "timing", label: "Dose Timings", hint: "Timing choices on prescription lines." },
@@ -30,6 +31,9 @@ export interface TashkheesOptionRow {
   id: string; list: string; label: string; localName: string | null; description: string | null;
   // Ghiza (foods) only
   imageUrl?: string | null; imageCredit?: string | null; category?: string | null; foodMizaj?: string | null;
+  // Ghiza: Unani action, how to take it, why it is restricted. Meal rules (ghiza_rule): who they suit.
+  action?: string; use?: string; harm?: string;
+  suits?: { mizaj?: string[]; conditions?: string[]; always?: boolean };
   // Usool-e-Ilaj only: the classical step (1 Izala-e-Sabab … 6 symptomatic relief)
   phase?: number;
 }

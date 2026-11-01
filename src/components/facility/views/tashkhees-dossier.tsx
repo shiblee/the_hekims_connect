@@ -29,6 +29,7 @@ import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
   ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
+  Ban, Clock, Droplet, Compass, CircleCheck, ChevronDown,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -37,7 +38,7 @@ interface Dossier {
   status: "draft" | "submitted" | "finalized"; submittedAt?: string | null; submittedByName?: string | null; returnNote?: string | null; prescriptionId?: string | null; finalizedAt: string | null; finalizedByName: string | null;
   mizajAsli: string | null; suMizajType: string | null; suMizajQuality: string | null; suMizajGrade: number | null;
   organs: string[]; diagnosisNote: string | null; usool: string[]; usoolNote: string | null;
-  ghizaRecommended: string[]; ghizaAvoid: string[]; ghizaNote: string | null;
+  ghizaRecommended: string[]; ghizaAvoid: string[]; ghizaNote: string | null; ghizaRules: string[];
   tadbeer: TadbeerLine[]; prescriptions: PrescriptionLine[];
   prognosis: string | null; followUpDate: string | null; followUpNote: string | null;
   urgentDirectives: string | null; priority: string; handoverNote: string | null;
@@ -48,7 +49,7 @@ interface Dossier {
 }
 const EMPTY: Dossier = {
   status: "draft", finalizedAt: null, finalizedByName: null, mizajAsli: null, suMizajType: null, suMizajQuality: null, suMizajGrade: null,
-  organs: [], diagnosisNote: null, usool: [], usoolNote: null, ghizaRecommended: [], ghizaAvoid: [], ghizaNote: null,
+  organs: [], diagnosisNote: null, usool: [], usoolNote: null, ghizaRecommended: [], ghizaAvoid: [], ghizaNote: null, ghizaRules: [],
   tadbeer: [], prescriptions: [], diagnoses: [], sabab: [], icdCode: null, icdLabel: null, prognosis: null, followUpDate: null, followUpNote: null, urgentDirectives: null, priority: "routine", handoverNote: null,
 };
 interface Herb { id: string; label: string; kind: string; generic?: string | null; category: string | null; forms: string[] }
@@ -872,6 +873,91 @@ function FoodThumb({ src, alt, credit, className }: { src?: string | null; alt: 
     : <span className={cn("shrink-0 rounded-lg bg-muted flex items-center justify-center text-muted-foreground", className)}><Utensils className="h-4 w-4" /></span>;
 }
 
+/** "Barid-Ratab 2" → "Barid-Ratab · D2" (compact temperament tag). */
+const mizajTag = (m: string) => { const d = m.match(/[1-4]/)?.[0]; return d ? `${m.replace(/\s*[1-4]\s*/, "").trim()} · D${d}` : m; };
+/** Present dyscrasia → the opposite qualities the diet must bring (Ilaj bil Zid). */
+const OPPOSITE: Record<string, [string, string]> = {
+  Safrawi: ["Barid-Ratab", "Cold & Moist"], Damawi: ["Barid-Yabis", "Cold & Dry"], Balghami: ["Haar-Yabis", "Hot & Dry"], Saudawi: ["Haar-Ratab", "Hot & Moist"],
+  Haar: ["Barid", "Cooling"], Barid: ["Haar", "Warming"], Ratab: ["Yabis", "Drying"], Yabis: ["Ratab", "Moistening"],
+};
+function RegimenDirective({ suMizaj, grade }: { suMizaj: string | null; grade: number | null }) {
+  const td = useTranslations("clinic.dossier");
+  const o = suMizaj ? OPPOSITE[suMizaj] : undefined;
+  return (
+    <span title={td("g_directive_hint")} className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs", o ? "border-primary/30 bg-primary/5" : "border-dashed border-border text-muted-foreground")}>
+      <Compass className="h-3.5 w-3.5 text-primary" />
+      <span className="text-muted-foreground">{td("g_directive")}:</span>
+      {o ? <span className="font-semibold text-primary">{o[0]} <span className="font-normal">({o[1]}{grade ? ` · ${td("g_darja", { n: grade })}` : ""})</span></span> : <span>{td("g_directive_none")}</span>}
+    </span>
+  );
+}
+
+/** One of the three diet columns. */
+function DietColumn({ tone, icon: Icon, title, sub, count, addLabel, onAdd, children }: { tone: "rec" | "avoid"; icon: typeof Ban; title: string; sub: string; count: number; addLabel: string; onAdd: () => void; children: ReactNode }) {
+  return (
+    <section className={cn("flex flex-col rounded-xl border p-3", tone === "rec" ? "border-emerald-500/25 bg-emerald-500/[0.04]" : "border-destructive/25 bg-destructive/[0.04]")}>
+      <header className="mb-2">
+        <p className={cn("flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide", tone === "rec" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}><Icon className="h-4 w-4 shrink-0" />{title}<span className="ms-auto rounded-full bg-background/80 px-1.5 text-[11px] tabular-nums">{count}</span></p>
+        <p className="text-[11px] text-muted-foreground">{sub}</p>
+      </header>
+      <ul className="space-y-1.5">{children}</ul>
+      <button type="button" onClick={onAdd} className={cn("mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-dashed px-2 py-1.5 text-xs font-medium", tone === "rec" ? "border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400" : "border-destructive/40 text-destructive hover:bg-destructive/10")}><Plus className="h-3 w-3" />{addLabel}</button>
+    </section>
+  );
+}
+
+const RULE_ICON: Record<string, typeof Ban> = { timing: Clock, hydration: Droplet, habit: Utensils };
+function RuleRow({ r, on, hint, onToggle }: { r: TashkheesOptionRow; on: boolean; hint?: boolean; onToggle: () => void }) {
+  const Icon = RULE_ICON[r.category ?? ""] ?? Clock;
+  return (
+    <li>
+      <button type="button" onClick={onToggle} aria-pressed={on} title={r.description ?? undefined}
+        className={cn("flex w-full items-start gap-2 rounded-lg border p-2 text-start transition-colors", on ? "border-amber-500/40 bg-background/80" : "border-dashed border-border/70 hover:border-amber-500/40 hover:bg-background/60")}>
+        <span className={cn("mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border", on ? "border-amber-500 bg-amber-500 text-white" : "border-input")}>{on && <Check className="h-3 w-3" />}</span>
+        <Icon className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", on ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} />
+        <span className="min-w-0">
+          <span className={cn("block text-[13px] leading-snug", on ? "font-semibold" : "text-foreground/90")}>{r.label}{hint && <Sparkles className="ms-1 inline h-3 w-3 text-primary" />}</span>
+          {on && r.description && <span className="block text-[11px] text-muted-foreground">{r.description}</span>}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** Third column: meal-timing & hydration rules (admin list), suggested ones first, plus a free note. */
+function MealRulesColumn({ state, basis }: { state: TashkheesState; basis: { suMizaj: string | null; conditions: string[] } | null }) {
+  const { dossier: d, set, options } = state;
+  const td = useTranslations("clinic.dossier");
+  const [more, setMore] = useState(false);
+  const rules = options?.ghiza_rule || [];
+  const su = d.suMizajQuality ?? basis?.suMizaj ?? null;
+  const fits = (r: TashkheesOptionRow) => !!r.suits && (!!r.suits.always || (!!su && !!r.suits.mizaj?.includes(su)) || !!r.suits.conditions?.some((c) => basis?.conditions.includes(c)));
+  const chosen = rules.filter((r) => d.ghizaRules.includes(r.label));
+  const suggested = rules.filter((r) => !d.ghizaRules.includes(r.label) && fits(r));
+  const rest = rules.filter((r) => !d.ghizaRules.includes(r.label) && !fits(r));
+  const toggle = (l: string) => set({ ghizaRules: d.ghizaRules.includes(l) ? d.ghizaRules.filter((x) => x !== l) : [...d.ghizaRules, l] });
+  return (
+    <section className="flex flex-col rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-3 @2xl:col-span-2 @5xl:col-span-1">
+      <header className="mb-2">
+        <p className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"><Clock className="h-4 w-4 shrink-0" />{td("g_timing")}<span className="ms-auto rounded-full bg-background/80 px-1.5 text-[11px] tabular-nums">{chosen.length}</span></p>
+        <p className="text-[11px] text-muted-foreground">{td("g_timing_sub")}</p>
+      </header>
+      <ul className="space-y-1.5">
+        {chosen.map((r) => <RuleRow key={r.id} r={r} on onToggle={() => toggle(r.label)} />)}
+        {suggested.length > 0 && <li className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-primary">{td("g_rules_suggested")}</li>}
+        {suggested.map((r) => <RuleRow key={r.id} r={r} on={false} hint onToggle={() => toggle(r.label)} />)}
+        {rest.length > 0 && (
+          <li><button type="button" onClick={() => setMore((v) => !v)} className="flex items-center gap-1 px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">{td("g_rules_more")} · {rest.length}<ChevronDown className={cn("h-3 w-3 transition-transform", more && "rotate-180")} /></button></li>
+        )}
+        {more && rest.map((r) => <RuleRow key={r.id} r={r} on={false} onToggle={() => toggle(r.label)} />)}
+      </ul>
+      <div className="mt-2">
+        <FloatingTextarea id="ghiza-note" label={td("g_note_ph")} rows={2} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })} title={td("meal_note_eg")} />
+      </div>
+    </section>
+  );
+}
+
 interface GhizaPick { label: string; imageUrl: string | null; imageCredit: string | null; category: string | null; foodMizaj: string | null; reasons: string[]; hard?: boolean }
 interface GhizaPlanData { basis: { suMizaj: string | null; fromEngine: boolean; conditions: string[]; allergies: string[] }; recommended: GhizaPick[]; avoid: GhizaPick[]; insufficient: string[] }
 
@@ -944,25 +1030,6 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
       return hit ? { ...hit, kind: hit === sr ? "rec" : "avoid" } : { label: f.label, imageUrl: f.imageUrl ?? null, imageCredit: f.imageCredit ?? null, foodMizaj: f.foodMizaj ?? null, category: f.category ?? null, reasons: f.description ? [f.description] : [], kind: null };
     }).sort((a, b) => a.label.localeCompare(b.label));
 
-  const Chosen = ({ where }: { where: "rec" | "avoid" }) => {
-    const list = where === "rec" ? d.ghizaRecommended : d.ghizaAvoid;
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className={cn("w-full sm:w-auto sm:min-w-[9rem] text-[12px] font-semibold uppercase tracking-wide", where === "rec" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>
-          {where === "rec" ? td("recommended") : td("parhez_avoid")} · {list.length}
-        </span>
-        {list.length === 0 ? <span className="text-[13px] text-muted-foreground">{td("none_yet")}</span> : list.map((l) => (
-          <span key={l} className={cn("inline-flex items-center gap-1.5 rounded-full border ps-1 pe-1 py-0.5 text-[13px]",
-            where === "rec" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "border-destructive/40 bg-destructive/10 text-destructive")}>
-            <FoodThumb src={byLabel(l)?.imageUrl} alt={l} className="h-6 w-6 rounded-full" />
-            {l}
-            <button type="button" onClick={() => setFood(l, where)} aria-label={td("remove_x", { label: l })} className="rounded-full p-0.5 hover:bg-background/60"><X className="h-3 w-3" /></button>
-          </span>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -975,7 +1042,8 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
               {p.basis.allergies.length > 0 && <> · {td("allergies")} <span className="font-medium text-destructive">{p.basis.allergies.join(", ")}</span></>}
             </>}
         </p>
-        <span className="flex items-center gap-2">
+        <span className="flex flex-wrap items-center gap-2">
+          <RegimenDirective suMizaj={d.suMizajQuality ?? p?.basis.suMizaj ?? null} grade={d.suMizajGrade} />
           <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
           {p && leftToAccept && <Button size="sm" className="h-7" onClick={acceptAll}><Sparkles className="h-3.5 w-3.5" /> {td("accept_all")}</Button>}
         </span>
@@ -1043,10 +1111,54 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
         )}
       </div>
 
-      {/* What's chosen — Recommended in green, Parhez in red */}
-      <div className="space-y-1.5">
-        <Chosen where="rec" />
-        <Chosen where="avoid" />
+      {/* Three columns: Prescribed · Parhez · Meal timing & hydration */}
+      {/* Container query: three columns only when the panel itself is wide enough. */}
+      <div className="@container">
+      <div className="grid items-start gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
+        <DietColumn tone="rec" icon={CircleCheck} title={td("g_prescribed")} sub={td("g_prescribed_sub")} count={d.ghizaRecommended.length}
+          addLabel={td("g_add_food")} onAdd={() => { setTab("rec"); setOpen(true); boxRef.current?.querySelector("input")?.focus(); }}>
+          {d.ghizaRecommended.length === 0 ? <li className="px-1 py-2 text-[13px] text-muted-foreground">{td("g_empty_rec")}</li> : d.ghizaRecommended.map((l) => {
+            const f = byLabel(l);
+            return (
+              <li key={l} className="group flex items-start gap-2.5 rounded-lg border border-emerald-500/20 bg-background/70 p-2">
+                <FoodThumb src={f?.imageUrl} alt={l} credit={f?.imageCredit} className="h-9 w-9" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-snug">{l}</p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    {f?.foodMizaj && <span className="rounded bg-sky-500/10 px-1.5 py-px text-[11px] font-medium text-sky-700 dark:text-sky-300">{mizajTag(f.foodMizaj)}</span>}
+                    {f?.action && <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{f.action}</span>}
+                  </p>
+                  {f?.use && <p className="mt-0.5 text-xs text-muted-foreground">{f.use}</p>}
+                </div>
+                <button type="button" onClick={() => setFood(l, "rec")} aria-label={td("remove_x", { label: l })} className="rounded p-0.5 text-muted-foreground opacity-60 hover:bg-muted hover:text-destructive group-hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
+              </li>
+            );
+          })}
+        </DietColumn>
+
+        <DietColumn tone="avoid" icon={Ban} title={td("parhez_avoid")} sub={td("g_parhez_sub")} count={d.ghizaAvoid.length}
+          addLabel={td("g_add_avoid")} onAdd={() => { setTab("avoid"); setOpen(true); boxRef.current?.querySelector("input")?.focus(); }}>
+          {d.ghizaAvoid.length === 0 ? <li className="px-1 py-2 text-[13px] text-muted-foreground">{td("g_empty_avoid")}</li> : d.ghizaAvoid.map((l) => {
+            const f = byLabel(l);
+            const hardWhy = suggested("avoid").find((x) => x.label === l && x.hard)?.reasons[0];
+            return (
+              <li key={l} className="group flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-background/70 p-2">
+                <FoodThumb src={f?.imageUrl} alt={l} credit={f?.imageCredit} className="h-9 w-9" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-snug">{l}</p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    {f?.foodMizaj && <span className="rounded bg-destructive/10 px-1.5 py-px text-[11px] font-medium text-destructive">{mizajTag(f.foodMizaj)}</span>}
+                    {(hardWhy || f?.harm) && <span className={cn("text-[11px]", hardWhy ? "font-semibold text-destructive" : "text-destructive/90")}>{hardWhy || f?.harm}</span>}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setFood(l, "avoid")} aria-label={td("remove_x", { label: l })} className="rounded p-0.5 text-muted-foreground opacity-60 hover:bg-muted hover:text-destructive group-hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
+              </li>
+            );
+          })}
+        </DietColumn>
+
+        <MealRulesColumn state={state} basis={p?.basis ?? null} />
+      </div>
       </div>
       {p?.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
     </div>
@@ -1271,10 +1383,8 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
     <div className="space-y-5">
       {/* Ilaj-bil-Ghiza */}
       <Panel icon={Utensils} tour="dossier.ghiza" title={td("ghiza_title")}
-        aside={<Badge variant="outline" className="mt-1 shrink-0">{td("advised_parhez", { rec: d.ghizaRecommended.length, avoid: d.ghizaAvoid.length })}</Badge>}>
+        aside={<Badge variant="outline" className="mt-1 shrink-0">{td("g_summary", { rec: d.ghizaRecommended.length, avoid: d.ghizaAvoid.length, rules: d.ghizaRules.length })}</Badge>}>
         <GhizaPicker state={state} visitId={visitId} />
-        <FloatingTextarea id="ghiza-note" label={td("meal_note")} rows={2} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })}
-          title={td("meal_note_eg")} />
       </Panel>
 
       {/* Clinical decision support — doctors only, pilot switch in Admin */}
@@ -1427,7 +1537,7 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
     dalail: state.dalail.progress.answered > 0,
     tashkhees: !!d.mizajAsli && !!d.suMizajQuality && d.diagnoses.some((x) => x.role === "working"),
     usool: d.usool.length > 0,
-    ilaj: d.prescriptions.length + d.tadbeer.length + d.ghizaRecommended.length + d.ghizaAvoid.length > 0,
+    ilaj: d.prescriptions.length + d.tadbeer.length + d.ghizaRecommended.length + d.ghizaAvoid.length + d.ghizaRules.length > 0,
     safety: state.safetyBlocking === 0,
     handover: !!d.prognosis || !!d.handoverNote,
   };

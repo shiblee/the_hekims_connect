@@ -31,7 +31,7 @@ function serialize(d: NonNullable<Awaited<ReturnType<typeof load>>>) {
       evidenceFor: parse<string[]>(x.evidenceFor, []), evidenceAgainst: parse<string[]>(x.evidenceAgainst, []), note: x.note, source: x.source,
     })),
     usool: parse<string[]>(d.usool, []), usoolNote: d.usoolNote,
-    ghizaRecommended: parse<string[]>(d.ghizaRecommended, []), ghizaAvoid: parse<string[]>(d.ghizaAvoid, []), ghizaNote: d.ghizaNote,
+    ghizaRecommended: parse<string[]>(d.ghizaRecommended, []), ghizaAvoid: parse<string[]>(d.ghizaAvoid, []), ghizaNote: d.ghizaNote, ghizaRules: parse<string[]>(d.ghizaRules, []),
     tadbeer: parse<unknown[]>(d.tadbeer, []),
     prescriptions: d.prescriptions.map((p) => ({ tagId: p.tagId, name: p.name, form: p.form ?? "", dose: p.dose ?? "", timing: p.timing ?? "", duration: p.duration ?? "", adjuvant: p.adjuvant ?? "", instructions: p.instructions ?? "" })),
     prognosis: d.prognosis, followUpDate: d.followUpDate, followUpNote: d.followUpNote,
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     treatmentResponse: ["improved", "partly", "unchanged", "worse", "new_problem"].includes(b.treatmentResponse) ? b.treatmentResponse : null,
     treatmentResponseNote: str(b.treatmentResponseNote, 1000),
     usool: JSON.stringify(strArr(b.usool)), usoolNote: str(b.usoolNote),
-    ghizaRecommended: JSON.stringify(strArr(b.ghizaRecommended)), ghizaAvoid: JSON.stringify(strArr(b.ghizaAvoid)), ghizaNote: str(b.ghizaNote),
+    ghizaRecommended: JSON.stringify(strArr(b.ghizaRecommended)), ghizaAvoid: JSON.stringify(strArr(b.ghizaAvoid)), ghizaNote: str(b.ghizaNote), ghizaRules: JSON.stringify(strArr(b.ghizaRules)),
     tadbeer: JSON.stringify((Array.isArray(b.tadbeer) ? b.tadbeer : [])
       .filter((t: any) => str(t?.label))
       .map((t: any) => ({ label: str(t.label, 160), frequency: str(t.frequency, 160) ?? "", duration: str(t.duration, 160) ?? "", notes: str(t.notes, 1000) ?? "" }))),

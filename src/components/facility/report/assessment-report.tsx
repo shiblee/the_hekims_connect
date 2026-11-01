@@ -581,6 +581,7 @@ export function AssessmentReport({ patientId, visitId }: { patientId: string; vi
                             <p className="text-[9pt] uppercase tracking-wide text-[#6d28d9] font-semibold mb-1">{t("ghiza")}</p>
                             <p className="text-[9.5pt]"><span className="font-semibold text-[#047857]">{t("recommended")} </span>{dos.ghizaRecommended?.join(", ") || <Dim>—</Dim>}</p>
                             <p className="text-[9.5pt] mt-0.5"><span className="font-semibold text-[#b91c1c]">{t("avoid")} </span>{dos.ghizaAvoid?.join(", ") || <Dim>—</Dim>}</p>
+                            {!!dos.ghizaRules?.length && <p className="text-[9.5pt] mt-0.5"><span className="font-semibold text-[#b45309]">{t("meal_rules")} </span>{dos.ghizaRules.join(" · ")}</p>}
                             {dos.ghizaNote && <p className="mt-1 text-[9.5pt] text-[#374151]">{dos.ghizaNote}</p>}
                           </div>
                           <div className="rounded-lg border border-[#ddd6fe] bg-white px-3 py-2">

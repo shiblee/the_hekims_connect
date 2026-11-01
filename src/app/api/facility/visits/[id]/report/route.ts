@@ -180,6 +180,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         usool: parse<string[]>(visit.tashkheesDossier.usool, []),
         ghizaRecommended: parse<string[]>(visit.tashkheesDossier.ghizaRecommended, []),
         ghizaAvoid: parse<string[]>(visit.tashkheesDossier.ghizaAvoid, []),
+        ghizaRules: parse<string[]>(visit.tashkheesDossier.ghizaRules, []),
         tadbeer: parse<{ label: string; frequency: string; duration: string; notes: string }[]>(visit.tashkheesDossier.tadbeer, []),
       },
       dalail: dalailAssessment ? {

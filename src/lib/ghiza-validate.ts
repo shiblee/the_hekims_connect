@@ -21,6 +21,10 @@ export function cleanGhizaRule(r: any): GhizaRule {
   const al = list(r.allergens); if (al.length) out.allergens = al;
   if (r.heavy) out.heavy = true;
   if (r.nafakh) out.nafakh = true;
+  for (const k of ["action", "use", "harm"] as const) {
+    const v = typeof r[k] === "string" ? r[k].trim().slice(0, 160) : "";
+    if (v) out[k] = v;
+  }
   return out;
 }
 /** "Barid-Ratab 2" style temperament from parts. */
