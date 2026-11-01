@@ -103,7 +103,8 @@ export function PatientStageTracker({
                 <span
                   role="tooltip"
                   className={cn(
-                    "pointer-events-none absolute top-full z-30 mt-2 w-64 rounded-xl border border-border/60 bg-popover p-3 text-start shadow-lg",
+                    // whitespace-normal: the step button doesn't wrap, but the card's description must.
+                    "pointer-events-none absolute top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] whitespace-normal break-words rounded-xl border border-border/60 bg-popover p-3 text-start shadow-lg",
                     "opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0",
                     i === 0 ? "start-0" : last ? "end-0" : "left-1/2 -translate-x-1/2",
                   )}
