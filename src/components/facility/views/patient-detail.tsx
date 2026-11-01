@@ -321,7 +321,9 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         </Button>
       </div>
       <div className="mb-6">
-        <div className="space-y-5">
+        {/* One card for the four step-2 sections, divided by lines (each panel's own box is flattened). */}
+        <div className={cn("divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-xs",
+          "[&>div>[data-slot=card]]:rounded-none [&>div>[data-slot=card]]:border-0 [&>div>[data-slot=card]]:bg-transparent [&>div>[data-slot=card]]:shadow-none [&>div>[data-slot=card]]:p-5")}>
           <div data-tour="record.vitals"><VitalsPanel visits={visits} patientId={patientId} onSaved={refreshVisits} patientDob={patient.dob} patientGender={patient.gender} currentVisitId={latestVisit?.id} /></div>
           {latestVisit && (
             <div data-tour="stage.complaints"><ChiefComplaintMatrix
