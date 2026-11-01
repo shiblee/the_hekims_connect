@@ -143,7 +143,7 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
     });
 
     return (
-      <Card className="p-5 border-border/50 bg-card/60">
+      <Card className="gap-3 p-5 border-border/50 bg-card/60">
         <SectionHeading icon={Hourglass} title={t3("chrono_title")} right={
           <FindingAddButton
             label={t3("add_pattern_btn")}
@@ -156,14 +156,14 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
           } />
 
         {/* How it started — chosen patterns as a table; Add pattern sits in the heading, like Main Complaints */}
-        <div className="mt-4">
+        <div>
           <FindingTable rows={tableRows} nameHeading={t3("col_pattern")} empty={t3("no_patterns")}
             iconFor={(r) => patternIcon(r.label)}
             onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))} />
         </div>
 
         {/* How long — duration on the left, what it means (course of illness) on the right */}
-        <div className="mt-5 border-t border-border pt-5">
+        <div className="mt-2 border-t border-border pt-5">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-medium">{t3("how_long")}</p>
             {shown.value && (
