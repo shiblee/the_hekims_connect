@@ -135,9 +135,8 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-12 lg:py-16 w-full">
           <motion.div {...fadeUp} className="max-w-3xl mx-auto text-center">
             <h1 className="font-serif font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
-              {t("landing.hero.title_line1")}
-              <br />
-              <span className="text-gradient-primary">{t("landing.hero.title_line2")}</span>
+              <span className="block">{t("landing.hero.title_line1")}</span>
+              <span className="block mt-3 sm:mt-4 text-gradient-primary">{t("landing.hero.title_line2")}</span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
               {t("landing.hero.subtitle")}
