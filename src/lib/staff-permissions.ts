@@ -75,6 +75,8 @@ export function requiredPermission(path: string, method: string): Need {
   const rw = (r: PermissionKey[], w: PermissionKey[]): Need => (read ? r : w);
   if (path.startsWith("/api/auth/")) return "allow";
   if (read && READ_LISTS.test(path)) return "allow";
+  // A staff member's own profile: the route only ever touches the signed-in person's record.
+  if (R("/api/facility/account").test(path)) return "allow";
   if (R("/api/facility/me").test(path)) return read ? "allow" : ["settings"];
   if (/^\/api\/facility\/profile(\/|$)/.test(path)) return read ? "allow" : ["settings"];
   if (R("/api/facility/staff-permissions").test(path)) return ["staff.manage"];
@@ -137,7 +139,7 @@ export const PAGE_PERMISSION: { prefix: string; need: PermissionKey[] }[] = [
 /** Where a staff member lands after signing in — their own profile when they can't open any clinic page. */
 export function firstAllowedPage(perms: readonly string[]): string {
   for (const p of ["/facility/dashboard", "/facility/patients", "/facility/appointments", "/facility/messages", "/facility/pharmacy"]) if (canOpenPage(perms, p)) return p;
-  return "/staff";
+  return "/facility/account";
 }
 
 export function canOpenPage(perms: readonly string[] | null, path: string): boolean {

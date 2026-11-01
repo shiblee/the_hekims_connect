@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import { firstAllowedPage } from "@/lib/staff-permissions";
 import { useSessionReady } from "@/components/providers/session-boundary";
 import { LandingPage } from "@/components/landing/landing-page";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -27,13 +28,14 @@ export default function Home() {
   const facility = useAppStore((s) => s.facility);
   const patient = useAppStore((s) => s.patient);
   const staff = useAppStore((s) => s.staff);
+  const permissions = useAppStore((s) => s.permissions);
 
   useEffect(() => {
     if (!ready) return;
     if (facility) router.replace(facility.profileCompleted ? "/facility/dashboard" : "/facility/profile-setup");
-    else if (staff) router.replace("/staff");
+    else if (staff) router.replace(firstAllowedPage(permissions ?? []));
     else if (patient) router.replace("/patient/dashboard");
-  }, [ready, facility, patient, staff, router]);
+  }, [ready, facility, patient, staff, permissions, router]);
 
   if (!ready) return <LoadingScreen />;
   if (facility || patient || staff) return <LoadingScreen />;

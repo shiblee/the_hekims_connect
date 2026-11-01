@@ -145,10 +145,10 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
         <div className="p-3 border-t border-sidebar-border">
           <button
             data-tour="shell.account"
-            onClick={() => (asStaff ? router.push(can("/facility/profile") ? "/facility/profile" : can("/facility/profile/staff") ? "/facility/profile/staff" : "/staff") : go("profile"))}
+            onClick={() => (asStaff ? router.push("/facility/account") : go("profile"))}
             className={cn(
               "w-full flex items-center gap-2.5 p-2 rounded-lg transition-colors",
-              active === "profile" ? "bg-sidebar-accent" : "hover:bg-sidebar-accent"
+              active === "profile" || pathname.startsWith("/facility/account") ? "bg-sidebar-accent" : "hover:bg-sidebar-accent"
             )}
           >
             <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(facility.avatarColor))}>

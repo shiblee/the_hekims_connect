@@ -1,12 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useRequireStaff } from "@/lib/use-require-session";
 import { useTranslations } from "next-intl";
-import { StaffPortal } from "@/components/staff/staff-portal";
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { GuidanceProvider } from "@/components/guidance/guidance-provider";
-import { HelpButton, HelpPanel } from "@/components/guidance/help-panel";
-import { api } from "@/lib/api";
 
 function LoadingScreen() {
   const tc = useTranslations("common");
@@ -23,10 +21,10 @@ function LoadingScreen() {
   );
 }
 
+// Staff profiles now live inside the clinic app (/facility/account); this old page forwards there.
 export default function StaffPage() {
   const { ready, staff } = useRequireStaff();
-
-  if (!ready || !staff) return <LoadingScreen />;
-
-  return <GuidanceProvider client={api} renderHelp={() => <HelpPanel />}><StaffPortal /><HelpButton floating /></GuidanceProvider>;
+  const router = useRouter();
+  useEffect(() => { if (ready && staff) router.replace("/facility/account"); }, [ready, staff, router]);
+  return <LoadingScreen />;
 }
