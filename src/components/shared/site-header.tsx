@@ -21,7 +21,7 @@ export function SiteHeader() {
   const [navOpen, setNavOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-[0_2px_16px_rgba(0,0,0,0.3)]">
+    <header className="sticky top-0 z-50 bg-[#e6eaff]/95 dark:bg-background/95 backdrop-blur-md border-b border-[#d3daff] dark:border-border shadow-[0_2px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3)]">
       <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center">

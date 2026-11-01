@@ -201,17 +201,9 @@
 }
 
 @layer utilities {
+  /* Solid brand colour (formerly a gradient — kept as a class so every heading/stat stays in sync) */
   .text-gradient-primary {
-    background: linear-gradient(135deg, #5271ff 0%, #ff3131 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .dark .text-gradient-primary {
-    background: linear-gradient(135deg, oklch(0.85 0.14 175) 0%, oklch(0.72 0.13 175) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--primary);
   }
   .bg-grid {
     background-image:
