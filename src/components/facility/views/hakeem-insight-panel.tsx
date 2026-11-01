@@ -193,21 +193,21 @@ export const HakeemInsightPanel = forwardRef<HakeemInsightPanelHandle, {
 
       {/* Before anything is generated: what you'll get, and whether the data is there */}
       {!running && !hasAny && loaded && (
-        <div className="rounded-lg border border-dashed border-border/70 p-3 space-y-2.5">
-          <p className="text-sm font-semibold">{t("one_click")}</p>
-          <ul className="space-y-1.5 text-[13px] text-muted-foreground">
-            <li className="flex items-center gap-2"><Milestone className="h-3.5 w-3.5 text-primary" /> {t("gives_triage")}</li>
-            <li className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-primary" /> {t("gives_balance")}</li>
-            <li className="flex items-center gap-2"><Quote className="h-3.5 w-3.5 text-primary" /> {t("gives_explain")}</li>
-          </ul>
-          <div className="border-t border-border/50 pt-2 space-y-1 text-xs">
-            <p className={cn("flex items-center gap-1.5", hasVitals ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
+        <div className="space-y-1.5 text-[13px]">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+            <span className="font-medium text-foreground">{t("one_click")}</span>
+            <span className="inline-flex items-center gap-1"><Milestone className="h-3.5 w-3.5 text-primary" /> {t("gives_triage")}</span>
+            <span className="inline-flex items-center gap-1"><Scale className="h-3.5 w-3.5 text-primary" /> {t("gives_balance")}</span>
+            <span className="inline-flex items-center gap-1"><Quote className="h-3.5 w-3.5 text-primary" /> {t("gives_explain")}</span>
+          </p>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className={cn("inline-flex items-center gap-1.5", hasVitals ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
               {hasVitals ? <Check className="h-3 w-3" /> : <HeartPulse className="h-3 w-3" />} {hasVitals ? t("vitals_yes") : t("vitals_no")}
-            </p>
-            <p className={cn("flex items-center gap-1.5", humoral ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
+            </span>
+            <span className={cn("inline-flex items-center gap-1.5", humoral ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
               {humoral ? <Check className="h-3 w-3" /> : <ListChecks className="h-3 w-3" />} {humoral ? t("complaints_yes") : t("complaints_no")}
-            </p>
-          </div>
+            </span>
+          </p>
         </div>
       )}
 

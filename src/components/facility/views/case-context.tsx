@@ -114,7 +114,7 @@ export function CaseReadinessCard({ state }: { state: CaseContextState }) {
       {/* The two facts recorded right here */}
       <div className="grid gap-2 border-t border-border/40 pt-3">
         {showPregnancy && (
-          <label className="grid gap-1 text-[13px]">
+          <label className="grid grid-cols-[minmax(0,1fr)_minmax(0,11rem)] items-center gap-2 text-[13px]">
             <span className="font-medium">{t("preg_label")}</span>
             <select id="pregnancyStatus" value={ctx.patient.pregnancyStatus ?? ""} onChange={(e) => save({ pregnancyStatus: e.target.value || null })}
               className="h-9 rounded-lg border border-input bg-background px-2.5 text-[15px]">
@@ -123,7 +123,7 @@ export function CaseReadinessCard({ state }: { state: CaseContextState }) {
             </select>
           </label>
         )}
-        <label className="grid gap-1 text-[13px]">
+        <label className="grid grid-cols-[minmax(0,1fr)_minmax(0,11rem)] items-center gap-2 text-[13px]">
           <span className="font-medium">{t("rel_label")}</span>
           <select id="historyReliability" value={ctx.patient.historyReliability ?? ""} onChange={(e) => save({ historyReliability: e.target.value || null })}
             className="h-9 rounded-lg border border-input bg-background px-2.5 text-[15px]">
@@ -147,7 +147,7 @@ function Kind({ k }: { k: "reported" | "examined" | "measured" | "document" | "h
 function Block({ title, kind, href, stage, children, empty }: { title: string; kind: Parameters<typeof Kind>[0]["k"]; href?: string; stage?: number; children?: ReactNode; empty?: boolean }) {
   const t = useTranslations("clinic.case");
   return (
-    <div className="min-w-0 rounded-lg border border-border/50 bg-background/40 p-3">
+    <div className="min-w-0 border-t border-border/50 pt-2.5">
       <div className="flex items-center gap-2 mb-1.5">
         <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
         <Kind k={kind} />
@@ -199,8 +199,6 @@ export function CaseSummaryPanel({ state }: { state: CaseContextState }) {
         right={<button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="rounded-md p-1 text-muted-foreground hover:bg-muted"><ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} /></button>} />
       {open && (
         <>
-          <p className="text-[13px] text-muted-foreground -mt-1">{t("summary_hint")}</p>
-
           <Block title={t("s_presenting")} kind="reported" href={s2} stage={2} empty={!ctx.presenting.complaints.length}>
             <ul className="space-y-2">
               {ctx.presenting.complaints.map((c) => (

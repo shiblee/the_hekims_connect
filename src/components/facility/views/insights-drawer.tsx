@@ -6,6 +6,12 @@ import { Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+/** Strips each Card's own box (side/top borders, background, rounding, shadow; the bottom edge stays as the divider) — direct children or one wrapper deep. Written out in full so Tailwind generates them. */
+const FLAT = cn(
+  "[&>[data-slot=card]]:rounded-none [&>[data-slot=card]]:border-x-0 [&>[data-slot=card]]:border-t-0 [&>[data-slot=card]]:border-b-border [&>[data-slot=card]]:bg-transparent [&>[data-slot=card]]:bg-none [&>[data-slot=card]]:shadow-none [&>[data-slot=card]]:px-4 [&>[data-slot=card]]:py-3.5 [&>[data-slot=card]]:gap-2.5",
+  "[&>div>[data-slot=card]]:rounded-none [&>div>[data-slot=card]]:border-0 [&>div>[data-slot=card]]:bg-transparent [&>div>[data-slot=card]]:bg-none [&>div>[data-slot=card]]:shadow-none [&>div>[data-slot=card]]:px-4 [&>div>[data-slot=card]]:py-3.5 [&>div>[data-slot=card]]:gap-2.5",
+);
+
 /** Open/closed state for the stage pages' "Insights & notes" slide-over; Esc closes it. */
 export function useInsightsDrawer() {
   const [open, setOpen] = useState(false);
@@ -47,7 +53,8 @@ export function InsightsDrawer({ open, onClose, children }: { open: boolean; onC
           <p className="flex items-center gap-2 font-serif text-lg font-semibold"><Sparkles className="h-4 w-4 text-primary" />{t("insights_title")}</p>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label={t("insights_close")}><X className="h-4 w-4" /></Button>
         </div>
-        <div className="flex-1 space-y-5 overflow-y-auto p-4">{children}</div>
+        {/* Cards are flattened into one list divided by lines — no box per card, tighter padding. */}
+        <div className={cn("flex-1 overflow-y-auto [&_h2]:text-base [&>div:empty]:hidden [&>div]:border-b [&>div]:border-border [&>*:last-child]:border-b-0", FLAT)}>{children}</div>
       </aside>
     </>
   );
