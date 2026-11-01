@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Search, Loader2, ChevronLeft, ChevronRight, Plus, ShieldCheck } from "lucide-react";
+import { Search, Loader2, ChevronLeft, ChevronRight, Plus, ShieldCheck, UserCog, UserCheck, UserX, Users, Building2, Mail, Phone, X } from "lucide-react";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,8 @@ export default function StaffListPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const iv = useInlineContactVerify(adminApi, "/api/admin/staff/otp/send", "/api/admin/staff/otp/verify");
+  const router = useRouter();
+  const [counts, setCounts] = useState<{ all: number; active: number; inactive: number } | null>(null);
 
   useEffect(() => {
     adminApi.get<{ facilities: FacilityOption[] }>("/api/admin/facilities?pageSize=50")
@@ -91,6 +93,17 @@ export default function StaffListPage() {
   };
 
   useEffect(loadStaff, [page, q, status, employeeType, facilityId]);
+
+  // Headline figures for the whole platform (unfiltered).
+  const loadCounts = () => {
+    const total = (qs: string) => adminApi.get<{ total: number }>(`/api/admin/staff?pageSize=1${qs}`).then((r) => r.total);
+    Promise.all([total(""), total("&status=active"), total("&status=inactive")])
+      .then(([all, active, inactive]) => setCounts({ all, active, inactive }))
+      .catch(() => {});
+  };
+  useEffect(loadCounts, []);
+  const filtersOn = !!(q || status.length || employeeType.length || facilityId.length);
+  const clearAll = () => { setQ(""); setStatus([]); setEmployeeType([]); setFacilityId([]); setPage(1); };
 
   const visibleFields = useMemo(() => FIELD_VISIBILITY[form.employeeType] || ["qualification", "designation", "experience"], [form.employeeType]);
 
@@ -124,7 +137,7 @@ export default function StaffListPage() {
       });
       toast.success("Staff member added");
       setDialogOpen(false);
-      loadStaff();
+      loadStaff(); loadCounts();
     } catch (e: any) {
       toast.error(e.message || "Could not add staff member");
     } finally {
@@ -132,105 +145,127 @@ export default function StaffListPage() {
     }
   };
 
+  const kpis = [
+    { label: "Total staff", value: counts?.all, icon: Users, tone: "primary", on: !status.length, apply: () => setStatus([]) },
+    { label: "Active", value: counts?.active, icon: UserCheck, tone: "good", on: status.length === 1 && status[0] === "active", apply: () => setStatus(["active"]) },
+    { label: "Inactive", value: counts?.inactive, icon: UserX, tone: "bad", on: status.length === 1 && status[0] === "inactive", apply: () => setStatus(["inactive"]) },
+  ] as const;
+  const TONE = { primary: "bg-primary/10 text-primary", good: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", bad: "bg-rose-500/10 text-rose-600 dark:text-rose-400" };
+  const from = total ? (page - 1) * 10 + 1 : 0, to = Math.min(page * 10, total);
+
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Staff ({total})</h1>
-        </div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl"><UserCog className="h-6 w-6 text-primary" /> Staff</h1>
         <Button onClick={openAdd}>
           <Plus className="h-4 w-4" /> Add Staff
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            className="h-10 pl-10 bg-card/60"
-            placeholder="Search by name, staff ID, email, phone…"
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setPage(1); }}
-          />
-        </div>
-        <FilterMultiSelect hideLabel label="Employee type" className="w-full sm:w-52 [&_button]:h-10" value={employeeType} onChange={(v) => { setEmployeeType(v); setPage(1); }} allLabel="All employee types" options={sortLabels(EMPLOYEE_TYPES).map((t) => [t, t] as [string, string])} />
-        <FilterMultiSelect hideLabel label="Facility" className="w-full sm:w-56 [&_button]:h-10" value={facilityId} onChange={(v) => { setFacilityId(v); setPage(1); }} allLabel="All facilities" options={facilities.map((f) => [f.id, f.facilityName] as [string, string])} />
-        <FilterMultiSelect hideLabel label="Status" className="w-full sm:w-44 [&_button]:h-10" value={status} onChange={(v) => { setStatus(v); setPage(1); }} allLabel="All statuses" options={[["active", "Active"], ["inactive", "Inactive"]]} />
+      {/* Headline figures */}
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {kpis.map((k) => (
+          <button key={k.label} type="button" onClick={() => { k.apply(); setPage(1); }}
+            className={cn("flex items-center gap-3 rounded-xl border bg-card/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm", k.on ? "border-primary/50 ring-1 ring-primary/20" : "border-border")}>
+            <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", TONE[k.tone])}><k.icon className="h-5 w-5" /></span>
+            <span className="min-w-0">
+              <span className="block text-xs font-medium text-muted-foreground">{k.label}</span>
+              <span className="block text-2xl font-bold tabular-nums">{k.value ?? "…"}</span>
+            </span>
+          </button>
+        ))}
       </div>
 
-      {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
-      ) : rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No staff match these filters.</p>
-      ) : (
-        <Card className="border-border/50 bg-card/60 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50 text-left text-muted-foreground">
-                  <th className="w-14 px-4 py-3 text-right font-medium">S.No</th>
-                  <th className="px-4 py-3 font-medium">Staff</th>
-                  <th className="px-4 py-3 font-medium">Employee Type</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Facility</th>
-                  <th className="px-4 py-3 font-medium">Contact</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((s, i) => (
-                  <tr key={s.id} className="border-b border-border/30 last:border-0 hover:bg-background/30 transition-colors">
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{(page - 1) * 10 + i + 1}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <EntityAvatar name={s.name} photo={s.photo} size="sm" />
-                        <div>
-                          <div className="font-medium whitespace-nowrap">{s.name}</div>
-                          <div className="text-xs text-muted-foreground">{s.staffCode}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3"><Badge variant="outline">{s.employeeType}</Badge></td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.role || "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{s.facility.facilityName}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      <div>{s.email || "—"}</div>
-                      <div className="text-xs">{s.phone || ""}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {s.active ? (
-                        <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">Active</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-destructive/40 text-destructive">Inactive</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/admin/staff/${s.id}`}>View</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Search + filters */}
+      <Card className="mb-4 gap-3 border-border bg-card/60 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="h-10 bg-background/60 pl-10" placeholder="Search by name, staff ID, email, phone…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </div>
-        </Card>
-      )}
+          <FilterMultiSelect hideLabel label="Facility" className="w-full lg:w-56 [&_button]:h-10" value={facilityId} onChange={(v) => { setFacilityId(v); setPage(1); }} allLabel="All facilities" options={facilities.map((f) => [f.id, f.facilityName] as [string, string])} />
+          <FilterMultiSelect hideLabel label="Employee type" className="w-full lg:w-52 [&_button]:h-10" value={employeeType} onChange={(v) => { setEmployeeType(v); setPage(1); }} allLabel="All employee types" options={sortLabels(EMPLOYEE_TYPES).map((t) => [t, t] as [string, string])} />
+          <FilterMultiSelect hideLabel label="Status" className="w-full lg:w-44 [&_button]:h-10" value={status} onChange={(v) => { setStatus(v); setPage(1); }} allLabel="All statuses" options={[["active", "Active"], ["inactive", "Inactive"]]} />
+        </div>
+        {filtersOn && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs">
+            <span className="text-muted-foreground">{total} of {counts?.all ?? "…"} shown</span>
+            <button type="button" onClick={clearAll} className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground hover:underline"><X className="h-3 w-3" /> Clear all</button>
+          </div>
+        )}
+      </Card>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-5">
-          <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              <ChevronLeft className="h-4 w-4" /> Prev
-            </Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              Next <ChevronRight className="h-4 w-4" />
-            </Button>
+      {/* Table */}
+      <Card className="overflow-hidden border-border bg-card/60 p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40">
+              <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="w-14 whitespace-nowrap px-3 py-2.5 text-right">S.No</th>
+                <th className="whitespace-nowrap px-3 py-2.5">Facility</th>
+                <th className="whitespace-nowrap px-3 py-2.5">Staff</th>
+                <th className="whitespace-nowrap px-3 py-2.5">Employee type</th>
+                <th className="whitespace-nowrap px-3 py-2.5">Role</th>
+                <th className="whitespace-nowrap px-3 py-2.5">Contact</th>
+                <th className="whitespace-nowrap px-3 py-2.5">Status</th>
+                <th className="w-8 px-1 py-2.5" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {loading ? (
+                <tr><td colSpan={8} className="px-4 py-14"><div className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading staff…</div></td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-14 text-center">
+                  <p className="font-medium">No staff match these filters</p>
+                  {filtersOn && <button type="button" onClick={clearAll} className="mt-1 text-sm text-primary hover:underline">Clear all filters</button>}
+                </td></tr>
+              ) : rows.map((s, i) => (
+                <tr key={s.id} onClick={() => router.push(`/admin/staff/${s.id}`)} className={cn("cursor-pointer transition-colors hover:bg-primary/[0.03]", !s.active && "opacity-70")}>
+                  <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{(page - 1) * 10 + i + 1}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Building2 className="h-4 w-4" /></span>
+                      <span className="max-w-[14rem] truncate font-medium" title={s.facility.facilityName}>{s.facility.facilityName}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <EntityAvatar name={s.name} photo={s.photo} size="sm" />
+                      <div className="min-w-0">
+                        <div className="whitespace-nowrap font-semibold">{s.name}</div>
+                        <div className="font-mono text-xs text-muted-foreground">{s.staffCode}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3"><Badge variant="outline" className="whitespace-nowrap border-primary/25 bg-primary/5 text-primary">{s.employeeType}</Badge></td>
+                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">{s.role || "—"}</td>
+                  <td className="px-3 py-3 text-muted-foreground">
+                    {s.phone && <div className="flex items-center gap-1.5 whitespace-nowrap"><Phone className="h-3.5 w-3.5 shrink-0" />{s.phone}</div>}
+                    {s.email && <div className="flex items-center gap-1.5 whitespace-nowrap"><Mail className="h-3.5 w-3.5 shrink-0" /><span className="max-w-[16rem] truncate">{s.email}</span></div>}
+                    {!s.phone && !s.email && "—"}
+                  </td>
+                  <td className="px-3 py-3">
+                    {s.active ? (
+                      <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400">Active</Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-rose-500/40 bg-rose-500/5 text-rose-600 dark:text-rose-400">Inactive</Badge>
+                    )}
+                  </td>
+                  <td className="px-1 py-3 text-muted-foreground"><ChevronRight className="h-4 w-4" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+          <p className="text-sm text-muted-foreground">{total ? `${from}–${to} of ${total}` : "0 staff"}</p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /> Prev</Button>
+            <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next <ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
-      )}
+      </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
