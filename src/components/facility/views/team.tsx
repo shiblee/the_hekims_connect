@@ -5,7 +5,7 @@ import { NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useListFormat } from "@/lib/i18n/use-date-locale";
-import { cn, formatDateTime } from "@/lib/utils";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -224,51 +224,51 @@ export function TeamView() {
         </Card>
       ) : (
         <div data-tour="staff.list" className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full text-sm">
             <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="w-12 px-3 py-2.5 text-end">{t("col_sno")}</th>
-                <th className="px-3 py-2.5">{t("col_staff")}</th>
-                <th className="px-3 py-2.5">{t("col_type")}</th>
-                <th className="px-3 py-2.5">{t("col_role")}</th>
-                <th className="px-3 py-2.5">{t("col_contact")}</th>
-                <th className="px-3 py-2.5">{t("col_last_login")}</th>
-                <th className="px-3 py-2.5 text-center">{t("col_active")}</th>
-                <th className="px-3 py-2.5 text-end">{t("col_actions")}</th>
+                <th className="w-10 px-2 py-2.5 text-end">{t("col_sno")}</th>
+                <th className="px-2 py-2.5 text-start">{t("col_staff")}</th>
+                <th className="px-2 py-2.5 text-start">{t("col_type")}</th>
+                <th className="px-2 py-2.5 text-start">{t("col_role")}</th>
+                <th className="hidden px-2 py-2.5 text-start min-[1360px]:table-cell">{t("col_last_login")}</th>
+                <th className="px-2 py-2.5 text-center">{t("col_active")}</th>
+                <th className="w-20 px-2 py-2.5 text-end">{t("col_actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {staff.map((s, i) => (
                 <tr key={s.id} className={cn("cursor-pointer transition-colors hover:bg-muted/30", !s.active && "opacity-60")} onClick={() => openEdit(s)}>
-                  <td className="px-3 py-2.5 text-end tabular-nums text-muted-foreground">{i + 1}</td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 py-2.5 text-end tabular-nums text-muted-foreground">{i + 1}</td>
+                  <td className="px-2 py-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <EntityAvatar name={s.name} photo={s.photo} size="sm" />
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{s.name}</p>
-                        <p className="text-xs text-muted-foreground">{s.staffCode}</p>
+                        <p className="font-medium">{s.name} <span className="font-mono text-xs font-normal text-muted-foreground">{s.staffCode}</span></p>
+                        {/* Contact sits under the name so the table fits without sideways scrolling. */}
+                        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                          {s.phone ? <Phone className="h-3 w-3 shrink-0" /> : s.email ? <Mail className="h-3 w-3 shrink-0" /> : null}
+                          <span className="truncate max-w-[13rem]">{s.phone || s.email}</span>
+                          {s.contactVerifiedAt && <ShieldCheck className="h-3 w-3 shrink-0 text-primary" aria-label={t("verified")} />}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground min-[1360px]:hidden">{t("col_last_login")}: {s.lastLoginAt ? formatDate(s.lastLoginAt) : t("never")}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5">
-                    <p className="truncate max-w-[14rem]">{s.employeeType}</p>
+                  <td className="px-2 py-2.5">
+                    <p className="max-w-[12rem]">{s.employeeType}</p>
                     {s.designation && <p className="text-xs text-muted-foreground">{s.designation}</p>}
                   </td>
-                  <td className="px-3 py-2.5">{s.role ? <Badge variant="outline">{s.role}</Badge> : <span className="text-muted-foreground">—</span>}</td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    {s.email && <div className="flex items-center gap-1.5 truncate max-w-[14rem]"><Mail className="h-3 w-3 shrink-0" /> {s.email}</div>}
-                    {s.phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3 shrink-0" /> {s.phone}</div>}
-                    {s.contactVerifiedAt && <div className="flex items-center gap-1 text-primary"><ShieldCheck className="h-3 w-3" /> {t("verified")}</div>}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{s.lastLoginAt ? formatDateTime(s.lastLoginAt) : t("never")}</td>
-                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-2 py-2.5">{s.role ? <Badge variant="outline" className="whitespace-normal text-start">{s.role}</Badge> : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="hidden px-2 py-2.5 text-xs text-muted-foreground whitespace-nowrap min-[1360px]:table-cell" title={s.lastLoginAt ? formatDateTime(s.lastLoginAt) : undefined}>{s.lastLoginAt ? formatDate(s.lastLoginAt) : t("never")}</td>
+                  <td className="px-2 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                     <Switch checked={s.active} onCheckedChange={() => toggleActive(s)} aria-label={t(s.active ? "deactivate" : "activate", { name: s.name })} />
                   </td>
-                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /> {tc("edit")}</Button>
-                      <Button size="sm" variant="ghost" className="h-8 px-2" asChild>
-                        <Link href={`/facility/profile/permissions?staff=${s.id}`}><KeyRound className="h-3.5 w-3.5" /> {t("permissions")}</Link>
+                  <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-0.5">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(s)} title={tc("edit")} aria-label={`${tc("edit")} · ${s.name}`}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
+                        <Link href={`/facility/profile/permissions?staff=${s.id}`} title={t("permissions")} aria-label={`${t("permissions")} · ${s.name}`}><KeyRound className="h-4 w-4" /></Link>
                       </Button>
                     </div>
                   </td>
