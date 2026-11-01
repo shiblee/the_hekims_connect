@@ -227,6 +227,7 @@ export function TeamView() {
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-muted/40 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
+                <th className="w-12 px-3 py-2.5 text-end">{t("col_sno")}</th>
                 <th className="px-3 py-2.5">{t("col_staff")}</th>
                 <th className="px-3 py-2.5">{t("col_type")}</th>
                 <th className="px-3 py-2.5">{t("col_role")}</th>
@@ -237,8 +238,9 @@ export function TeamView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {staff.map((s) => (
+              {staff.map((s, i) => (
                 <tr key={s.id} className={cn("cursor-pointer transition-colors hover:bg-muted/30", !s.active && "opacity-60")} onClick={() => openEdit(s)}>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-muted-foreground">{i + 1}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <EntityAvatar name={s.name} photo={s.photo} size="sm" />
