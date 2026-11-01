@@ -125,7 +125,7 @@ export function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#edf0f7] dark:bg-transparent">
       <SiteHeader />
 
       {/* HERO */}
