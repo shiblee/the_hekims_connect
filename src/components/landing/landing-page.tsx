@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ShieldCheck,
   Activity,
@@ -16,7 +16,7 @@ import {
   Heart,
   CheckCircle2,
 } from "lucide-react";
-import { useState, useEffect, type MouseEvent } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { SiteHeader } from "@/components/shared/site-header";
@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { avatarGradient } from "@/lib/avatar";
-import { ConnectorField } from "@/components/landing/connector-field";
+import { UnaniPattern } from "@/components/landing/unani-pattern";
 
 const RTL_LOCALES = new Set(["ur", "ar", "fa"]);
 
@@ -82,21 +82,6 @@ export function LandingPage() {
   const t = useTranslations();
   const locale = useLocale();
   const isRtl = RTL_LOCALES.has(locale);
-  const heroMx = useMotionValue(0.5);
-  const heroMy = useMotionValue(0.5);
-  const heroSmx = useSpring(heroMx, { stiffness: 60, damping: 20, mass: 0.4 });
-  const heroSmy = useSpring(heroMy, { stiffness: 60, damping: 20, mass: 0.4 });
-
-  function handleHeroMove(e: MouseEvent<HTMLElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    heroMx.set((e.clientX - rect.left) / rect.width);
-    heroMy.set((e.clientY - rect.top) / rect.height);
-  }
-  function handleHeroLeave() {
-    heroMx.set(0.5);
-    heroMy.set(0.5);
-  }
-
   const [howTab, setHowTab] = useState<"facility" | "patient">("facility");
   const [testimonialApi, setTestimonialApi] = useState<CarouselApi>();
   const [testimonialIndex, setTestimonialIndex] = useState(0);
@@ -144,14 +129,9 @@ export function LandingPage() {
       <SiteHeader />
 
       {/* HERO */}
-      <section
-        className="relative overflow-hidden min-h-[58vh] lg:min-h-[64vh] flex items-center"
-        onMouseMove={handleHeroMove}
-        onMouseLeave={handleHeroLeave}
-      >
-        <ConnectorField className="absolute inset-0 h-full w-full opacity-90" mx={heroSmx} my={heroSmy} />
-        <div className="absolute -top-32 -end-32 h-[28rem] w-[28rem] rounded-full bg-primary/25 blur-3xl animate-pulse-slow" />
-        <div className="absolute -bottom-32 -start-32 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl animate-pulse-slow" style={{ animationDelay: "1.5s" }} />
+      <section className="relative overflow-hidden min-h-[58vh] lg:min-h-[64vh] flex items-center">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_65%)]" />
+        <UnaniPattern className="absolute inset-0 h-full w-full opacity-[0.22] dark:opacity-[0.2]" />
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-12 lg:py-16 w-full">
           <motion.div {...fadeUp} className="max-w-3xl mx-auto text-center">
             <h1 className="font-serif font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
@@ -185,7 +165,6 @@ export function LandingPage() {
 
       {/* STATS */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-20" />
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-8 lg:py-10">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -212,7 +191,6 @@ export function LandingPage() {
 
       {/* FEATURES */}
       <section id="features" className="relative overflow-hidden py-20 scroll-mt-20 border-t border-border">
-        <div className="absolute inset-0 bg-grid opacity-30" />
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center mb-14">
             <h2 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight whitespace-nowrap">
@@ -266,7 +244,6 @@ export function LandingPage() {
 
       {/* PHILOSOPHY */}
       <section id="philosophy" className="py-20 scroll-mt-20 relative overflow-hidden border-t border-border bg-card/20">
-        <div className="absolute inset-0 pattern-unani opacity-50" />
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight">
@@ -326,7 +303,6 @@ export function LandingPage() {
 
       {/* HOW IT WORKS */}
       <section id="how" className="relative overflow-hidden py-20 scroll-mt-20 border-t border-border">
-        <div className="absolute inset-0 bg-grid opacity-30" />
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center mb-14">
             <h2 className="font-serif text-xl sm:text-4xl lg:text-5xl font-bold tracking-tight whitespace-nowrap">{t("landing.how_it_works.heading")}</h2>
@@ -406,7 +382,6 @@ export function LandingPage() {
 
       {/* TESTIMONIALS */}
       <section id="voices" className="relative overflow-hidden py-20 scroll-mt-20 bg-card/30 border-y border-border">
-        <div className="absolute inset-0 pattern-unani opacity-40" />
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight">{t("landing.testimonials.heading")}</h2>
@@ -479,7 +454,6 @@ export function LandingPage() {
 
       {/* FINAL CTA */}
       <section className="relative overflow-hidden py-20 border-t border-border">
-        <div className="absolute inset-0 bg-grid opacity-20" />
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp}>
             <Card className="relative overflow-hidden p-10 lg:p-14 text-center border-primary/30 bg-gradient-to-br from-card via-card to-primary/5">
