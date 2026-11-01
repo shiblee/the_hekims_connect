@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * Shows the single picked label, or "N selected"; long lists get a search box.
  */
 export function FilterMultiSelect({
-  label, value, onChange, options, allLabel, className, hideLabel,
+  label, value, onChange, options, allLabel, className, hideLabel, text,
 }: {
   label: string;
   value: string[];
@@ -20,12 +20,14 @@ export function FilterMultiSelect({
   className?: string;
   /** Inline filter bars without a caption above the box. */
   hideLabel?: boolean;
+  /** Translated wording for screens outside the English-only admin panel. */
+  text?: { selected?: (n: number) => string; search?: string; clear?: string; noMatches?: string };
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const shown = q.trim() ? options.filter(([, l]) => l.toLowerCase().includes(q.trim().toLowerCase())) : options;
   const picked = options.filter(([v]) => value.includes(v));
-  const summary = value.length === 0 ? allLabel : picked.length === 1 ? picked[0][1] : `${value.length} selected`;
+  const summary = value.length === 0 ? allLabel : picked.length === 1 ? picked[0][1] : text?.selected?.(value.length) ?? `${value.length} selected`;
   const toggle = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
 
   return (
@@ -52,7 +54,7 @@ export function FilterMultiSelect({
           {options.length > 7 && (
             <div className="relative mb-1">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${label.toLowerCase()}…`} className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-sm outline-none focus:border-primary/50" />
+              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={text?.search ?? `Search ${label.toLowerCase()}…`} className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-sm outline-none focus:border-primary/50" />
             </div>
           )}
           <div className="max-h-64 overflow-y-auto">
@@ -69,12 +71,12 @@ export function FilterMultiSelect({
                 </button>
               );
             })}
-            {shown.length === 0 && <p className="px-2 py-2 text-xs text-muted-foreground">No matches</p>}
+            {shown.length === 0 && <p className="px-2 py-2 text-xs text-muted-foreground">{text?.noMatches ?? "No matches"}</p>}
           </div>
           {value.length > 0 && (
             <div className="mt-1 border-t border-border pt-1">
               <button type="button" onClick={() => onChange([])} className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
-                <X className="h-3 w-3" /> Clear selection
+                <X className="h-3 w-3" /> {text?.clear ?? "Clear selection"}
               </button>
             </div>
           )}
