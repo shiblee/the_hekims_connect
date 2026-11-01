@@ -71,7 +71,7 @@ export const GUIDANCE_MODULES: GuidanceModuleDef[] = [
   { key: "clinic.visit-consultation", app: "clinic", name: "Visit — consultation", route: "/facility/visits/[id]/consultation", permission: ["patients.view"], related: ["clinic.prescriptions"], targets: [...SHELL] },
   // Admin panel
   { key: "admin.dashboard", app: "admin", name: "Admin dashboard", route: "/admin", permission: [], related: ["admin.facilities", "admin.guidance"], targets: ADMIN_SHELL },
-  { key: "admin.facilities", app: "admin", name: "Facilities", route: "/admin/facilities", permission: [], related: ["admin.staff", "admin.payments"], targets: [{ id: "facilities.kpis", label: "Headline figures" }, { id: "facilities.insights", label: "Insights & engagement health" }, { id: "facilities.filters", label: "Search & filters" }, { id: "facilities.table", label: "Facilities table" }, ...ADMIN_SHELL] },
+  { key: "admin.facilities", app: "admin", name: "Facilities", route: "/admin/facilities", permission: [], related: ["admin.staff", "admin.payments"], targets: [{ id: "facilities.kpis", label: "Headline figures" }, { id: "facilities.filters", label: "Search & filters" }, { id: "facilities.table", label: "Facilities table" }, ...ADMIN_SHELL] },
   { key: "admin.patients", app: "admin", name: "Patients", route: "/admin/patients", permission: [], related: [], targets: ADMIN_SHELL },
   { key: "admin.staff", app: "admin", name: "Staff", route: "/admin/staff", permission: [], related: ["admin.facilities"], targets: ADMIN_SHELL },
   { key: "admin.payments", app: "admin", name: "Payments", route: "/admin/payments", permission: [], related: ["admin.facilities"], targets: ADMIN_SHELL },

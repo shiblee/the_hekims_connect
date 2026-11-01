@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, formatDateTime } from "@/lib/utils";
 import { GEMINI_FEATURES, type GeminiPricing, type PricePeriod } from "@/lib/gemini-pricing";
 import { sortByLabel } from "@/lib/sort-options";
+import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 
 interface Totals { calls: number; costUsd: number; totalTokens: number }
 interface Daily { date: string; calls: number; failed: number; inputTokens: number; outputTokens: number; costUsd: number }
@@ -249,13 +249,13 @@ function CallsLog() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [feature, setFeature] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [feature, setFeature] = useState<string[]>([]);
+  const [status, setStatus] = useState<string[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams({ page: String(page) });
-    if (feature !== "all") params.set("feature", feature);
-    if (status !== "all") params.set("status", status);
+    if (feature.length) params.set("feature", feature.join(","));
+    if (status.length) params.set("status", status.join(","));
     adminApi.get<{ calls: CallRow[]; total: number; pageSize: number }>(`/api/admin/gemini-usage/calls?${params}`)
       .then((res) => { setCalls(res.calls); setTotal(res.total); setPageSize(res.pageSize); })
       .catch(() => toast.error("Could not load the call log"));
@@ -269,25 +269,12 @@ function CallsLog() {
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
         <p className="text-sm font-semibold">Every call <span className="font-normal text-muted-foreground">({n(total)})</span></p>
         <div className="flex flex-wrap gap-2">
-          <Select value={feature} onValueChange={(v) => { setFeature(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-56 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All features</SelectItem>
-              {features.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Any result</SelectItem>
-              <SelectItem value="ok">OK</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
+          <FilterMultiSelect hideLabel label="Feature" className="w-56 [&_button]:h-8 [&_button]:text-xs" value={feature} onChange={(v) => { setFeature(v); setPage(1); }} allLabel="All features" options={features.map((f) => [f.value, f.label] as [string, string])} />
+          <FilterMultiSelect hideLabel label="Result" className="w-36 [&_button]:h-8 [&_button]:text-xs" value={status} onChange={(v) => { setStatus(v); setPage(1); }} allLabel="Any result" options={[["ok", "OK"], ["failed", "Failed"]]} />
         </div>
       </div>
       {calls.length === 0 ? (
-        <p className="px-4 pb-5 text-sm text-muted-foreground">No calls recorded{feature !== "all" || status !== "all" ? " for this filter" : " yet"}.</p>
+        <p className="px-4 pb-5 text-sm text-muted-foreground">No calls recorded{feature.length || status.length ? " for this filter" : " yet"}.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

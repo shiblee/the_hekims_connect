@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { netAmount, paymentState } from "@/lib/payments";
+import { listParam } from "@/lib/list-param";
 
 /**
  * Super Admin — payments across all clinics, for reconciliation. Dates are the admin's local
@@ -20,12 +21,12 @@ export async function GET(req: NextRequest) {
   const startOf = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) - tz * 60_000);
 
   const where: Record<string, unknown> = { createdAt: { gte: startOf(from), lt: new Date(startOf(to).getTime() + 86400_000) } };
-  if (sp.get("mode")) where.mode = sp.get("mode");
-  if (sp.get("facilityId")) where.visit = { facilityId: sp.get("facilityId") };
+  const modes = listParam(sp, "mode"), facilityIds = listParam(sp, "facilityId"), statuses = listParam(sp, "status");
+  if (modes.length) where.mode = { in: modes };
+  if (facilityIds.length) where.visit = { facilityId: { in: facilityIds } };
   if (sp.get("staffId")) where.recordedById = sp.get("staffId");
-  const status = sp.get("status");
-  if (status === "paid") where.status = { in: ["paid", "Paid"] };
-  else if (status) where.status = status;
+  // Older rows stored "Paid" capitalised.
+  if (statuses.length) where.status = { in: statuses.flatMap((s) => (s === "paid" ? ["paid", "Paid"] : [s])) };
 
   const rows = await db.payment.findMany({
     where, orderBy: { createdAt: "desc" },

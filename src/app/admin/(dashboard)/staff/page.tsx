@@ -9,9 +9,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FloatingField } from "@/components/shared/floating-field";
 import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inline-contact-verify";
@@ -21,6 +18,7 @@ import { sortLabels } from "@/lib/sort-options";
 import { OptionMultiSelect } from "@/components/shared/option-multi-select";
 import { ListChecks } from "lucide-react";
 import { FloatingCombobox } from "@/components/shared/combobox";
+import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 
 interface StaffRow {
   id: string; staffCode: string; name: string; photo: string | null; email: string | null; phone: string | null;
@@ -60,9 +58,9 @@ export default function StaffListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
-  const [employeeType, setEmployeeType] = useState("all");
-  const [facilityId, setFacilityId] = useState("all");
+  const [status, setStatus] = useState<string[]>([]);
+  const [employeeType, setEmployeeType] = useState<string[]>([]);
+  const [facilityId, setFacilityId] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState<MetaSections>({});
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -83,9 +81,9 @@ export default function StaffListPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), pageSize: "10" });
     if (q) params.set("q", q);
-    if (status !== "all") params.set("status", status);
-    if (employeeType !== "all") params.set("employeeType", employeeType);
-    if (facilityId !== "all") params.set("facilityId", facilityId);
+    if (status.length) params.set("status", status.join(","));
+    if (employeeType.length) params.set("employeeType", employeeType.join(","));
+    if (facilityId.length) params.set("facilityId", facilityId.join(","));
     adminApi
       .get<{ staff: StaffRow[]; total: number; totalPages: number }>(`/api/admin/staff?${params}`)
       .then((res) => { setRows(res.staff); setTotal(res.total); setTotalPages(res.totalPages); })
@@ -155,28 +153,9 @@ export default function StaffListPage() {
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
           />
         </div>
-        <Select value={employeeType} onValueChange={(v) => { setEmployeeType(v); setPage(1); }}>
-          <SelectTrigger className="h-10 w-full sm:w-48 bg-card/60"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All employee types</SelectItem>
-            {sortLabels(EMPLOYEE_TYPES).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={facilityId} onValueChange={(v) => { setFacilityId(v); setPage(1); }}>
-          <SelectTrigger className="h-10 w-full sm:w-52 bg-card/60"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All facilities</SelectItem>
-            {facilities.map((f) => <SelectItem key={f.id} value={f.id}>{f.facilityName}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="h-10 w-full sm:w-40 bg-card/60"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <FilterMultiSelect hideLabel label="Employee type" className="w-full sm:w-52 [&_button]:h-10" value={employeeType} onChange={(v) => { setEmployeeType(v); setPage(1); }} allLabel="All employee types" options={sortLabels(EMPLOYEE_TYPES).map((t) => [t, t] as [string, string])} />
+        <FilterMultiSelect hideLabel label="Facility" className="w-full sm:w-56 [&_button]:h-10" value={facilityId} onChange={(v) => { setFacilityId(v); setPage(1); }} allLabel="All facilities" options={facilities.map((f) => [f.id, f.facilityName] as [string, string])} />
+        <FilterMultiSelect hideLabel label="Status" className="w-full sm:w-44 [&_button]:h-10" value={status} onChange={(v) => { setStatus(v); setPage(1); }} allLabel="All statuses" options={[["active", "Active"], ["inactive", "Inactive"]]} />
       </div>
 
       {loading ? (

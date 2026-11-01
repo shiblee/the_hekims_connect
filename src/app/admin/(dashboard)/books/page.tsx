@@ -10,12 +10,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { BookFormDialog, type BookType, type BookFormValue } from "@/components/admin/books/book-form-dialog";
 import { formatDate } from "@/lib/utils";
 import { sortByLabel } from "@/lib/sort-options";
+import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 
 interface BookRow {
   id: string; bookCode: string; title: string; description: string | null; bookTypeId: string; active: boolean; createdAt: string;
@@ -32,8 +32,8 @@ export default function AdminBooksPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
-  const [typeId, setTypeId] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [typeId, setTypeId] = useState<string[]>([]);
+  const [status, setStatus] = useState<string[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<BookFormValue | null>(null);
   const [deleting, setDeleting] = useState<BookRow | null>(null);
@@ -52,8 +52,8 @@ export default function AdminBooksPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page) });
     if (query) params.set("q", query);
-    if (typeId !== "all") params.set("typeId", typeId);
-    if (status !== "all") params.set("status", status);
+    if (typeId.length) params.set("typeId", typeId.join(","));
+    if (status.length) params.set("status", status.join(","));
     try {
       const res = await adminApi.get<{ books: BookRow[]; total: number; pageSize: number }>(`/api/admin/books?${params}`);
       setBooks(res.books); setTotal(res.total); setPageSize(res.pageSize);
@@ -92,21 +92,8 @@ export default function AdminBooksPage() {
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title, code or description" className="ps-9 bg-background/60" />
         </div>
-        <Select value={typeId} onValueChange={(v) => { setTypeId(v); setPage(1); }}>
-          <SelectTrigger className="w-56 bg-background/60"><SelectValue placeholder="All types" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {sortByLabel(types).map((t) => <SelectItem key={t.id} value={t.id}>{t.label}{t.active ? "" : " (switched off)"}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-40 bg-background/60"><SelectValue placeholder="Any status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <FilterMultiSelect hideLabel label="Book type" className="w-56" value={typeId} onChange={(v) => { setTypeId(v); setPage(1); }} allLabel="All types" options={sortByLabel(types).map((t) => [t.id, `${t.label}${t.active ? "" : " (switched off)"}`] as [string, string])} />
+        <FilterMultiSelect hideLabel label="Status" className="w-40" value={status} onChange={(v) => { setStatus(v); setPage(1); }} allLabel="Any status" options={[["active", "Active"], ["inactive", "Inactive"]]} />
       </div>
 
       <Card className="border-border/50 bg-card/60 overflow-hidden">
@@ -114,8 +101,8 @@ export default function AdminBooksPage() {
           <div className="flex items-center gap-2 text-muted-foreground text-sm p-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
         ) : books.length === 0 ? (
           <div className="p-10 text-center">
-            <p className="text-sm text-muted-foreground">{query || typeId !== "all" || status !== "all" ? "No books match this search." : "No books yet."}</p>
-            {!query && typeId === "all" && status === "all" && (
+            <p className="text-sm text-muted-foreground">{query || typeId.length || status.length ? "No books match this search." : "No books yet."}</p>
+            {!query && !typeId.length && !status.length && (
               <Button className="mt-4" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-4 w-4" /> Add the first book</Button>
             )}
           </div>

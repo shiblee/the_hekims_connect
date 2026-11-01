@@ -22,7 +22,6 @@ export const ADMIN_TOURS: StarterTour[] = [
     title: "Facilities at a glance",
     steps: [
       { id: "kpis", route: "/admin/facilities", target: "facilities.kpis", title: "Headline figures", body: "Clinics, active this week, patients, visits and revenue for the last 30 days, and trials ending soon. Click a figure to filter the list." },
-      { id: "insights", route: "/admin/facilities", target: "facilities.insights", title: "Insights", body: "Clinics that need attention, such as no sign-in for 14 days, setup not finished, or visits dropping. Click one to see those clinics." },
       { id: "filters", route: "/admin/facilities", target: "facilities.filters", title: "Search and filter", body: "Search by name, contact, place or HFR number. **Filters** adds status, plan, type, location, activity and more." },
       { id: "table", route: "/admin/facilities", target: "facilities.table", title: "Every column sorts", body: "Click a heading to sort. Click a row to open the clinic. **Export CSV** saves the filtered list." },
     ],

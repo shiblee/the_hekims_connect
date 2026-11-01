@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Search, Loader2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Building2, Activity, Users,
-  Stethoscope, IndianRupee, Hourglass, Sparkles, SlidersHorizontal, X, Download, RefreshCw, TrendingUp, TrendingDown,
-  Minus, ShieldCheck, ShieldAlert, Lock, UserX, ClipboardList, Rocket, MapPin, CheckCircle2, XCircle,
+  Stethoscope, IndianRupee, Hourglass, SlidersHorizontal, X, Download, RefreshCw, TrendingUp, TrendingDown,
+  Minus, ShieldCheck, ShieldAlert, Lock, MapPin, CheckCircle2, XCircle,
 } from "lucide-react";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { compareLabels, sortLabels } from "@/lib/sort-options";
@@ -48,47 +49,57 @@ const DAY = 86_400_000;
 const ago = (days: number | null) => days === null ? "Never" : days === 0 ? "Today" : days === 1 ? "Yesterday" : days < 30 ? `${days} days ago` : days < 365 ? `${Math.floor(days / 30)} mo ago` : `${Math.floor(days / 365)} yr ago`;
 
 // ── Filters ────────────────────────────────────────────────────────────────
+// Every list filter is multi-select: nothing picked = all; several picked = any of them.
 interface Filters {
-  q: string; health: Health | "all"; status: string; verified: string; profile: string; plan: string;
-  type: string; state: string; city: string; login: string; activity: string; staff: string;
-  services: string; from: string; to: string;
+  q: string; health: Health[]; status: string[]; verified: string[]; profile: string[]; plan: string[];
+  type: string[]; state: string[]; city: string[]; login: string[]; activity: string[]; staff: string[];
+  services: string[]; from: string; to: string;
 }
-const NO_FILTERS: Filters = { q: "", health: "all", status: "all", verified: "all", profile: "all", plan: "all", type: "all", state: "all", city: "all", login: "all", activity: "all", staff: "all", services: "all", from: "", to: "" };
+type ListKey = { [K in keyof Filters]: Filters[K] extends string[] ? K : never }[keyof Filters];
+const NO_FILTERS: Filters = { q: "", health: [], status: [], verified: [], profile: [], plan: [], type: [], state: [], city: [], login: [], activity: [], staff: [], services: [], from: "", to: "" };
 
 const LOGIN_OPTS: [string, string][] = [["within7", "Signed in within 7 days"], ["within30", "Signed in within 30 days"], ["over14", "No sign-in for 14+ days"], ["over30", "No sign-in for 30+ days"], ["never", "Never signed in"]];
 const ACTIVITY_OPTS: [string, string][] = [["any", "Has visits"], ["recent", "Visits in last 30 days"], ["none", "No visits yet"], ["growing", "Visits growing"], ["declining", "Visits declining"]];
 const SERVICE_OPTS: [string, string][] = [["24x7", "Open 24×7"], ["emergency", "Emergency services"], ["ambulance", "Ambulance"]];
+const STATUS_OPTS: [string, string][] = [["active", "Active"], ["suspended", "Suspended"], ["locked", "Locked (failed sign-ins)"]];
+const VERIFIED_OPTS: [string, string][] = [["true", "Verified"], ["false", "Not verified"]];
+const PROFILE_OPTS: [string, string][] = [["complete", "Profile complete"], ["incomplete", "Profile incomplete"]];
+const PLAN_OPTS: [string, string][] = [["trial", "Free trial"], ["ending", "Trial ending ≤14 days"], ["premium", "Premium"], ["expired", "Expired"], ["none", "No plan"]];
+const STAFF_OPTS: [string, string][] = [["has", "Has active staff"], ["none", "No staff"]];
+const HEALTH_OPTS: [string, string][] = HEALTH_ORDER.map((h) => [h, HEALTH[h].label]);
+
+// One test per option value; a row passes a filter when it matches any picked value.
+const TESTS: Partial<Record<ListKey, Record<string, (r: Row) => boolean>>> = {
+  status: { active: (r) => r.active && !r.locked, suspended: (r) => !r.active, locked: (r) => r.locked },
+  verified: { true: (r) => r.verified, false: (r) => !r.verified },
+  profile: { complete: (r) => r.profileCompleted, incomplete: (r) => !r.profileCompleted },
+  plan: { ending: (r) => r.plan === "trial" && r.daysLeft !== null && r.daysLeft <= 14, trial: (r) => r.plan === "trial", premium: (r) => r.plan === "premium", expired: (r) => r.plan === "expired", none: (r) => r.plan === "none" },
+  login: {
+    within7: (r) => r.daysSinceLogin !== null && r.daysSinceLogin <= 7,
+    within30: (r) => r.daysSinceLogin !== null && r.daysSinceLogin <= 30,
+    over14: (r) => r.daysSinceLogin === null || r.daysSinceLogin >= 14,
+    over30: (r) => r.daysSinceLogin === null || r.daysSinceLogin >= 30,
+    never: (r) => r.daysSinceLogin === null,
+  },
+  activity: { any: (r) => r.visits > 0, recent: (r) => r.visits30 > 0, none: (r) => r.visits === 0, growing: (r) => r.visits30 > r.visitsPrev30, declining: (r) => r.visits30 < r.visitsPrev30 },
+  staff: { has: (r) => r.staffActive > 0, none: (r) => r.staffActive === 0 },
+  services: { "24x7": (r) => r.is24x7, emergency: (r) => r.emergencyServices, ambulance: (r) => r.ambulanceAvailable },
+};
+const VALUE_OF: Partial<Record<ListKey, (r: Row) => string>> = {
+  health: (r) => r.health, type: (r) => r.facilityType || "Not set", state: (r) => r.state || "Not set", city: (r) => r.city || "Not set",
+};
+const LIST_KEYS: ListKey[] = ["health", "status", "verified", "profile", "plan", "type", "state", "city", "login", "activity", "staff", "services"];
 
 function matches(r: Row, f: Filters): boolean {
   const q = f.q.trim().toLowerCase();
   if (q && ![r.facilityName, r.email, r.phone, r.city, r.state, r.hfrNumber, r.facilityType].some((v) => v?.toLowerCase().includes(q))) return false;
-  if (f.health !== "all" && r.health !== f.health) return false;
-  if (f.status === "active" && (!r.active || r.locked)) return false;
-  if (f.status === "suspended" && r.active) return false;
-  if (f.status === "locked" && !r.locked) return false;
-  if (f.verified !== "all" && String(r.verified) !== f.verified) return false;
-  if (f.profile === "complete" && !r.profileCompleted) return false;
-  if (f.profile === "incomplete" && r.profileCompleted) return false;
-  if (f.plan === "ending" ? !(r.plan === "trial" && r.daysLeft !== null && r.daysLeft <= 14) : f.plan !== "all" && r.plan !== f.plan) return false;
-  if (f.type !== "all" && (r.facilityType || "Not set") !== f.type) return false;
-  if (f.state !== "all" && (r.state || "Not set") !== f.state) return false;
-  if (f.city !== "all" && (r.city || "Not set") !== f.city) return false;
-  const d = r.daysSinceLogin;
-  if (f.login === "within7" && !(d !== null && d <= 7)) return false;
-  if (f.login === "within30" && !(d !== null && d <= 30)) return false;
-  if (f.login === "over14" && !(d === null || d >= 14)) return false;
-  if (f.login === "over30" && !(d === null || d >= 30)) return false;
-  if (f.login === "never" && d !== null) return false;
-  if (f.activity === "any" && r.visits === 0) return false;
-  if (f.activity === "recent" && r.visits30 === 0) return false;
-  if (f.activity === "none" && r.visits > 0) return false;
-  if (f.activity === "growing" && !(r.visits30 > r.visitsPrev30)) return false;
-  if (f.activity === "declining" && !(r.visits30 < r.visitsPrev30)) return false;
-  if (f.staff === "has" && r.staffActive === 0) return false;
-  if (f.staff === "none" && r.staffActive > 0) return false;
-  if (f.services === "24x7" && !r.is24x7) return false;
-  if (f.services === "emergency" && !r.emergencyServices) return false;
-  if (f.services === "ambulance" && !r.ambulanceAvailable) return false;
+  for (const key of LIST_KEYS) {
+    const picked = f[key] as string[];
+    if (!picked.length) continue;
+    const value = VALUE_OF[key];
+    const ok = value ? picked.includes(value(r)) : picked.some((v) => TESTS[key]?.[v]?.(r));
+    if (!ok) return false;
+  }
   if (f.from && new Date(r.createdAt) < new Date(`${f.from}T00:00:00`)) return false;
   if (f.to && new Date(r.createdAt) > new Date(`${f.to}T23:59:59`)) return false;
   return true;
@@ -167,21 +178,6 @@ function Kpi({ icon: Icon, label, value, hint, tone = "default", onClick }: { ic
   );
 }
 
-function FilterSelect({ label, value, onChange, options, allLabel }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][]; allLabel: string }) {
-  return (
-    <div className="min-w-0">
-      <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className={cn("h-9 w-full bg-background/60", value !== "all" && "border-primary/50 text-primary")}><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{allLabel}</SelectItem>
-          {options.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
 // ── Page ───────────────────────────────────────────────────────────────────
 export default function FacilityListPage() {
   const router = useRouter();
@@ -208,6 +204,7 @@ export default function FacilityListPage() {
 
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => { setF((x) => ({ ...x, [k]: v })); setPage(1); };
   const apply = (patch: Partial<Filters>) => { setF({ ...NO_FILTERS, ...patch }); setShowMore(Object.keys(patch).some((k) => !["q", "health"].includes(k))); setPage(1); };
+  const toggleHealth = (h: Health) => set("health", f.health.includes(h) ? f.health.filter((x) => x !== h) : [...f.health, h]);
 
   const all = rows ?? [];
   const filtered = useMemo(() => all.filter((r) => matches(r, f)), [all, f]);
@@ -222,7 +219,7 @@ export default function FacilityListPage() {
   const distinct = (pick: (r: Row) => string | null) => sortLabels([...new Set(all.map((r) => pick(r) || "Not set"))]).map((v) => [v, v] as [string, string]);
   const types = useMemo(() => distinct((r) => r.facilityType), [all]);
   const states = useMemo(() => distinct((r) => r.state), [all]);
-  const cities = useMemo(() => sortLabels([...new Set(all.filter((r) => f.state === "all" || (r.state || "Not set") === f.state).map((r) => r.city || "Not set"))]).map((v) => [v, v] as [string, string]), [all, f.state]);
+  const cities = useMemo(() => sortLabels([...new Set(all.filter((r) => !f.state.length || f.state.includes(r.state || "Not set")).map((r) => r.city || "Not set"))]).map((v) => [v, v] as [string, string]), [all, f.state]);
 
   // Platform figures
   const k = useMemo(() => {
@@ -236,51 +233,26 @@ export default function FacilityListPage() {
       visits30, prev30,
       revenue30: all.reduce((s, r) => s + r.revenue30, 0), revenue: all.reduce((s, r) => s + r.revenue, 0),
       ending: all.filter((r) => r.plan === "trial" && r.daysLeft !== null && r.daysLeft <= 14).length,
-      bands: HEALTH_ORDER.map((h) => [h, all.filter((r) => r.health === h).length] as const),
-      plans: (["trial", "premium", "expired", "none"] as Plan[]).map((p) => [p, all.filter((r) => r.plan === p).length] as const),
     };
   }, [all]);
 
-  // Insights: what needs attention, each one opens the matching filtered list.
-  const insights = useMemo(() => {
-    const now = Date.now();
-    const list: { icon: typeof Building2; tone: "warn" | "bad" | "good" | "info"; title: string; detail: string; action: Partial<Filters> }[] = [];
-    const quiet = all.filter((r) => r.active && (r.daysSinceLogin === null || r.daysSinceLogin >= 14));
-    if (quiet.length) list.push({ icon: UserX, tone: "bad", title: `${quiet.length} clinic${quiet.length === 1 ? " hasn't" : "s haven't"} signed in for 14+ days`, detail: "Reach out before they drop off — a quick call often brings them back.", action: { login: "over14", status: "active" } });
-    const ending = all.filter((r) => r.plan === "trial" && r.daysLeft !== null && r.daysLeft <= 14);
-    if (ending.length) list.push({ icon: Hourglass, tone: "warn", title: `${ending.length} free trial${ending.length === 1 ? " ends" : "s end"} within 14 days`, detail: `Soonest: ${ending.sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0))[0].facilityName} (${Math.max(0, ending[0].daysLeft ?? 0)} days left).`, action: { plan: "ending" } });
-    const incomplete = all.filter((r) => !r.profileCompleted && now - Date.parse(r.createdAt) > 2 * DAY);
-    if (incomplete.length) list.push({ icon: ClipboardList, tone: "warn", title: `${incomplete.length} clinic${incomplete.length === 1 ? " is" : "s are"} stuck in profile setup`, detail: "Registered more than 2 days ago but never finished their profile.", action: { profile: "incomplete" } });
-    const unused = all.filter((r) => r.visits === 0 && now - Date.parse(r.createdAt) > 7 * DAY);
-    if (unused.length) list.push({ icon: Stethoscope, tone: "info", title: `${unused.length} clinic${unused.length === 1 ? " has" : "s have"} not recorded a visit yet`, detail: "Signed up over a week ago — they may need onboarding help.", action: { activity: "none" } });
-    const unverified = all.filter((r) => !r.verified);
-    if (unverified.length) list.push({ icon: ShieldAlert, tone: "info", title: `${unverified.length} clinic${unverified.length === 1 ? " is" : "s are"} not verified`, detail: "Review their details and HFR number.", action: { verified: "false" } });
-    const locked = all.filter((r) => r.locked);
-    if (locked.length) list.push({ icon: Lock, tone: "bad", title: `${locked.length} account${locked.length === 1 ? " is" : "s are"} locked after failed sign-ins`, detail: "They may need help resetting their password.", action: { status: "locked" } });
-    const declining = all.filter((r) => r.visitsPrev30 >= 3 && r.visits30 < r.visitsPrev30 * 0.6);
-    if (declining.length) list.push({ icon: TrendingDown, tone: "warn", title: `${declining.length} clinic${declining.length === 1 ? "'s" : "s'"} visits dropped by 40%+`, detail: "Compared with the previous 30 days.", action: { activity: "declining" } });
-    const top = [...all].filter((r) => r.visits30 > r.visitsPrev30 && r.visits30 >= 3).sort((a, b) => (b.visits30 - b.visitsPrev30) - (a.visits30 - a.visitsPrev30))[0];
-    if (top) list.push({ icon: Rocket, tone: "good", title: `${top.facilityName} is growing fastest`, detail: `${top.visits30} visits in 30 days, up from ${top.visitsPrev30}.`, action: { q: top.facilityName } });
-    const fresh = all.filter((r) => now - Date.parse(r.createdAt) <= 7 * DAY);
-    if (fresh.length) list.push({ icon: Sparkles, tone: "good", title: `${fresh.length} new clinic${fresh.length === 1 ? "" : "s"} joined this week`, detail: "Welcome them and check their setup.", action: { from: new Date(now - 7 * DAY).toISOString().slice(0, 10) } });
-    return list;
-  }, [all]);
-
-  const activeFilters = (Object.keys(f) as (keyof Filters)[]).filter((key) => f[key] !== NO_FILTERS[key]);
+  const activeFilters = (Object.keys(f) as (keyof Filters)[]).filter((key) => (Array.isArray(f[key]) ? (f[key] as string[]).length > 0 : f[key] !== NO_FILTERS[key]));
+  const OPTS: Record<ListKey, [string, string][]> = {
+    health: HEALTH_OPTS, status: STATUS_OPTS, verified: VERIFIED_OPTS, profile: PROFILE_OPTS, plan: PLAN_OPTS, type: types, state: states, city: cities,
+    login: LOGIN_OPTS, activity: ACTIVITY_OPTS, staff: STAFF_OPTS, services: SERVICE_OPTS,
+  };
+  const FILTER_NAME: Record<ListKey, string> = {
+    health: "Health", status: "Status", verified: "Verification", profile: "Profile", plan: "Plan", type: "Type", state: "State", city: "City",
+    login: "Last sign-in", activity: "Activity", staff: "Staff", services: "Services",
+  };
   const chipLabel = (key: keyof Filters): string => {
     const v = f[key];
-    const find = (opts: [string, string][]) => opts.find(([x]) => x === v)?.[1] ?? v;
+    if (Array.isArray(v)) {
+      const names = v.map((x) => OPTS[key as ListKey].find(([o]) => o === x)?.[1] ?? x);
+      return `${FILTER_NAME[key as ListKey]}: ${names.join(", ")}`;
+    }
     switch (key) {
       case "q": return `“${v}”`;
-      case "health": return HEALTH[v as Health].label;
-      case "status": return v === "active" ? "Active" : v === "suspended" ? "Suspended" : "Locked";
-      case "verified": return v === "true" ? "Verified" : "Not verified";
-      case "profile": return v === "complete" ? "Profile complete" : "Profile incomplete";
-      case "plan": return v === "ending" ? "Trial ending ≤14 days" : PLAN_LABEL[v as Plan];
-      case "login": return find(LOGIN_OPTS);
-      case "activity": return find(ACTIVITY_OPTS);
-      case "staff": return v === "has" ? "Has staff" : "No staff";
-      case "services": return find(SERVICE_OPTS);
       case "from": return `From ${formatDate(v)}`;
       case "to": return `To ${formatDate(v)}`;
       default: return String(v);
@@ -297,7 +269,6 @@ export default function FacilityListPage() {
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `facilities-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
   };
 
-  const TONE = { bad: "bg-rose-500/10 text-rose-600 dark:text-rose-400", warn: "bg-amber-500/10 text-amber-600 dark:text-amber-400", good: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", info: "bg-sky-500/10 text-sky-600 dark:text-sky-400" };
 
   return (
     <div className="mx-auto max-w-[1680px] px-4 py-10 sm:px-6 lg:px-16">
@@ -323,63 +294,11 @@ export default function FacilityListPage() {
           {/* KPIs */}
           <div data-tour="facilities.kpis" className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <Kpi icon={Building2} label="Facilities" value={String(k.total)} hint={<>{k.new30} new in 30 days</>} tone="primary" onClick={() => apply({})} />
-            <Kpi icon={Activity} label="Active this week" value={String(k.active7)} hint={<>{k.total ? Math.round((k.active7 / k.total) * 100) : 0}% of all clinics</>} onClick={() => apply({ login: "within7" })} />
+            <Kpi icon={Activity} label="Active this week" value={String(k.active7)} hint={<>{k.total ? Math.round((k.active7 / k.total) * 100) : 0}% of all clinics</>} onClick={() => apply({ login: ["within7"] })} />
             <Kpi icon={Users} label="Patients served" value={k.patients.toLocaleString("en-IN")} hint="Distinct patients per clinic" />
-            <Kpi icon={Stethoscope} label="Visits · 30 days" value={k.visits30.toLocaleString("en-IN")} hint={<span className="inline-flex items-center gap-1"><Trend now={k.visits30} prev={k.prev30} /> vs previous 30 days</span>} onClick={() => apply({ activity: "recent" })} />
+            <Kpi icon={Stethoscope} label="Visits · 30 days" value={k.visits30.toLocaleString("en-IN")} hint={<span className="inline-flex items-center gap-1"><Trend now={k.visits30} prev={k.prev30} /> vs previous 30 days</span>} onClick={() => apply({ activity: ["recent"] })} />
             <Kpi icon={IndianRupee} label="Revenue · 30 days" value={inr(k.revenue30)} hint={<>{inr(k.revenue)} all time, net</>} />
-            <Kpi icon={Hourglass} label="Trials ending ≤14 days" value={String(k.ending)} hint="Convert to Premium" tone={k.ending ? "warn" : "default"} onClick={() => apply({ plan: "ending" })} />
-          </div>
-
-          {/* Insights + health */}
-          <div data-tour="facilities.insights" className="mb-6 grid gap-4 lg:grid-cols-3">
-            <Card className="gap-3 border-border bg-card/60 p-5 lg:col-span-2">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 font-serif text-lg font-semibold"><Sparkles className="h-4 w-4 text-primary" /> Insights</h2>
-                <span className="text-xs text-muted-foreground">From live activity · click one to see those clinics</span>
-              </div>
-              {insights.length === 0 ? (
-                <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-4 w-4" /> Nothing needs attention right now — every clinic is active and set up.</div>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {insights.slice(0, 8).map((i) => (
-                    <button key={i.title} type="button" onClick={() => apply(i.action)} className="group flex items-start gap-3 rounded-xl border border-border bg-background/50 p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm">
-                      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", TONE[i.tone])}><i.icon className="h-4 w-4" /></span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold leading-snug">{i.title}</span>
-                        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{i.detail}</span>
-                      </span>
-                      <ChevronRight className="ml-auto mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </Card>
-
-            <Card className="gap-4 border-border bg-card/60 p-5">
-              <div>
-                <h2 className="font-serif text-lg font-semibold">Engagement health</h2>
-                <p className="text-xs text-muted-foreground">Score from recent use, visit volume, profile, verification, payments and staff.</p>
-              </div>
-              <div className="flex h-3 overflow-hidden rounded-full bg-muted">
-                {k.bands.map(([h, n]) => n > 0 && <div key={h} className={HEALTH[h].bar} style={{ width: `${(n / Math.max(1, k.total)) * 100}%` }} title={`${HEALTH[h].label}: ${n}`} />)}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {k.bands.map(([h, n]) => (
-                  <button key={h} type="button" onClick={() => apply({ health: h })} className={cn("flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:border-primary/40", f.health === h ? "border-primary/50 bg-primary/5" : "border-border bg-background/50")}>
-                    <span className="flex items-center gap-2"><span className={cn("h-2 w-2 rounded-full", HEALTH[h].dot)} />{HEALTH[h].label}</span>
-                    <span className="font-semibold tabular-nums">{n}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="border-t border-border pt-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">Plans</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {k.plans.filter(([, n]) => n > 0).map(([p, n]) => (
-                    <button key={p} type="button" onClick={() => apply({ plan: p })} className="rounded-full border border-border bg-background/50 px-2.5 py-1 text-xs font-medium hover:border-primary/40">{PLAN_LABEL[p]} · {n}</button>
-                  ))}
-                </div>
-              </div>
-            </Card>
+            <Kpi icon={Hourglass} label="Trials ending ≤14 days" value={String(k.ending)} hint="Convert to Premium" tone={k.ending ? "warn" : "default"} onClick={() => apply({ plan: ["ending"] })} />
           </div>
 
           {/* Search + filters */}
@@ -390,9 +309,10 @@ export default function FacilityListPage() {
                 <Input className="h-10 bg-background/60 pl-10" placeholder="Search name, email, phone, city, state, HFR or type…" value={f.q} onChange={(e) => set("q", e.target.value)} />
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                {(["all", ...HEALTH_ORDER] as const).map((h) => (
-                  <button key={h} type="button" onClick={() => set("health", h)} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors", f.health === h ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/60 hover:border-primary/40")}>
-                    {h !== "all" && <span className={cn("h-1.5 w-1.5 rounded-full", HEALTH[h].dot)} />}{h === "all" ? "All" : HEALTH[h].label}
+                <button type="button" onClick={() => set("health", [])} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors", !f.health.length ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/60 hover:border-primary/40")}>All</button>
+                {HEALTH_ORDER.map((h) => (
+                  <button key={h} type="button" aria-pressed={f.health.includes(h)} onClick={() => toggleHealth(h)} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors", f.health.includes(h) ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/60 hover:border-primary/40")}>
+                    <span className={cn("h-1.5 w-1.5 rounded-full", HEALTH[h].dot)} />{HEALTH[h].label}
                   </button>
                 ))}
                 <Button variant={showMore ? "default" : "outline"} size="sm" className="ml-1" onClick={() => setShowMore((s) => !s)}>
@@ -403,17 +323,17 @@ export default function FacilityListPage() {
 
             {showMore && (
               <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-                <FilterSelect label="Status" value={f.status} onChange={(v) => set("status", v)} allLabel="Any status" options={[["active", "Active"], ["suspended", "Suspended"], ["locked", "Locked (failed sign-ins)"]]} />
-                <FilterSelect label="Verification" value={f.verified} onChange={(v) => set("verified", v)} allLabel="Any" options={[["true", "Verified"], ["false", "Not verified"]]} />
-                <FilterSelect label="Profile" value={f.profile} onChange={(v) => set("profile", v)} allLabel="Any" options={[["complete", "Complete"], ["incomplete", "Incomplete"]]} />
-                <FilterSelect label="Plan" value={f.plan} onChange={(v) => set("plan", v)} allLabel="Any plan" options={[["trial", "Free trial"], ["ending", "Trial ending ≤14 days"], ["premium", "Premium"], ["expired", "Expired"], ["none", "No plan"]]} />
-                <FilterSelect label="Facility type" value={f.type} onChange={(v) => set("type", v)} allLabel="All types" options={types} />
-                <FilterSelect label="State" value={f.state} onChange={(v) => { setF((x) => ({ ...x, state: v, city: "all" })); setPage(1); }} allLabel="All states" options={states} />
-                <FilterSelect label="City" value={f.city} onChange={(v) => set("city", v)} allLabel="All cities" options={cities} />
-                <FilterSelect label="Last sign-in" value={f.login} onChange={(v) => set("login", v)} allLabel="Any time" options={LOGIN_OPTS} />
-                <FilterSelect label="Patient activity" value={f.activity} onChange={(v) => set("activity", v)} allLabel="Any" options={ACTIVITY_OPTS} />
-                <FilterSelect label="Staff" value={f.staff} onChange={(v) => set("staff", v)} allLabel="Any" options={[["has", "Has active staff"], ["none", "No staff"]]} />
-                <FilterSelect label="Services" value={f.services} onChange={(v) => set("services", v)} allLabel="Any" options={SERVICE_OPTS} />
+                <FilterMultiSelect label="Status" value={f.status} onChange={(v) => set("status", v)} allLabel="Any status" options={STATUS_OPTS} />
+                <FilterMultiSelect label="Verification" value={f.verified} onChange={(v) => set("verified", v)} allLabel="Any" options={VERIFIED_OPTS} />
+                <FilterMultiSelect label="Profile" value={f.profile} onChange={(v) => set("profile", v)} allLabel="Any" options={PROFILE_OPTS} />
+                <FilterMultiSelect label="Plan" value={f.plan} onChange={(v) => set("plan", v)} allLabel="Any plan" options={PLAN_OPTS} />
+                <FilterMultiSelect label="Facility type" value={f.type} onChange={(v) => set("type", v)} allLabel="All types" options={types} />
+                <FilterMultiSelect label="State" value={f.state} onChange={(v) => { setF((x) => ({ ...x, state: v, city: [] })); setPage(1); }} allLabel="All states" options={states} />
+                <FilterMultiSelect label="City" value={f.city} onChange={(v) => set("city", v)} allLabel="All cities" options={cities} />
+                <FilterMultiSelect label="Last sign-in" value={f.login} onChange={(v) => set("login", v)} allLabel="Any time" options={LOGIN_OPTS} />
+                <FilterMultiSelect label="Patient activity" value={f.activity} onChange={(v) => set("activity", v)} allLabel="Any" options={ACTIVITY_OPTS} />
+                <FilterMultiSelect label="Staff" value={f.staff} onChange={(v) => set("staff", v)} allLabel="Any" options={STAFF_OPTS} />
+                <FilterMultiSelect label="Services" value={f.services} onChange={(v) => set("services", v)} allLabel="Any" options={SERVICE_OPTS} />
                 <div className="grid grid-cols-2 gap-2">
                   <div><label className="mb-1 block text-xs font-medium text-muted-foreground">Registered from</label><Input type="date" className="h-9 bg-background/60 px-2 text-xs" value={f.from} max={f.to || undefined} onChange={(e) => set("from", e.target.value)} /></div>
                   <div><label className="mb-1 block text-xs font-medium text-muted-foreground">to</label><Input type="date" className="h-9 bg-background/60 px-2 text-xs" value={f.to} min={f.from || undefined} onChange={(e) => set("to", e.target.value)} /></div>
@@ -441,6 +361,7 @@ export default function FacilityListPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/40">
                   <tr className="border-b border-border text-left">
+                    <th className="w-12 whitespace-nowrap px-2.5 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">S.No</th>
                     {COLUMNS.map((c) => {
                       const on = sort.key === c.key;
                       const Icon = !on ? ChevronsUpDown : sort.dir === "asc" ? ChevronUp : ChevronDown;
@@ -457,12 +378,13 @@ export default function FacilityListPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {pageRows.length === 0 ? (
-                    <tr><td colSpan={COLUMNS.length + 1} className="px-4 py-14 text-center">
+                    <tr><td colSpan={COLUMNS.length + 2} className="px-4 py-14 text-center">
                       <p className="font-medium">No facilities match these filters</p>
                       <button type="button" onClick={() => apply({})} className="mt-1 text-sm text-primary hover:underline">Clear all filters</button>
                     </td></tr>
-                  ) : pageRows.map((r) => (
+                  ) : pageRows.map((r, i) => (
                     <tr key={r.id} onClick={() => router.push(`/admin/facilities/${r.id}`)} className="cursor-pointer transition-colors hover:bg-primary/[0.03]">
+                      <td className="px-2.5 py-3 text-right tabular-nums text-muted-foreground">{(current - 1) * pageSize + i + 1}</td>
                       <td className="px-2.5 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br", avatarGradient(r.avatarColor))}><span className="text-[11px] font-bold text-white">{initials(r.facilityName)}</span></div>

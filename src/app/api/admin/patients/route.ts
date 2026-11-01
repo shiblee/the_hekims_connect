@@ -6,6 +6,7 @@ import { getClientIp } from "@/lib/request-info";
 import { hashPassword, isEmailLike } from "@/lib/auth";
 import { fetchPatient } from "@/lib/api-auth";
 import { nextPatientCode, nextVisitCode } from "@/lib/codes";
+import { listParam, eitherParam } from "@/lib/list-param";
 
 const PHONE_PATTERN = /^\+?[0-9]{7,15}$/;
 
@@ -15,8 +16,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim();
-  const status = searchParams.get("status");
-  const verified = searchParams.get("verified");
+  const active = eitherParam(listParam(searchParams, "status"), "active", "inactive");
+  const verified = eitherParam(listParam(searchParams, "verified"), "true", "false");
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("pageSize") || "10", 10)));
   const sort = searchParams.get("sort") || "createdAt_desc";
@@ -29,10 +30,8 @@ export async function GET(req: NextRequest) {
       { phone: { contains: q } },
     ];
   }
-  if (status === "active") where.active = true;
-  if (status === "inactive") where.active = false;
-  if (verified === "true") where.verified = true;
-  if (verified === "false") where.verified = false;
+  if (active !== undefined) where.active = active;
+  if (verified !== undefined) where.verified = verified;
 
   const [field, dir] = sort.split("_");
   const orderBy = { [field]: dir === "asc" ? "asc" : "desc" };

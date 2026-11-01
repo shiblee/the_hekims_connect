@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withAdmin, logBooks } from "@/lib/book-api";
 import { BOOK_DESCRIPTION_MAX, BOOK_TITLE_MAX, cleanLine, cleanText, ensureBookTypeSection, nextBookCode } from "@/lib/books";
+import { listParam, eitherParam } from "@/lib/list-param";
 
 const PAGE_SIZE = 20;
 
@@ -10,14 +11,14 @@ export async function GET(req: NextRequest) {
   return withAdmin(req, async () => {
     const sp = req.nextUrl.searchParams;
     const q = (sp.get("q") || "").trim();
-    const typeId = sp.get("typeId") || "";
-    const status = sp.get("status") || "";
+    const typeIds = listParam(sp, "typeId");
+    const active = eitherParam(listParam(sp, "status"), "active", "inactive");
     const page = Math.max(1, parseInt(sp.get("page") || "1", 10) || 1);
 
     const where = {
       ...(q ? { OR: [{ title: { contains: q } }, { bookCode: { contains: q } }, { description: { contains: q } }] } : {}),
-      ...(typeId ? { bookTypeId: typeId } : {}),
-      ...(status === "active" ? { active: true } : status === "inactive" ? { active: false } : {}),
+      ...(typeIds.length ? { bookTypeId: { in: typeIds } } : {}),
+      ...(active !== undefined ? { active } : {}),
     };
     const [total, books] = await Promise.all([
       db.book.count({ where }),

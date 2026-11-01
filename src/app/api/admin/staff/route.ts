@@ -6,6 +6,7 @@ import { isEmailLike, normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { findClinicContactClash, clinicClashMessage } from "@/lib/contact-rules";
+import { listParam, eitherParam } from "@/lib/list-param";
 
 const PHONE_PATTERN = /^\+?[0-9]{7,15}$/;
 const VERIFY_VALIDITY_MS = 30 * 60 * 1000;
@@ -35,9 +36,9 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim();
-  const status = searchParams.get("status"); // "active" | "inactive"
-  const employeeType = searchParams.get("employeeType");
-  const facilityId = searchParams.get("facilityId");
+  const active = eitherParam(listParam(searchParams, "status"), "active", "inactive");
+  const employeeTypes = listParam(searchParams, "employeeType");
+  const facilityIds = listParam(searchParams, "facilityId");
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("pageSize") || "10", 10)));
   const sort = searchParams.get("sort") || "createdAt_desc";
@@ -51,10 +52,9 @@ export async function GET(req: NextRequest) {
       { phone: { contains: q } },
     ];
   }
-  if (status === "active") where.active = true;
-  if (status === "inactive") where.active = false;
-  if (employeeType) where.employeeType = employeeType;
-  if (facilityId) where.facilityId = facilityId;
+  if (active !== undefined) where.active = active;
+  if (employeeTypes.length) where.employeeType = { in: employeeTypes };
+  if (facilityIds.length) where.facilityId = { in: facilityIds };
 
   const [field, dir] = sort.split("_");
   const orderBy = { [field]: dir === "asc" ? "asc" : "desc" };

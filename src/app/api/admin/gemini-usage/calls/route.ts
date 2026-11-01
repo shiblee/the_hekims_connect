@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { listParam, eitherParam } from "@/lib/list-param";
 
 const PAGE_SIZE = 25;
 
@@ -10,11 +11,11 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const sp = req.nextUrl.searchParams;
   const page = Math.max(1, parseInt(sp.get("page") || "1", 10) || 1);
-  const feature = sp.get("feature") || "";
-  const status = sp.get("status") || "";
+  const features = listParam(sp, "feature");
+  const ok = eitherParam(listParam(sp, "status"), "ok", "failed");
   const where = {
-    ...(feature ? { feature } : {}),
-    ...(status === "ok" ? { status: "ok" } : status === "failed" ? { status: { not: "ok" } } : {}),
+    ...(features.length ? { feature: { in: features } } : {}),
+    ...(ok === true ? { status: "ok" } : ok === false ? { status: { not: "ok" } } : {}),
   };
   const [total, calls] = await Promise.all([
     db.geminiUsageLog.count({ where }),

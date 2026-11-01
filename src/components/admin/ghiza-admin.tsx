@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { FloatingField, FloatingMultiSelect, FloatingSelect } from "@/components/shared/floating-field";
 import { AlertTriangle, CheckCircle2, ImageIcon, Loader2, Pencil, Plus, Search, Sparkles, Utensils } from "lucide-react";
 import { sortLabels } from "@/lib/sort-options";
+import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 
 interface Side { symptoms?: string[]; conditions?: string[]; categories?: string[]; organs?: string[] }
 interface Rule { good?: Side; avoid?: Side; allergens?: string[]; heavy?: boolean; nafakh?: boolean }
@@ -67,8 +68,8 @@ export function GhizaAdmin() {
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [cfg, setCfg] = useState({ maxRecommended: 8, maxAvoid: 8, ranking: true });
   const [q, setQ] = useState("");
-  const [group, setGroup] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [group, setGroup] = useState<string[]>([]);
+  const [status, setStatus] = useState<string[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [ms, setMs] = useState({ goodSym: "", avoidSym: "", allergen: "" });
@@ -82,7 +83,7 @@ export function GhizaAdmin() {
   useEffect(() => { load(); }, []);
 
   const shown = useMemo(() => (foods || []).filter((f) =>
-    (group === "all" || f.category === group) && (status === "all" || f.reviewStatus === status)
+    (!group.length || group.includes(f.category ?? "")) && (!status.length || status.includes(f.reviewStatus))
     && (!q.trim() || f.label.toLowerCase().includes(q.trim().toLowerCase()) || (f.description || "").toLowerCase().includes(q.trim().toLowerCase()))), [foods, group, status, q]);
 
   if (!foods) return <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
@@ -143,16 +144,8 @@ export function GhizaAdmin() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${foods.length} foods…`} className="h-10 pl-9 bg-background/60" />
         </div>
-        <FloatingSelect label="Food group" value={group} onValueChange={setGroup}>
-          <SelectItem value="all">All groups</SelectItem>
-          {sortLabels(GROUPS).map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-        </FloatingSelect>
-        <FloatingSelect label="Status" value={status} onValueChange={setStatus}>
-          <SelectItem value="all">Any status</SelectItem>
-          <SelectItem value="approved">Approved</SelectItem>
-          <SelectItem value="draft">Draft</SelectItem>
-          <SelectItem value="retired">Retired</SelectItem>
-        </FloatingSelect>
+        <FilterMultiSelect hideLabel label="Food group" className="w-48 [&_button]:h-10" value={group} onChange={setGroup} allLabel="All groups" options={sortLabels(GROUPS).map((g) => [g, g] as [string, string])} />
+        <FilterMultiSelect hideLabel label="Status" className="w-40 [&_button]:h-10" value={status} onChange={setStatus} allLabel="Any status" options={[["approved", "Approved"], ["draft", "Draft"], ["retired", "Retired"]]} />
         {drafts.length > 0 && <Button variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400" onClick={approve}><CheckCircle2 className="h-4 w-4" /> Approve {drafts.length} drafts</Button>}
         <Button onClick={() => open()}><Plus className="h-4 w-4" /> Add food</Button>
       </div>

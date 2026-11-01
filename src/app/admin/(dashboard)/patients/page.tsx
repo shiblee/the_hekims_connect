@@ -9,15 +9,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FloatingField, FloatingSelect, FloatingSplitField, FieldError } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { estimateDobFromAgeValue, type AgeUnit } from "@/lib/age";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
+import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 
 interface PatientRow {
   id: string; name: string; email: string | null; phone: string | null; gender: string | null; dob: string | null;
@@ -44,8 +43,8 @@ export default function PatientListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
-  const [verified, setVerified] = useState("all");
+  const [status, setStatus] = useState<string[]>([]);
+  const [verified, setVerified] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [historyTarget, setHistoryTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -60,8 +59,8 @@ export default function PatientListPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), pageSize: "10" });
     if (q) params.set("q", q);
-    if (status !== "all") params.set("status", status);
-    if (verified !== "all") params.set("verified", verified);
+    if (status.length) params.set("status", status.join(","));
+    if (verified.length) params.set("verified", verified.join(","));
     adminApi
       .get<{ patients: PatientRow[]; total: number; totalPages: number }>(`/api/admin/patients?${params}`)
       .then((res) => { setRows(res.patients); setTotal(res.total); setTotalPages(res.totalPages); })
@@ -138,22 +137,8 @@ export default function PatientListPage() {
             onChange={(e) => { setQ(e.target.value); setPage(1); }}
           />
         </div>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="h-10 w-full sm:w-40 bg-card/60"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Suspended</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={verified} onValueChange={(v) => { setVerified(v); setPage(1); }}>
-          <SelectTrigger className="h-10 w-full sm:w-44 bg-card/60"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All verification</SelectItem>
-            <SelectItem value="true">Verified</SelectItem>
-            <SelectItem value="false">Unverified</SelectItem>
-          </SelectContent>
-        </Select>
+        <FilterMultiSelect hideLabel label="Status" className="w-full sm:w-44 [&_button]:h-10" value={status} onChange={(v) => { setStatus(v); setPage(1); }} allLabel="All statuses" options={[["active", "Active"], ["inactive", "Suspended"]]} />
+        <FilterMultiSelect hideLabel label="Verification" className="w-full sm:w-48 [&_button]:h-10" value={verified} onChange={(v) => { setVerified(v); setPage(1); }} allLabel="All verification" options={[["true", "Verified"], ["false", "Unverified"]]} />
       </div>
 
       {loading ? (

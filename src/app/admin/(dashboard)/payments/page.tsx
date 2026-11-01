@@ -8,12 +8,10 @@ import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { cn, formatDateTime } from "@/lib/utils";
 import { PAYMENT_STATE_LABEL, type PaymentState } from "@/lib/payments";
 import { sortLabels } from "@/lib/sort-options";
+import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 
 interface PaymentRow {
   id: string; paymentCode: string; amount: number; net: number; mode: string; state: PaymentState; createdAt: string;
@@ -42,9 +40,9 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState(todayStr());
   const [to, setTo] = useState(todayStr());
-  const [facilityId, setFacilityId] = useState("all");
-  const [mode, setMode] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [facilityId, setFacilityId] = useState<string[]>([]);
+  const [mode, setMode] = useState<string[]>([]);
+  const [status, setStatus] = useState<string[]>([]);
 
   useEffect(() => {
     adminApi.get<{ facilities: FacilityOption[] }>("/api/admin/facilities?pageSize=100")
@@ -55,9 +53,9 @@ export default function AdminPaymentsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ from, to, tz: String(-new Date().getTimezoneOffset()) });
-    if (status !== "all") params.set("status", status);
-    if (facilityId !== "all") params.set("facilityId", facilityId);
-    if (mode !== "all") params.set("mode", mode);
+    if (status.length) params.set("status", status.join(","));
+    if (facilityId.length) params.set("facilityId", facilityId.join(","));
+    if (mode.length) params.set("mode", mode.join(","));
     try {
       const res = await adminApi.get<{ payments: PaymentRow[]; summary: Summary }>(`/api/admin/payments?${params}`);
       setPayments(res.payments || []); setSummary(res.summary);
@@ -86,27 +84,9 @@ export default function AdminPaymentsPage() {
           <label className="text-xs text-muted-foreground mb-1 block">To</label>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="bg-background/60 w-40" />
         </div>
-        <Select value={facilityId} onValueChange={setFacilityId}>
-          <SelectTrigger className="w-56 bg-background/60"><SelectValue placeholder="All facilities" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All facilities</SelectItem>
-            {facilities.map((f) => <SelectItem key={f.id} value={f.id}>{f.facilityName}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={mode} onValueChange={setMode}>
-          <SelectTrigger className="w-44 bg-background/60"><SelectValue placeholder="All modes" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All modes</SelectItem>
-            {sortLabels(MODES).map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-44 bg-background/60"><SelectValue placeholder="Any status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any status</SelectItem>
-            {(Object.keys(PAYMENT_STATE_LABEL) as PaymentState[]).map((k) => <SelectItem key={k} value={k}>{PAYMENT_STATE_LABEL[k]}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <FilterMultiSelect hideLabel label="Facility" className="w-56" value={facilityId} onChange={setFacilityId} allLabel="All facilities" options={facilities.map((f) => [f.id, f.facilityName] as [string, string])} />
+        <FilterMultiSelect hideLabel label="Mode" className="w-44" value={mode} onChange={setMode} allLabel="All modes" options={sortLabels(MODES).map((m) => [m, m] as [string, string])} />
+        <FilterMultiSelect hideLabel label="Status" className="w-44" value={status} onChange={setStatus} allLabel="Any status" options={(Object.keys(PAYMENT_STATE_LABEL) as PaymentState[]).map((k) => [k, PAYMENT_STATE_LABEL[k]] as [string, string])} />
       </div>
 
       {loading ? (
