@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { canOpenPage } from "@/lib/staff-permissions";
+import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
 import { formatAge, daysAgo } from "@/lib/age";
@@ -77,6 +79,8 @@ export function PatientDetail({ patientId }: { patientId: string }) {
 
   // Messages for the bottom action bar (save results, print problems) — shown right above it.
   const msg = useNotice();
+  const staffPerms = useAppStore((s) => s.permissions);
+  const signedInStaff = useAppStore((s) => s.staff);
   const [loadError, setLoadError] = useState<string | null>(null);
   const t = useTranslations("clinic.record");
   const tc = useTranslations("common");
@@ -214,9 +218,14 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       const allSaved = await saveStageDrafts();
       if (!allSaved) return; // the sections and the summary above the bar say what failed
       const clear = await redFlagRef.current?.attemptResolve();
-      if (clear) {
-        router.push(`/facility/mizaj?patientId=${patientId}`);
+      if (!clear) return;
+      // Staff without access to the next step stay on this record (step 2) instead of a locked page.
+      if (!canOpenPage(signedInStaff ? staffPerms : null, "/facility/mizaj")) {
+        msg.success(tc("step_locked_title"), tc("step_locked_hint"));
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
       }
+      router.push(`/facility/mizaj?patientId=${patientId}`);
     } finally {
       setSavingStage(false);
     }

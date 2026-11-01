@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PatientReportsPanel } from "@/components/facility/reports/patient-reports-panel";
 import { FlashNotice } from "@/components/shared/flash-notice";
+import { setFlash } from "@/lib/flash";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { HelpButton } from "@/components/guidance/help-panel";
 import {
@@ -77,6 +78,13 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
 
   const go = (tab: string) => { router.push(`/facility/${tab}`); setMobileNav(false); };
   const pageAllowed = can(pathname);
+  // A locked step for one patient (Mizaj, Asbab, Tashkhees…) → that patient's record instead of a dead end.
+  const lockedPatient = !pageAllowed && typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("patientId") : null;
+  useEffect(() => {
+    if (!lockedPatient || !can(`/facility/patients/${lockedPatient}/record`)) return;
+    setFlash({ tone: "info", title: tc("step_redirect_title"), detail: tc("step_redirect_hint") });
+    router.replace(`/facility/patients/${lockedPatient}/record`);
+  }, [lockedPatient]);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const onLogout = () => { logout(); router.push("/"); };
 
