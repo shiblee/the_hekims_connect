@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
+import { GroupMultiSelect } from "@/components/facility/service-group-picker";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
@@ -410,34 +410,21 @@ export function ProfileView({ section }: { section: string }) {
               ? serviceGroups.map(([key, group]) => ({ key, label: group.label, options: group.options, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }))
               : [{ key: "services", label: t("services_word"), options: services, selected: services, toggle: (v: string) => toggleInList(services, setServices, v) }]),
           ];
+          // Saved values no longer in the Meta lists still show as chips, so nothing silently disappears.
+          const extra = (opts: string[], picked: string[]) => [...opts, ...picked.filter((x) => !opts.includes(x))];
+          groups[0] = { ...groups[0], options: extra(groups[0].options, specializations) };
+          const known = new Set(groups.slice(1).flatMap((g) => g.options));
+          const strayServices = services.filter((x) => !known.has(x));
+          if (strayServices.length && groups.length > 1) groups[groups.length - 1] = { ...groups[groups.length - 1], options: [...groups[groups.length - 1].options, ...strayServices] };
           return (
             <Card className="p-6 border-border/50 bg-card/60">
               <div className="divide-y divide-border">
-                {groups.map((g) => {
-                  const count = g.options.filter((o) => g.selected.includes(o)).length;
-                  return (
-                    <section key={g.key} className="py-5 first:pt-0">
-                      <div className="mb-3 flex items-baseline justify-between gap-3">
-                        <p className="text-[15px] font-semibold">{groupQuestion(g.key, g.label)}</p>
-                        <span className={cn("shrink-0 text-xs font-medium", count ? "text-primary" : "text-muted-foreground")}>{count ? tc("n_selected", { count }) : t("none_selected")}</span>
-                      </div>
-                      <div className="gap-2 sm:columns-2 xl:columns-3 [&>label]:mb-2">
-                        {g.options.map((item) => {
-                          const checked = g.selected.includes(item);
-                          return (
-                            <label key={item} className={cn(
-                              "flex break-inside-avoid items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm font-medium leading-snug cursor-pointer transition-colors",
-                              checked ? "border-primary/50 bg-primary/5" : "border-input bg-background/60 hover:border-primary/30"
-                            )}>
-                              <Checkbox className="mt-0.5" checked={checked} onCheckedChange={() => g.toggle(item)} />
-                              <span className="min-w-0">{item}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  );
-                })}
+                {groups.map((g) => (
+                  <section key={g.key} className="py-5 first:pt-0">
+                    <p className="mb-3 text-[15px] font-semibold">{groupQuestion(g.key, g.label)}</p>
+                    <GroupMultiSelect group={g} error={false} />
+                  </section>
+                ))}
                 <section className="pt-5">
                   <p className="mb-3 text-[15px] font-semibold">{t("q_emergency")}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
