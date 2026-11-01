@@ -1604,45 +1604,36 @@ export function TashkheesDossierPanel({ state, patientId, visitId }: { state: Ta
         </div>
       )}
 
-      <Card ref={headerRef} className="p-5 border-border/50 bg-card/60 gap-0">
-        <SectionHeading
-          icon={FileSignature}
-          title={td("title")}
-          right={
-            <span className="flex items-center gap-1.5 shrink-0">
-              {state.autoSavedAt && d.status === "draft" && <span className="hidden sm:inline text-[11px] text-muted-foreground">{td("autosaved", { time: state.autoSavedAt.toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) })}</span>}
-              <Badge variant="outline">{td("n_steps", { n: doneCount, total: TABS.length })}</Badge>
-              {d.status === "finalized"
-                ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}{d.versions?.[0] ? ` · ${td("version_n", { n: d.versions[0].version })}` : ""}</Badge>
-                : <Badge variant="outline">{td("draft")}</Badge>}
-            </span>
-          }
-        />
-        <div className="mt-3 mb-3 h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
-          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / TABS.length) * 100}%` }} />
+      <Card ref={headerRef} className="px-4 py-3 border-border/50 bg-card/60 gap-0">
+        {/* One line: title · the six steps (click jumps; description on hover) · progress and status */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="flex shrink-0 items-center gap-2.5">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary"><FileSignature className="h-4.5 w-4.5" /></div>
+            <h2 className="font-serif text-lg font-semibold leading-tight">{td("title")}</h2>
+          </div>
+          <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto" aria-label={td("jump")}>
+            {TABS.map((t, i) => {
+              const on = inView === t.key;
+              const ok = done[t.key];
+              return (
+                <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${tabLabel(t.key, t.label)} — ${tabSub(t.key)}${ok ? td("recorded_suffix") : ""}`}
+                  aria-current={on ? "step" : undefined}
+                  className={cn("flex flex-auto shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[13px] font-medium transition-colors",
+                    on ? "border-primary bg-primary/10 text-primary" : ok ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 hover:border-emerald-500/50 dark:text-emerald-400" : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground")}>
+                  {ok ? <CircleCheck className="h-4 w-4 shrink-0 text-emerald-500" aria-label={td("recorded")} /> : <t.icon className="h-4 w-4 shrink-0" />}
+                  <span>{tabLabel(t.key, t.short)}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <span className="flex shrink-0 items-center gap-1.5">
+            {state.autoSavedAt && d.status === "draft" && <span className="hidden xl:inline text-[11px] text-muted-foreground">{td("autosaved", { time: state.autoSavedAt.toLocaleTimeString(dl, { hour: "numeric", minute: "2-digit" }) })}</span>}
+            <Badge variant="outline" className={cn("tabular-nums", doneCount === TABS.length && "border-emerald-500/40 text-emerald-600 dark:text-emerald-400")}>{td("n_steps", { n: doneCount, total: TABS.length })}</Badge>
+            {d.status === "finalized"
+              ? <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}{d.versions?.[0] ? ` · ${td("version_n", { n: d.versions[0].version })}` : ""}</Badge>
+              : <Badge variant="outline">{td("draft")}</Badge>}
+          </span>
         </div>
-        {/* Steps — one line; click jumps to the step. */}
-        <div className="@container"><div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-0.5">
-          {TABS.map((t, i) => {
-            const on = inView === t.key;
-            const ok = done[t.key];
-            return (
-              <button key={t.key} type="button" onClick={() => jump(t.key)} title={`${i + 1}. ${tabLabel(t.key, t.label)} — ${tabSub(t.key)}${ok ? td("recorded_suffix") : ""}`}
-                className={cn("flex min-w-[7rem] @xl:min-w-0 flex-1 basis-0 items-center gap-1.5 @3xl:gap-2 rounded-xl border px-1.5 @3xl:px-2 py-1.5 text-start transition-colors",
-                  on ? "border-primary bg-primary/10" : "border-border/50 bg-background/40 hover:border-primary/40")}>
-                <span className={cn("relative h-8 w-8 @3xl:h-9 @3xl:w-9 shrink-0 rounded-full border-2 flex items-center justify-center",
-                  ok ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : on ? "border-primary text-primary" : "border-muted text-muted-foreground")}>
-                  <t.icon className="h-4 w-4" />
-                  {ok && <span className="absolute -end-1 -top-1 h-3.5 w-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center border-2 border-card" aria-label={td("recorded")}><Check className="h-2 w-2" /></span>}
-                </span>
-                <span className="min-w-0">
-                  <span className={cn("block truncate text-xs @3xl:text-[13px] font-semibold leading-tight", on && "text-primary")}>{tabLabel(t.key, t.short)}</span>
-                  <span className={cn("block truncate text-[11px] @3xl:text-xs leading-tight", ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>{tabShort2(t.key)}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div></div>
         {/* Version history — every finalisation and amendment, newest first */}
         {!!d.versions?.length && (
           <ul className="mt-3 space-y-0.5 border-t border-border/40 pt-2.5">
