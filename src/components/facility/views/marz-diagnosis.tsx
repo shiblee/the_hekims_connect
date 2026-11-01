@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Check, HelpCircle, Plus, Search, ShieldAlert, Sparkles, Stethoscope, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, HelpCircle, Plus, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
-import { SelectItem } from "@/components/ui/select";
+import { FloatingField } from "@/components/shared/floating-field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DifferentialResult, Differential } from "@/lib/differential-engine";
 
 export type DiagnosisRole = "working" | "secondary" | "differential" | "ruled_out";
@@ -24,7 +24,10 @@ interface MarzState { diagnoses: DossierDiagnosis[]; sabab: string[]; icdCode: s
 const ROLES: DiagnosisRole[] = ["working", "secondary", "differential", "ruled_out"];
 const CERTS = ["suspected", "probable", "confirmed"] as const;
 const CERT_STYLE = { suspected: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400", probable: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400", confirmed: "border-primary/40 bg-primary/10 text-primary" };
-const ROLE_STYLE: Record<DiagnosisRole, string> = { working: "border-border/60", secondary: "border-border/60", differential: "border-border/60", ruled_out: "border-border/60 opacity-70" };
+// Coloured edge per role so the table reads at a glance.
+const ROLE_EDGE: Record<DiagnosisRole, string> = { working: "bg-primary", secondary: "bg-sky-500", differential: "bg-amber-500", ruled_out: "bg-muted-foreground/40" };
+// Diagnosis · Role · Certainty · Notes · remove
+const DX_COLS = "md:grid-cols-[minmax(0,1.3fr)_10rem_8.5rem_minmax(0,1.2fr)_2rem]";
 
 function Pill({ className, children, title }: { className?: string; children: React.ReactNode; title?: string }) {
   return <span title={title} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", className)}>{children}</span>;
@@ -226,40 +229,48 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
             : null)} onFree={(label) => addDx({ marzId: null, label, localName: null, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" })} />
         </div>
         {d.diagnoses.length === 0 ? <p className="text-[13px] text-muted-foreground">{t("empty")}</p> : (
-          <ul className="space-y-2">
-            {sorted.map(({ x, i }) => (
-              <li key={`${x.label}${i}`} className={cn("rounded-xl border bg-card p-3 space-y-2.5", ROLE_STYLE[x.role])}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Stethoscope className="h-4 w-4 shrink-0 text-primary" />
-                  <span className={cn("text-[15px] font-semibold min-w-0", x.role === "ruled_out" && "line-through")}>{x.label}</span>
-                  {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
-                  {x.source === "engine" && <span className="text-[11px] text-muted-foreground">· {t("from_engine")}</span>}
-                  {amraz.find((m) => m.id === x.marzId)?.unverified && <Pill className="border-border/60 text-muted-foreground font-medium" title={t("unverified_hint")}>{t("unverified")}</Pill>}
-                  <button type="button" onClick={() => set({ diagnoses: d.diagnoses.filter((_, j) => j !== i) })} className="ms-auto text-muted-foreground hover:text-destructive" aria-label={t("remove")}><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-                {/* Same floating-label fields as the rest of the form */}
-                <div className="grid gap-x-2 gap-y-4 pt-3 sm:grid-cols-[13rem_11rem_1fr]">
-                  <FloatingSelect id={`dx-role-${i}`} label={t("role")} value={x.role} onValueChange={(v) => update(i, { role: v as DiagnosisRole })}>
-                    {ROLES.map((r) => <SelectItem key={r} value={r}>{t(`role_${r}`)}</SelectItem>)}
-                  </FloatingSelect>
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            {/* One header for all rows */}
+            <div className={cn("hidden gap-3 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid", DX_COLS)}>
+              <span>{t("add_free_label")}</span><span>{t("role")}</span><span>{t("certainty")}</span><span>{t("note_ph")}</span><span />
+            </div>
+            <ul className="divide-y divide-border">
+              {sorted.map(({ x, i }) => (
+                <li key={`${x.label}${i}`} className={cn("relative grid items-center gap-2 py-2 ps-4 pe-3 md:gap-3", DX_COLS, x.role === "ruled_out" && "opacity-70")}>
+                  <span className={cn("absolute inset-y-1.5 start-0 w-1 rounded-e-full", ROLE_EDGE[x.role])} />
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      <span className={cn("text-sm font-semibold", x.role === "ruled_out" && "line-through")}>{x.label}</span>
+                      {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
+                      {amraz.find((m) => m.id === x.marzId)?.unverified && <Pill className="border-border/60 text-muted-foreground font-medium" title={t("unverified_hint")}>{t("unverified")}</Pill>}
+                    </p>
+                    {(x.source === "engine" || x.evidenceFor.length > 0 || x.evidenceAgainst.length > 0) && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground" title={[x.evidenceFor.length ? `${t("for")}: ${x.evidenceFor.join(" · ")}` : "", x.evidenceAgainst.length ? `${t("against")}: ${x.evidenceAgainst.join(" · ")}` : ""].filter(Boolean).join("  ")}>
+                        {x.source === "engine" && <span>{t("from_engine")} </span>}
+                        {x.evidenceFor.length > 0 && <><span className="font-semibold text-emerald-700 dark:text-emerald-400">· {t("for")}:</span> {x.evidenceFor.join(" · ")} </>}
+                        {x.evidenceAgainst.length > 0 && <><span className="font-semibold text-destructive">· {t("against")}:</span> {x.evidenceAgainst.join(" · ")}</>}
+                      </p>
+                    )}
+                  </div>
+                  <Select value={x.role} onValueChange={(v) => update(i, { role: v as DiagnosisRole })}>
+                    <SelectTrigger className="h-8 w-full bg-background/60 text-xs" aria-label={t("role")}><SelectValue /></SelectTrigger>
+                    <SelectContent>{ROLES.map((r) => <SelectItem key={r} value={r}>{t(`role_${r}`)}</SelectItem>)}</SelectContent>
+                  </Select>
                   {x.role !== "ruled_out" ? (
-                    <FloatingSelect id={`dx-cert-${i}`} label={t("certainty")} value={x.certainty ?? ""} placeholder={t("cert_choose")}
-                      onValueChange={(v) => update(i, { certainty: (v === "none" ? null : v) as DossierDiagnosis["certainty"] })}>
-                      <SelectItem value="none">{t("cert_none")}</SelectItem>
-                      {CERTS.map((c) => <SelectItem key={c} value={c}>{t(`cert_${c}`)}</SelectItem>)}
-                    </FloatingSelect>
-                  ) : <span className="hidden sm:block" />}
-                  <FloatingField id={`dx-note-${i}`} label={t("note_ph")} value={x.note ?? ""} onChange={(e) => update(i, { note: e.target.value || null })} maxLength={1000} />
-                </div>
-                {(x.evidenceFor.length > 0 || x.evidenceAgainst.length > 0) && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {x.evidenceFor.length > 0 && <><span className="font-semibold text-emerald-700 dark:text-emerald-400">{t("for")}:</span> {x.evidenceFor.join(" · ")} </>}
-                    {x.evidenceAgainst.length > 0 && <><span className="font-semibold text-destructive">{t("against")}:</span> {x.evidenceAgainst.join(" · ")}</>}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
+                    <Select value={x.certainty ?? "none"} onValueChange={(v) => update(i, { certainty: (v === "none" ? null : v) as DossierDiagnosis["certainty"] })}>
+                      <SelectTrigger className={cn("h-8 w-full bg-background/60 text-xs", !x.certainty && "text-muted-foreground")} aria-label={t("certainty")}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t("cert_none")}</SelectItem>
+                        {CERTS.map((c) => <SelectItem key={c} value={c}>{t(`cert_${c}`)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : <span className="hidden text-xs text-muted-foreground md:block">—</span>}
+                  <Input value={x.note ?? ""} onChange={(e) => update(i, { note: e.target.value || null })} maxLength={1000} aria-label={t("note_ph")} className="h-8 bg-background/60 text-xs" />
+                  <button type="button" onClick={() => set({ diagnoses: d.diagnoses.filter((_, j) => j !== i) })} className="justify-self-end rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={t("remove")} title={t("remove")}><Trash2 className="h-3.5 w-3.5" /></button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {d.diagnoses.length > 0 && !d.diagnoses.some((x) => x.role === "working") && (
           <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"><AlertTriangle className="h-3.5 w-3.5" /> {t("need_working")}</p>
