@@ -22,12 +22,12 @@ import { FacilityDetailContext, HEALTH_STYLE, type FacilityDetail, type Facility
 import { DAY, ScoreRing, Trend, ago, inr } from "./detail-ui";
 
 const SECTIONS = [
-  { key: "overview", label: "Overview", icon: LayoutGrid, hint: "Activity & health" },
-  { key: "details", label: "Identity & contact", icon: IdCard, hint: "Name, type, HFR, login" },
-  { key: "location", label: "Location", icon: MapPin, hint: "Address" },
-  { key: "capacity", label: "Capacity & schedule", icon: Gauge, hint: "Beds, OPD, hours" },
-  { key: "services", label: "Services", icon: Stethoscope, hint: "Specializations & services" },
-  { key: "plan", label: "Plan", icon: Sparkles, hint: "Subscription" },
+  { key: "overview", label: "Overview", icon: LayoutGrid },
+  { key: "details", label: "Identity & contact", icon: IdCard },
+  { key: "location", label: "Location", icon: MapPin },
+  { key: "capacity", label: "Capacity & schedule", icon: Gauge },
+  { key: "services", label: "Services", icon: Stethoscope },
+  { key: "plan", label: "Plan", icon: Sparkles },
 ];
 
 function Stat({ icon: Icon, label, value, hint }: { icon: typeof Users; label: string; value: ReactNode; hint?: ReactNode }) {
@@ -205,7 +205,7 @@ export default function FacilityDetailLayout({ children }: { children: ReactNode
               return (
                 <Link key={s.key} href={`/admin/facilities/${id}/${s.key}`} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors", on ? "bg-primary text-primary-foreground" : "hover:bg-muted/60")}>
                   <s.icon className="h-4 w-4 shrink-0" />
-                  <span className="min-w-0"><span className="block truncate font-medium">{s.label}</span><span className={cn("block truncate text-[11px]", on ? "text-primary-foreground/80" : "text-muted-foreground")}>{s.hint}</span></span>
+                  <span className="min-w-0 truncate font-medium">{s.label}</span>
                 </Link>
               );
             })}
