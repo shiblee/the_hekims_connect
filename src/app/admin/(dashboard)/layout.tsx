@@ -37,7 +37,7 @@ const navLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/facilities", label: "Facilities", icon: Stethoscope },
   { href: "/admin/staff", label: "Staff", icon: UserCog },
-  { href: "/admin/patients", label: "Patient", icon: HeartPulse },
+  { href: "/admin/patients", label: "Patients", icon: HeartPulse },
   { href: "/admin/humor", label: "Humoral Matrix", icon: Flame },
   { href: "/admin/payments", label: "Payments", icon: Wallet },
   { href: "/admin/books", label: "Books", icon: BookOpen },

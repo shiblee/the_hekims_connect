@@ -32,9 +32,19 @@ export async function GET(req: NextRequest) {
   }
   if (active !== undefined) where.active = active;
   if (verified !== undefined) where.verified = verified;
+  const genders = listParam(searchParams, "gender"), mizaj = listParam(searchParams, "mizaj"), facilityIds = listParam(searchParams, "facilityId");
+  if (genders.length) where.gender = { in: genders };
+  // "__none" stands for "not assessed yet".
+  if (mizaj.length) {
+    const named = mizaj.filter((m) => m !== "__none");
+    const or = [...(named.length ? [{ mizaj: { in: named } }] : []), ...(mizaj.includes("__none") ? [{ mizaj: null }, { mizaj: "" }] : [])];
+    where.AND = [...(where.AND || []), { OR: or }];
+  }
+  if (facilityIds.length) where.visits = { some: { facilityId: { in: facilityIds } } };
 
+  const SORTS: Record<string, unknown> = { newest: { createdAt: "desc" }, oldest: { createdAt: "asc" }, name: { name: "asc" }, login: { lastLoginAt: { sort: "desc", nulls: "last" } } };
   const [field, dir] = sort.split("_");
-  const orderBy = { [field]: dir === "asc" ? "asc" : "desc" };
+  const orderBy = SORTS[sort] ?? { [field]: dir === "asc" ? "asc" : "desc" };
 
   const [total, patients] = await Promise.all([
     db.patient.count({ where }),
@@ -44,24 +54,48 @@ export async function GET(req: NextRequest) {
       skip: (page - 1) * pageSize,
       take: pageSize,
       select: {
-        id: true, name: true, email: true, phone: true, gender: true, dob: true,
-        bloodGroup: true, mizaj: true, photo: true, avatarColor: true,
+        id: true, patientCode: true, name: true, email: true, phone: true, gender: true, dob: true,
+        bloodGroup: true, mizaj: true, photo: true, avatarColor: true, city: true, state: true,
         verified: true, active: true, lastLoginAt: true, createdAt: true,
+        _count: { select: { visits: true } },
         visits: {
           orderBy: { visitDate: "desc" },
           take: 1,
-          select: { facility: { select: { facilityName: true } } },
+          select: { visitDate: true, facility: { select: { id: true, facilityName: true } } },
         },
       },
     }),
   ]);
 
-  const withFacility = patients.map(({ visits, ...p }) => ({
+  const withFacility = patients.map(({ visits, _count, ...p }) => ({
     ...p,
     facilityName: visits[0]?.facility.facilityName || null,
+    facilityId: visits[0]?.facility.id || null,
+    lastVisitAt: visits[0]?.visitDate || null,
+    visitCount: _count.visits,
   }));
 
-  return NextResponse.json({ patients: withFacility, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+  // Platform-wide figures for the page header (unfiltered), only when asked for.
+  let summary: Record<string, unknown> | null = null;
+  if (searchParams.get("summary") === "1") {
+    const since30 = new Date(Date.now() - 30 * 86_400_000);
+    const [all, activeN, verifiedN, new30, signedIn30, byGender, byMizaj] = await Promise.all([
+      db.patient.count(),
+      db.patient.count({ where: { active: true } }),
+      db.patient.count({ where: { verified: true } }),
+      db.patient.count({ where: { createdAt: { gte: since30 } } }),
+      db.patient.count({ where: { lastLoginAt: { gte: since30 } } }),
+      db.patient.groupBy({ by: ["gender"], _count: { _all: true } }),
+      db.patient.groupBy({ by: ["mizaj"], _count: { _all: true } }),
+    ]);
+    summary = {
+      all, active: activeN, suspended: all - activeN, verified: verifiedN, unverified: all - verifiedN, new30, signedIn30,
+      genders: byGender.filter((g) => g.gender).map((g) => ({ value: g.gender, count: g._count._all })),
+      mizaj: byMizaj.map((m) => ({ value: m.mizaj || "__none", count: m._count._all })),
+    };
+  }
+
+  return NextResponse.json({ patients: withFacility, total, page, pageSize, totalPages: Math.ceil(total / pageSize), summary });
 }
 
 // Admin-initiated patient registration, scoped to a chosen facility. Mirrors the
