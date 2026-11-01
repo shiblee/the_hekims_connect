@@ -6,7 +6,7 @@ export const CLINIC_DASHBOARD = defineStrings("clinic.dashboard", {
   vs_yesterday: ["{diff} vs yesterday ({y})", "कल से {diff} ({y})", "کل کے مقابلے {diff} ({y})", "{diff} مقارنة بالأمس ({y})", "{diff} نسبت به دیروز ({y})"],
   section: ["Reception", "रिसेप्शन", "ریسیپشن", "الاستقبال", "پذیرش"],
   updated: ["updated {time}", "{time} पर अपडेट", "{time} پر اپ ڈیٹ", "تم التحديث {time}", "به‌روز شده {time}"],
-  act_register: ["Register new patient", "नया मरीज़ पंजीकृत करें", "نیا مریض رجسٹر کریں", "تسجيل مريض جديد", "ثبت بیمار جدید"],
+  act_register: ["Register Patient", "मरीज़ पंजीकृत करें", "مریض رجسٹر کریں", "تسجيل مريض", "ثبت بیمار"],
   act_find: ["Find existing patient", "मौजूदा मरीज़ खोजें", "موجودہ مریض تلاش کریں", "البحث عن مريض حالي", "یافتن بیمار موجود"],
   act_desk: ["Reception desk (7 days)", "रिसेप्शन डेस्क (7 दिन)", "ریسیپشن ڈیسک (7 دن)", "مكتب الاستقبال (7 أيام)", "میز پذیرش (۷ روز)"],
   act_progress: ["In progress", "जारी", "جاری", "قيد التنفيذ", "در جریان"],

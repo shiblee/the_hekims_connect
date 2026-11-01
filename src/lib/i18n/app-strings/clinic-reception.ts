@@ -21,7 +21,7 @@ export const CLINIC_STAGES = defineStrings("clinic.stages", {
 // Reception desk.
 export const CLINIC_RECEPTION = defineStrings("clinic.reception", {
   title: ["Reception desk", "रिसेप्शन डेस्क", "ریسیپشن ڈیسک", "مكتب الاستقبال", "میز پذیرش"],
-  register_new: ["Register new patient", "नया मरीज़ पंजीकृत करें", "نیا مریض رجسٹر کریں", "تسجيل مريض جديد", "ثبت بیمار جدید"],
+  register_new: ["Register Patient", "मरीज़ पंजीकृत करें", "مریض رجسٹر کریں", "تسجيل مريض", "ثبت بیمار"],
   prev_week: ["Previous 7 days", "पिछले 7 दिन", "پچھلے 7 دن", "الأيام السبعة السابقة", "۷ روز قبل"],
   next_week: ["Next 7 days", "अगले 7 दिन", "اگلے 7 دن", "الأيام السبعة التالية", "۷ روز بعد"],
   today: ["Today", "आज", "آج", "اليوم", "امروز"],
