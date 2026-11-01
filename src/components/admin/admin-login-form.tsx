@@ -181,10 +181,6 @@ export function AdminLoginForm() {
               {loading ? "Signing in…" : "Sign In"}
             </Button>
           </form>
-
-          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Demo Admin:</span> admin@hekims.connect / admin12345
-          </div>
         </div>
       </div>
 
