@@ -439,11 +439,10 @@ export function FacilityProfileSetup() {
           </div>
         </header>
 
-        <main className="flex-1 px-4 lg:px-0 py-6 flex items-start justify-center">
+        <main className="setup-text-up flex-1 px-4 lg:px-0 py-6 flex items-start justify-center">
           <div className="w-full max-w-2xl">
             <div className="text-center mb-7">
               <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">{t("title")}</h1>
-              <p className="mt-1.5 text-sm text-muted-foreground">{t("subtitle")}</p>
             </div>
 
             {(
