@@ -145,7 +145,7 @@ export function LandingPage() {
               <Button
                 size="lg"
                 className="group h-14 px-8 text-lg gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 glow-teal transition-all duration-300 hover:scale-[1.04] hover:shadow-[0_0_36px_oklch(0.72_0.13_175/0.4)] active:scale-[0.97]"
-                onClick={() => router.push("/register/facility")}
+                onClick={() => router.push("/login/facility")}
               >
                 <Stethoscope className="h-6 w-6 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /> {t("landing.hero.facility_cta")}
               </Button>
@@ -153,7 +153,7 @@ export function LandingPage() {
                 size="lg"
                 variant="outline"
                 className="group h-14 px-8 text-lg gap-1.5 bg-transparent border-accent/50 text-accent dark:bg-transparent dark:border-accent/50 dark:text-accent hover:bg-accent/10 hover:border-accent hover:text-accent dark:hover:bg-accent/10 dark:hover:border-accent dark:hover:text-accent transition-all duration-300 hover:scale-[1.04] active:scale-[0.97]"
-                onClick={() => router.push("/register/patient")}
+                onClick={() => router.push("/login/patient")}
               >
                 <Heart className="h-6 w-6 transition-transform duration-300 group-hover:scale-125" /> {t("landing.hero.patient_cta")}
               </Button>
@@ -470,7 +470,7 @@ export function LandingPage() {
                   <Button
                     size="lg"
                     className="group h-14 px-8 text-lg gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 glow-teal transition-all duration-300 hover:scale-[1.04] hover:shadow-[0_0_36px_oklch(0.72_0.13_175/0.4)] active:scale-[0.97]"
-                    onClick={() => router.push("/register/facility")}
+                    onClick={() => router.push("/login/facility")}
                   >
                     <Stethoscope className="h-6 w-6 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /> {t("landing.cta.facility_portal")}
                   </Button>
@@ -478,7 +478,7 @@ export function LandingPage() {
                     size="lg"
                     variant="outline"
                     className="group h-14 px-8 text-lg gap-1.5 bg-transparent border-accent/50 text-accent dark:bg-transparent dark:border-accent/50 dark:text-accent hover:bg-accent/10 hover:border-accent hover:text-accent dark:hover:bg-accent/10 dark:hover:border-accent dark:hover:text-accent transition-all duration-300 hover:scale-[1.04] active:scale-[0.97]"
-                    onClick={() => router.push("/register/patient")}
+                    onClick={() => router.push("/login/patient")}
                   >
                     <Heart className="h-6 w-6 transition-transform duration-300 group-hover:scale-125" /> {t("landing.cta.patient_portal")}
                   </Button>
