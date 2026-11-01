@@ -113,7 +113,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
         {cards.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t3("no_regions")}</p>
         ) : (
-          <div className="grid lg:grid-cols-[300px_1fr] gap-5 items-start">
+          <div className="grid lg:grid-cols-[380px_1fr] gap-5 items-start">
           <div className="rounded-xl border border-border/50 bg-background/40 p-3">
             <BodyMap
               onToggle={toggle}

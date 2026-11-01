@@ -87,7 +87,7 @@ function BodyMapView({ view, items, onToggle }: { view: BodyView; items: BodyMap
         <span className="block text-[11px] text-muted-foreground">{view === "front" ? "Muqaddam" : "Mu'akhkhar"}</span>
       </figcaption>
 
-      <div className="relative w-full max-w-[150px]" style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}>
+      <div className="relative w-full max-w-[180px]" style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}>
         <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="absolute inset-0 h-full w-full" aria-hidden>
           <defs>
             <radialGradient id={`glow-${uid}`}>
