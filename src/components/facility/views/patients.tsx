@@ -117,9 +117,14 @@ export function PatientsView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2.5">
-        <h2 className="font-serif text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-primary" /> {t("title")}</h2>
-        {!loading && !loadError && <Badge variant="outline" className="text-xs">{patients.length}</Badge>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <h2 className="font-serif text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-primary" /> {t("title")}</h2>
+          {!loading && !loadError && <Badge variant="outline" className="text-xs">{patients.length}</Badge>}
+        </div>
+        <Button onClick={() => router.push("/facility/patients/register")}>
+          <UserPlus className="h-4 w-4" /> {t("register")}
+        </Button>
       </div>
 
       {/* Summary cards — click one to filter the list */}
@@ -184,10 +189,8 @@ export function PatientsView() {
           <p className="text-sm text-muted-foreground mt-1">
             {narrowing ? t("try_other") : t("will_appear")}
           </p>
-          {narrowing ? (
+          {narrowing && (
             <Button variant="outline" size="sm" className="mt-4" onClick={resetAll}>{t("show_all")}</Button>
-          ) : (
-            <Button size="sm" className="mt-4" onClick={() => router.push("/facility/patients/register")}><UserPlus className="h-4 w-4" /> {t("register")}</Button>
           )}
         </Card>
       ) : (
