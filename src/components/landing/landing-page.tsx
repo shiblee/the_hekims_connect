@@ -173,7 +173,7 @@ export function LandingPage() {
               { n: "96k+", key: "messages_label", i: MessageSquare },
             ].map((s, i) => (
               <motion.div key={s.key} {...fadeUp} transition={{ duration: 0.5, delay: i * 0.08 }}>
-                <div className="flex items-center gap-4 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-4 sm:p-5 transition-all hover:border-primary/40 hover:-translate-y-0.5">
+                <div className="flex items-center gap-4 rounded-xl border-2 border-primary/25 bg-card p-4 sm:p-5 shadow-[0_6px_20px_-10px_color-mix(in_oklch,var(--primary)_45%,transparent)] transition-all duration-300 hover:border-primary/60 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_color-mix(in_oklch,var(--primary)_60%,transparent)]">
                   <div className="h-14 w-14 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
                     <s.i className="h-7 w-7 text-primary" />
                   </div>
