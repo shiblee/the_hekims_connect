@@ -168,6 +168,7 @@ export default function StaffListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-muted-foreground">
+                  <th className="w-14 px-4 py-3 text-right font-medium">S.No</th>
                   <th className="px-4 py-3 font-medium">Staff</th>
                   <th className="px-4 py-3 font-medium">Employee Type</th>
                   <th className="px-4 py-3 font-medium">Role</th>
@@ -178,8 +179,9 @@ export default function StaffListPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((s) => (
+                {rows.map((s, i) => (
                   <tr key={s.id} className="border-b border-border/30 last:border-0 hover:bg-background/30 transition-colors">
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{(page - 1) * 10 + i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <EntityAvatar name={s.name} photo={s.photo} size="sm" />
