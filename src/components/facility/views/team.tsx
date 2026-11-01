@@ -18,8 +18,6 @@ import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Search, UserCog, Loader2, Plus, Mail, Phone, ShieldCheck, Camera, Pencil, KeyRound } from "lucide-react";
-import { OptionMultiSelect } from "@/components/shared/option-multi-select";
-import { ListChecks } from "lucide-react";
 import { FloatingCombobox } from "@/components/shared/combobox";
 
 interface StaffRow {
@@ -59,20 +57,10 @@ const FIELD_VISIBILITY: Record<string, string[]> = {
   Other: ["designation", "experience"],
 };
 
-function parseList(json: string | null): string[] {
-  if (!json) return [];
-  try {
-    const parsed = JSON.parse(json);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 const emptyForm = {
   name: "", contact: "", employeeType: "", specialization: "", qualification: "",
   designation: "", registrationNumber: "", experience: "", role: "",
-  responsibilities: [] as string[], active: true,
+  active: true,
 };
 
 export function TeamView() {
@@ -139,7 +127,6 @@ export function TeamView() {
       registrationNumber: s.registrationNumber || "",
       experience: s.experience !== null ? String(s.experience) : "",
       role: s.role || "",
-      responsibilities: parseList(s.responsibilities),
       active: s.active,
     });
     iv.reset();
@@ -164,7 +151,6 @@ export function TeamView() {
         registrationNumber: form.registrationNumber,
         experience: form.experience,
         role: form.role,
-        responsibilities: form.responsibilities,
         ...(editingId ? { active: form.active } : {}),
       };
       if (editingId) {
@@ -372,10 +358,6 @@ export function TeamView() {
 
             {meta.staff_role && (
               <FloatingCombobox id="role" label={t("role")} value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))} options={meta.staff_role.options} placeholder={t("select_role")} />
-            )}
-
-            {meta.staff_responsibility && (
-              <OptionMultiSelect id="responsibilities" label={t("responsibilities")} icon={ListChecks} options={meta.staff_responsibility.options} value={form.responsibilities} onChange={(v) => setForm((f) => ({ ...f, responsibilities: v }))} />
             )}
 
             {editingId && (

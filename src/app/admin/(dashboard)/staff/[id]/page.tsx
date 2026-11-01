@@ -17,8 +17,6 @@ import { FloatingField } from "@/components/shared/floating-field";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
-import { OptionMultiSelect } from "@/components/shared/option-multi-select";
-import { ListChecks } from "lucide-react";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inline-contact-verify";
 
@@ -56,16 +54,6 @@ interface MetaSections {
   [key: string]: { label: string; options: string[] };
 }
 
-function parseList(json: string | null): string[] {
-  if (!json) return [];
-  try {
-    const parsed = JSON.parse(json);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 export default function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [staff, setStaff] = useState<StaffDetail | null>(null);
@@ -84,7 +72,6 @@ export default function StaffDetailPage() {
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [experience, setExperience] = useState("");
   const [role, setRole] = useState("");
-  const [responsibilities, setResponsibilities] = useState<string[]>([]);
 
   const load = () => {
     setLoading(true);
@@ -112,7 +99,6 @@ export default function StaffDetailPage() {
     setRegistrationNumber(staff.registrationNumber || "");
     setExperience(staff.experience !== null ? String(staff.experience) : "");
     setRole(staff.role || "");
-    setResponsibilities(parseList(staff.responsibilities));
   }, [staff]);
 
   const toggleActive = async () => {
@@ -145,7 +131,7 @@ export default function StaffDetailPage() {
     try {
       const res = await adminApi.patch<{ staff: StaffDetail }>(`/api/admin/staff/${id}`, {
         name, contact, employeeType, specialization, qualification, designation,
-        registrationNumber, experience, role, responsibilities,
+        registrationNumber, experience, role,
       });
       setStaff(res.staff);
       iv.reset();
@@ -294,7 +280,7 @@ export default function StaffDetailPage() {
         </Card>
 
         <Card className="p-6 border-border/50 bg-card/60 gap-6 lg:col-span-2">
-          <SectionTitle icon={ClipboardList} title="Role & responsibilities" />
+          <SectionTitle icon={ClipboardList} title="Role" />
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             {meta.staff_role ? (
               <FloatingCombobox id="role" label="Role" value={role} onValueChange={setRole} options={meta.staff_role.options} placeholder="Select role" />
@@ -302,9 +288,6 @@ export default function StaffDetailPage() {
               <FloatingField id="role" label="Role" value={role} onChange={(e) => setRole(e.target.value)} />
             )}
           </div>
-          {meta.staff_responsibility && (
-            <OptionMultiSelect id="responsibilities" label="Responsibilities" icon={ListChecks} options={meta.staff_responsibility.options} value={responsibilities} onChange={setResponsibilities} />
-          )}
           <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
             <p className="text-xs text-muted-foreground">Last updated {formatDateTime(staff.updatedAt)}</p>
             <Button

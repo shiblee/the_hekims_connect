@@ -123,6 +123,9 @@ const SCREENING_TAB_LABELS: Record<string, string> = {
   onset: "Onset Nature & Rhythm",
 };
 
+// Sections no longer used anywhere in the app — kept in the database, hidden here.
+const HIDDEN_SECTIONS = ["staff_responsibility"];
+
 // Categories shown together under one top-bar tab (sidebar keeps a heading per category).
 const MERGED_TAB: Record<string, string> = { Staff: "Facility", Books: "Clinical" };
 const tabOf = (category: string) => MERGED_TAB[category] ?? category;
@@ -201,7 +204,7 @@ export default function MetaSectionPage() {
   const loadSections = () => {
     setLoadingSections(true);
     adminApi.get<{ sections: Section[] }>("/api/admin/metadata/sections")
-      .then((res) => setSections(res.sections))
+      .then((res) => setSections(res.sections.filter((x) => !HIDDEN_SECTIONS.includes(x.key))))
       .finally(() => setLoadingSections(false));
   };
 

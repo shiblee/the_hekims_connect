@@ -15,7 +15,6 @@ import { useInlineContactVerify, InlineVerifyBox } from "@/components/shared/inl
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { sortLabels } from "@/lib/sort-options";
-import { OptionMultiSelect } from "@/components/shared/option-multi-select";
 import { ListChecks } from "lucide-react";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
@@ -69,7 +68,6 @@ const FIELD_VISIBILITY: Record<string, string[]> = {
 const emptyForm = {
   facilityId: "", name: "", contact: "", employeeType: "", specialization: "", qualification: "",
   designation: "", registrationNumber: "", experience: "", role: "",
-  responsibilities: [] as string[],
 };
 
 export default function StaffListPage() {
@@ -151,7 +149,6 @@ export default function StaffListPage() {
         registrationNumber: form.registrationNumber,
         experience: form.experience,
         role: form.role,
-        responsibilities: form.responsibilities,
       });
       toast.success("Staff member added");
       setDialogOpen(false);
@@ -392,14 +389,9 @@ export default function StaffListPage() {
               )}
             </FormStep>
 
-            {(meta.staff_role || meta.staff_responsibility) && (
-              <FormStep n={4} icon={ListChecks} title="Role & responsibilities">
-                {meta.staff_role && (
-                  <FloatingCombobox id="role" label="Role" value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))} options={meta.staff_role.options} placeholder="Select role" />
-                )}
-                {meta.staff_responsibility && (
-                  <OptionMultiSelect id="responsibilities" label="Responsibilities" icon={ListChecks} options={meta.staff_responsibility.options} value={form.responsibilities} onChange={(v) => setForm((f) => ({ ...f, responsibilities: v }))} />
-                )}
+            {meta.staff_role && (
+              <FormStep n={4} icon={ListChecks} title="What is their role?">
+                <FloatingCombobox id="role" label="Role" value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))} options={meta.staff_role.options} placeholder="Select role" />
               </FormStep>
             )}
           </div>

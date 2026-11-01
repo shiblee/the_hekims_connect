@@ -11,18 +11,7 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { GraduationCap, LogOut, Mail, Phone } from "lucide-react";
-
-function parseList(json: string | null): string[] {
-  if (!json) return [];
-  try {
-    const parsed = JSON.parse(json);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 /**
  * Minimal staff-facing portal — just their own profile, since there's no
@@ -40,7 +29,6 @@ export function StaffPortal() {
 
   if (!staff) return null;
 
-  const responsibilities = parseList(staff.responsibilities);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/5">
@@ -114,14 +102,6 @@ export function StaffPortal() {
           </dl>
         </Card>
 
-        {responsibilities.length > 0 && (
-          <Card className="p-6 border-border/50 bg-card/60 space-y-3">
-            <h2 className="font-serif text-lg font-semibold">{t("responsibilities")}</h2>
-            <div className="flex flex-wrap gap-1.5">
-              {responsibilities.map((r) => <Badge key={r} variant="outline">{r}</Badge>)}
-            </div>
-          </Card>
-        )}
 
         <Card className="flex-row items-center justify-between gap-3 p-6 border-border/50 bg-card/60">
           <div>
