@@ -20,6 +20,7 @@ import { avatarGradient, initials } from "@/lib/avatar";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { FacilityDetailContext, HEALTH_STYLE, type FacilityDetail, type FacilityInsights } from "./facility-detail-context";
 import { DAY, ScoreRing, Trend, ago, inr } from "./detail-ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SECTIONS = [
   { key: "overview", label: "Overview", icon: LayoutGrid },
@@ -30,13 +31,20 @@ const SECTIONS = [
   { key: "plan", label: "Plan", icon: Sparkles },
 ];
 
+// One line per figure; the small note shows on hover.
 function Stat({ icon: Icon, label, value, hint }: { icon: typeof Users; label: string; value: ReactNode; hint?: ReactNode }) {
-  return (
-    <div className="min-w-0 rounded-xl border border-border bg-card/60 p-3.5">
-      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" />{label}</p>
-      <p className="mt-1 truncate text-xl font-bold tabular-nums">{value}</p>
-      {hint && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{hint}</p>}
+  const card = (
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-border bg-card/60 px-2.5 py-2.5">
+      <p className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground"><Icon className="hidden h-3.5 w-3.5 shrink-0 2xl:block" /><span className="truncate">{label}</span></p>
+      <p className="shrink-0 text-[15px] font-bold tabular-nums">{value}</p>
     </div>
+  );
+  if (!hint) return card;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{card}</TooltipTrigger>
+      <TooltipContent>{hint}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -181,19 +189,19 @@ export default function FacilityDetailLayout({ children }: { children: ReactNode
 
         {/* Key figures */}
         <div className="relative grid grid-cols-2 gap-2.5 border-t border-border bg-background/30 p-4 sm:grid-cols-3 lg:grid-cols-7">
-          <div className="col-span-2 flex items-center gap-3 rounded-xl border border-border bg-card/60 p-3 sm:col-span-1">
-            {insights ? <ScoreRing score={insights.score} band={insights.health} /> : <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-muted-foreground">Engagement</p>
-              <p className={cn("text-base font-bold", insights && HEALTH_STYLE[insights.health].text)}>{insights ? HEALTH_STYLE[insights.health].label : "…"}</p>
-            </div>
+          <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 rounded-xl border border-border bg-card/60 px-2.5 py-1.5 sm:col-span-1">
+            <span className="flex min-w-0 items-center gap-1.5">
+              {insights ? <ScoreRing score={insights.score} band={insights.health} size={26} /> : <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              <span className="truncate text-xs font-medium text-muted-foreground">Health</span>
+            </span>
+            <p className={cn("shrink-0 text-[15px] font-bold", insights && HEALTH_STYLE[insights.health].text)}>{insights ? HEALTH_STYLE[insights.health].label : "…"}</p>
           </div>
           <Stat icon={Users} label="Patients" value={m ? m.patients.toLocaleString("en-IN") : "…"} hint={m ? `${m.newPatients30} new in 30 days` : undefined} />
-          <Stat icon={Stethoscope} label="Visits · 30 days" value={m ? m.visits30 : "…"} hint={m && <Trend now={m.visits30} prev={m.visitsPrev30} />} />
-          <Stat icon={IndianRupee} label="Revenue · 30 days" value={m ? inr(m.revenue30) : "…"} hint={m && <Trend now={m.revenue30} prev={m.revenuePrev30} money />} />
+          <Stat icon={Stethoscope} label="Visits · 30d" value={m ? m.visits30 : "…"} hint={m && <Trend now={m.visits30} prev={m.visitsPrev30} />} />
+          <Stat icon={IndianRupee} label="Revenue · 30d" value={m ? inr(m.revenue30) : "…"} hint={m && <Trend now={m.revenue30} prev={m.revenuePrev30} money />} />
           <Stat icon={CalendarClock} label="Upcoming" value={m ? m.upcoming : "…"} hint={m ? `appointments · ${m.appointments} booked in all` : undefined} />
           <Stat icon={Users} label="Staff" value={insights ? insights.staff.filter((s) => s.active).length : "…"} hint={insights ? `${insights.staff.length} added in total` : undefined} />
-          <Stat icon={Activity} label="Last active" value={m ? ago(m.lastActivityAt) : "…"} hint={m?.lastActivityAt ? formatDateTime(m.lastActivityAt) : "No sign-in or visit yet"} />
+          <Stat icon={Activity} label="Last active" value={m ? ago(m.lastActivityAt).replace(" days ago", "d ago") : "…"} hint={m?.lastActivityAt ? `${ago(m.lastActivityAt)} · ${formatDateTime(m.lastActivityAt)}` : "No sign-in or visit yet"} />
         </div>
       </Card>
 
