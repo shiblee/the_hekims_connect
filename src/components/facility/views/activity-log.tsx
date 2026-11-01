@@ -69,9 +69,6 @@ export function ActivityLogView({ client = api, endpoint = "/api/facility/activi
     <div className="space-y-4">
       <div>
         <h2 className="font-serif text-xl font-bold flex items-center gap-2"><History className="h-5 w-5 text-primary" /> {t("title")}</h2>
-        <p className="text-sm text-muted-foreground">
-          {t(data?.scope === "own" ? "scope_own" : data?.scope === "all" ? "scope_all" : "scope_clinic")} {t("permanent")}
-        </p>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))]">

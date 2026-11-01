@@ -78,7 +78,6 @@ export function LearningCenter({ isOwner = false }: { isOwner?: boolean }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 font-serif text-xl font-bold"><GraduationCap className="h-5 w-5 text-primary" /> {t("title")}</h2>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{t("language")}</span>
