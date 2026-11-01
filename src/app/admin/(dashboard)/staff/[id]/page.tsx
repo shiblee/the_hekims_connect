@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Loader2, Ban, Undo2, ShieldCheck, ShieldOff, Save, UserCog, Camera,
+  ArrowLeft, Loader2, Ban, Undo2, ShieldCheck, ShieldOff, Save, UserCog, Camera, Building2, Mail, Phone,
+  CalendarDays, LogIn, Award, Stethoscope, ClipboardList, IndianRupee, IdCard, Briefcase, ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
@@ -27,8 +28,28 @@ interface StaffDetail {
   employeeType: string; specialization: string | null; qualification: string | null;
   designation: string | null; registrationNumber: string | null; experience: number | null;
   role: string | null; responsibilities: string | null; active: boolean;
-  createdAt: string; updatedAt: string;
+  createdAt: string; updatedAt: string; lastLoginAt: string | null;
   facility: { id: string; facilityName: string };
+  _count?: { doctorVisits: number; registeredVisits: number; recordedPayments: number };
+}
+
+const ago = (iso: string | null) => {
+  if (!iso) return "Never";
+  const d = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
+  return d <= 0 ? "Today" : d === 1 ? "Yesterday" : d < 30 ? `${d} days ago` : d < 365 ? `${Math.floor(d / 30)} mo ago` : `${Math.floor(d / 365)} yr ago`;
+};
+
+function Fact({ icon: Icon, label, value, hint }: { icon: typeof Award; label: string; value: React.ReactNode; hint?: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-border bg-card/60 px-3 py-2.5" title={hint}>
+      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{label}</span></p>
+      <p className="mt-0.5 truncate text-[15px] font-bold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function SectionTitle({ icon: Icon, title }: { icon: typeof Award; title: string }) {
+  return <h2 className="flex items-center gap-2 font-serif text-lg font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4 w-4" /></span>{title}</h2>;
 }
 
 interface MetaSections {
@@ -157,48 +178,69 @@ export default function StaffDetailPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Staff list
       </Link>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setPhotoDialogOpen(true)}
-            className="group relative shrink-0 rounded-full"
-            aria-label="Change staff photo"
-          >
-            <EntityAvatar name={staff.name} photo={staff.photo} size="lg" className="shadow-lg" />
-            <span className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
-              <Camera className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-            </span>
-          </button>
-          <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight">{staff.name}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{staff.staffCode} · {staff.facility.facilityName}</p>
+      {/* Header */}
+      <Card className="relative mb-5 gap-0 overflow-hidden border-border bg-card/60 p-0">
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent" />
+        <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <button type="button" onClick={() => setPhotoDialogOpen(true)} className="group relative shrink-0 rounded-full" aria-label="Change staff photo">
+              <EntityAvatar name={staff.name} photo={staff.photo} size="lg" className="shadow-lg ring-4 ring-background" />
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 transition-colors group-hover:bg-black/40">
+                <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+              </span>
+            </button>
+            <div className="min-w-0">
+              <h1 className="font-serif text-2xl font-bold tracking-tight">{staff.name}</h1>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                <span className="font-mono">{staff.staffCode}</span>·
+                <Link href={`/admin/facilities/${staff.facility.id}/overview`} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Building2 className="h-3.5 w-3.5" />{staff.facility.facilityName}</Link>
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {staff.active ? (
+                  <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"><ShieldCheck className="me-1 h-3 w-3" /> Active</Badge>
+                ) : (
+                  <Badge variant="outline" className="border-rose-500/40 bg-rose-500/5 text-rose-600 dark:text-rose-400"><ShieldOff className="me-1 h-3 w-3" /> Inactive</Badge>
+                )}
+                {staff.contactVerifiedAt ? (
+                  <Badge variant="outline" className="border-sky-500/40 bg-sky-500/5 text-sky-600 dark:text-sky-400"><ShieldCheck className="me-1 h-3 w-3" /> Contact verified</Badge>
+                ) : (
+                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400"><ShieldAlert className="me-1 h-3 w-3" /> Contact not verified</Badge>
+                )}
+                <Badge variant="outline" className="border-primary/25 bg-primary/5 text-primary"><UserCog className="me-1 h-3 w-3" /> {staff.employeeType}</Badge>
+                {staff.role && <Badge variant="outline">{staff.role}</Badge>}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {staff.phone && <span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-muted-foreground" />{staff.phone}</span>}
+                {staff.email && <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-muted-foreground" />{staff.email}</span>}
+              </div>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            disabled={updating}
+            className={staff.active ? "text-destructive hover:text-destructive" : "text-emerald-600 hover:text-emerald-600 dark:text-emerald-400"}
+            onClick={toggleActive}
+          >
+            {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : staff.active ? <Ban className="h-4 w-4" /> : <Undo2 className="h-4 w-4" />}
+            {staff.active ? "Deactivate" : "Activate"}
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          disabled={updating}
-          className={staff.active ? "text-destructive hover:text-destructive" : "text-emerald-400 hover:text-emerald-400"}
-          onClick={toggleActive}
-        >
-          {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : staff.active ? <Ban className="h-4 w-4" /> : <Undo2 className="h-4 w-4" />}
-          {staff.active ? "Deactivate" : "Activate"}
-        </Button>
-      </div>
 
-      <div className="flex flex-wrap gap-2 mb-8">
-        {staff.active ? (
-          <Badge variant="outline" className="border-emerald-500/30 text-emerald-400"><ShieldCheck className="h-3 w-3 mr-1" /> Active</Badge>
-        ) : (
-          <Badge variant="outline" className="border-destructive/40 text-destructive"><ShieldOff className="h-3 w-3 mr-1" /> Inactive</Badge>
-        )}
-        <Badge variant="outline"><UserCog className="h-3 w-3 mr-1" /> {staff.employeeType}</Badge>
-      </div>
+        {/* Key facts */}
+        <div className="grid grid-cols-2 gap-2.5 border-t border-border bg-background/30 p-4 sm:grid-cols-3 lg:grid-cols-6">
+          <Fact icon={CalendarDays} label="Joined" value={formatDate(staff.createdAt)} />
+          <Fact icon={LogIn} label="Last sign-in" value={ago(staff.lastLoginAt)} hint={staff.lastLoginAt ? formatDateTime(staff.lastLoginAt) : "Has not signed in yet"} />
+          <Fact icon={Award} label="Experience" value={staff.experience !== null ? `${staff.experience} yr${staff.experience === 1 ? "" : "s"}` : "—"} />
+          <Fact icon={Stethoscope} label="Visits as doctor" value={staff._count?.doctorVisits ?? 0} />
+          <Fact icon={ClipboardList} label="Visits registered" value={staff._count?.registeredVisits ?? 0} />
+          <Fact icon={IndianRupee} label="Payments recorded" value={staff._count?.recordedPayments ?? 0} />
+        </div>
+      </Card>
 
-      <div className="grid lg:grid-cols-2 gap-5 max-w-5xl">
+      <div className="grid gap-5 lg:grid-cols-2">
         <Card className="p-6 border-border/50 bg-card/60 gap-6">
           <div>
-            <h2 className="font-serif text-lg font-semibold mb-4">Personal Information</h2>
+            <div className="mb-5"><SectionTitle icon={IdCard} title="Personal information" /></div>
             <div className="space-y-6">
               <FloatingField id="name" label="Staff name" value={name} onChange={(e) => setName(e.target.value)} />
               <div>
@@ -221,11 +263,10 @@ export default function StaffDetailPage() {
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Registered {formatDate(staff.createdAt)}</p>
         </Card>
 
         <Card className="p-6 border-border/50 bg-card/60 gap-6">
-          <h2 className="font-serif text-lg font-semibold">Professional Information</h2>
+          <SectionTitle icon={Briefcase} title="Professional information" />
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             {meta.staff_employee_type ? (
               <FloatingCombobox id="employeeType" label="Employee type" value={employeeType} onValueChange={setEmployeeType} options={meta.staff_employee_type.options} placeholder="Select employee type" />
@@ -253,7 +294,7 @@ export default function StaffDetailPage() {
         </Card>
 
         <Card className="p-6 border-border/50 bg-card/60 gap-6 lg:col-span-2">
-          <h2 className="font-serif text-lg font-semibold">Role & Responsibilities</h2>
+          <SectionTitle icon={ClipboardList} title="Role & responsibilities" />
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             {meta.staff_role ? (
               <FloatingCombobox id="role" label="Role" value={role} onValueChange={setRole} options={meta.staff_role.options} placeholder="Select role" />
@@ -264,13 +305,16 @@ export default function StaffDetailPage() {
           {meta.staff_responsibility && (
             <OptionMultiSelect id="responsibilities" label="Responsibilities" icon={ListChecks} options={meta.staff_responsibility.options} value={responsibilities} onChange={setResponsibilities} />
           )}
-          <Button
-            className="self-start h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
-            disabled={saving}
-            onClick={save}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
-          </Button>
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground">Last updated {formatDateTime(staff.updatedAt)}</p>
+            <Button
+              className="h-11 rounded-xl px-6 font-semibold shadow-lg shadow-primary/25 disabled:shadow-none"
+              disabled={saving}
+              onClick={save}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
+            </Button>
+          </div>
         </Card>
       </div>
 

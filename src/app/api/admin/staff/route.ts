@@ -68,13 +68,31 @@ export async function GET(req: NextRequest) {
       take: pageSize,
       select: {
         id: true, staffCode: true, name: true, photo: true, email: true, phone: true,
-        employeeType: true, role: true, active: true, createdAt: true,
+        employeeType: true, role: true, active: true, createdAt: true, lastLoginAt: true,
         facility: { select: { id: true, facilityName: true } },
       },
     }),
   ]);
 
-  return NextResponse.json({ staff, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+  // Platform-wide figures for the page header (unfiltered), only when asked for.
+  let summary: Record<string, unknown> | null = null;
+  if (searchParams.get("summary") === "1") {
+    const since7 = new Date(Date.now() - 7 * 86_400_000), since30 = new Date(Date.now() - 30 * 86_400_000);
+    const [all, active, signedIn7, new30, clinics, byType] = await Promise.all([
+      db.staff.count(),
+      db.staff.count({ where: { active: true } }),
+      db.staff.count({ where: { lastLoginAt: { gte: since7 } } }),
+      db.staff.count({ where: { createdAt: { gte: since30 } } }),
+      db.staff.groupBy({ by: ["facilityId"] }).then((g) => g.length),
+      db.staff.groupBy({ by: ["employeeType"], _count: { _all: true } }),
+    ]);
+    summary = {
+      all, active, inactive: all - active, signedIn7, new30, clinics,
+      byType: byType.map((t) => ({ type: t.employeeType, count: t._count._all })).sort((a, b) => b.count - a.count),
+    };
+  }
+
+  return NextResponse.json({ staff, total, page, pageSize, totalPages: Math.ceil(total / pageSize), summary });
 }
 
 export async function POST(req: NextRequest) {

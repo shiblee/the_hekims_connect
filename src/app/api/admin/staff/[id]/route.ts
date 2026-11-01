@@ -14,8 +14,9 @@ const SELECT = {
   contactVerifiedAt: true,
   employeeType: true, specialization: true, qualification: true, designation: true,
   registrationNumber: true, experience: true, role: true, responsibilities: true,
-  active: true, createdAt: true, updatedAt: true,
+  active: true, createdAt: true, updatedAt: true, lastLoginAt: true,
   facility: { select: { id: true, facilityName: true } },
+  _count: { select: { doctorVisits: true, registeredVisits: true, recordedPayments: true } },
 };
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
