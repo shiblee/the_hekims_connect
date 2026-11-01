@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { canOpenPage } from "@/lib/staff-permissions";
+import { setFlash } from "@/lib/flash";
 import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
@@ -219,10 +220,10 @@ export function PatientDetail({ patientId }: { patientId: string }) {
       if (!allSaved) return; // the sections and the summary above the bar say what failed
       const clear = await redFlagRef.current?.attemptResolve();
       if (!clear) return;
-      // Staff without access to the next step stay on this record (step 2) instead of a locked page.
+      // Staff without access to the next step go back to the patient list (with a note) instead of a locked page.
       if (!canOpenPage(signedInStaff ? staffPerms : null, "/facility/mizaj")) {
-        msg.success(tc("step_locked_title"), tc("step_locked_hint"));
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        setFlash({ tone: "success", title: tc("step_locked_title"), detail: tc("step_locked_hint") });
+        router.push("/facility/patients");
         return;
       }
       router.push(`/facility/mizaj?patientId=${patientId}`);
