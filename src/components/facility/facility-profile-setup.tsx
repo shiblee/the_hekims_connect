@@ -21,9 +21,9 @@ import { Separator } from "@/components/ui/separator";
 import { FloatingField, FieldError, FloatingMultiSelect } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import {
-  Building2, MapPin, MapPinned, Clock, Stethoscope, Sparkles, LogOut, ChevronLeft,
+  Building2, MapPin, Clock, Stethoscope, Sparkles, LogOut, ChevronLeft,
   ChevronRight, CheckCircle2, Loader2, Hospital, HeartPulse, Hash, Calendar,
-  Phone, Globe, Landmark, BedDouble, Users, Siren, Ambulance, Gift, Lock,
+  Phone, Landmark, BedDouble, Users, Siren, Ambulance, Gift, Lock,
   Microscope, Baby, Leaf, ListChecks,
 } from "lucide-react";
 
@@ -613,17 +613,14 @@ export function FacilityProfileSetup() {
                               <div className="sm:col-span-2">
                                 <FloatingField id="addressLine2" label={tp("address2")} icon={MapPin} value={form.addressLine2} onChange={(e) => set("addressLine2", e.target.value)} />
                               </div>
-                              <FloatingField id="locality" label={tp("locality")} icon={MapPinned} value={form.locality} onChange={(e) => set("locality", e.target.value)} />
                               <div>
                                 <FloatingField id="city" label={tp("city")} icon={Landmark} error={!!fieldErrors.city} value={form.city} onChange={(e) => set("city", e.target.value)} />
                                 <FieldError message={fieldErrors.city} />
                               </div>
-                              <FloatingField id="district" label={tp("district")} icon={Landmark} value={form.district} onChange={(e) => set("district", e.target.value)} />
                               <div>
                                 <FloatingField id="state" label={tp("state")} icon={Landmark} error={!!fieldErrors.state} value={form.state} onChange={(e) => set("state", e.target.value)} />
                                 <FieldError message={fieldErrors.state} />
                               </div>
-                              <FloatingField id="country" label={tp("country")} icon={Globe} value={form.country} onChange={(e) => set("country", e.target.value)} />
                               <div>
                                 <FloatingField id="pincode" label={tp("pincode")} icon={Hash} error={!!fieldErrors.pincode} value={form.pincode} onChange={(e) => set("pincode", e.target.value)} />
                                 <FieldError message={fieldErrors.pincode} />
