@@ -24,16 +24,21 @@ type AuthMode = "login" | "signup";
 function AuthLayout({ role, children }: { role: AuthRole; children: React.ReactNode }) {
   const isFacility = role === "facility";
   return (
-    <div className="flex-1 grid lg:grid-cols-2 min-h-[640px] lg:min-h-[780px]">
-      {/* Left brand panel */}
+    // Same container as the site header/footer, so the brand text lines up under the logo and the
+    // form's right edge under "Get Started"; only the background runs edge to edge.
+    <div className="relative flex flex-1 overflow-hidden min-h-[640px] lg:min-h-[780px]">
       <div className={cn(
-        "relative hidden lg:flex flex-col justify-center py-12 ps-6 sm:ps-16 pe-12 overflow-hidden",
-        isFacility ? "bg-gradient-to-br from-primary/10 via-card to-card" : "bg-gradient-to-br from-accent/10 via-card to-card"
+        "pointer-events-none absolute inset-y-0 start-0 hidden w-1/2 lg:block",
+        isFacility ? "bg-gradient-to-br from-primary/10 via-card to-transparent" : "bg-gradient-to-br from-accent/10 via-card to-transparent"
       )}>
         <div className="absolute inset-0 pattern-unani opacity-40" />
         <div className={cn("absolute -top-24 -start-24 h-72 w-72 rounded-full blur-3xl", isFacility ? "bg-primary/20" : "bg-accent/20")} />
         <div className="absolute -bottom-24 -end-24 h-72 w-72 rounded-full blur-3xl bg-primary/10" />
-        <div className="relative">
+      </div>
+
+      <div className="relative mx-auto grid w-full max-w-[1680px] items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-16">
+        {/* Brand panel */}
+        <div className="hidden py-12 lg:block">
           <h2 className="font-serif text-4xl font-bold leading-tight max-w-md">
             {isFacility
               ? "Restore balance, one Mizaj at a time."
@@ -59,11 +64,9 @@ function AuthLayout({ role, children }: { role: AuthRole; children: React.ReactN
             <Leaf className="h-5 w-5 text-primary" /> Rooted in classical Unani Tibb
           </div>
         </div>
-      </div>
 
-      {/* Right form panel */}
-      <div className="flex flex-col">
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+        {/* Form panel — right edge on the container edge */}
+        <div className="flex justify-center py-10 lg:justify-end">
           {children}
         </div>
       </div>
