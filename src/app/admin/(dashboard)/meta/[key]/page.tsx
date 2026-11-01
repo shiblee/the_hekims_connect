@@ -808,7 +808,8 @@ export default function MetaSectionPage() {
 
   useEffect(() => {
     if (!selectedComplaintCategory && existingComplaintCategories.length) {
-      setSelectedComplaintCategory(existingComplaintCategories[0]);
+      const wanted = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("category") : null;
+      setSelectedComplaintCategory(wanted && existingComplaintCategories.includes(wanted) ? wanted : existingComplaintCategories[0]);
     }
   }, [existingComplaintCategories]);
 
@@ -1478,20 +1479,27 @@ export default function MetaSectionPage() {
                 {sidebarCategory === "Clinical" && (
                   <div>
                     <p className="mt-2 border-t border-border px-3 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Chief Complaints</p>
-                    <button
-                      onClick={() => router.push("/admin/meta/complaints")}
-                      className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-                        activeCategory === "complaints" ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-                      )}
-                    >
-                      <span className="flex items-center gap-2 min-w-0"><ListChecks className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Chief Complaints</span></span>
-                      {screeningConfig && (
-                        <Badge variant={activeCategory === "complaints" ? "outline" : "secondary"} className={cn("shrink-0", activeCategory === "complaints" && "border-primary-foreground/40 text-primary-foreground")}>
-                          {screeningConfig.complaints.length}
-                        </Badge>
-                      )}
-                    </button>
+                    {(screeningConfig ? existingComplaintCategories : []).map((cat) => {
+                      const on = activeCategory === "complaints" && selectedComplaintCategory === cat;
+                      const count = screeningConfig?.complaints.filter((c) => c.category === cat).length ?? 0;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setSelectedComplaintCategory(cat);
+                            if (activeCategory !== "complaints") router.push(`/admin/meta/complaints?category=${encodeURIComponent(cat)}`);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                            on ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+                          )}
+                        >
+                          <span className="flex items-center gap-2 min-w-0"><ListChecks className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{cat}</span></span>
+                          <Badge variant={on ? "outline" : "secondary"} className={cn("shrink-0", on && "border-primary-foreground/40 text-primary-foreground")}>{count}</Badge>
+                        </button>
+                      );
+                    })}
+                    {screeningConfig && existingComplaintCategories.length === 0 && <p className="text-sm text-muted-foreground p-3">No categories yet.</p>}
                   </div>
                 )}
                 {sidebarCategory === "Patient" && (
@@ -1683,34 +1691,7 @@ export default function MetaSectionPage() {
         {loadingScreening ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
         ) : screeningConfig && (
-          <div className="grid md:grid-cols-[260px_1fr] gap-6">
-            <Card className="p-2 border-border/50 bg-card/60 h-fit">
-              <div className="space-y-1">
-                {existingComplaintCategories.map((cat) => {
-                  const count = screeningConfig.complaints.filter((c) => c.category === cat).length;
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedComplaintCategory(cat)}
-                      className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-                        selectedComplaintCategory === cat ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-                      )}
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <ListChecks className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{cat}</span>
-                      </span>
-                      <Badge variant={selectedComplaintCategory === cat ? "outline" : "secondary"} className={cn("shrink-0", selectedComplaintCategory === cat && "border-primary-foreground/40 text-primary-foreground")}>
-                        {count}
-                      </Badge>
-                    </button>
-                  );
-                })}
-                {existingComplaintCategories.length === 0 && <p className="text-sm text-muted-foreground p-3">No categories yet.</p>}
-              </div>
-            </Card>
-
+          <div>
             <Card className="p-5 border-border/50 bg-card/60 gap-4">
               <div>
                 <h2 className="font-serif text-lg font-semibold">{selectedComplaintCategory || "Select a category"}</h2>
