@@ -225,8 +225,13 @@ function HumourBars({ pct, compact, inline }: { pct: HumourPoints; compact?: boo
 
 // ---------------------------------------------------------------- tab 1: Dala'il
 
-function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
-  q: AsbabQuestionCfg; value: AsbabAnswer | undefined; onChange: (v: AsbabAnswer) => void;
+/** Column widths shared by the Dala'il heading row and its sign rows: # · sign · why it's asked · finding. */
+const DL_ROW = "grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 lg:grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,0.85fr)_minmax(0,1.1fr)]";
+const DL_COLS = "md:grid-cols-[13rem_minmax(0,1fr)]";
+
+/** One Dala'il sign as a table row — no box of its own. */
+function DalailRow({ q, n, value, onChange, reason, tag, onRemove }: {
+  q: AsbabQuestionCfg; n: number; value: AsbabAnswer | undefined; onChange: (v: AsbabAnswer) => void;
   /** Why this question was selected for the patient. */
   reason?: string;
   tag?: "new" | "added" | "safety" | "earlier";
@@ -234,29 +239,38 @@ function DalailRow({ q, value, onChange, reason, tag, onRemove }: {
 }) {
   const td = useTranslations("clinic.dossier");
   const sel = Array.isArray(value) ? value : [];
+  const answered = isAnswered(value);
+  const why = reason || tag === "added" || tag === "earlier";
   return (
-    <QuestionRow className="py-3 border-t border-border/40 first:border-t-0" question={<>
-        <p className="text-[15px] font-medium">
+    <div className={cn(DL_ROW, "px-3 py-2")}>
+      <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
+        answered ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : q.required ? "bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/40 dark:text-amber-400" : "bg-muted text-muted-foreground")}>{n}</span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium leading-snug">
           {q.label}{q.required && <span className="text-destructive">&nbsp;*</span>}
           {tag === "safety" && <span className="ms-1.5 align-middle rounded-full bg-destructive/10 border border-destructive/30 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-destructive">{td("safety")}</span>}
           {tag === "new" && <span className="ms-1.5 align-middle rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">{td("new")}</span>}
         </p>
-        {q.labelLocal && <p className="text-[13px] text-muted-foreground">{q.labelLocal}</p>}
-        {reason && (
-          <p className="mt-0.5 flex items-start gap-1 text-xs text-primary/90"><Sparkles className="mt-0.5 h-3 w-3 shrink-0" /><span>{reason}</span></p>
-        )}
-        {tag === "added" && (
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">{td("added_by_you")}
+        {q.labelLocal && <p className="text-xs leading-snug text-muted-foreground">{q.labelLocal}</p>}
+      </div>
+      <div className={cn("col-start-2 min-w-0 text-xs leading-snug lg:col-start-auto", !why && "hidden lg:block")}>
+        {reason ? (
+          <p className="flex items-start gap-1 text-primary/90"><Sparkles className="mt-0.5 h-3 w-3 shrink-0" /><span>{reason}</span></p>
+        ) : tag === "added" ? (
+          <p className="flex flex-wrap items-center gap-1.5 text-muted-foreground">{td("added_by_you")}
             {onRemove && <button type="button" onClick={onRemove} className="text-primary hover:underline">{td("remove")}</button>}
           </p>
-        )}
-        {tag === "earlier" && <p className="mt-0.5 text-xs text-muted-foreground">{td("earlier")}</p>}
-      </>}>
-      {q.type === "text"
-        ? <FloatingField id={`dalail-${q.id}`} label={td("describe")} maxLength={500} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-        : <OptionDropdown id={`dalail-${q.id}`} options={q.options.map((o) => ({ label: o.label, description: o.description }))} value={sel}
-            multiple={q.type === "multi_select"} onChange={onChange} />}
-    </QuestionRow>
+        ) : tag === "earlier" ? (
+          <p className="text-muted-foreground">{td("earlier")}</p>
+        ) : <span className="text-muted-foreground/60">—</span>}
+      </div>
+      <div className="col-start-2 min-w-0 lg:col-start-auto">
+        {q.type === "text"
+          ? <Input id={`dalail-${q.id}`} maxLength={500} placeholder={td("describe")} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} className="h-9" />
+          : <OptionDropdown compact id={`dalail-${q.id}`} options={q.options.map((o) => ({ label: o.label, description: o.description }))} value={sel}
+              multiple={q.type === "multi_select"} onChange={onChange} />}
+      </div>
+    </div>
   );
 }
 
@@ -286,7 +300,7 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
   const [refreshing, setRefreshing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addQuery, setAddQuery] = useState("");
-  const refs = useRef<Record<string, HTMLDivElement | null>>({});
+  const refs = useRef<Record<string, HTMLElement | null>>({});
   const td = useTranslations("clinic.dossier");
 
   const fetchSel = useCallback((refresh: boolean) =>
@@ -322,99 +336,116 @@ function DalailTab({ state, visitId }: { state: TashkheesState; visitId: string 
       setSel((cur) => (cur ? { ...cur, addedIds: r.addedIds } : cur));
     } catch { /* the list simply stays as it was */ }
   };
+  const shownQs = sections.flatMap(({ qs }) => qs);
+  const shownN = shownQs.length;
+  const answeredN = shownQs.filter((q) => isAnswered(answers[q.id])).length;
+  const numberOf = new Map(shownQs.map((q, i) => [q.id, i + 1]));
   const aq = addQuery.trim().toLowerCase();
   const addable = allQs.filter(({ q }) => !visibleIds.has(q.id) && (!aq || q.label.toLowerCase().includes(aq) || q.options.some((o) => o.label.toLowerCase().includes(aq))));
 
   return (
-    <Panel icon={Stethoscope} tour="dossier.dalail" title={td("dalail_title")}>
+    <Card data-tour="dossier.dalail" className="gap-0 overflow-hidden p-0 border-border/50 bg-card/60">
+      <div className="space-y-2.5 px-5 pt-5 pb-3">
+        <SectionHeading icon={Stethoscope} title={td("dalail_title")} right={
+          <span className="flex shrink-0 flex-wrap items-center gap-2">
+            {sel && !selError && (mode === "selected"
+              ? <button type="button" onClick={() => setView("all")} className="text-[13px] font-medium text-primary hover:underline">{td("show_all", { count: allQs.length })}</button>
+              : <button type="button" onClick={() => setView("selected")} className="text-[13px] font-medium text-primary hover:underline">{td("show_for_patient")}</button>)}
+            <Badge variant="outline" className="tabular-nums">{td("n_recorded", { n: answeredN, total: shownN })}</Badge>
+            {sel && !selError && (
+              <Popover open={addOpen} onOpenChange={setAddOpen}>
+                <PopoverTrigger asChild>
+                  <Button size="sm"><Plus className="h-3.5 w-3.5" /> {td("add_question")}</Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96 p-2" align="end">
+                  <Input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)} placeholder={td("search_questions")} className="h-9 mb-2" />
+                  <div className="max-h-72 overflow-y-auto space-y-0.5">
+                    {addable.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">{aq ? td("no_other") : td("all_shown")}</p>}
+                    {addable.slice(0, 60).map(({ p, q }) => (
+                      <button key={q.id} type="button" onClick={() => { changeAdded(q.id, true); setAddOpen(false); setAddQuery(""); }}
+                        className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
+                        {q.label}<span className="block text-xs text-muted-foreground">{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </span>
+        } />
 
-      {/* What the selection was based on */}
-      {sel && !selError && mode === "selected" && (
-        <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 space-y-2">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <p className="text-[13px] font-semibold text-primary flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {td("selected_for")}</p>
-            <button type="button" onClick={() => load(true)} disabled={refreshing} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
+        {/* What the selection was based on — one line, no box */}
+        {sel && !selError && mode === "selected" && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="me-1 flex items-center gap-1.5 text-[13px] font-semibold text-primary"><Sparkles className="h-3.5 w-3.5" /> {td("selected_for")}:</span>
+            {sel.context.complaints.map((c) => (
+              <span key={c.label} className={cn("rounded-full border px-2.5 py-0.5", c.primary ? "border-primary/50 bg-primary/10 font-semibold text-primary" : "border-border/60 bg-background/50")}>{c.label}</span>
+            ))}
+            {sel.context.symptoms.map((x) => <span key={x} className="rounded-full border border-border/60 bg-background/50 px-2.5 py-0.5">{x}</span>)}
+            {sel.context.regions.map((x) => <span key={x} className="rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-muted-foreground">{x}</span>)}
+            {sel.context.complaints.length + sel.context.symptoms.length + sel.context.regions.length === 0 && (
+              <span className="text-muted-foreground">{td("no_context")}</span>
+            )}
+            <button type="button" onClick={() => load(true)} disabled={refreshing} className="ms-auto font-medium text-primary hover:underline disabled:opacity-50">
               {refreshing ? td("rechecking") : td("recheck")}
             </button>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {sel.context.complaints.map((c) => (
-              <span key={c.label} className={cn("rounded-full border px-2.5 py-0.5 text-xs", c.primary ? "border-primary/50 bg-primary/10 font-semibold text-primary" : "border-border/60 bg-background/50")}>{c.label}</span>
-            ))}
-            {sel.context.symptoms.map((x) => <span key={x} className="rounded-full border border-border/60 bg-background/50 px-2.5 py-0.5 text-xs">{x}</span>)}
-            {sel.context.regions.map((x) => <span key={x} className="rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-xs text-muted-foreground">{x}</span>)}
-            {sel.context.complaints.length + sel.context.symptoms.length + sel.context.regions.length === 0 && (
-              <span className="text-xs text-muted-foreground">{td("no_context")}</span>
-            )}
+        )}
+        {selError && (
+          <p className="text-[13px] text-amber-700 dark:text-amber-400">
+            {td.rich("sel_failed", { retry: (c) => <button type="button" onClick={() => load(false)} className="font-medium underline">{c}</button> })}
+          </p>
+        )}
+      </div>
+
+      {!sel && !selError ? <div className="px-5 pb-5"><Loading /></div> : (
+        <>
+          {/* Column headings */}
+          <div className={cn("hidden border-y border-border bg-muted/40 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid", DL_COLS)}>
+            <span className="px-3 py-2">{td("dl_col_group")}</span>
+            <div className={cn(DL_ROW, "border-s border-border px-3 py-2")}>
+              <span className="text-center">#</span><span>{td("dl_col_sign")}</span><span className="hidden lg:block">{td("dl_col_why")}</span><span className="hidden lg:block">{td("dl_col_finding")}</span>
+            </div>
           </div>
-        </div>
-      )}
-      {selError && (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-[13px] text-amber-700 dark:text-amber-400">
-          {td.rich("sel_failed", { retry: (c) => <button type="button" onClick={() => load(false)} className="font-medium underline">{c}</button> })}
-        </p>
-      )}
-
-
-      {!sel && !selError ? <Loading /> : (
-        <div className="space-y-4">
-          {sections.map(({ p, qs }) => {
-            const a = qs.filter((q) => isAnswered(answers[q.id])).length;
-            const done = a === qs.length;
-            return (
-              <div key={p.key} ref={(el) => { refs.current[p.key] = el; }}
-                className={cn("rounded-xl border border-s-4 bg-background/30 px-4 pt-3 pb-1", done ? "border-border/50 border-s-emerald-500/70" : "border-border/50 border-s-primary/40")}>
-                <div className="flex items-center justify-between gap-2 pb-1">
-                  <p className="text-[15px] font-semibold">{p.label} <span className="text-[13px] font-normal text-muted-foreground">· {p.english}</span></p>
-                  <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-xs tabular-nums", done ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? td("done") : `${a}/${qs.length}`}</span>
-                </div>
-                {qs.map((q) => {
-                  const tag = tagFor(q.id);
-                  return (
-                    <DalailRow key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)}
-                      reason={mode === "selected" && sel?.questionIds.includes(q.id) ? sel.reasons[q.id]?.replace(/^Safety check · /, "") : undefined}
-                      tag={tag} onRemove={tag === "added" ? () => changeAdded(q.id, false) : undefined} />
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+          <div className="divide-y divide-border border-b border-border md:border-t-0">
+            {sections.map(({ p, qs }) => {
+              const a = qs.filter((q) => isAnswered(answers[q.id])).length;
+              const done = a === qs.length;
+              return (
+                <section key={p.key} ref={(el) => { refs.current[p.key] = el; }} className={cn("grid", DL_COLS)}>
+                  <div className="flex items-start justify-between gap-2 bg-muted/20 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="font-serif text-[15px] font-semibold leading-tight">{p.label}</p>
+                      <p className="text-xs leading-snug text-muted-foreground">{p.english}</p>
+                    </div>
+                    <span className={cn("shrink-0 rounded-full border px-2 py-px text-[11px] font-medium tabular-nums",
+                      done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border/60 text-muted-foreground")}>{done ? td("done") : `${a}/${qs.length}`}</span>
+                  </div>
+                  <div className="min-w-0 divide-y divide-border/60 md:border-s md:border-border">
+                    {qs.map((q) => {
+                      const tag = tagFor(q.id);
+                      return (
+                        <DalailRow key={q.id} q={q} n={numberOf.get(q.id) ?? 1} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)}
+                          reason={mode === "selected" && sel?.questionIds.includes(q.id) ? sel.reasons[q.id]?.replace(/^Safety check · /, "") : undefined}
+                          tag={tag} onRemove={tag === "added" ? () => changeAdded(q.id, false) : undefined} />
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* Doctor control: add any approved question */}
-      {sel && !selError && (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <Popover open={addOpen} onOpenChange={setAddOpen}>
-            <PopoverTrigger asChild>
-              <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_question")}</Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-96 p-2" align="start">
-              <Input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)} placeholder={td("search_questions")} className="h-9 mb-2" />
-              <div className="max-h-72 overflow-y-auto space-y-0.5">
-                {addable.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">{aq ? td("no_other") : td("all_shown")}</p>}
-                {addable.slice(0, 60).map(({ p, q }) => (
-                  <button key={q.id} type="button" onClick={() => { changeAdded(q.id, true); setAddOpen(false); setAddQuery(""); }}
-                    className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
-                    {q.label}<span className="block text-xs text-muted-foreground">{p.label}</span>
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-          {mode === "selected"
-            ? <button type="button" onClick={() => setView("all")} className="text-[13px] text-primary font-medium hover:underline">{td("show_all", { count: allQs.length })}</button>
-            : <button type="button" onClick={() => setView("selected")} className="text-[13px] text-primary font-medium hover:underline">{td("show_for_patient")}</button>}
-        </div>
-      )}
-
+      {/* What the answered signs point to — a footer row, no box */}
       {hasSigns && drift && (
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-border/50 bg-background/40 px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-2.5">
           <p className="w-full shrink-0 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground md:w-auto">{td("signs_point")}</p>
           <HumourBars pct={drift.percent} inline />
         </div>
       )}
-    </Panel>
+    </Card>
   );
 }
 
