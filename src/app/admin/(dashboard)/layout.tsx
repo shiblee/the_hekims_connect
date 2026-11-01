@@ -36,10 +36,10 @@ function LoadingScreen() {
 const navLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/facilities", label: "Facilities", icon: Stethoscope },
+  { href: "/admin/staff", label: "Staff", icon: UserCog },
   { href: "/admin/patients", label: "Patient", icon: HeartPulse },
   { href: "/admin/humor", label: "Humoral Matrix", icon: Flame },
   { href: "/admin/payments", label: "Payments", icon: Wallet },
-  { href: "/admin/staff", label: "Staff", icon: UserCog },
   { href: "/admin/books", label: "Books", icon: BookOpen },
   { href: "/admin/meta", label: "Meta", icon: Database },
   { href: "/admin/settings", label: "Settings", icon: Settings },
