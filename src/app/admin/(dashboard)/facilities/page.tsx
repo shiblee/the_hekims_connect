@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Search, Loader2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Building2, Activity, Users,
-  Stethoscope, IndianRupee, Hourglass, SlidersHorizontal, X, Download, RefreshCw, TrendingUp, TrendingDown,
+  Stethoscope, IndianRupee, Hourglass, SlidersHorizontal, X, Download, TrendingUp, TrendingDown,
   Minus, ShieldCheck, ShieldAlert, Lock, MapPin, CheckCircle2, XCircle,
 } from "lucide-react";
 import { adminApi } from "@/lib/admin-api";
@@ -182,9 +182,7 @@ function Kpi({ icon: Icon, label, value, hint, tone = "default", onClick }: { ic
 export default function FacilityListPage() {
   const router = useRouter();
   const [rows, setRows] = useState<Row[] | null>(null);
-  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const [f, setF] = useState<Filters>(NO_FILTERS);
   const [showMore, setShowMore] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "registered", dir: "desc" });
@@ -193,12 +191,11 @@ export default function FacilityListPage() {
   const [historyTarget, setHistoryTarget] = useState<{ id: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
-    setRefreshing(true); setError("");
+    setError("");
     try {
-      const res = await adminApi.get<{ facilities: Row[]; generatedAt: string }>("/api/admin/facilities/overview");
-      setRows(res.facilities); setGeneratedAt(res.generatedAt);
+      const res = await adminApi.get<{ facilities: Row[] }>("/api/admin/facilities/overview");
+      setRows(res.facilities);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load facilities"); setRows((r) => r ?? []); }
-    finally { setRefreshing(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -273,16 +270,8 @@ export default function FacilityListPage() {
   return (
     <div className="mx-auto max-w-[1680px] px-4 py-10 sm:px-6 lg:px-16">
       {/* Header */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl"><Building2 className="h-6 w-6 text-primary" /> Facilities</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Every clinic on the platform — how they&apos;re doing, who needs attention, and where to act next.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {generatedAt && <span className="hidden text-xs text-muted-foreground sm:inline">Updated {formatDateTime(generatedAt)}</span>}
-          <Button variant="outline" size="sm" onClick={load} disabled={refreshing}><RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} /> Refresh</Button>
-          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}><Download className="h-4 w-4" /> Export CSV</Button>
-        </div>
+      <div className="mb-6">
+        <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl"><Building2 className="h-6 w-6 text-primary" /> Facilities</h1>
       </div>
 
       {rows === null ? (
@@ -318,6 +307,7 @@ export default function FacilityListPage() {
                 <Button variant={showMore ? "default" : "outline"} size="sm" className="ml-1" onClick={() => setShowMore((s) => !s)}>
                   <SlidersHorizontal className="h-4 w-4" /> Filters{activeFilters.filter((x) => x !== "q" && x !== "health").length ? ` · ${activeFilters.filter((x) => x !== "q" && x !== "health").length}` : ""}
                 </Button>
+                <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sorted.length}><Download className="h-4 w-4" /> Export CSV</Button>
               </div>
             </div>
 
