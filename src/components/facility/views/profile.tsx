@@ -14,7 +14,7 @@ import { GroupMultiSelect } from "@/components/facility/service-group-picker";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee, Lock, GraduationCap,
+  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee, Lock, GraduationCap, CircleUserRound,
 } from "lucide-react";
 import { TeamView } from "./team";
 import { PermissionsView } from "./permissions";
@@ -23,6 +23,7 @@ import { FeesView } from "./fees";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { useAppStore } from "@/lib/store";
 import { LearningCenter } from "@/components/guidance/learning-center";
+import { MyAccount } from "@/components/staff/my-account";
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
@@ -33,7 +34,8 @@ const SECTIONS = [
   { key: "services", icon: Stethoscope },
   { key: "fees", icon: IndianRupee },
 ];
-const STAFF_SECTIONS = [{ key: "staff", icon: UserCog }, { key: "permissions", icon: KeyRound }, { key: "activity", icon: History }, { key: "learning", icon: GraduationCap }];
+// "account" (the signed-in staff member's own profile) is shown to staff only — owners manage the clinic itself.
+const STAFF_SECTIONS = [{ key: "account", icon: CircleUserRound }, { key: "staff", icon: UserCog }, { key: "permissions", icon: KeyRound }, { key: "activity", icon: History }, { key: "learning", icon: GraduationCap }];
 
 interface OperatingHourRow {
   dayOfWeek: number;
@@ -236,14 +238,14 @@ export function ProfileView({ section }: { section: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-serif text-xl font-bold">{t("title")}</h2>
+        <h2 className="font-serif text-xl font-bold">{canOpenPage(perms, "/facility/profile") ? t("title") : t("title_staff")}</h2>
       </div>
 
       <div className="grid md:grid-cols-[260px_minmax(0,1fr)] gap-6">
         <div className="space-y-4 h-fit md:sticky md:top-24 md:self-start">
-          <Card className="p-2 border-border/50 bg-card/60">
+          {canOpenPage(perms, "/facility/profile") && <Card className="p-2 border-border/50 bg-card/60">
             <div className="space-y-1">
-              {SECTIONS.filter(() => canOpenPage(perms, "/facility/profile")).map((s) => {
+              {SECTIONS.map((s) => {
                 const Icon = s.icon;
                 return (
                   <button
@@ -260,11 +262,11 @@ export function ProfileView({ section }: { section: string }) {
                 );
               })}
             </div>
-          </Card>
+          </Card>}
 
           <Card className="p-2 border-border/50 bg-card/60">
             <div className="space-y-1">
-              {STAFF_SECTIONS.filter((s) => canOpenPage(perms, `/facility/profile/${s.key}`)).map((s) => (
+              {STAFF_SECTIONS.filter((s) => (s.key === "account" ? !!perms : canOpenPage(perms, `/facility/profile/${s.key}`))).map((s) => (
                 <button
                   key={s.key}
                   onClick={() => setSection(s.key)}
@@ -450,6 +452,8 @@ export function ProfileView({ section }: { section: string }) {
             <FeesView />
           </Card>
         )}
+
+        {section === "account" && perms && <MyAccount embedded />}
 
         {section === "learning" && (
           <Card className="p-6 border-border/50 bg-card/60">

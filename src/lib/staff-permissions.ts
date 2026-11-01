@@ -134,12 +134,13 @@ export const PAGE_PERMISSION: { prefix: string; need: PermissionKey[] }[] = [
   { prefix: "/facility/profile/permissions", need: ["staff.manage"] },
   { prefix: "/facility/profile/activity", need: [] }, // everyone: own history at least
   { prefix: "/facility/profile/learning", need: [] }, // everyone: their own tours and tutorials
+  { prefix: "/facility/profile/account", need: [] }, // every staff member: their own profile
   { prefix: "/facility/profile", need: ["settings"] },
 ];
 /** Where a staff member lands after signing in — their own profile when they can't open any clinic page. */
 export function firstAllowedPage(perms: readonly string[]): string {
   for (const p of ["/facility/dashboard", "/facility/patients", "/facility/appointments", "/facility/messages", "/facility/pharmacy"]) if (canOpenPage(perms, p)) return p;
-  return "/facility/account";
+  return "/facility/profile/account";
 }
 
 export function canOpenPage(perms: readonly string[] | null, path: string): boolean {

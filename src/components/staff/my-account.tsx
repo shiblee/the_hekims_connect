@@ -45,7 +45,7 @@ function Title({ icon: Icon, children }: { icon: typeof Award; children: React.R
 }
 
 /** A signed-in staff member's own profile, inside the clinic app. */
-export function MyAccount() {
+export function MyAccount({ embedded = false }: { embedded?: boolean } = {}) {
   const router = useRouter();
   const t = useTranslations("clinic.account");
   const tc = useTranslations("common");
@@ -97,8 +97,8 @@ export function MyAccount() {
   const joined = new Date(me.createdAt).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
-      <h1 className="font-serif text-xl font-bold sm:text-2xl">{t("title")}</h1>
+    <div className={cn("min-w-0 space-y-5", !embedded && "mx-auto max-w-5xl")}>
+      {!embedded && <h1 className="font-serif text-xl font-bold sm:text-2xl">{t("title")}</h1>}
       <NoticeSlot state={msg} />
 
       {/* Header */}
@@ -129,7 +129,7 @@ export function MyAccount() {
         </div>
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         {/* Editable details */}
         <Card className="h-fit gap-0 border-border bg-card/60 p-5">
           <Title icon={IdCard}>{t("details")}</Title>
@@ -168,11 +168,11 @@ export function MyAccount() {
             <p className="mt-3 text-xs text-muted-foreground">{t("no_password")}</p>
           </Card>
 
-          <Card className="gap-0 border-border bg-card/60 p-5">
+          {!embedded && <Card className="gap-0 border-border bg-card/60 p-5">
             <Title icon={GraduationCap}>{tsp("learning")}</Title>
             <p className="text-sm text-muted-foreground">{t("learning_hint")}</p>
             <Button variant="outline" className="mt-3 self-start" onClick={() => router.push("/facility/profile/learning")}>{t("open")}</Button>
-          </Card>
+          </Card>}
         </div>
       </div>
 

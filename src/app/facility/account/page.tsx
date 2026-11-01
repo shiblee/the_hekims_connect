@@ -1,5 +1,6 @@
-import { MyAccount } from "@/components/staff/my-account";
+import { redirect } from "next/navigation";
 
+// The staff profile now lives in Facility Profile → My profile.
 export default function Page() {
-  return <MyAccount />;
+  redirect("/facility/profile/account");
 }

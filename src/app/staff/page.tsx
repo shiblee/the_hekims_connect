@@ -25,6 +25,6 @@ function LoadingScreen() {
 export default function StaffPage() {
   const { ready, staff } = useRequireStaff();
   const router = useRouter();
-  useEffect(() => { if (ready && staff) router.replace("/facility/account"); }, [ready, staff, router]);
+  useEffect(() => { if (ready && staff) router.replace("/facility/profile/account"); }, [ready, staff, router]);
   return <LoadingScreen />;
 }
