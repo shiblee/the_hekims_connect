@@ -144,24 +144,19 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
 
     return (
       <Card className="p-5 border-border/50 bg-card/60">
-        <SectionHeading icon={Hourglass} title={t3("chrono_title")} />
+        <SectionHeading icon={Hourglass} title={t3("chrono_title")} right={
+          <FindingAddButton
+            label={t3("add_pattern_btn")}
+            options={patterns.filter((p) => !selected.includes(p.label)).map((p) => ({ id: p.label, label: p.label, description: p.description }))}
+            onPick={toggle}
+            onCreate={addOtherPattern}
+            createLabel={(q) => t3("add_pattern", { q })}
+            searchPh={t3("pattern_ph")}
+          />
+          } />
 
-        {/* How it started — Add button + table, same pattern as Main Complaints */}
+        {/* How it started — chosen patterns as a table; Add pattern sits in the heading, like Main Complaints */}
         <div className="mt-4">
-          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              {t3("how_start")}
-              {selected.length > 0 && <Badge variant="outline" className="text-[11px] font-normal">{t3("n_selected", { count: selected.length })}</Badge>}
-            </p>
-            <FindingAddButton
-              label={t3("add_pattern_btn")}
-              options={patterns.filter((p) => !selected.includes(p.label)).map((p) => ({ id: p.label, label: p.label, description: p.description }))}
-              onPick={toggle}
-              onCreate={addOtherPattern}
-              createLabel={(q) => t3("add_pattern", { q })}
-              searchPh={t3("pattern_ph")}
-            />
-          </div>
           <FindingTable rows={tableRows} nameHeading={t3("col_pattern")} empty={t3("no_patterns")}
             iconFor={(r) => patternIcon(r.label)}
             onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))} />
