@@ -1,14 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Check, HelpCircle, Plus, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Plus, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FloatingField } from "@/components/shared/floating-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DifferentialResult, Differential } from "@/lib/differential-engine";
@@ -37,152 +36,103 @@ function Pill({ className, children, title }: { className?: string; children: Re
  * Differential diagnosis (rules) for the visit: a search box whose drop-down lists each candidate with its
  * evidence and the choices (working / differential / rule out); "Don't miss" opens in a pop-up.
  */
-function DifferentialCard({ visitId, d, add, rerun }: { visitId: string; d: MarzState; add: (x: Differential, role: DiagnosisRole) => void; rerun: () => Promise<unknown> }) {
-  const t = useTranslations("clinic.marz");
-  const [data, setData] = useState<(DifferentialResult & { catalogueSize: number }) | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const [missOpen, setMissOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
-  const fetchIt = useCallback(() => api.get<DifferentialResult & { catalogueSize: number }>(`/api/facility/visits/${visitId}/differentials`)
-    .then((r) => { setData(r); setFailed(false); }).catch(() => setFailed(true)), [visitId]);
-  useEffect(() => { fetchIt(); }, [fetchIt]);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-  const recheck = async () => { setRunning(true); try { await rerun(); await fetchIt(); } finally { setRunning(false); } };
-  const ql = q.trim().toLowerCase();
-  const rows = (data?.differentials ?? []).filter((x) => !ql || `${x.label} ${x.localName ?? ""} ${x.for.join(" ")}`.toLowerCase().includes(ql));
+type DdxData = DifferentialResult & { catalogueSize: number };
 
-  return (
-    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {t("engine")}</p>
-        <span className="flex items-center gap-3">
-          {data && data.dontMiss.length > 0 && (
-            <button type="button" onClick={() => setMissOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-2.5 py-0.5 text-xs font-semibold text-destructive hover:bg-destructive/15">
-              <ShieldAlert className="h-3.5 w-3.5" /> {t("dont_miss")} · {data.dontMiss.length}
-            </button>
-          )}
-          <button type="button" onClick={recheck} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? t("rechecking") : t("recheck")}</button>
-        </span>
-      </div>
-      {failed ? (
-        <p className="text-sm text-muted-foreground">{t.rich("failed", { retry: (c) => <button type="button" onClick={() => fetchIt()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
-      ) : !data ? <div className="h-16 animate-pulse rounded-lg bg-muted/50" /> : (
-        <>
-          {data.differentials.length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : (
-            <div ref={boxRef} className="relative">
-              <FloatingField id="ddxSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
-                label={t("ddx_search", { count: data.differentials.length })}
-                onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onClick={() => setOpen(true)}
-                onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
-              {open && (
-                <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[440px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
-                  <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ddx_hint")}</p>
-                  {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{t("ddx_no_match", { q })}</p>}
-                  {rows.map((x) => {
-                    const chosen = d.diagnoses.find((y) => (x.marzId && y.marzId === x.marzId) || y.label === x.label);
-                    return (
-                      <div key={x.key} className={cn("px-3 py-2.5 space-y-1", chosen && "bg-emerald-500/5")}>
-                        <div className="flex items-start gap-3">
-                          <div className="min-w-0 flex-1 space-y-0.5">
-                            <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className="text-sm font-semibold">{x.label}</span>
-                              {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
-                              <Pill className={CERT_STYLE[x.certainty]}>{t(`cert_${x.certainty}`)}</Pill>
-                              {x.unverified && <Pill className="border-border/60 text-muted-foreground font-medium" title={t("unverified_hint")}><HelpCircle className="h-3 w-3" />{t("unverified")}</Pill>}
-                              {x.mizajFit && <span className={cn("text-[11px]", x.mizajFit === "against" ? "text-destructive" : "text-muted-foreground")}>{t(`fit_${x.mizajFit}`)}</span>}
-                            </p>
-                            {x.for.length > 0 && <p className="text-xs"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{t("for")}:</span> {x.for.join(" · ")}</p>}
-                            {x.against.length > 0 && <p className="text-xs"><span className="font-semibold text-destructive">{t("against")}:</span> {x.against.join(" · ")}</p>}
-                            {x.missing.length > 0 && <p className="text-xs text-muted-foreground"><span className="font-semibold">{t("not_checked")}:</span> {x.missing.slice(0, 3).join(" · ")}</p>}
-                            {x.typicalMizaj.length > 0 && <p className="text-[11px] text-muted-foreground">{t("typical", { mizaj: x.typicalMizaj.join(", ") })}{x.organs.length ? ` · ${x.organs.join(", ")}` : ""}</p>}
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1">
-                            {chosen ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/60 bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white"><Check className="h-3 w-3" /> {t(`role_${chosen.role}`)}</span>
-                            ) : (
-                              <>
-                                <button type="button" onClick={() => add(x, d.diagnoses.some((y) => y.role === "working") ? "secondary" : "working")}
-                                  className="rounded-md border border-primary/50 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10">{d.diagnoses.some((y) => y.role === "working") ? t("role_secondary") : t("as_working")}</button>
-                                <button type="button" onClick={() => add(x, "differential")} className="rounded-md border border-border/60 px-2.5 py-1 text-xs font-medium hover:bg-muted/60">{t("as_differential")}</button>
-                                <button type="button" onClick={() => add(x, "ruled_out")} className="rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/60">{t("rule_out")}</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {data.nextQuestions.length > 0 && (
-            <div className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t("ask_next")}</p>
-              <ul className="space-y-1">
-                {data.nextQuestions.map((nq) => (
-                  <li key={nq.questionId} className="text-xs">
-                    <a href="#dalail" className="font-medium text-primary hover:underline">{nq.sectionLabel} — {nq.question}</a>
-                    <span className="text-muted-foreground"> · {t("helps", { items: nq.helps.join(", ") })}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <Dialog open={missOpen} onOpenChange={setMissOpen}>
-            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-              <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><ShieldAlert className="h-5 w-5" /> {t("dont_miss")}</DialogTitle></DialogHeader>
-              <ul className="space-y-2">
-                {data.dontMiss.map((x) => (
-                  <li key={x.label} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
-                    <p className="text-sm font-semibold">{x.label}</p>
-                    <p className="text-sm text-muted-foreground">{x.why}</p>
-                  </li>
-                ))}
-              </ul>
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
-    </div>
-  );
+/** Group heading inside the Add diagnosis drop-down. */
+function Head({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn("sticky top-0 z-[1] bg-popover px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground", className)}>{children}</p>;
 }
 
-/** "+ Add diagnosis": search the Amraz catalogue, or add a diagnosis that isn't in it — same pattern as Add medicine. */
-function DiagnosisPicker({ amraz, onPick, onFree }: { amraz: AmrazOption[]; onPick: (m: AmrazOption) => void; onFree: (label: string) => void }) {
+/** The rules engine's differential for this visit (suggestions for the Add diagnosis drop-down). */
+function useDifferential(visitId: string, rerun: () => Promise<unknown>) {
+  const [data, setData] = useState<DdxData | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [running, setRunning] = useState(false);
+  const fetchIt = useCallback(() => api.get<DdxData>(`/api/facility/visits/${visitId}/differentials`)
+    .then((r) => { setData(r); setFailed(false); }).catch(() => setFailed(true)), [visitId]);
+  useEffect(() => { fetchIt(); }, [fetchIt]);
+  const recheck = async () => { setRunning(true); try { await rerun(); await fetchIt(); } finally { setRunning(false); } };
+  return { data, failed, running, recheck, retry: fetchIt };
+}
+
+/**
+ * "+ Add diagnosis": one drop-down — suggestions from this patient's findings first (with why),
+ * then the rest of the Amraz catalogue, or a free-text diagnosis that isn't in it.
+ */
+function DiagnosisPicker({ amraz, ddx, chosen, onSuggest, onPick, onFree }: {
+  amraz: AmrazOption[]; ddx: DdxData | null; chosen: DossierDiagnosis[];
+  onSuggest: (x: Differential) => void; onPick: (m: AmrazOption) => void; onFree: (label: string) => void;
+}) {
   const t = useTranslations("clinic.marz");
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const ql = q.trim().toLowerCase();
-  const results = amraz.filter((m) => !ql || `${m.label} ${m.localName ?? ""} ${m.category ?? ""}`.toLowerCase().includes(ql)).slice(0, 60);
+  const isChosen = (marzId: string | null, label: string) => chosen.some((y) => (marzId && y.marzId === marzId) || y.label.toLowerCase() === label.toLowerCase());
+  const suggested = (ddx?.differentials ?? []).filter((x) => !ql || `${x.label} ${x.localName ?? ""} ${x.for.join(" ")}`.toLowerCase().includes(ql));
+  const suggestedIds = new Set((ddx?.differentials ?? []).map((x) => x.marzId).filter(Boolean));
+  const others = amraz.filter((m) => !suggestedIds.has(m.id) && (!ql || `${m.label} ${m.localName ?? ""} ${m.category ?? ""}`.toLowerCase().includes(ql))).slice(0, 60);
   const close = () => { setOpen(false); setQ(""); };
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
       <PopoverTrigger asChild>
         <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {t("add_dx")}</Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-2" align="end">
-        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("add_ph")} className="h-9 mb-2" />
-        <div className="max-h-72 overflow-y-auto space-y-0.5">
-          {results.map((m) => (
-            <button key={m.id} type="button" onClick={() => { onPick(m); close(); }} className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
-              {m.label}{m.localName && <span className="ms-1.5 text-xs text-muted-foreground">{m.localName}</span>}
-              {m.category && <span className="block text-[11px] text-muted-foreground">{m.category}</span>}
-            </button>
-          ))}
+      <PopoverContent className="w-[min(36rem,calc(100vw-2rem))] p-2" align="end">
+        <div className="relative mb-1">
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("add_ph")} className="h-9 ps-8" />
+        </div>
+        <div className="max-h-[26rem] overflow-y-auto">
+          {!ql && !!ddx?.dontMiss.length && (
+            <div className="mx-1 mt-1 rounded-lg border border-destructive/30 bg-destructive/5 px-2.5 py-2">
+              <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-destructive"><ShieldAlert className="h-3.5 w-3.5" /> {t("dont_miss")}</p>
+              <ul className="space-y-0.5 text-xs">{ddx.dontMiss.map((x) => <li key={x.label} className="truncate" title={`${x.label} — ${x.why}`}><span className="font-semibold">{x.label}</span> <span className="text-muted-foreground">— {x.why}</span></li>)}</ul>
+            </div>
+          )}
+          {suggested.length > 0 && (
+            <>
+              <Head className="flex items-center gap-1 text-primary"><Sparkles className="h-3 w-3" /> {t("sugg_head")}</Head>
+              {suggested.map((x) => {
+                const done = isChosen(x.marzId, x.label);
+                return (
+                  <button key={x.key} type="button" disabled={done} onClick={() => { onSuggest(x); close(); }}
+                    className={cn("w-full rounded-md px-2 py-1.5 text-start transition-colors", done ? "cursor-default opacity-60" : "hover:bg-primary/5")}>
+                    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      <span className="text-sm font-medium">{x.label}</span>
+                      {x.localName && <span className="text-xs text-muted-foreground">{x.localName}</span>}
+                      <Pill className={CERT_STYLE[x.certainty]}>{t(`cert_${x.certainty}`)}</Pill>
+                      {x.mizajFit && <span className={cn("text-[11px]", x.mizajFit === "against" ? "text-destructive" : "text-muted-foreground")}>{t(`fit_${x.mizajFit}`)}</span>}
+                      {done && <span className="ms-auto inline-flex items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3 w-3" /> {t("added")}</span>}
+                    </span>
+                    {x.for.length > 0 && <span className="block truncate text-[11px] text-muted-foreground"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{t("for")}:</span> {x.for.join(" · ")}</span>}
+                  </button>
+                );
+              })}
+            </>
+          )}
+          {others.length > 0 && <Head className={suggested.length ? "mt-1 border-t border-border" : ""}>{t("all_head")}</Head>}
+          {others.map((m) => {
+            const done = isChosen(m.id, m.label);
+            return (
+              <button key={m.id} type="button" disabled={done} onClick={() => { onPick(m); close(); }} className={cn("w-full text-start rounded-md px-2 py-1.5 text-sm", done ? "cursor-default opacity-60" : "hover:bg-muted/60")}>
+                {m.label}{m.localName && <span className="ms-1.5 text-xs text-muted-foreground">{m.localName}</span>}
+                {done && <Check className="ms-1.5 inline h-3 w-3 text-emerald-600" />}
+                {m.category && <span className="block text-[11px] text-muted-foreground">{m.category}</span>}
+              </button>
+            );
+          })}
           {q.trim() && !amraz.some((m) => m.label.toLowerCase() === ql) && (
             <button type="button" onClick={() => { onFree(q.trim()); close(); }} className="w-full text-start rounded-md px-2 py-1.5 text-sm text-primary hover:bg-muted/60">{t("add_free_q", { q: q.trim() })}</button>
+          )}
+          {!ql && !!ddx?.nextQuestions.length && (
+            <div className="mx-1 mb-1 mt-2 rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ask_next")}</p>
+              <ul className="space-y-0.5 text-xs">
+                {ddx.nextQuestions.map((nq) => (
+                  <li key={nq.questionId}><a href="#dalail" onClick={close} className="font-medium text-primary hover:underline">{nq.sectionLabel} — {nq.question}</a><span className="text-muted-foreground"> · {t("helps", { items: nq.helps.join(", ") })}</span></li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       </PopoverContent>
@@ -195,6 +145,7 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
   const t = useTranslations("clinic.marz");
   const [sababDraft, setSababDraft] = useState("");
   const [icdOpen, setIcdOpen] = useState(!!(d.icdCode || d.icdLabel));
+  const ddx = useDifferential(visitId, rerun);
 
   const addDx = (x: DossierDiagnosis | null) => {
     if (!x) return;
@@ -218,15 +169,25 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
       <div>
         <p className="text-sm font-semibold">{t("title")} <span className="text-destructive">*</span></p>
       </div>
-      <DifferentialCard visitId={visitId} d={d} add={fromDifferential} rerun={rerun} />
 
       {/* The Hakim's diagnoses */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[15px] font-semibold">{t("yours")}</p>
-          <DiagnosisPicker amraz={amraz} onPick={(m) => addDx(m
+          <span className="flex items-center gap-3">
+          {ddx.failed ? (
+            <span className="text-xs text-muted-foreground">{t.rich("failed", { retry: (c) => <button type="button" onClick={() => ddx.retry()} className="text-primary font-medium hover:underline">{c}</button> })}</span>
+          ) : ddx.data && (
+            <span className="flex items-center gap-2 text-xs">
+              {ddx.data.differentials.length > 0 && <span className="inline-flex items-center gap-1 text-primary"><Sparkles className="h-3 w-3" />{t("n_suggested", { count: ddx.data.differentials.length })}</span>}
+              {ddx.data.dontMiss.length > 0 && <span className="inline-flex items-center gap-1 font-semibold text-destructive"><ShieldAlert className="h-3 w-3" />{t("dont_miss")} · {ddx.data.dontMiss.length}</span>}
+              <button type="button" onClick={ddx.recheck} disabled={ddx.running} className="font-medium text-primary hover:underline disabled:opacity-50">{ddx.running ? t("rechecking") : t("recheck")}</button>
+            </span>
+          )}
+          <DiagnosisPicker amraz={amraz} ddx={ddx.data} chosen={d.diagnoses} onSuggest={(x) => fromDifferential(x, d.diagnoses.some((y) => y.role === "working") ? "differential" : "working")} onPick={(m) => addDx(m
             ? { marzId: m.id, label: m.label, localName: m.localName, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" }
             : null)} onFree={(label) => addDx({ marzId: null, label, localName: null, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" })} />
+          </span>
         </div>
         {d.diagnoses.length === 0 ? <p className="text-[13px] text-muted-foreground">{t("empty")}</p> : (
           <div className="overflow-hidden rounded-xl border border-border bg-card">
