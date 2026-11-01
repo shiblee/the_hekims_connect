@@ -2,15 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, Save } from "lucide-react";
+import { Baby, Leaf, ListChecks, Loader2, Microscope, Save, Siren, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { SelectItem } from "@/components/ui/select";
-import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
+import { FloatingField, FloatingMultiSelect, FloatingSelect } from "@/components/shared/floating-field";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 import { cn, formatDateTime } from "@/lib/utils";
 import { groupQuestion, EMERGENCY_QUESTION } from "@/lib/facility-services";
@@ -45,6 +44,34 @@ function ToggleRow({ title, checked, onCheckedChange }: { title: string; checked
 }
 
 interface HourRow { isOpen: boolean; open: string; close: string; open2: string; close2: string }
+
+const GROUP_ICON: Record<string, typeof Stethoscope> = {
+  specialization: Stethoscope, service_diagnostic: Microscope, service_emergency: Siren, service_maternal_child: Baby, service_other: Leaf,
+};
+
+/** Same search-and-pick field the clinic uses in profile setup: chosen items show as chips, the rest in the drop-down. */
+function GroupPicker({ groupKey, options, selected, toggle }: { groupKey: string; options: string[]; selected: string[]; toggle: (v: string) => void }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const results = options.filter((o) => !selected.includes(o) && (!q || o.toLowerCase().includes(q))).map((o) => ({ id: o, label: o }));
+  const chosen = options.filter((o) => selected.includes(o));
+  return (
+    <FloatingMultiSelect
+      id={`pick-${groupKey}`}
+      label={chosen.length ? `${chosen.length} selected` : "Search & select"}
+      labelIcon={GROUP_ICON[groupKey] ?? ListChecks}
+      selected={chosen.map((o) => ({ id: o, label: o }))}
+      onRemove={(id) => toggle(id)}
+      query={query}
+      onQueryChange={setQuery}
+      results={results}
+      onPick={(id) => { toggle(id); setQuery(""); }}
+      openOnFocus
+      emptyHint={results.length ? `${results.length} options` : "All options chosen"}
+      placeholder="Type to search…"
+    />
+  );
+}
 
 export default function FacilitySectionPage() {
   const { id, section } = useParams<{ id: string; section: string }>();
@@ -354,27 +381,10 @@ export default function FacilitySectionPage() {
         <Header title="Services" />
         <div className="divide-y divide-border">
           {groups.map((g) => {
-            const count = g.options.filter((o) => g.selected.includes(o)).length;
             return (
               <section key={g.key} className="py-5 first:pt-0">
-                <div className="mb-3 flex items-baseline justify-between gap-3">
-                  <p className="text-[15px] font-semibold">{g.key === "legacy" ? "Other services on record (no longer in the Meta lists)" : groupQuestion(g.key, g.label)}</p>
-                  <span className={cn("shrink-0 text-xs font-medium", count ? "text-primary" : "text-muted-foreground")}>{count ? `${count} selected` : "None selected"}</span>
-                </div>
-                <div className="gap-2 sm:columns-2 xl:columns-3 [&>label]:mb-2">
-                  {g.options.map((item) => {
-                    const checked = g.selected.includes(item);
-                    return (
-                      <label key={item} className={cn(
-                        "flex break-inside-avoid items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm font-medium leading-snug cursor-pointer transition-colors",
-                        checked ? "border-primary/50 bg-primary/5" : "border-input bg-background/60 hover:border-primary/30"
-                      )}>
-                        <Checkbox className="mt-0.5" checked={checked} onCheckedChange={() => g.toggle(item)} />
-                        <span className="min-w-0">{item}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                <p className="mb-3 text-[15px] font-semibold">{g.key === "legacy" ? "Other services on record (no longer in the Meta lists)" : groupQuestion(g.key, g.label)}</p>
+                <GroupPicker groupKey={g.key} options={g.options} selected={g.selected} toggle={g.toggle} />
               </section>
             );
           })}
