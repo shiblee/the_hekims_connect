@@ -230,6 +230,16 @@
     background-size: 16px 16px;
   }
   /* Small print one notch larger inside a page (profile setup, patient record) — covers shared fields/chips too. */
+  /* One step larger again — the step-2 clinical record form. */
+  .text-up-lg .text-\[10px\] { font-size: 12.5px; }
+  .text-up-lg .text-\[11px\] { font-size: 13.5px; }
+  .text-up-lg .text-xs { font-size: 14px; line-height: 1.3rem; }
+  .text-up-lg .text-\[13px\] { font-size: 15px; }
+  .text-up-lg .text-sm { font-size: 15.5px; line-height: 1.45rem; }
+  .text-up-lg .text-\[15px\] { font-size: 16.5px; }
+  @media (min-width: 48rem) {
+    .text-up-lg .md\:text-sm { font-size: 15.5px; line-height: 1.45rem; }
+  }
   .text-up .text-\[10px\] { font-size: 11.5px; }
   .text-up .text-\[11px\] { font-size: 12.5px; }
   .text-up .text-xs { font-size: 13.5px; line-height: 1.25rem; }
