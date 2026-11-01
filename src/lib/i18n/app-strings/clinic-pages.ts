@@ -106,6 +106,9 @@ export const CLINIC_PRESCRIPTIONS = defineStrings("clinic.prescriptions", {
 
 // Clinical record (patient detail, Stage 2 workspace).
 export const CLINIC_RECORD = defineStrings("clinic.record", {
+  insights_btn: ["Insights & notes", "इनसाइट और नोट्स", "انسائٹس اور نوٹس", "الرؤى والملاحظات", "بینش‌ها و یادداشت‌ها"],
+  insights_title: ["Insights & notes", "इनसाइट और नोट्स", "انسائٹس اور نوٹس", "الرؤى والملاحظات", "بینش‌ها و یادداشت‌ها"],
+  insights_close: ["Close", "बंद करें", "بند کریں", "إغلاق", "بستن"],
   refresh_failed: ["The reading was saved, but this page couldn't refresh", "रीडिंग सहेजी गई, पर यह पेज रीफ़्रेश नहीं हो सका", "ریڈنگ محفوظ ہو گئی، مگر یہ صفحہ ریفریش نہیں ہو سکا", "حُفظت القراءة، لكن تعذّر تحديث هذه الصفحة", "مقدار ذخیره شد، اما این صفحه تازه نشد"],
   refresh_failed_hint: ["{error}. Reload the page to see the latest vitals.", "{error}। नवीनतम वाइटल्स देखने के लिए पेज फिर से लोड करें।", "{error}۔ تازہ ترین وائٹلز دیکھنے کے لیے صفحہ دوبارہ لوڈ کریں۔", "{error}. أعد تحميل الصفحة لرؤية أحدث العلامات الحيوية.", "{error}. برای دیدن آخرین علائم حیاتی صفحه را دوباره بارگذاری کنید."],
   this_patient: ["this patient", "इस मरीज़", "اس مریض", "هذا المريض", "این بیمار"],
