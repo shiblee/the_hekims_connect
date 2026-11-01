@@ -892,8 +892,64 @@ function RegimenDirective({ suMizaj, grade }: { suMizaj: string | null; grade: n
   );
 }
 
+/**
+ * "+ Add food" / "+ Add to Parhez": one list — this patient's suggestions for that side first
+ * (with why), then every other food (General), filtered by what's typed.
+ */
+function FoodAddPicker({ where, label, suggested, foods, rec, avoid, onPick }: {
+  where: "rec" | "avoid"; label: string; suggested: GhizaPick[]; foods: TashkheesOptionRow[]; rec: string[]; avoid: string[]; onPick: (label: string) => void;
+}) {
+  const td = useTranslations("clinic.dossier");
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ql = q.trim().toLowerCase();
+  const byLabel = (l: string) => foods.find((f) => f.label === l);
+  const hit = (l: string) => { const f = byLabel(l); return !ql || `${l} ${f?.localName ?? ""} ${f?.description ?? ""} ${f?.category ?? ""}`.toLowerCase().includes(ql); };
+  const mine = where === "rec" ? rec : avoid, other = where === "rec" ? avoid : rec;
+  const sugg = suggested.filter((x) => hit(x.label));
+  const sLabels = new Set(suggested.map((x) => x.label));
+  const general = foods.filter((f) => !sLabels.has(f.label) && hit(f.label)).sort((a, b) => a.label.localeCompare(b.label));
+  const green = where === "rec";
+  const row = (l: string, mizaj: string | null, why: string | undefined, img: string | null | undefined, credit: string | null | undefined, hard?: boolean) => {
+    const on = mine.includes(l), elsewhere = other.includes(l);
+    return (
+      <button key={l} type="button" disabled={on} onClick={() => { onPick(l); setQ(""); }}
+        className={cn("flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-start", on ? "cursor-default opacity-60" : green ? "hover:bg-emerald-500/10" : "hover:bg-destructive/10", hard && "bg-destructive/5")}>
+        <FoodThumb src={img} alt={l} credit={credit} className="h-8 w-8" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium leading-snug">{l}{mizaj && <span className="ms-1.5 text-[11px] font-normal text-muted-foreground">{mizajTag(mizaj)}</span>}</span>
+          {why && <span className={cn("block truncate text-xs", hard ? "font-medium text-destructive" : green ? "text-emerald-700 dark:text-emerald-400" : "text-destructive/90")}>{why}</span>}
+        </span>
+        {on ? <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3 w-3" />{td("added")}</span>
+          : elsewhere ? <span className="shrink-0 text-[11px] text-muted-foreground">{green ? td("parhez") : td("recommend")}</span> : <Plus className={cn("h-4 w-4 shrink-0", green ? "text-emerald-600" : "text-destructive")} />}
+      </button>
+    );
+  };
+  const head = (t: string, tone: string) => <p className={cn("sticky top-0 z-[1] bg-popover px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide", tone)}>{t}</p>;
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ(""); }}>
+      <PopoverTrigger asChild>
+        <button type="button" className={cn("inline-flex w-full items-center justify-center gap-1 rounded-lg border border-dashed px-2 py-1.5 text-xs font-medium", green ? "border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400" : "border-destructive/40 text-destructive hover:bg-destructive/10")}><Plus className="h-3 w-3" />{label}</button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(30rem,calc(100vw-2rem))] p-2">
+        <div className="relative mb-1">
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={td("diet_search_all", { count: foods.length })} className="h-9 ps-8" />
+        </div>
+        <div className="max-h-[24rem] overflow-y-auto">
+          {sugg.length > 0 && head(`${green ? td("recommended") : td("parhez_avoid")} · ${td("g_suggested_n", { count: sugg.length })}`, green ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}
+          {sugg.map((x) => row(x.label, x.foodMizaj, x.reasons.slice(0, 2).join(" · "), x.imageUrl, x.imageCredit, x.hard))}
+          {general.length > 0 && <div className={cn(sugg.length > 0 && "mt-1 border-t border-border")}>{head(`${td("diet_general")} · ${general.length}`, "text-muted-foreground")}</div>}
+          {general.map((f) => row(f.label, f.foodMizaj ?? null, (green ? f.action : f.harm) ?? f.description ?? undefined, f.imageUrl, f.imageCredit))}
+          {!sugg.length && !general.length && <p className="px-2 py-3 text-sm text-muted-foreground">{td("no_food", { q })}</p>}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** One of the three diet columns. */
-function DietColumn({ tone, icon: Icon, title, sub, count, addLabel, onAdd, children }: { tone: "rec" | "avoid"; icon: typeof Ban; title: string; sub: string; count: number; addLabel: string; onAdd: () => void; children: ReactNode }) {
+function DietColumn({ tone, icon: Icon, title, sub, count, add, children }: { tone: "rec" | "avoid"; icon: typeof Ban; title: string; sub: string; count: number; add: ReactNode; children: ReactNode }) {
   return (
     <section className={cn("flex flex-col rounded-xl border p-3", tone === "rec" ? "border-emerald-500/25 bg-emerald-500/[0.04]" : "border-destructive/25 bg-destructive/[0.04]")}>
       <header className="mb-2">
@@ -901,7 +957,7 @@ function DietColumn({ tone, icon: Icon, title, sub, count, addLabel, onAdd, chil
         <p className="text-[11px] text-muted-foreground">{sub}</p>
       </header>
       <ul className="space-y-1.5">{children}</ul>
-      <button type="button" onClick={onAdd} className={cn("mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-dashed px-2 py-1.5 text-xs font-medium", tone === "rec" ? "border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400" : "border-destructive/40 text-destructive hover:bg-destructive/10")}><Plus className="h-3 w-3" />{addLabel}</button>
+      <div className="mt-2">{add}</div>
     </section>
   );
 }
@@ -978,23 +1034,12 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
   const [data, setData] = useState<{ plan: GhizaPlanData; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
-  const [tab, setTab] = useState<"rec" | "avoid" | "all">("rec");
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
   const td = useTranslations("clinic.dossier");
   const fetchPlan = useCallback(() =>
     api.get<{ plan: GhizaPlanData; method: string }>(`/api/facility/visits/${visitId}/ghiza-engine`)
       .then((r) => { setData(r); setFailed(false); })
       .catch(() => setFailed(true)), [visitId]);
   useEffect(() => { fetchPlan(); }, [fetchPlan]);
-  // Close the dropdown on a click outside the picker.
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
   const rerun = async () => { setRunning(true); try { await state.save(false); await fetchPlan(); } finally { setRunning(false); } };
   const record = (labels: string[]) => { if (labels.length) api.post(`/api/facility/visits/${visitId}/ghiza-engine`, { accepted: labels }).catch(() => {}); };
   const p = data?.plan;
@@ -1019,17 +1064,6 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
   // Rows for the dropdown: the chosen tab's foods — Recommended / Parhez suggestions, or General (every food) — filtered by what's typed.
   const foods = options?.ghiza || [];
   const byLabel = (l: string) => foods.find((f) => f.label === l);
-  const ql = q.trim().toLowerCase();
-  type Row = { label: string; imageUrl: string | null; imageCredit: string | null; foodMizaj: string | null; category: string | null; reasons: string[]; hard?: boolean; kind: "rec" | "avoid" | null };
-  const matches = (label: string) => { const f = byLabel(label); return !ql || `${label} ${f?.localName ?? ""} ${f?.description ?? ""} ${f?.category ?? ""}`.toLowerCase().includes(ql); };
-  const rows: Row[] = tab !== "all"
-    ? suggested(tab).filter((x) => matches(x.label)).map((x) => ({ ...x, kind: tab }))
-    : foods.filter((f) => matches(f.label)).map((f): Row => {
-      const sr = suggested("rec").find((x) => x.label === f.label), sa = suggested("avoid").find((x) => x.label === f.label);
-      const hit = sa ?? sr;
-      return hit ? { ...hit, kind: hit === sr ? "rec" : "avoid" } : { label: f.label, imageUrl: f.imageUrl ?? null, imageCredit: f.imageCredit ?? null, foodMizaj: f.foodMizaj ?? null, category: f.category ?? null, reasons: f.description ? [f.description] : [], kind: null };
-    }).sort((a, b) => a.label.localeCompare(b.label));
-
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1049,74 +1083,12 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
         </span>
       </div>
 
-      <div ref={boxRef} className="relative">
-        {/* Two tabs over one search box */}
-        <div className="mb-1.5 inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
-          {(["rec", "avoid", "all"] as const).map((k) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(true); }}
-              className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors",
-                tab === k ? (k === "rec" ? "bg-emerald-600 text-white" : k === "avoid" ? "bg-destructive text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>
-              {k === "rec" ? td("recommended") : k === "avoid" ? td("parhez_avoid") : td("diet_general")}
-              <span className="ms-1.5 text-[11px] opacity-80">{k === "all" ? foods.length : p ? suggested(k).length : ""}</span>
-            </button>
-          ))}
-        </div>
-        {/* Label follows the tab and floats onto the border when the box is focused or filled */}
-        <FloatingField id="ghizaSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
-          label={tab === "rec" ? td("diet_search_rec", { count: suggested("rec").length }) : tab === "avoid" ? td("diet_search_avoid", { count: suggested("avoid").length }) : td("diet_search_all", { count: foods.length })}
-          onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
-          onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
-        {open && (
-          <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[380px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
-            <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{tab === "all" ? td("diet_general_hint") : td("diet_suggested_for")}</p>
-            {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{ql ? td("no_food", { q }) : tab === "avoid" ? td("nothing_avoid") : td("no_recs")}</p>}
-            {rows.map((x) => {
-              const inRec = d.ghizaRecommended.includes(x.label), inAvoid = d.ghizaAvoid.includes(x.label);
-              return (
-                <div key={x.label} className={cn("flex items-center gap-3 px-3 py-2", x.hard && "bg-destructive/5")}>
-                  <FoodThumb src={x.imageUrl} alt={x.label} credit={x.imageCredit} className="h-10 w-10" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-snug">{x.label}{x.foodMizaj && <span className="ms-1.5 text-[11px] font-normal text-muted-foreground">{x.foodMizaj}{x.category ? ` · ${x.category}` : ""}</span>}</p>
-                    {x.reasons.length > 0 && <p className={cn("truncate text-xs", x.hard ? "font-medium text-destructive" : x.kind === "rec" ? "text-emerald-700 dark:text-emerald-400" : x.kind === "avoid" ? "text-destructive/90" : "text-muted-foreground")}>{x.reasons.slice(0, 2).join(" · ")}</p>}
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    {tab !== "all" ? (() => {
-                      // Recommended / Parhez tabs: one Add button for that side.
-                      const on = tab === "rec" ? inRec : inAvoid;
-                      return (
-                        <button type="button" onClick={() => setFood(x.label, tab)} aria-pressed={on}
-                          className={cn("rounded-md border px-3 py-1 text-xs font-medium",
-                            on ? (tab === "rec" ? "border-emerald-500/60 bg-emerald-600 text-white" : "border-destructive/60 bg-destructive text-white")
-                              : tab === "rec" ? "border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10" : "border-destructive/50 text-destructive hover:bg-destructive/10")}>
-                          {on ? <><Check className="me-0.5 inline h-3 w-3" />{td("added")}</> : td("add")}
-                        </button>
-                      );
-                    })() : (
-                      <>
-                        <button type="button" onClick={() => setFood(x.label, "rec")} aria-pressed={inRec}
-                          className={cn("rounded-md border px-2.5 py-1 text-xs font-medium", inRec ? "border-emerald-500/60 bg-emerald-600 text-white" : "border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10")}>
-                          {inRec && <Check className="me-0.5 inline h-3 w-3" />}{td("recommend")}
-                        </button>
-                        <button type="button" onClick={() => setFood(x.label, "avoid")} aria-pressed={inAvoid}
-                          className={cn("rounded-md border px-2.5 py-1 text-xs font-medium", inAvoid ? "border-destructive/60 bg-destructive text-white" : "border-destructive/50 text-destructive hover:bg-destructive/10")}>
-                          {inAvoid && <Check className="me-0.5 inline h-3 w-3" />}{td("parhez")}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Three columns: Prescribed · Parhez · Meal timing & hydration */}
       {/* Container query: three columns only when the panel itself is wide enough. */}
       <div className="@container">
       <div className="grid items-start gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
         <DietColumn tone="rec" icon={CircleCheck} title={td("g_prescribed")} sub={td("g_prescribed_sub")} count={d.ghizaRecommended.length}
-          addLabel={td("g_add_food")} onAdd={() => { setTab("rec"); setOpen(true); boxRef.current?.querySelector("input")?.focus(); }}>
+          add={<FoodAddPicker where="rec" label={td("g_add_food")} suggested={suggested("rec")} foods={foods} rec={d.ghizaRecommended} avoid={d.ghizaAvoid} onPick={(l) => setFood(l, "rec")} />}>
           {d.ghizaRecommended.length === 0 ? <li className="px-1 py-2 text-[13px] text-muted-foreground">{td("g_empty_rec")}</li> : d.ghizaRecommended.map((l) => {
             const f = byLabel(l);
             return (
@@ -1137,7 +1109,7 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
         </DietColumn>
 
         <DietColumn tone="avoid" icon={Ban} title={td("parhez_avoid")} sub={td("g_parhez_sub")} count={d.ghizaAvoid.length}
-          addLabel={td("g_add_avoid")} onAdd={() => { setTab("avoid"); setOpen(true); boxRef.current?.querySelector("input")?.focus(); }}>
+          add={<FoodAddPicker where="avoid" label={td("g_add_avoid")} suggested={suggested("avoid")} foods={foods} rec={d.ghizaRecommended} avoid={d.ghizaAvoid} onPick={(l) => setFood(l, "avoid")} />}>
           {d.ghizaAvoid.length === 0 ? <li className="px-1 py-2 text-[13px] text-muted-foreground">{td("g_empty_avoid")}</li> : d.ghizaAvoid.map((l) => {
             const f = byLabel(l);
             const hardWhy = suggested("avoid").find((x) => x.label === l && x.hard)?.reasons[0];
