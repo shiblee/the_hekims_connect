@@ -125,7 +125,7 @@ export function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#edf0f7] dark:bg-transparent">
+    <div className="min-h-screen flex flex-col bg-[#f6f8fc] dark:bg-transparent">
       <SiteHeader />
 
       {/* HERO */}
@@ -190,7 +190,7 @@ export function LandingPage() {
       </section>
 
       {/* FEATURES */}
-      <section id="features" className="relative overflow-hidden py-20 scroll-mt-20 border-t border-border">
+      <section id="features" className="relative overflow-hidden py-20 scroll-mt-20 border-t border-border bg-[#e3e8f3] dark:bg-card/30">
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center mb-14">
             <h2 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight whitespace-nowrap">
@@ -243,7 +243,7 @@ export function LandingPage() {
       </section>
 
       {/* PHILOSOPHY */}
-      <section id="philosophy" className="py-20 scroll-mt-20 relative overflow-hidden border-t border-border bg-card/20">
+      <section id="philosophy" className="py-20 scroll-mt-20 relative overflow-hidden border-t border-border">
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight">
@@ -302,7 +302,7 @@ export function LandingPage() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section id="how" className="relative overflow-hidden py-20 scroll-mt-20 border-t border-border">
+      <section id="how" className="relative overflow-hidden py-20 scroll-mt-20 border-t border-border bg-[#e3e8f3] dark:bg-card/30">
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center mb-14">
             <h2 className="font-serif text-xl sm:text-4xl lg:text-5xl font-bold tracking-tight whitespace-nowrap">{t("landing.how_it_works.heading")}</h2>
@@ -381,7 +381,7 @@ export function LandingPage() {
       </section>
 
       {/* TESTIMONIALS */}
-      <section id="voices" className="relative overflow-hidden py-20 scroll-mt-20 bg-card/30 border-y border-border">
+      <section id="voices" className="relative overflow-hidden py-20 scroll-mt-20 border-y border-border">
         <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16">
           <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight">{t("landing.testimonials.heading")}</h2>
@@ -453,7 +453,7 @@ export function LandingPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="relative overflow-hidden py-20 border-t border-border">
+      <section className="relative overflow-hidden py-20 border-t border-border bg-[#e3e8f3] dark:bg-card/30">
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp}>
             <Card className="relative overflow-hidden p-10 lg:p-14 text-center border-primary/30 bg-gradient-to-br from-card via-card to-primary/5">
