@@ -107,7 +107,9 @@ const SCREENING_TABS = ["complaints", "asbab", "tashkhees", "allergies", "supple
 // the Patient category's sidebar instead of their own top-bar tabs, so they're
 // excluded here.
 const PATIENT_SIDEBAR_TABS = ["allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions", "onset"];
-const TOP_BAR_SCREENING_TABS = SCREENING_TABS.filter((t) => !PATIENT_SIDEBAR_TABS.includes(t));
+// Chief Complaints sits in the Clinical tab's sidebar (merged with Clinical + Books).
+const CLINICAL_SIDEBAR_TABS = ["complaints"];
+const TOP_BAR_SCREENING_TABS = SCREENING_TABS.filter((t) => !PATIENT_SIDEBAR_TABS.includes(t) && !CLINICAL_SIDEBAR_TABS.includes(t));
 
 // Sections whose "X records registered in total" stats badge isn't meaningful
 // enough to show — payment_mode counts transactions not patients.
@@ -122,9 +124,9 @@ const SCREENING_TAB_LABELS: Record<string, string> = {
 };
 
 // Categories shown together under one top-bar tab (sidebar keeps a heading per category).
-const MERGED_TAB: Record<string, string> = { Staff: "Facility" };
+const MERGED_TAB: Record<string, string> = { Staff: "Facility", Books: "Clinical" };
 const tabOf = (category: string) => MERGED_TAB[category] ?? category;
-const TAB_LABEL: Record<string, string> = { Facility: "Facility & Staff" };
+const TAB_LABEL: Record<string, string> = { Facility: "Facility & Staff", Clinical: "Clinical, Books & Complaints" };
 
 const TYPE_LABEL: Record<string, string> = { single_select: "Single Choice", multi_select: "Multiple Choice", numeric: "Number", text: "Text", instruction: "Instruction" };
 const TYPE_ICON: Record<string, any> = { single_select: CircleDot, multi_select: CheckSquare, numeric: Hash, text: Type, instruction: Info };
@@ -184,7 +186,8 @@ export default function MetaSectionPage() {
   // Red Flags and Allergies live in the Patient category's sidebar rather
   // than having their own — so while viewing either, the sidebar still
   // shows Patient's sections (plus these two) instead of going blank.
-  const sidebarCategory = activeCategory && PATIENT_SIDEBAR_TABS.includes(activeCategory) ? "Patient" : activeCategory;
+  const sidebarCategory = activeCategory && PATIENT_SIDEBAR_TABS.includes(activeCategory) ? "Patient"
+    : activeCategory && CLINICAL_SIDEBAR_TABS.includes(activeCategory) ? "Clinical" : activeCategory;
   const sectionsInActiveCategory = useMemo(
     () => {
       const inTab = sections.filter((s) => tabOf(s.category) === sidebarCategory);
@@ -953,66 +956,6 @@ export default function MetaSectionPage() {
       </Tabs>
 
       {/* ==================== L1 Screening panels ==================== */}
-      {activeCategory === "complaints" && (
-        loadingScreening ? (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
-        ) : screeningConfig && (
-          <div className="grid md:grid-cols-[260px_1fr] gap-6">
-            <Card className="p-2 border-border/50 bg-card/60 h-fit">
-              <div className="space-y-1">
-                {existingComplaintCategories.map((cat) => {
-                  const count = screeningConfig.complaints.filter((c) => c.category === cat).length;
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedComplaintCategory(cat)}
-                      className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-                        selectedComplaintCategory === cat ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-                      )}
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <ListChecks className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{cat}</span>
-                      </span>
-                      <Badge variant={selectedComplaintCategory === cat ? "outline" : "secondary"} className={cn("shrink-0", selectedComplaintCategory === cat && "border-primary-foreground/40 text-primary-foreground")}>
-                        {count}
-                      </Badge>
-                    </button>
-                  );
-                })}
-                {existingComplaintCategories.length === 0 && <p className="text-sm text-muted-foreground p-3">No categories yet.</p>}
-              </div>
-            </Card>
-
-            <Card className="p-5 border-border/50 bg-card/60 gap-4">
-              <div>
-                <h2 className="font-serif text-lg font-semibold">{selectedComplaintCategory || "Select a category"}</h2>
-                <p className="text-sm text-muted-foreground mt-1">{complaintsInSelectedCategory.length} chief complaint{complaintsInSelectedCategory.length === 1 ? "" : "s"} in this category</p>
-              </div>
-
-              <div className="space-y-1.5">
-                {complaintsInSelectedCategory.map((c) => (
-                  <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium">{c.label}</span>
-                      {c.labelLocal && <span className="text-xs text-muted-foreground ml-2">{c.labelLocal}</span>}
-                    </div>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditComplaint(c)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <span className={cn("text-xs font-medium w-14 text-right", c.active ? "text-emerald-500" : "text-muted-foreground")}>
-                      {c.active ? "Active" : "Inactive"}
-                    </span>
-                    <Switch checked={c.active} onCheckedChange={() => toggleComplaintActive(c)} />
-                  </div>
-                ))}
-                {complaintsInSelectedCategory.length === 0 && <p className="text-sm text-muted-foreground">No chief complaints in this category yet.</p>}
-              </div>
-            </Card>
-          </div>
-        )
-      )}
 
       <datalist id="screening-categories">
         {existingComplaintCategories.map((cat) => <option key={cat} value={cat} />)}
@@ -1502,7 +1445,7 @@ export default function MetaSectionPage() {
       </Dialog>
 
       {/* ==================== Generic Meta section editor ==================== */}
-      {(!isScreeningTab || (activeCategory !== null && PATIENT_SIDEBAR_TABS.includes(activeCategory))) && (
+      {(!isScreeningTab || (activeCategory !== null && (PATIENT_SIDEBAR_TABS.includes(activeCategory) || CLINICAL_SIDEBAR_TABS.includes(activeCategory)))) && (
         <div className="grid md:grid-cols-[260px_1fr] gap-6">
           <Card className="p-2 border-border/50 bg-card/60 h-fit">
             {loadingSections ? (
@@ -1532,6 +1475,25 @@ export default function MetaSectionPage() {
                   </div>
                 ))}
                 {sectionsInActiveCategory.length === 0 && <p className="text-sm text-muted-foreground p-3">No sections in this category yet.</p>}
+                {sidebarCategory === "Clinical" && (
+                  <div>
+                    <p className="mt-2 border-t border-border px-3 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Chief Complaints</p>
+                    <button
+                      onClick={() => router.push("/admin/meta/complaints")}
+                      className={cn(
+                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                        activeCategory === "complaints" ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+                      )}
+                    >
+                      <span className="flex items-center gap-2 min-w-0"><ListChecks className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Chief Complaints</span></span>
+                      {screeningConfig && (
+                        <Badge variant={activeCategory === "complaints" ? "outline" : "secondary"} className={cn("shrink-0", activeCategory === "complaints" && "border-primary-foreground/40 text-primary-foreground")}>
+                          {screeningConfig.complaints.length}
+                        </Badge>
+                      )}
+                    </button>
+                  </div>
+                )}
                 {sidebarCategory === "Patient" && (
                   <button
                     onClick={() => router.push("/admin/meta/allergies")}
@@ -1716,6 +1678,68 @@ export default function MetaSectionPage() {
             )}
           </Card>
 
+          {activeCategory === "complaints" ? (
+          <div className="min-w-0">
+        {loadingScreening ? (
+          <div className="flex items-center gap-2 text-muted-foreground text-sm py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+        ) : screeningConfig && (
+          <div className="grid md:grid-cols-[260px_1fr] gap-6">
+            <Card className="p-2 border-border/50 bg-card/60 h-fit">
+              <div className="space-y-1">
+                {existingComplaintCategories.map((cat) => {
+                  const count = screeningConfig.complaints.filter((c) => c.category === cat).length;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedComplaintCategory(cat)}
+                      className={cn(
+                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                        selectedComplaintCategory === cat ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+                      )}
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <ListChecks className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{cat}</span>
+                      </span>
+                      <Badge variant={selectedComplaintCategory === cat ? "outline" : "secondary"} className={cn("shrink-0", selectedComplaintCategory === cat && "border-primary-foreground/40 text-primary-foreground")}>
+                        {count}
+                      </Badge>
+                    </button>
+                  );
+                })}
+                {existingComplaintCategories.length === 0 && <p className="text-sm text-muted-foreground p-3">No categories yet.</p>}
+              </div>
+            </Card>
+
+            <Card className="p-5 border-border/50 bg-card/60 gap-4">
+              <div>
+                <h2 className="font-serif text-lg font-semibold">{selectedComplaintCategory || "Select a category"}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{complaintsInSelectedCategory.length} chief complaint{complaintsInSelectedCategory.length === 1 ? "" : "s"} in this category</p>
+              </div>
+
+              <div className="space-y-1.5">
+                {complaintsInSelectedCategory.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 bg-background/40">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{c.label}</span>
+                      {c.labelLocal && <span className="text-xs text-muted-foreground ml-2">{c.labelLocal}</span>}
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditComplaint(c)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className={cn("text-xs font-medium w-14 text-right", c.active ? "text-emerald-500" : "text-muted-foreground")}>
+                      {c.active ? "Active" : "Inactive"}
+                    </span>
+                    <Switch checked={c.active} onCheckedChange={() => toggleComplaintActive(c)} />
+                  </div>
+                ))}
+                {complaintsInSelectedCategory.length === 0 && <p className="text-sm text-muted-foreground">No chief complaints in this category yet.</p>}
+              </div>
+            </Card>
+          </div>
+        )}
+          </div>
+          ) : (
           <Card className="p-6 border-border/50 bg-card/60">
             {activeCategory === "redflags" ? (
               <>
@@ -1920,6 +1944,7 @@ export default function MetaSectionPage() {
               </>
             )}
           </Card>
+          )}
         </div>
       )}
 
