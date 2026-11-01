@@ -68,9 +68,11 @@ export function OptionCards({ options, selected, multiple, onToggle, hints, twoC
  * A compact answer box: shows what's chosen ("B · Shita") or the suggestion, and opens the
  * answer cards in a pop-up. Single choice closes on pick; multiple stays open.
  */
-export function OptionDropdown({ id, options, value, onChange, multiple, hints, placeholder }: {
+export function OptionDropdown({ id, options, value, onChange, multiple, hints, placeholder, compact }: {
   id: string; options: OptionCardItem[]; value: string[]; onChange: (v: string[]) => void;
   multiple?: boolean; hints?: Record<string, string>; placeholder?: string;
+  /** Shorter trigger for table rows (Stage 4). */
+  compact?: boolean;
 }) {
   const t = useTranslations("clinic.asbab");
   const [open, setOpen] = useState(false);
@@ -87,7 +89,8 @@ export function OptionDropdown({ id, options, value, onChange, multiple, hints, 
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button id={id} type="button" aria-expanded={open} className={cn(
-          "flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border bg-transparent px-3.5 py-2 text-start transition-colors",
+          "flex w-full items-center justify-between gap-2 rounded-lg border bg-transparent text-start transition-colors",
+          compact ? "min-h-9 px-2.5 py-1" : "min-h-11 px-3.5 py-2",
           open ? "border-primary" : "border-input hover:border-primary/40",
         )}>
           <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
