@@ -318,11 +318,8 @@ export function ProfileView({ section }: { section: string }) {
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
                 <FloatingField id="addressLine1" label={t("address1")} value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
                 <FloatingField id="addressLine2" label={t("address2")} value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
-                <FloatingField id="locality" label={t("locality")} value={locality} onChange={(e) => setLocality(e.target.value)} />
                 <FloatingField id="city" label={t("city")} value={city} onChange={(e) => setCity(e.target.value)} />
-                <FloatingField id="district" label={t("district")} value={district} onChange={(e) => setDistrict(e.target.value)} />
                 <FloatingField id="state" label={t("state")} value={state} onChange={(e) => setState(e.target.value)} />
-                <FloatingField id="country" label={t("country")} value={country} onChange={(e) => setCountry(e.target.value)} />
                 <FloatingField id="pincode" label={t("pincode")} value={pincode} onChange={(e) => setPincode(e.target.value)} />
               </div>
             </div>

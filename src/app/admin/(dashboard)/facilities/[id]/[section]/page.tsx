@@ -248,11 +248,8 @@ export default function FacilitySectionPage() {
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             <FloatingField id="addressLine1" label="Address line 1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
             <FloatingField id="addressLine2" label="Address line 2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
-            <FloatingField id="locality" label="Locality" value={locality} onChange={(e) => setLocality(e.target.value)} />
             <FloatingField id="city" label="City" value={city} onChange={(e) => setCity(e.target.value)} />
-            <FloatingField id="district" label="District" value={district} onChange={(e) => setDistrict(e.target.value)} />
             <FloatingField id="state" label="State" value={state} onChange={(e) => setState(e.target.value)} />
-            <FloatingField id="country" label="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
             <FloatingField id="pincode" label="PIN code" value={pincode} onChange={(e) => setPincode(e.target.value)} />
           </div>
         </div>
