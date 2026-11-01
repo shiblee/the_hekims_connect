@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 export default function NotificationsIndexPage() {
   const router = useRouter();
 
-  useEffect(() => { router.replace("/admin/notifications/config"); }, [router]);
+  useEffect(() => { router.replace("/admin/settings/email-config"); }, [router]);
 
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">

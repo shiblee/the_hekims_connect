@@ -112,8 +112,8 @@ export default function EmailTemplateEditorPage() {
 
   return (
     <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
-      <Link href="/admin/notifications" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to Notifications
+      <Link href="/admin/settings/email-templates" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Email Templates
       </Link>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">

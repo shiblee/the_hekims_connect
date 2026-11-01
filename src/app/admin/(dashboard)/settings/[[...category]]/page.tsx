@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, Loader2, Save, Settings as SettingsIcon } from "lucide-react";
+import { ArrowUpRight, BellRing, Loader2, Save, Settings as SettingsIcon, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { VITALS_RANGE_FIELDS, type VitalsRangeField } from "@/lib/vitals-ranges";
 import { AiServiceCard } from "@/components/admin/ai-service-card";
 import { GeminiUsageDashboard } from "@/components/admin/gemini-usage-dashboard";
+import { EmailConfigTab, TemplatesTab, HistoryTab, NOTIFICATION_TABS } from "@/components/admin/notification-settings";
 
 interface SettingRow { id: string; category: string; key: string; value: string; updatedAt: string }
 
@@ -181,6 +182,31 @@ const SELECT_OPTIONS: Record<string, [string, string][]> = {
   "guidance.fallback_language": [["en", "English"], ["hi", "Hindi"], ["ur", "Urdu"], ["ar", "Arabic"], ["fa", "Farsi"]],
 };
 
+const isNotificationTab = (id: string) => NOTIFICATION_TABS.some((n) => n.id === id);
+
+function MenuGroupLabel({ icon: Icon, label }: { icon: typeof BellRing; label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-3 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <Icon className="h-3.5 w-3.5" /> {label}
+    </div>
+  );
+}
+
+function MenuItem({ icon: Icon, label, active, onClick }: { icon: typeof BellRing; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+        active ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingRow[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -211,7 +237,7 @@ export default function SettingsPage() {
         if (urlCategory && tabOf(urlCategory) === "general" && urlCategory !== "general") {
           window.history.replaceState(null, "", `/admin/settings/general#${urlCategory}`);
           setTimeout(() => document.getElementById(`section-${urlCategory}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
-        } else if (cats.length && (!urlCategory || !cats.includes(urlCategory))) {
+        } else if (cats.length && (!urlCategory || (!cats.includes(urlCategory) && !isNotificationTab(urlCategory)))) {
           // Bare /admin/settings, or an unknown tab → the first tab, without adding a history entry.
           window.history.replaceState(null, "", `/admin/settings/${cats[0]}`);
         }
@@ -220,11 +246,12 @@ export default function SettingsPage() {
   }, []);
 
   const categories = sortCategories(Array.from(new Set([...settings.map((s) => tabOf(s.category)), ...(settings.length ? ALWAYS_TABS : [])])));
+  const notificationTab = urlCategory && isNotificationTab(urlCategory) ? urlCategory : null;
   const selected = urlCategory && categories.includes(urlCategory) ? urlCategory : null;
   // pushState (synced by Next.js into usePathname) switches tabs without
   // remounting the page, so unsaved edits on other tabs aren't lost.
   const selectTab = (c: string) => {
-    if (c !== selected) window.history.pushState(null, "", `/admin/settings/${c}`);
+    if (c !== urlCategory) window.history.pushState(null, "", `/admin/settings/${c}`);
   };
 
   const saveCategory = async (category: string) => {
@@ -307,25 +334,32 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-6">
-        <Card className="p-2 border-border/50 bg-card/60 h-fit">
+        <Card className="p-2 border-border/50 bg-card/60 h-fit md:sticky md:top-20">
+          <nav>
+          <MenuGroupLabel icon={SlidersHorizontal} label="Settings" />
           <div className="space-y-1">
             {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => selectTab(c)}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-                  selected === c ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-                )}
-              >
-                <SettingsIcon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{CATEGORY_META[c]?.label || c}</span>
-              </button>
+              <MenuItem key={c} icon={SettingsIcon} label={CATEGORY_META[c]?.label || c} active={selected === c} onClick={() => selectTab(c)} />
             ))}
           </div>
+          <div className="my-3 mx-1 border-t border-border" />
+          <MenuGroupLabel icon={BellRing} label="Notifications" />
+          <div className="space-y-1">
+            {NOTIFICATION_TABS.map((n) => (
+              <MenuItem key={n.id} icon={n.icon} label={n.label} active={notificationTab === n.id} onClick={() => selectTab(n.id)} />
+            ))}
+          </div>
+          </nav>
         </Card>
 
-        {/* Slightly darker borders on this page (fields, switch tiles, dividers) for clarity. */}
+        {notificationTab ? (
+          <div className="min-w-0">
+            {notificationTab === "email-config" && <EmailConfigTab />}
+            {notificationTab === "email-templates" && <TemplatesTab />}
+            {notificationTab === "notification-history" && <HistoryTab />}
+          </div>
+        ) : (
+        // Slightly darker borders on this page (fields, switch tiles, dividers) for clarity.
         <Card className="min-w-0 p-6 gap-4 border-border bg-card/60 [--border:#c6c6cd] [--input:#a6a6af] dark:[--border:oklch(0.38_0.012_165)] dark:[--input:oklch(0.42_0.012_165)]">
           {!selected ? (
             <p className="text-muted-foreground text-sm">Select a section to manage its settings.</p>
@@ -435,6 +469,7 @@ export default function SettingsPage() {
             </>
           )}
         </Card>
+        )}
       </div>
     </div>
   );

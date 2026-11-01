@@ -132,7 +132,7 @@ export function LandingPage() {
       <section className="relative overflow-hidden min-h-[58vh] lg:min-h-[64vh] flex items-center">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_65%)]" />
         <UnaniPattern className="absolute inset-0 h-full w-full opacity-[0.22] dark:opacity-[0.2]" />
-        <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-12 lg:py-16 w-full">
+        <div className="relative mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 pt-14 pb-4 lg:pt-20 lg:pb-6 w-full">
           <motion.div {...fadeUp} className="max-w-3xl mx-auto text-center">
             <h1 className="font-serif font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
               <span className="block">{t("landing.hero.title_line1")}</span>
@@ -141,7 +141,7 @@ export function LandingPage() {
             <p className="mt-5 text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
               {t("landing.hero.subtitle")}
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="mt-10 sm:mt-16 flex flex-col sm:flex-row gap-3 justify-center">
               <Button
                 size="lg"
                 className="group h-14 px-8 text-lg gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 glow-teal transition-all duration-300 hover:scale-[1.04] hover:shadow-[0_0_36px_oklch(0.72_0.13_175/0.4)] active:scale-[0.97]"

@@ -429,7 +429,7 @@ export function CommandCentre() {
               <div className="grid grid-cols-2 gap-2">
                 {([
                   ["/admin/facilities", Building2, "Clinics"], ["/admin/patients", Users, "Patients"], ["/admin/payments", IndianRupee, "Payments"], ["/admin/screening", ShieldCheck, "Screening"],
-                  ["/admin/meta", BookOpen, "Metadata"], ["/admin/guidance", FileText, "Guidance"], ["/admin/languages", Globe2, "Languages"], ["/admin/notifications", Bell, "Notifications"],
+                  ["/admin/meta", BookOpen, "Metadata"], ["/admin/guidance", FileText, "Guidance"], ["/admin/languages", Globe2, "Languages"], ["/admin/settings/email-config", Bell, "Notifications"],
                 ] as const).map(([href, Icon, l]) => (
                   <Link key={href} href={href} className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/40 px-3 py-2.5 text-sm font-medium hover:border-primary/50 hover:text-primary"><Icon className="h-4 w-4" />{l}</Link>
                 ))}
