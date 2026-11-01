@@ -185,10 +185,9 @@ export default function FacilitySectionPage() {
     </div>
   );
 
-  const Header = ({ title, text }: { title: string; text: string }) => (
+  const Header = ({ title }: { title: string }) => (
     <div className="-mb-1">
       <h2 className="font-serif text-xl font-semibold">{title}</h2>
-      <p className="text-sm text-muted-foreground">{text}</p>
     </div>
   );
 
@@ -199,7 +198,7 @@ export default function FacilitySectionPage() {
   if (section === "details") {
     return (
       <Card className="p-6 border-border bg-card/60">
-        <Header title="Identity & contact" text="How the clinic signs in and how it appears across the platform. Admin can correct the HFR number here." />
+        <Header title="Identity & contact" />
         <div>
           <h3 className="text-[15px] font-semibold mb-4">Contact information</h3>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
@@ -243,7 +242,7 @@ export default function FacilitySectionPage() {
   if (section === "location") {
     return (
       <Card className="p-6 border-border bg-card/60">
-        <Header title="Location" text="The clinic's address as patients and the platform see it." />
+        <Header title="Location" />
         <div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
             <FloatingField id="addressLine1" label="Address line 1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
@@ -261,7 +260,7 @@ export default function FacilitySectionPage() {
   if (section === "capacity") {
     return (
       <Card className="p-6 border-border bg-card/60">
-        <Header title="Capacity & schedule" text="Beds, daily outpatient load and weekly opening hours." />
+        <Header title="Capacity & schedule" />
         <div>
           <h3 className="text-[15px] font-semibold mb-4">Capacity</h3>
           <div className="grid sm:grid-cols-3 gap-x-4 gap-y-6">
@@ -352,7 +351,7 @@ export default function FacilitySectionPage() {
     if (legacyServices.length) groups.push({ key: "legacy", label: "Other services on record", options: legacyServices, selected: services, toggle: (v) => toggleInList(services, setServices, v) });
     return (
       <Card className="p-6 border-border bg-card/60">
-        <Header title="Services" text={`${specializations.length} specialization${specializations.length === 1 ? "" : "s"} and ${services.length} service${services.length === 1 ? "" : "s"} selected — the same questions the clinic answers in profile setup.`} />
+        <Header title="Services" />
         <div className="divide-y divide-border">
           {groups.map((g) => {
             const count = g.options.filter((o) => g.selected.includes(o)).length;
@@ -403,7 +402,7 @@ export default function FacilitySectionPage() {
   const left = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000) : null;
   return (
     <Card className="p-6 border-border bg-card/60">
-      <Header title="Plan" text="The clinic's subscription. Changes apply immediately — the clinic sees the new dates in their profile." />
+      <Header title="Plan" />
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           ["Current plan", plan === "FREE" ? "Free trial" : "Premium"],
