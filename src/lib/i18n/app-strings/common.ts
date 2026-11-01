@@ -74,3 +74,20 @@ export const LOGOUT = defineStrings("common.logout_confirm", {
   confirm: ["Log out", "लॉग आउट", "لاگ آؤٹ", "تسجيل الخروج", "خروج"],
   busy: ["Logging out…", "लॉग आउट हो रहा है…", "لاگ آؤٹ ہو رہا ہے…", "جارٍ تسجيل الخروج…", "در حال خروج…"],
 });
+
+// Shared "finding" tables (Emergency warning signs, Other symptoms).
+export const FINDINGS = defineStrings("common.findings", {
+  col_meaning: ["What it means", "इसका अर्थ", "اس کا مطلب", "ما يعنيه", "معنی آن"],
+  col_source: ["Source", "स्रोत", "ماخذ", "المصدر", "منبع"],
+  src_list: ["From the list", "सूची से", "فہرست سے", "من القائمة", "از فهرست"],
+  src_staff: ["Added by staff", "स्टाफ़ ने जोड़ा", "عملے نے شامل کیا", "أضافه الطاقم", "افزوده‌شده توسط کارکنان"],
+  remove: ["Remove {label}", "{label} हटाएँ", "{label} ہٹائیں", "إزالة {label}", "حذف {label}"],
+  all_added: ["Everything on the list is already added.", "सूची की हर चीज़ पहले से जोड़ी जा चुकी है।", "فہرست کی ہر چیز پہلے سے شامل ہے۔", "كل ما في القائمة مضاف بالفعل.", "همهٔ موارد فهرست از قبل افزوده شده‌اند."],
+  add_sign: ["Add warning sign", "चेतावनी संकेत जोड़ें", "انتباہی علامت شامل کریں", "إضافة علامة تحذيرية", "افزودن نشانهٔ هشدار"],
+  add_symptom: ["Add symptom", "लक्षण जोड़ें", "علامت شامل کریں", "إضافة عَرَض", "افزودن علامت"],
+  col_sign: ["Warning sign", "चेतावनी संकेत", "انتباہی علامت", "علامة تحذيرية", "نشانهٔ هشدار"],
+  col_symptom: ["Symptom", "लक्षण", "علامت", "العَرَض", "علامت"],
+  empty_signs: ["No warning signs marked — add any that are present.", "कोई चेतावनी संकेत चिह्नित नहीं — जो मौजूद हों उन्हें जोड़ें।", "کوئی انتباہی علامت نشان زد نہیں — جو موجود ہوں شامل کریں۔", "لا علامات تحذيرية محددة — أضف الموجود منها.", "هیچ نشانهٔ هشداری علامت نخورده — موارد موجود را بیفزایید."],
+  empty_symptoms: ["No other symptoms noted yet.", "अभी कोई अन्य लक्षण दर्ज नहीं।", "ابھی کوئی دوسری علامت درج نہیں۔", "لم تُسجَّل أعراض أخرى بعد.", "هنوز علامت دیگری ثبت نشده."],
+  search_n: ["Search {count}…", "{count} में खोजें…", "{count} میں تلاش کریں…", "ابحث في {count}…", "جست‌وجو در {count}…"],
+});

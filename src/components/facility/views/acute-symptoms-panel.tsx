@@ -2,12 +2,12 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { useTranslations } from "next-intl";
+import { FindingAddButton, FindingTable } from "@/components/facility/views/finding-table";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { FloatingMultiSelect } from "@/components/shared/floating-field";
 import { Loader2, ListChecks } from "lucide-react";
 
 interface SymptomTag { id: string; label: string; description: string | null }
@@ -20,12 +20,12 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
   const [loading, setLoading] = useState(true);
   const [tags, setTags] = useState<SymptomTag[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [query, setQuery] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const msg = useNotice();
   const tr = useTranslations("clinic.triage");
   const tc = useTranslations("common");
+  const tf = useTranslations("common.findings");
 
   useEffect(() => {
     Promise.all([
@@ -79,12 +79,6 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
     );
   }
 
-  const q = query.trim().toLowerCase();
-  // Search the admin list by name or description; with nothing typed, offer the first few.
-  const suggestions = tags
-    .filter((t) => !selected.includes(t.label) && (!q || t.label.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q)))
-    .slice(0, q ? 12 : 6)
-    .map((t) => ({ id: t.label, label: t.label, description: t.description }));
   const addOther = (text: string) => {
     const match = tags.find((t) => t.label.toLowerCase() === text.toLowerCase());
     const label = match ? match.label : text;
@@ -97,34 +91,24 @@ export const AcuteSymptomsPanel = forwardRef<AcuteSymptomsPanelHandle, { visitId
         icon={ListChecks}
         title={tr("sym_title")}
         right={
-          <span className={cn(
-            "rounded-full border px-2.5 py-1 text-[13px] font-semibold",
-            selected.length ? "border-primary/30 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground",
-          )}>
-            {selected.length ? tr("n_noted", { count: selected.length }) : tr("none_noted")}
+          <span className="flex items-center gap-2">
+            <span className={cn(
+              "hidden rounded-full border px-2.5 py-1 text-[13px] font-semibold sm:inline",
+              selected.length ? "border-primary/30 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground",
+            )}>
+              {selected.length ? tr("n_noted", { count: selected.length }) : tr("none_noted")}
+            </span>
+            <FindingAddButton label={tf("add_symptom")} searchPh={tf("search_n", { count: tags.length })}
+              options={tags.filter((t) => !selected.includes(t.label)).map((t) => ({ id: t.label, label: t.label, description: t.description }))}
+              onPick={(label) => toggle(label)} onCreate={addOther} createLabel={(q) => tr("add_other", { q })} />
           </span>
         }
       />
 
-      <FloatingMultiSelect
-        id="otherSymptomSearch"
-        label={tr("sym_search")}
-        placeholder={tr("sym_ph")}
-        openOnFocus
-        emptyHint={tags.length > 6 ? tr("sym_common", { count: tags.length }) : tr("symptoms")}
-        selected={selected.map((label) => {
+      <FindingTable rows={selected.map((label) => {
           const t = tags.find((x) => x.label === label);
-          return { id: label, label, description: t ? t.description : tr("added_by_staff") };
-        })}
-        onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))}
-        query={query}
-        onQueryChange={setQuery}
-        results={suggestions}
-        describe={(t) => t.description}
-        onPick={(label) => toggle(label)}
-        onCreate={addOther}
-        createLabel={(q) => tr("add_other", { q })}
-      />
+          return { id: label, label, description: t ? t.description : null, custom: !t };
+        })} nameHeading={tf("col_symptom")} empty={tf("empty_symptoms")} onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))} />
       <NoticeSlot state={msg} />
     </Card>
   );

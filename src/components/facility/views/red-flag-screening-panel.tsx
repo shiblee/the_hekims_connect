@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useDateLocale, useListFormat, useValueLabel } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
+import { FindingAddButton, FindingTable } from "@/components/facility/views/finding-table";
 import { InlineNotice, LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { setFlash } from "@/lib/flash";
@@ -12,7 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FloatingField, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
+import { FloatingField, FloatingTextarea } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { REFERRAL_DECLINE_SECTION } from "@/lib/referral-decline";
 import {
@@ -72,7 +73,6 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   const [present, setPresent] = useState<Record<string, boolean>>({});
   // "Other" warning signs typed in by staff (not in the admin list).
   const [custom, setCustom] = useState<string[]>([]);
-  const [signQuery, setSignQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -82,6 +82,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
   const dialogMsg = useNotice();
   const t = useTranslations("clinic.redflag");
   const tc = useTranslations("common");
+  const tf = useTranslations("common.findings");
   const vl = useValueLabel();
   const dl = useDateLocale();
   const list = useListFormat();
@@ -306,11 +307,6 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
     ...[...suggestedDestinations].map((name) => ({ name, suggested: true })),
     ...COMMON_DESTINATIONS.filter((d) => !suggestedDestinations.has(d)).map((name) => ({ name, suggested: false })),
   ];
-  const sq = signQuery.trim().toLowerCase();
-  // Search the admin list by name or description; with nothing typed, offer the first few.
-  const signSuggestions = criteria
-    .filter((c) => !present[c.id] && (!sq || c.label.toLowerCase().includes(sq) || (c.description || "").toLowerCase().includes(sq)))
-    .slice(0, sq ? 12 : 6);
   const addCustomSign = (text: string) => {
     const match = criteria.find((c) => c.label.toLowerCase() === text.toLowerCase());
     if (match) { setPresent((p) => ({ ...p, [match.id]: true })); return; }
@@ -502,6 +498,7 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
         tone={anyPresent ? "danger" : "success"}
         title={t("title")}
         right={
+          <span className="flex items-center gap-2">
           <span className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-semibold",
             anyPresent || locked ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
@@ -509,46 +506,25 @@ export const RedFlagScreeningPanel = forwardRef<RedFlagScreeningPanelHandle, {
             <span className={cn("h-1.5 w-1.5 rounded-full", anyPresent ? "bg-destructive animate-pulse" : "bg-emerald-500")} />
             {locked ? t("referred_signs", { signs: presentCount ? t("n_signs", { count: presentCount }) : t("no_signs_marked") }) : anyPresent ? t("n_present", { count: presentCount }) : t("all_clear")}
           </span>
+          {!locked && (
+            <FindingAddButton tone="destructive" label={tf("add_sign")} searchPh={tf("search_n", { count: criteria.length })}
+              options={criteria.filter((c) => !present[c.id]).map((c) => ({ id: c.id, label: c.label, description: c.description }))}
+              onPick={(cid) => setPresent((p) => ({ ...p, [cid]: true }))} onCreate={addCustomSign} createLabel={(q) => t("add_other", { q })} />
+          )}
+          </span>
         }
       />
 
-      {locked ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[...criteria.filter((c) => present[c.id]).map((c) => c.label), ...custom].map((l) => (
-            <span key={l} className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-0.5 text-sm text-destructive">
-              <TriangleAlert className="h-3 w-3" />{l}
-            </span>
-          ))}
-          {presentCount === 0 && <span className="text-sm text-muted-foreground">{t("none_were")}</span>}
-          <span className="text-[13px] text-muted-foreground ms-auto">{t("locked")}</span>
-        </div>
-      ) : (
-      <FloatingMultiSelect
-        id="warningSignSearch"
-        label={t("search")}
-        tone="destructive"
-        labelIcon={TriangleAlert}
-        itemIcon={TriangleAlert}
-        placeholder={t("search_ph")}
-        openOnFocus
-        emptyHint={criteria.length > 6 ? t("common", { count: criteria.length }) : t("signs")}
-        selected={[
+      <FindingTable tone={anyPresent || locked ? "destructive" : "primary"} icon={TriangleAlert} nameHeading={tf("col_sign")} empty={locked ? t("none_were") : tf("empty_signs")}
+        rows={[
           ...criteria.filter((c) => present[c.id]).map((c) => ({ id: c.id, label: c.label, description: c.description })),
-          ...custom.map((label) => ({ id: `other:${label}`, label, description: t("added_by_staff") })),
+          ...custom.map((label) => ({ id: `other:${label}`, label, description: null, custom: true })),
         ]}
-        onRemove={(sid) => {
+        onRemove={locked ? undefined : (sid) => {
           if (sid.startsWith("other:")) setCustom((cur) => cur.filter((x) => `other:${x}` !== sid));
           else setPresent((p) => ({ ...p, [sid]: false }));
-        }}
-        query={signQuery}
-        onQueryChange={setSignQuery}
-        results={signSuggestions}
-        describe={(c) => c.description}
-        onPick={(cid) => setPresent((p) => ({ ...p, [cid]: true }))}
-        onCreate={addCustomSign}
-        createLabel={(q) => t("add_other", { q })}
-      />
-      )}
+        }} />
+      {locked && <p className="text-[13px] text-muted-foreground">{t("locked")}</p>}
 
       {anyPresent && !locked && screening?.outcome !== "continued_ama" && (
         <p className="text-[13px] text-destructive">
