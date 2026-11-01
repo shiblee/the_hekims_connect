@@ -121,6 +121,11 @@ const SCREENING_TAB_LABELS: Record<string, string> = {
   onset: "Onset Nature & Rhythm",
 };
 
+// Categories shown together under one top-bar tab (sidebar keeps a heading per category).
+const MERGED_TAB: Record<string, string> = { Staff: "Facility" };
+const tabOf = (category: string) => MERGED_TAB[category] ?? category;
+const TAB_LABEL: Record<string, string> = { Facility: "Facility & Staff" };
+
 const TYPE_LABEL: Record<string, string> = { single_select: "Single Choice", multi_select: "Multiple Choice", numeric: "Number", text: "Text", instruction: "Instruction" };
 const TYPE_ICON: Record<string, any> = { single_select: CircleDot, multi_select: CheckSquare, numeric: Hash, text: Type, instruction: Info };
 const FLAG_COLORS: Record<string, string> = {
@@ -160,7 +165,7 @@ export default function MetaSectionPage() {
 
   const categories = useMemo(() => {
     const seen: string[] = [];
-    for (const s of sections) if (!seen.includes(s.category)) seen.push(s.category);
+    for (const s of sections) if (!seen.includes(tabOf(s.category))) seen.push(tabOf(s.category));
     return seen;
   }, [sections]);
 
@@ -170,7 +175,7 @@ export default function MetaSectionPage() {
     if (isScreeningTab) {
       setActiveCategory(key);
     } else if (selected) {
-      setActiveCategory(selected.category);
+      setActiveCategory(tabOf(selected.category));
     } else if (!activeCategory && categories.length) {
       setActiveCategory(categories[0]);
     }
@@ -181,7 +186,12 @@ export default function MetaSectionPage() {
   // shows Patient's sections (plus these two) instead of going blank.
   const sidebarCategory = activeCategory && PATIENT_SIDEBAR_TABS.includes(activeCategory) ? "Patient" : activeCategory;
   const sectionsInActiveCategory = useMemo(
-    () => sections.filter((s) => s.category === sidebarCategory),
+    () => {
+      const inTab = sections.filter((s) => tabOf(s.category) === sidebarCategory);
+      // Merged tabs list each category as its own block (the tab's own category first).
+      const order = [...new Set(inTab.map((s) => s.category))].sort((a, b) => (a === sidebarCategory ? -1 : b === sidebarCategory ? 1 : 0));
+      return order.flatMap((c) => inTab.filter((s) => s.category === c));
+    },
     [sections, sidebarCategory]
   );
 
@@ -212,7 +222,7 @@ export default function MetaSectionPage() {
     // Category tabs navigate to their first section, so every tab has its own
     // real, bookmarkable URL instead of silently staying on whatever section
     // happened to be open before.
-    const firstInCategory = sections.find((s) => s.category === value);
+    const firstInCategory = sections.find((s) => tabOf(s.category) === value);
     if (firstInCategory) router.push(`/admin/meta/${firstInCategory.key}`);
     else setActiveCategory(value);
   };
@@ -934,7 +944,7 @@ export default function MetaSectionPage() {
       <Tabs value={sidebarCategory || categories[0] || SCREENING_TABS[0]} onValueChange={onTabChange} className="mb-6">
         <TabsList>
           {categories.map((c) => (
-            <TabsTrigger key={c} value={c}>{c}</TabsTrigger>
+            <TabsTrigger key={c} value={c}>{TAB_LABEL[c] ?? c}</TabsTrigger>
           ))}
           {TOP_BAR_SCREENING_TABS.map((t) => (
             <TabsTrigger key={t} value={t}>{SCREENING_TAB_LABELS[t]}</TabsTrigger>
@@ -1499,9 +1509,12 @@ export default function MetaSectionPage() {
               <div className="flex items-center gap-2 text-muted-foreground text-sm p-4"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
             ) : (
               <div className="space-y-1">
-                {sectionsInActiveCategory.map((s) => (
+                {sectionsInActiveCategory.map((s, i) => (
+                  <div key={s.id}>
+                  {new Set(sectionsInActiveCategory.map((x) => x.category)).size > 1 && (i === 0 || sectionsInActiveCategory[i - 1].category !== s.category) && (
+                    <p className={cn("px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", i === 0 ? "pt-2" : "mt-2 border-t border-border pt-3")}>{s.category}</p>
+                  )}
                   <button
-                    key={s.id}
                     onClick={() => router.push(`/admin/meta/${s.key}`)}
                     className={cn(
                       "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
@@ -1516,6 +1529,7 @@ export default function MetaSectionPage() {
                       {s._count.options}
                     </Badge>
                   </button>
+                  </div>
                 ))}
                 {sectionsInActiveCategory.length === 0 && <p className="text-sm text-muted-foreground p-3">No sections in this category yet.</p>}
                 {sidebarCategory === "Patient" && (
