@@ -226,8 +226,8 @@ function HumourBars({ pct, compact, inline }: { pct: HumourPoints; compact?: boo
 // ---------------------------------------------------------------- tab 1: Dala'il
 
 /** Column widths shared by the Dala'il heading row and its sign rows: # · sign · why it's asked · finding. */
-const DL_ROW = "grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 lg:grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,0.85fr)_minmax(0,1.1fr)]";
-const DL_COLS = "md:grid-cols-[13rem_minmax(0,1fr)]";
+const DL_ROW = "grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 lg:grid-cols-[1.75rem_minmax(0,1.2fr)_minmax(0,0.7fr)_minmax(0,1fr)]";
+const DL_COLS = "md:grid-cols-[17rem_minmax(0,1fr)]"; // same Factor column width as step 4
 
 /** One Dala'il sign as a table row — no box of its own. */
 function DalailRow({ q, n, value, onChange, reason, tag, onRemove }: {
