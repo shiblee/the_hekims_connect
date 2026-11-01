@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { setFlash } from "@/lib/flash";
 import { useAppStore } from "@/lib/store";
+import { InsightsButton, InsightsDrawer, useInsightsDrawer } from "@/components/facility/views/insights-drawer";
 import { api } from "@/lib/api";
 import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
 import { formatAge, daysAgo } from "@/lib/age";
@@ -29,7 +30,6 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, Loader2,
   Printer, ArrowRight, ShieldAlert, ShieldQuestion, Pencil,
-  Sparkles, X,
 } from "lucide-react";
 
 interface Patient {
@@ -76,13 +76,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
   const humoralCluesRef = useRef<HakeemInsightPanelHandle>(null);
 
   // Right rail pinned to the viewport while the center column scrolls.
-  const [insightsOpen, setInsightsOpen] = useState(false);
-  useEffect(() => {
-    if (!insightsOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setInsightsOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [insightsOpen]);
+  const drawer = useInsightsDrawer();
 
   // Messages for the bottom action bar (save results, print problems) — shown right above it.
   const msg = useNotice();
@@ -313,13 +307,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
         </Card>
       )}
 
-      {/* Insights & notes live in a slide-over (kept mounted so their save handles keep working). */}
-      <div className="mb-3 flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => setInsightsOpen(true)} aria-expanded={insightsOpen} aria-controls="record-insights"
-          className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10">
-          <Sparkles className="h-4 w-4" /> {t("insights_btn")}
-        </Button>
-      </div>
+      <InsightsButton open={drawer.open} onOpen={() => drawer.setOpen(true)} />
       <div className="mb-6">
         {/* One card for the four step-2 sections, divided by lines (each panel's own box is flattened). */}
         <div className={cn("divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-xs",
@@ -335,15 +323,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
           {latestVisit && <div data-tour="record.redflags"><RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} onReferralChange={refreshVisits} onContinue={() => router.push(`/facility/mizaj?patientId=${patientId}`)} /></div>}
           {latestVisit && <div data-tour="record.symptoms"><AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} /></div>}
         </div>
-        {insightsOpen && <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]" onClick={() => setInsightsOpen(false)} aria-hidden />}
-        <aside id="record-insights" role="dialog" aria-modal={insightsOpen} aria-label={t("insights_title")} aria-hidden={!insightsOpen} inert={!insightsOpen}
-          className={cn("fixed inset-y-0 end-0 z-50 flex w-full max-w-[28rem] flex-col border-s border-border bg-background shadow-2xl transition-transform duration-300",
-            insightsOpen ? "translate-x-0" : "translate-x-full rtl:-translate-x-full")}>
-          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <p className="flex items-center gap-2 font-serif text-lg font-semibold"><Sparkles className="h-4 w-4 text-primary" />{t("insights_title")}</p>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setInsightsOpen(false)} aria-label={t("insights_close")}><X className="h-4 w-4" /></Button>
-          </div>
-        <div className="flex-1 space-y-5 overflow-y-auto p-4">
+        <InsightsDrawer open={drawer.open} onClose={() => drawer.setOpen(false)}>
           {latestVisit && (
             <div data-tour="stage.insight"><HakeemInsightPanel
               ref={humoralCluesRef}
@@ -354,8 +334,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
           )}
           {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
           <TriageNotesCard visits={visits} />
-        </div>
-        </aside>
+        </InsightsDrawer>
       </div>
 
       <NoticeSlot state={msg} className="mb-3" />

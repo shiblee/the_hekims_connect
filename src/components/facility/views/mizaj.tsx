@@ -17,7 +17,7 @@ import { HakeemInsightPanel, type HakeemInsightPanelHandle } from "@/components/
 import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
 import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
-import { useStickyRail } from "@/hooks/use-sticky-rail";
+import { InsightsButton, InsightsDrawer, useInsightsDrawer } from "@/components/facility/views/insights-drawer";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { ArrowRight, Loader2, Printer, ShieldAlert } from "lucide-react";
 import { MizajHistoryCard } from "@/components/facility/views/mizaj-history-card";
@@ -80,7 +80,7 @@ function MizajStage({ patientId }: { patientId: string }) {
   const humoralCluesRef = useRef<HakeemInsightPanelHandle>(null);
   // Referral pop-up (shared with Stage 2) — only its dialogs are rendered here.
   const referralRef = useRef<RedFlagScreeningPanelHandle>(null);
-  const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
+  const drawer = useInsightsDrawer();
 
   // Stable reference — a new array each render would re-trigger the matrix's
   // load effect and wipe unsaved edits (same reason as on the Clinical Record).
@@ -155,8 +155,9 @@ function MizajStage({ patientId }: { patientId: string }) {
       <StageHeader stage="mizaj" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} onEditReferral={() => referralRef.current?.openEditReferral()} />
       {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
-      <div className="mb-6 grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5 min-w-0">
+      <InsightsButton open={drawer.open} onOpen={() => drawer.setOpen(true)} />
+      <div className="mb-6">
+        <div className="space-y-5 min-w-0">
           {latestVisit && <div data-tour="mizaj.regions"><AnatomicalRegionSelector ref={regionRef} visitId={latestVisit.id} patientGender={patient.gender} /></div>}
           {latestVisit ? (
             <div data-tour="stage.complaints"><ChiefComplaintMatrix ref={chiefComplaintRef} visitId={latestVisit.id} intakeComplaints={intakeComplaints} onDurationsChange={setComplaintDurations} /></div>
@@ -166,8 +167,7 @@ function MizajStage({ patientId }: { patientId: string }) {
           {latestVisit && <div data-tour="mizaj.chronology"><OnsetChronologyPanel ref={chronologyRef} visitId={latestVisit.id} complaintDurations={complaintDurations} /></div>}
         </div>
 
-        <div ref={spacerRef} className="relative">
-          <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
+        <InsightsDrawer open={drawer.open} onClose={() => drawer.setOpen(false)}>
             {latestVisit && (
               <div data-tour="stage.insight"><HakeemInsightPanel
                 ref={humoralCluesRef}
@@ -179,8 +179,7 @@ function MizajStage({ patientId }: { patientId: string }) {
             {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />
-          </div>
-        </div>
+        </InsightsDrawer>
       </div>
 
       {/* Same action bar as Stage 2 (Clinical Record), so every stage ends the same way; its messages sit right above it. */}

@@ -15,7 +15,7 @@ import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/compone
 import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { MizajHistoryCard } from "@/components/facility/views/mizaj-history-card";
 import { Stage3FindingsCards } from "@/components/facility/views/stage3-findings";
-import { useStickyRail } from "@/hooks/use-sticky-rail";
+import { InsightsButton, InsightsDrawer, useInsightsDrawer } from "@/components/facility/views/insights-drawer";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
 import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
 
@@ -49,7 +49,7 @@ function AsbabStage({ patientId }: { patientId: string }) {
   // Right column — same cards as Stage 3, then Stage 3's own findings.
   const residentNoteRef = useRef<ResidentClinicalNoteHandle>(null);
   const insightRef = useRef<HakeemInsightPanelHandle>(null);
-  const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
+  const drawer = useInsightsDrawer();
   const t = useTranslations("clinic.asbab");
   const ts = useTranslations("clinic.stage");
   const tc = useTranslations("common");
@@ -104,23 +104,22 @@ function AsbabStage({ patientId }: { patientId: string }) {
           cards as Stage 3 (Hakeem Insight, triage notes, Mizaj history), then
           what was recorded at Stage 3 (body regions, onset & chronology), this
           stage's live humoral drift, and the Resident Clinical Note last. */}
-      <div className="mb-6 grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 min-w-0">
+      <InsightsButton open={drawer.open} onOpen={() => drawer.setOpen(true)} />
+      <div className="mb-6">
+        <div className="min-w-0">
           {latestVisit
             ? <div data-tour="asbab.pillars"><AsbabAssessmentPanel state={asbab} visitId={latestVisit.id} /></div>
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{t("no_visit")}</Card>}
         </div>
 
-        <div ref={spacerRef} className="relative min-w-0">
-          <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
+        <InsightsDrawer open={drawer.open} onClose={() => drawer.setOpen(false)}>
             {latestVisit && <div data-tour="stage.insight"><HakeemInsightPanel ref={insightRef} visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} /></div>}
             <TriageNotesCard visits={visits} />
             <MizajHistoryCard patientId={patientId} />
             {latestVisit && <Stage3FindingsCards visitId={latestVisit.id} patientId={patientId} />}
             {latestVisit && <div data-tour="asbab.drift"><AsbabDriftCard state={asbab} /></div>}
             {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
-          </div>
-        </div>
+        </InsightsDrawer>
       </div>
 
       {/* Same action bar as Stages 2 and 3; its messages sit right above it. */}

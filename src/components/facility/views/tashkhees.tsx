@@ -15,7 +15,7 @@ import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { MizajHistoryCard } from "@/components/facility/views/mizaj-history-card";
 import { Stage3FindingsCards } from "@/components/facility/views/stage3-findings";
 import { Stage4AsbabCard } from "@/components/facility/views/stage4-findings";
-import { useStickyRail } from "@/hooks/use-sticky-rail";
+import { InsightsButton, InsightsDrawer, useInsightsDrawer } from "@/components/facility/views/insights-drawer";
 import { LoadFailed, NoticeSlot } from "@/components/shared/inline-notice";
 import { FloatingTextarea } from "@/components/shared/floating-field";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -72,7 +72,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
   const tcase = useTranslations("clinic.case");
   const [backOpen, setBackOpen] = useState(false);
   const [backNote, setBackNote] = useState("");
-  const { spacerRef, contentRef, style: railStyle } = useStickyRail(!loading);
+  const drawer = useInsightsDrawer();
   const saveNote = () => residentNoteRef.current?.save().then(() => true, () => false) ?? Promise.resolve(true);
   // Print icon → the full assessment report (now including this dossier), in a
   // new tab. Read-only: shows what's saved, so Save Draft first.
@@ -123,8 +123,9 @@ function TashkheesStage({ patientId }: { patientId: string }) {
       <StageHeader stage="handover" patientId={patientId} patient={patient} onPatientChange={setPatient} visits={visits} sortedVisits={sortedVisits} onEditReferral={() => referralRef.current?.openEditReferral()} />
       {latestVisit && <RedFlagScreeningPanel ref={referralRef} visitId={latestVisit.id} onReferralChange={refreshVisits} dialogsOnly />}
 
-      <div className="mb-6 grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 min-w-0 space-y-5">
+      <InsightsButton open={drawer.open} onOpen={() => drawer.setOpen(true)} />
+      <div className="mb-6">
+        <div className="min-w-0 space-y-5">
           {latestVisit && finalized && changedSince && (
             <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
               <div className="min-w-0 flex-1">
@@ -139,8 +140,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
             ? <div data-tour="dossier.panel"><TashkheesDossierPanel state={t} patientId={patientId} visitId={latestVisit.id} /></div>
             : <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{ta("no_visit")}</Card>}
         </div>
-        <div ref={spacerRef} className="relative min-w-0">
-          <div ref={contentRef} className="space-y-5" style={railStyle || undefined}>
+        <InsightsDrawer open={drawer.open} onClose={() => drawer.setOpen(false)}>
             {latestVisit && <CaseReadinessCard state={cc} />}
             {latestVisit && <CaseSummaryPanel state={cc} />}
             {latestVisit && <div data-tour="stage.insight"><HakeemInsightPanel visitId={latestVisit.id} hasVitals={!!latestVisit.vitalSigns} /></div>}
@@ -149,8 +149,7 @@ function TashkheesStage({ patientId }: { patientId: string }) {
             {latestVisit && <Stage3FindingsCards visitId={latestVisit.id} patientId={patientId} />}
             {latestVisit && <Stage4AsbabCard visitId={latestVisit.id} patientId={patientId} />}
             {latestVisit && <div data-tour="stage.note"><ResidentClinicalNote ref={residentNoteRef} visitId={latestVisit.id} /></div>}
-          </div>
-        </div>
+        </InsightsDrawer>
       </div>
 
       {/* Sign-off status */}
