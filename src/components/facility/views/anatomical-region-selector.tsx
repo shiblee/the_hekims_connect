@@ -6,7 +6,6 @@ import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-no
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { regionIcon, regionAppliesTo } from "@/lib/anatomical-region-icons";
-import { BODY_ZONES, type BodyView } from "@/lib/body-zones";
 import { BodyMap } from "@/components/facility/views/body-map";
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -30,7 +29,6 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
     const [regions, setRegions] = useState<Region[]>([]);
     const [selected, setSelected] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<BodyView>("front");
     const [loadError, setLoadError] = useState<string | null>(null);
     const [reloadTick, setReloadTick] = useState(0);
     const msg = useNotice();
@@ -81,13 +79,7 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
     }), [visitId, selected, loading, loadError, msg]);
 
     const toggle = (label: string) => {
-      const adding = !selected.includes(label);
       setSelected((cur) => (cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label]));
-      // Selecting a region that's only drawn on the other side (e.g. Spine on
-      // the back) flips the body map so the highlight is actually visible.
-      const zone = regions.find((r) => r.label === label)?.bodyZone;
-      const z = zone ? BODY_ZONES[zone] : null;
-      if (adding && z && !z[view]) setView(view === "front" ? "back" : "front");
     };
 
     // A region selected on this visit but since deactivated/renamed in admin
@@ -121,11 +113,9 @@ export const AnatomicalRegionSelector = forwardRef<AnatomicalRegionSelectorHandl
         {cards.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t3("no_regions")}</p>
         ) : (
-          <div className="grid lg:grid-cols-[190px_1fr] gap-5 items-start">
+          <div className="grid lg:grid-cols-[300px_1fr] gap-5 items-start">
           <div className="rounded-xl border border-border/50 bg-background/40 p-3">
             <BodyMap
-              view={view}
-              onViewChange={setView}
               onToggle={toggle}
               items={cards.map((r) => ({
                 label: r.label, localTerms: r.localTerms, icon: r.icon, zone: r.bodyZone,

@@ -178,101 +178,84 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
             )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-            <div className="min-w-0 space-y-3">
-              <div>
-                <label htmlFor="chronology-duration" className="mb-1 block text-xs font-medium text-muted-foreground">{t3("duration")}</label>
-                <div className="flex h-12 items-stretch overflow-hidden rounded-lg border border-input bg-background transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
-                  <input
-                    id="chronology-duration"
-                    type="number" min={0} inputMode="decimal"
-                    value={shown.value}
-                    onChange={(e) => editDuration(e.target.value, shown.unit)}
-                    placeholder="0"
-                    className="w-20 min-w-0 bg-transparent px-3 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-xl font-semibold tabular-nums outline-none placeholder:text-muted-foreground/40"
-                  />
-                  <div className="w-px bg-border" aria-hidden />
-                  <Select value={shown.unit} onValueChange={(u) => editDuration(shown.value, u)}>
-                    <SelectTrigger className="h-full! flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"><SelectValue /></SelectTrigger>
-                    <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{t3(`du_${u.value}`)}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="text-[13px] text-muted-foreground">
-                {source === "auto" && longest ? (
-                  <p>{t3.rich("from_longest", { label: longest.label, b: (c) => <span className="font-medium text-foreground/80">{c}</span> })}</p>
-                ) : source === "manual" && longest ? (
-                  <button type="button" onClick={() => setSource("auto")} className="inline-flex items-center gap-1 text-primary hover:underline">
-                    <RotateCcw className="h-3 w-3" /> {t3("use_complaint", { value: fmt(longest.value!, longest.unit) })}
-                  </button>
-                ) : !longest && !shown.value ? (
-                  <p>{t3("fills_auto")}</p>
-                ) : null}
-              </div>
-
-              {withDurations.length > 1 && (
-                <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("per_complaint")}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {withDurations.map((d) => {
-                      const isLongest = d.label === longest?.label;
-                      const active = shown.value === String(d.value) && shown.unit === d.unit;
-                      return (
-                        <button key={d.label} type="button"
-                          onClick={() => (isLongest ? setSource("auto") : editDuration(String(d.value), d.unit))}
-                          className={cn("rounded-full border px-2.5 py-0.5 text-xs transition-colors hover:border-primary/50 hover:bg-primary/5",
-                            active ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground")}>
-                          <span className="font-medium text-foreground/90">{d.label}</span> · {fmt(d.value!, d.unit)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+          {/* One line: duration · course of illness · where it sits on the scale · approximate start */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
+            <div className="flex h-12 w-full shrink-0 items-stretch overflow-hidden rounded-lg border border-input bg-background transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 lg:w-72">
+              <input
+                id="chronology-duration"
+                aria-label={t3("duration")}
+                type="number" min={0} inputMode="decimal"
+                value={shown.value}
+                onChange={(e) => editDuration(e.target.value, shown.unit)}
+                placeholder="0"
+                className="w-20 min-w-0 bg-transparent px-3 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-xl font-semibold tabular-nums outline-none placeholder:text-muted-foreground/40"
+              />
+              <div className="w-px bg-border" aria-hidden />
+              <Select value={shown.unit} onValueChange={(u) => editDuration(shown.value, u)}>
+                <SelectTrigger className="h-full! flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"><SelectValue /></SelectTrigger>
+                <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{t3(`du_${u.value}`)}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
 
-            {/* What the duration means: course type + approximate start */}
             {course ? (
-              <div className={cn("min-w-0 rounded-xl border p-4", course.style.border, course.style.bg)}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("course_label")}</p>
-                    <p className={cn("font-serif text-xl font-semibold leading-tight", course.style.text)}>
-                      {t3(`course_${course.key}`)} <span className="text-sm font-normal opacity-80">· {course.unani}</span>
-                    </p>
-                  </div>
-                  <div className="flex gap-4 text-end">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("duration")}</p>
-                      <p className="text-sm font-semibold tabular-nums">{fmt(Number(shown.value), shown.unit)}</p>
+              <div title={t3(`course_${course.key}_hint`)} className={cn("flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border px-4 py-2", course.style.border, course.style.bg)}>
+                <p className={cn("shrink-0 font-serif text-lg font-semibold leading-none", course.style.text)}>
+                  {t3(`course_${course.key}`)} <span className="text-sm font-normal opacity-80">· {course.unani}</span>
+                </p>
+                <div className="min-w-[12rem] flex-1">
+                  <div className="relative">
+                    <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
+                      {COURSES.map((c) => <div key={c.key} className={cn("flex-1", c.style.bar, c.key === course.key ? "opacity-100" : "opacity-25")} />)}
                     </div>
-                    {shown.date && (
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("approx_start")}</p>
-                        <p className="text-sm font-semibold">{longDate(shown.date)}</p>
-                      </div>
-                    )}
+                    <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
+                  </div>
+                  <div className="mt-1 grid grid-cols-3 text-[10px] leading-none text-muted-foreground">
+                    {COURSES.map((c, i) => (
+                      <span key={c.key} className={cn("truncate", i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>
+                        {t3(`course_${c.key}`)} · {t3(`course_${c.key}_range`)}
+                      </span>
+                    ))}
                   </div>
                 </div>
-                <div className="relative mt-4">
-                  <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
-                    {COURSES.map((c) => <div key={c.key} className={cn("flex-1", c.style.bar, c.key === course.key ? "opacity-100" : "opacity-25")} />)}
-                  </div>
-                  <div className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
-                </div>
-                <div className="mt-2 grid grid-cols-3 text-[11px] text-muted-foreground">
-                  {COURSES.map((c, i) => (
-                    <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>
-                      {t3(`course_${c.key}`)} · {t3(`course_${c.key}_range`)}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-3 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">{t3(`course_${course.key}_hint`)}</p>
+                {shown.date && (
+                  <p className="shrink-0 text-xs text-muted-foreground">
+                    {t3("approx_start")} <span className="ms-1 text-sm font-semibold text-foreground">{longDate(shown.date)}</span>
+                  </p>
+                )}
               </div>
             ) : (
-              <div className="flex min-w-0 items-center justify-center rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+              <div className="flex min-h-12 min-w-0 flex-1 items-center justify-center rounded-lg border border-dashed border-border px-4 py-2 text-center text-sm text-muted-foreground">
                 {t3("course_empty")}
+              </div>
+            )}
+          </div>
+
+          {/* Where the duration came from, and each complaint's own duration */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-muted-foreground">
+            {source === "auto" && longest ? (
+              <p>{t3.rich("from_longest", { label: longest.label, b: (c) => <span className="font-medium text-foreground/80">{c}</span> })}</p>
+            ) : source === "manual" && longest ? (
+              <button type="button" onClick={() => setSource("auto")} className="inline-flex items-center gap-1 text-primary hover:underline">
+                <RotateCcw className="h-3 w-3" /> {t3("use_complaint", { value: fmt(longest.value!, longest.unit) })}
+              </button>
+            ) : !longest && !shown.value ? (
+              <p>{t3("fills_auto")}</p>
+            ) : null}
+            {withDurations.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide">{t3("per_complaint")}:</span>
+                {withDurations.map((d) => {
+                  const isLongest = d.label === longest?.label;
+                  const active = shown.value === String(d.value) && shown.unit === d.unit;
+                  return (
+                    <button key={d.label} type="button"
+                      onClick={() => (isLongest ? setSource("auto") : editDuration(String(d.value), d.unit))}
+                      className={cn("rounded-full border px-2.5 py-0.5 text-xs transition-colors hover:border-primary/50 hover:bg-primary/5",
+                        active ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground")}>
+                      <span className="font-medium text-foreground/90">{d.label}</span> · {fmt(d.value!, d.unit)}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { BODY_ZONES, LIMB_PATHS, type BodyView } from "@/lib/body-zones";
 import { regionIcon } from "@/lib/anatomical-region-icons";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface BodyMapItem {
@@ -41,20 +40,32 @@ function Silhouette({ view, className, seam = "var(--background)" }: { view: Bod
 }
 
 /**
- * Interactive body map for the Anatomical Region selector: selected regions
- * glow on their body area with an icon marker (primary region strongest);
- * every other region shows as a small dot that can be clicked to select it.
+ * Interactive body map for the Anatomical Region selector: front and back side
+ * by side. Selected regions glow on their body area with an icon marker
+ * (primary region strongest); every other region shows as a small dot that can
+ * be clicked to select it.
  */
-export function BodyMap({ items, view, onViewChange, onToggle }: {
-  items: BodyMapItem[];
-  view: BodyView;
-  onViewChange: (v: BodyView) => void;
-  onToggle: (label: string) => void;
-}) {
+export function BodyMap({ items, onToggle }: { items: BodyMapItem[]; onToggle: (label: string) => void }) {
+  const t = useTranslations("clinic.stage3");
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {(["front", "back"] as const).map((v) => <BodyMapView key={v} view={v} items={items} onToggle={onToggle} />)}
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> {t("primary")}</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border border-emerald-500/60 bg-card" /> {t("selected")}</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-muted-foreground/50" /> {t("available")}</span>
+      </div>
+    </div>
+  );
+}
+
+function BodyMapView({ view, items, onToggle }: { view: BodyView; items: BodyMapItem[]; onToggle: (label: string) => void }) {
   const t = useTranslations("clinic.stage3");
   const uid = useId().replace(/:/g, "");
   const onView = items.filter((i) => i.zone && BODY_ZONES[i.zone]?.[view]);
-  const selectedIn = (v: BodyView) => items.filter((i) => i.selected && i.zone && BODY_ZONES[i.zone]?.[v]).length;
+  const count = onView.filter((i) => i.selected).length;
 
   // Regions sharing a marker point sit side by side instead of on top of each other.
   const groups = new Map<string, BodyMapItem[]>();
@@ -65,22 +76,18 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
   }
 
   return (
-    <div className="space-y-3">
-      <Tabs value={view} onValueChange={(v) => onViewChange(v as BodyView)}>
-        <TabsList className="w-full">
-          {(["front", "back"] as const).map((v) => (
-            <TabsTrigger key={v} value={v} className="flex-1 min-w-0 px-1.5 text-[13px] gap-1">
-              {v === "front" ? t("anterior") : t("posterior")}
-              {selectedIn(v) > 0 && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/20 px-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{selectedIn(v)}</span>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-      <p className="text-xs text-muted-foreground text-center -mt-1">{view === "front" ? "Muqaddam" : "Mu'akhkhar"}</p>
+    <figure className="flex min-w-0 flex-col items-center">
+      <figcaption className="mb-2 text-center leading-tight">
+        <span className="flex items-center justify-center gap-1 text-[13px] font-semibold">
+          {view === "front" ? t("anterior") : t("posterior")}
+          {count > 0 && (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/20 px-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{count}</span>
+          )}
+        </span>
+        <span className="block text-[11px] text-muted-foreground">{view === "front" ? "Muqaddam" : "Mu'akhkhar"}</span>
+      </figcaption>
 
-      <div className="relative mx-auto w-full max-w-[170px]" style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}>
+      <div className="relative w-full max-w-[150px]" style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}>
         <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="absolute inset-0 h-full w-full" aria-hidden>
           <defs>
             <radialGradient id={`glow-${uid}`}>
@@ -118,7 +125,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
         {[...groups.values()].flatMap((group) =>
           group.map((i, n) => {
             const m = BODY_ZONES[i.zone!][view]!.marker;
-            const offset = (n - (group.length - 1) / 2) * 18;
+            const offset = (n - (group.length - 1) / 2) * 16;
             const Icon = regionIcon(i.icon);
             return (
               <Tooltip key={i.label}>
@@ -133,12 +140,12 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
                   >
                     {i.selected ? (
                       <span className="relative flex items-center justify-center">
-                        {i.primary && <span className="absolute h-8 w-8 rounded-full bg-emerald-500/40 animate-ping" />}
+                        {i.primary && <span className="absolute h-7 w-7 rounded-full bg-emerald-500/40 animate-ping" />}
                         <span className={cn(
                           "relative flex items-center justify-center rounded-full shadow-md ring-2 ring-background transition-transform group-hover:scale-110 group-focus-visible:ring-primary",
-                          i.primary ? "h-7 w-7 bg-emerald-500 text-white" : "h-6 w-6 bg-card border border-emerald-500/60 text-emerald-500"
+                          i.primary ? "h-6 w-6 bg-emerald-500 text-white" : "h-5 w-5 bg-card border border-emerald-500/60 text-emerald-500"
                         )}>
-                          <Icon className={i.primary ? "h-3.5 w-3.5" : "h-3 w-3"} />
+                          <Icon className={i.primary ? "h-3 w-3" : "h-2.5 w-2.5"} />
                         </span>
                       </span>
                     ) : (
@@ -146,7 +153,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
                     )}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
+                <TooltipContent side={view === "front" ? "left" : "right"}>
                   <p className="font-medium">{i.label}</p>
                   {i.localTerms && <p className="text-xs opacity-80">{i.localTerms}</p>}
                   <p className="text-xs opacity-80">{i.primary ? t("primary_region") : i.selected ? t("selected_click") : t("click_select")}</p>
@@ -156,13 +163,7 @@ export function BodyMap({ items, view, onViewChange, onToggle }: {
           }),
         )}
       </div>
-
-      <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> {t("primary")}</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border border-emerald-500/60 bg-card" /> {t("selected")}</span>
-        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-muted-foreground/50" /> {t("available")}</span>
-      </div>
-    </div>
+    </figure>
   );
 }
 
