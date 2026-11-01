@@ -403,7 +403,6 @@ export function VitalsPanel({
     return { ...m, latest, latestVisit, cardTrend, status, delta, bmi };
   });
   const needAttention = tiles.filter((t) => t.status && t.status.tone !== "ok").length;
-  const lastRecordedAt = visitsWithVitals[0]?.visitDate;
 
   // Tiles: just the time for today's readings, otherwise "Yesterday" / "3 days ago".
   const whenShort = (iso: string) => {
@@ -535,7 +534,6 @@ export function VitalsPanel({
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("all_normal")}
             </span>
           ))}
-          {lastRecordedAt && <span className="text-muted-foreground">{t("last_recorded", { when: when(lastRecordedAt) })}</span>}
         </div>
         }
       />
