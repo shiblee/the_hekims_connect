@@ -92,7 +92,7 @@ export default function GuidanceAdminPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 py-10 sm:px-6 lg:px-16">
+    <div className="min-w-0">
       <div className="mb-6">
         <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl"><GraduationCap className="h-6 w-6 text-primary" /> User guidance &amp; tutorials</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Guided tours and module tutorials for every user, in five languages. Content is shared by all clinics; each clinic owner can switch guidance off for their own clinic. Users only ever see published versions, and only for pages they're allowed to open.</p>

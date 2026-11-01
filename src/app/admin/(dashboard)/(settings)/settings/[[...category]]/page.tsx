@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, BellRing, Loader2, Save, Settings as SettingsIcon, SlidersHorizontal } from "lucide-react";
+import { ArrowUpRight, Loader2, Save, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { VITALS_RANGE_FIELDS, type VitalsRangeField } from "@/lib/vitals-ranges"
 import { AiServiceCard } from "@/components/admin/ai-service-card";
 import { GeminiUsageDashboard } from "@/components/admin/gemini-usage-dashboard";
 import { EmailConfigTab, TemplatesTab, HistoryTab, NOTIFICATION_TABS } from "@/components/admin/notification-settings";
+import { ALWAYS_TABS, GENERAL_GROUP, SETTINGS_TAB_LABELS, settingsTabsFrom, sortSettingsTabs, tabOf } from "@/lib/admin-settings-tabs";
 
 interface SettingRow { id: string; category: string; key: string; value: string; updatedAt: string }
 
@@ -25,7 +26,7 @@ interface SettingRow { id: string; category: string; key: string; value: string;
 // enable/interval controls plus a generated-entries log and run history.
 const ASSISTANTS: Record<string, CatalogAssistantConfig> = {
   chief_complaint_assistant: {
-    label: "Unani Complaint Assistant",
+    label: SETTINGS_TAB_LABELS.chief_complaint_assistant,
     description: "Scheduled discovery of new Unani-relevant chief complaints — new entries publish automatically on this schedule, with a full log below of everything it has generated.",
     apiBase: "/api/admin/chief-complaint-bot",
     itemNoun: { singular: "complaint", plural: "complaints" },
@@ -37,7 +38,7 @@ const ASSISTANTS: Record<string, CatalogAssistantConfig> = {
     reviewApprovedToast: "Added to the Chief Complaint catalog",
   },
   allergy_assistant: {
-    label: "Unani Allergy Assistant",
+    label: SETTINGS_TAB_LABELS.allergy_assistant,
     description: "Scheduled discovery of allergens relevant to Unani practice — Mufradat, herbs, oils, foods and common allergens. New entries are added to Meta → Patient → Allergies automatically and appear in patient registration straight away.",
     apiBase: "/api/admin/allergy-assistant",
     itemNoun: { singular: "allergy", plural: "allergies" },
@@ -47,7 +48,7 @@ const ASSISTANTS: Record<string, CatalogAssistantConfig> = {
     groupKey: "allergenType",
   },
   supplement_assistant: {
-    label: "Unani Medicine Assistant",
+    label: SETTINGS_TAB_LABELS.supplement_assistant,
     description: "Scheduled discovery of Unani herbs and preparations — single drugs (Mufradat) and classical formulations (Murakkabat). New entries are added to Meta → Unani Medicine automatically and appear in patient registration straight away.",
     apiBase: "/api/admin/supplement-assistant",
     itemNoun: { singular: "item", plural: "items" },
@@ -57,7 +58,7 @@ const ASSISTANTS: Record<string, CatalogAssistantConfig> = {
     groupKey: "herbType",
   },
   medication_assistant: {
-    label: "Allopathic Medicine Assistant",
+    label: SETTINGS_TAB_LABELS.medication_assistant,
     description: "Scheduled discovery of commonly taken allopathic medicines, by generic name and therapeutic class. New entries are added to Meta → Allopathic Medicine automatically and appear in patient registration straight away, so the Hakim can see what a patient already takes.",
     apiBase: "/api/admin/medication-assistant",
     itemNoun: { singular: "medicine", plural: "medicines" },
@@ -82,24 +83,12 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   ...Object.fromEntries(Object.entries(ASSISTANTS).map(([k, a]) => [k, { label: a.label, description: a.description }])),
 };
 
-// One "General" tab holds these sections (each keeps its own heading).
-const GENERAL_GROUP = ["general", "report", "registration", "verification", "subscription", "patient_defaults", "vitals", "guidance"];
-// Engine settings saved by other Admin tabs — summarised read-only under General, edited where they live.
 const SYSTEM: Record<string, { label: string; href?: string; summary: (v: Record<string, string>) => string }> = {
   dalail: { label: "Dala'il question engine", href: "/admin/meta/tashkhees?tab=dalail", summary: (v) => `Up to ${v.max_questions ?? "—"} questions · ordering with Hakeem Insight ${v.ranking === "off" ? "off" : "on"}` },
   tashkhees_engine: { label: "Tashkhees engine", href: "/admin/meta/tashkhees?tab=engine", summary: (v) => { try { const c = JSON.parse(v.config || "{}"); return `Up to ${c.maxOrgans ?? "—"} organs · Maddi threshold ${c.maddiThreshold ?? "—"} · ordering with Hakeem Insight ${c.ranking === false ? "off" : "on"}`; } catch { return "Custom settings"; } } },
   cds: { label: "Medicines decision support", href: "/admin/meta/tashkhees?tab=cds", summary: (v) => { try { const c = JSON.parse(v.config || "{}"); return `Pilot ${c.enabled ? "on" : "off"} · up to ${c.maxPerCategory ?? "—"} per group`; } catch { return "Custom settings"; } } },
   i18n: { label: "Translations", href: "/admin/languages", summary: (v) => `Translation version ${v.messages_version ?? "—"} — updates by itself when translations change` },
 };
-const tabOf = (c: string) => (GENERAL_GROUP.includes(c) || c in SYSTEM ? "general" : c);
-
-// Explicit order for the sidebar (the settings themselves load alphabetically
-// by category) so Vitals Validation sits right after General rather than
-// wherever its name happens to sort.
-const CATEGORY_ORDER = ["general", "gemini_usage", "report", "vitals_validation", "registration", "verification", "subscription", "patient_defaults", "vitals", "chief_complaint_assistant", "allergy_assistant", "supplement_assistant", "medication_assistant"];
-
-// Tabs that aren't made of plain setting rows, so they show even before any row exists.
-const ALWAYS_TABS = ["gemini_usage"];
 
 const VITALS_FIELD_LABELS: Record<VitalsRangeField, string> = {
   pulse: "Pulse (bpm)",
@@ -184,29 +173,6 @@ const SELECT_OPTIONS: Record<string, [string, string][]> = {
 
 const isNotificationTab = (id: string) => NOTIFICATION_TABS.some((n) => n.id === id);
 
-function MenuGroupLabel({ icon: Icon, label }: { icon: typeof BellRing; label: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      <Icon className="h-3.5 w-3.5" /> {label}
-    </div>
-  );
-}
-
-function MenuItem({ icon: Icon, label, active, onClick }: { icon: typeof BellRing; label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-        active ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-      )}
-    >
-      <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">{label}</span>
-    </button>
-  );
-}
-
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingRow[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -218,21 +184,12 @@ export default function SettingsPage() {
   const pathname = usePathname();
   const urlCategory = pathname.split("/")[3] || null;
 
-  const sortCategories = (cats: string[]) =>
-    [...cats].sort((a, b) => {
-      const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
-      if (ia === -1 && ib === -1) return a.localeCompare(b);
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
-      return ia - ib;
-    });
-
   useEffect(() => {
     adminApi.get<{ settings: SettingRow[] }>("/api/admin/settings")
       .then((res) => {
         setSettings(res.settings);
         setDraft(Object.fromEntries(res.settings.map((s) => [`${s.category}.${s.key}`, s.value])));
-        const cats = sortCategories(Array.from(new Set([...res.settings.map((s) => tabOf(s.category)), ...ALWAYS_TABS])));
+        const cats = sortSettingsTabs(Array.from(new Set([...res.settings.map((s) => tabOf(s.category)), ...ALWAYS_TABS])));
         // Old links to a merged section (e.g. /admin/settings/registration) open General at that section.
         if (urlCategory && tabOf(urlCategory) === "general" && urlCategory !== "general") {
           window.history.replaceState(null, "", `/admin/settings/general#${urlCategory}`);
@@ -245,15 +202,9 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const categories = sortCategories(Array.from(new Set([...settings.map((s) => tabOf(s.category)), ...(settings.length ? ALWAYS_TABS : [])])));
+  const categories = settingsTabsFrom(settings);
   const notificationTab = urlCategory && isNotificationTab(urlCategory) ? urlCategory : null;
   const selected = urlCategory && categories.includes(urlCategory) ? urlCategory : null;
-  // pushState (synced by Next.js into usePathname) switches tabs without
-  // remounting the page, so unsaved edits on other tabs aren't lost.
-  const selectTab = (c: string) => {
-    if (c !== urlCategory) window.history.pushState(null, "", `/admin/settings/${c}`);
-  };
-
   const saveCategory = async (category: string) => {
     // General saves all of its sections at once.
     const cats = category === "general" ? GENERAL_GROUP : [category];
@@ -321,37 +272,12 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
-        <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
-      </div>
+      <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
-      <div className="mb-8">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-6">
-        <Card className="p-2 border-border/50 bg-card/60 h-fit md:sticky md:top-20">
-          <nav>
-          <MenuGroupLabel icon={SlidersHorizontal} label="Settings" />
-          <div className="space-y-1">
-            {categories.map((c) => (
-              <MenuItem key={c} icon={SettingsIcon} label={CATEGORY_META[c]?.label || c} active={selected === c} onClick={() => selectTab(c)} />
-            ))}
-          </div>
-          <div className="my-3 mx-1 border-t border-border" />
-          <MenuGroupLabel icon={BellRing} label="Notifications" />
-          <div className="space-y-1">
-            {NOTIFICATION_TABS.map((n) => (
-              <MenuItem key={n.id} icon={n.icon} label={n.label} active={notificationTab === n.id} onClick={() => selectTab(n.id)} />
-            ))}
-          </div>
-          </nav>
-        </Card>
-
+    <>
         {notificationTab ? (
           <div className="min-w-0">
             {notificationTab === "email-config" && <EmailConfigTab />}
@@ -470,7 +396,6 @@ export default function SettingsPage() {
           )}
         </Card>
         )}
-      </div>
-    </div>
+    </>
   );
 }

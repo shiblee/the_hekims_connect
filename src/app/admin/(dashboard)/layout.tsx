@@ -8,7 +8,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, LogOut, User, ListChecks, LogIn, ChevronDown, Lock, Bell,
-  Stethoscope, HeartPulse, Settings, Languages, FileText, Database, UserCog, Wallet, Flame, GraduationCap, BookOpen } from "lucide-react";
+  Stethoscope, HeartPulse, Settings, Database, UserCog, Wallet, Flame, GraduationCap, BookOpen } from "lucide-react";
 import { adminApi, restoreAdminSession } from "@/lib/admin-api";
 import { useAdminStore } from "@/lib/admin-store";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -43,10 +43,10 @@ const navLinks = [
   { href: "/admin/books", label: "Books", icon: BookOpen },
   { href: "/admin/meta", label: "Meta", icon: Database },
   { href: "/admin/settings", label: "Settings", icon: Settings },
-  { href: "/admin/languages", label: "Languages", icon: Languages },
-  { href: "/admin/guidance", label: "Guidance", icon: GraduationCap },
-  { href: "/admin/pages", label: "Pages", icon: FileText },
 ];
+
+// Sections grouped under Settings' left menu — keep the Settings tab highlighted on them.
+const SETTINGS_SECTIONS = ["/admin/notifications", "/admin/languages", "/admin/guidance", "/admin/pages"];
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -153,7 +153,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           <nav className="pb-3.5 -mt-0.5" data-tour="admin.nav">
             <div className="inline-flex items-center gap-1 rounded-full border border-border/50 bg-card/40 p-1.5 max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {navLinks.map((l) => {
-                const active = l.href === "/admin" ? pathname === "/admin" : pathname.startsWith(l.href) || (l.href === "/admin/settings" && pathname.startsWith("/admin/notifications"));
+                const active = l.href === "/admin" ? pathname === "/admin" : pathname.startsWith(l.href) || (l.href === "/admin/settings" && SETTINGS_SECTIONS.some((p) => pathname.startsWith(p)));
                 return (
                   <Link
                     key={l.href}

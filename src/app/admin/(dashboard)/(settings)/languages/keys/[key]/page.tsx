@@ -102,14 +102,14 @@ export default function TranslationKeyEditorPage() {
 
   if (loading || !data) {
     return (
-      <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
+      <div className="min-w-0">
         <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
+    <div className="min-w-0">
       <Link href="/admin/languages/keys" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Translation Keys
       </Link>

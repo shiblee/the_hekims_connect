@@ -64,14 +64,14 @@ export default function LanguagesPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
+      <div className="min-w-0">
         <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-16 py-10">
+    <div className="min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">

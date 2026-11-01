@@ -135,7 +135,7 @@ export default function GuidanceEditorPage() {
   };
 
   const liveLangs = useMemo(() => data?.item.languages, [data]);
-  if (!data || !draft) return <div className="mx-auto max-w-[1680px] px-4 py-16 sm:px-6 lg:px-16"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div></div>;
+  if (!data || !draft) return <div className="min-w-0"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div></div>;
 
   const tour = draft as TourContent, doc = draft as DocContent;
   const item = data.item;
@@ -147,7 +147,7 @@ export default function GuidanceEditorPage() {
   const previewSteps = steps.filter((s) => s.active);
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 py-8 sm:px-6 lg:px-16">
+    <div className="min-w-0">
       <Link href="/admin/guidance" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> User guidance</Link>
 
       {/* Header + actions */}
