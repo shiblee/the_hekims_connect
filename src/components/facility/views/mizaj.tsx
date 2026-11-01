@@ -17,6 +17,7 @@ import { HakeemInsightPanel, type HakeemInsightPanelHandle } from "@/components/
 import { ResidentClinicalNote, type ResidentClinicalNoteHandle } from "@/components/facility/views/resident-clinical-note";
 import { TriageNotesCard } from "@/components/facility/views/triage-notes-card";
 import { RedFlagScreeningPanel, type RedFlagScreeningPanelHandle } from "@/components/facility/views/red-flag-screening-panel";
+import { SectionStack } from "@/components/facility/views/section-stack";
 import { InsightsButton, InsightsDrawer, useInsightsDrawer } from "@/components/facility/views/insights-drawer";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { ArrowRight, Loader2, Printer, ShieldAlert } from "lucide-react";
@@ -157,15 +158,15 @@ function MizajStage({ patientId }: { patientId: string }) {
 
       <InsightsButton open={drawer.open} onOpen={() => drawer.setOpen(true)} />
       <div className="mb-6">
-        <div className="space-y-5 min-w-0">
-          {latestVisit && <div data-tour="mizaj.regions"><AnatomicalRegionSelector ref={regionRef} visitId={latestVisit.id} patientGender={patient.gender} /></div>}
-          {latestVisit ? (
+        {latestVisit ? (
+          <SectionStack>
+            <div data-tour="mizaj.regions"><AnatomicalRegionSelector ref={regionRef} visitId={latestVisit.id} patientGender={patient.gender} /></div>
             <div data-tour="stage.complaints"><ChiefComplaintMatrix ref={chiefComplaintRef} visitId={latestVisit.id} intakeComplaints={intakeComplaints} onDurationsChange={setComplaintDurations} /></div>
-          ) : (
-            <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{t("no_visit")}</Card>
-          )}
-          {latestVisit && <div data-tour="mizaj.chronology"><OnsetChronologyPanel ref={chronologyRef} visitId={latestVisit.id} complaintDurations={complaintDurations} /></div>}
-        </div>
+            <div data-tour="mizaj.chronology"><OnsetChronologyPanel ref={chronologyRef} visitId={latestVisit.id} complaintDurations={complaintDurations} /></div>
+          </SectionStack>
+        ) : (
+          <Card className="p-5 border-border/50 bg-card/60 text-sm text-muted-foreground">{t("no_visit")}</Card>
+        )}
 
         <InsightsDrawer open={drawer.open} onClose={() => drawer.setOpen(false)}>
             {latestVisit && (

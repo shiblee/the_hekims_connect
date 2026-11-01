@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { canOpenPage } from "@/lib/staff-permissions";
 import { setFlash } from "@/lib/flash";
 import { useAppStore } from "@/lib/store";
+import { SectionStack } from "@/components/facility/views/section-stack";
 import { InsightsButton, InsightsDrawer, useInsightsDrawer } from "@/components/facility/views/insights-drawer";
 import { api } from "@/lib/api";
 import { useDateLocale, useListFormat } from "@/lib/i18n/use-date-locale";
@@ -309,9 +310,8 @@ export function PatientDetail({ patientId }: { patientId: string }) {
 
       <InsightsButton open={drawer.open} onOpen={() => drawer.setOpen(true)} />
       <div className="mb-6">
-        {/* One card for the four step-2 sections, divided by lines (each panel's own box is flattened). */}
-        <div className={cn("divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-xs",
-          "[&>div>[data-slot=card]]:rounded-none [&>div>[data-slot=card]]:border-0 [&>div>[data-slot=card]]:bg-transparent [&>div>[data-slot=card]]:shadow-none [&>div>[data-slot=card]]:p-5")}>
+        {/* One card for the four step-2 sections, divided by lines. */}
+        <SectionStack>
           <div data-tour="record.vitals"><VitalsPanel visits={visits} patientId={patientId} onSaved={refreshVisits} patientDob={patient.dob} patientGender={patient.gender} currentVisitId={latestVisit?.id} /></div>
           {latestVisit && (
             <div data-tour="stage.complaints"><ChiefComplaintMatrix
@@ -322,7 +322,7 @@ export function PatientDetail({ patientId }: { patientId: string }) {
           )}
           {latestVisit && <div data-tour="record.redflags"><RedFlagScreeningPanel ref={redFlagRef} visitId={latestVisit.id} onReferralChange={refreshVisits} onContinue={() => router.push(`/facility/mizaj?patientId=${patientId}`)} /></div>}
           {latestVisit && <div data-tour="record.symptoms"><AcuteSymptomsPanel ref={acuteSymptomsRef} visitId={latestVisit.id} /></div>}
-        </div>
+        </SectionStack>
         <InsightsDrawer open={drawer.open} onClose={() => drawer.setOpen(false)}>
           {latestVisit && (
             <div data-tour="stage.insight"><HakeemInsightPanel

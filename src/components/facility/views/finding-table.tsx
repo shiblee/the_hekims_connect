@@ -57,9 +57,9 @@ export function FindingAddButton({ label, options, onPick, onCreate, createLabel
 }
 
 /** The chosen items as a table: # · name · what it means · source · remove. */
-export function FindingTable({ rows, nameHeading, onRemove, empty, tone = "primary", icon: Icon }: {
+export function FindingTable({ rows, nameHeading, onRemove, empty, tone = "primary", icon, iconFor }: {
   rows: FindingRow[]; nameHeading: string; onRemove?: (id: string) => void; empty: string;
-  tone?: "primary" | "destructive"; icon?: typeof Plus;
+  tone?: "primary" | "destructive"; icon?: typeof Plus; iconFor?: (r: FindingRow) => typeof Plus;
 }) {
   const tf = useTranslations("common.findings");
   const COLS = cn("md:grid-cols-[2rem_minmax(0,1fr)_minmax(0,1.6fr)_8rem]", onRemove && "md:grid-cols-[2rem_minmax(0,1fr)_minmax(0,1.6fr)_8rem_2rem]");
@@ -71,7 +71,7 @@ export function FindingTable({ rows, nameHeading, onRemove, empty, tone = "prima
         <span className="text-end">#</span><span>{nameHeading}</span><span>{tf("col_meaning")}</span><span>{tf("col_source")}</span>{onRemove && <span />}
       </div>
       <ul className="divide-y divide-border">
-        {rows.map((r, i) => (
+        {rows.map((r, i) => { const Icon = iconFor?.(r) ?? icon; return (
           <li key={r.id} className={cn("grid items-center gap-x-3 gap-y-0.5 px-3 py-2", COLS)}>
             <span className="hidden text-end text-xs tabular-nums text-muted-foreground md:block">{i + 1}</span>
             <p className={cn("flex items-center gap-1.5 text-sm font-semibold", tone === "destructive" && "text-destructive")}>
@@ -86,7 +86,7 @@ export function FindingTable({ rows, nameHeading, onRemove, empty, tone = "prima
                 className="justify-self-end rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-4 w-4" /></button>
             )}
           </li>
-        ))}
+        ); })}
       </ul>
     </div>
   );

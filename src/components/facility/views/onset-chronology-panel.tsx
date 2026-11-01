@@ -11,7 +11,7 @@ import type { ComplaintDuration } from "@/components/facility/views/chief-compla
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Badge } from "@/components/ui/badge";
-import { FloatingMultiSelect } from "@/components/shared/floating-field";
+import { FindingAddButton, FindingTable } from "@/components/facility/views/finding-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Hourglass, Loader2, RotateCcw } from "lucide-react";
 import { patternIcon } from "@/lib/onset-icons";
@@ -38,7 +38,6 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
   function OnsetChronologyPanel({ visitId, complaintDurations }, ref) {
     const [patterns, setPatterns] = useState<Pattern[]>([]);
     const [selected, setSelected] = useState<string[]>([]);
-    const [patternQuery, setPatternQuery] = useState("");
     const [value, setValue] = useState("");
     const [unit, setUnit] = useState("days");
     const [date, setDate] = useState("");
@@ -119,12 +118,6 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
       setDate(Number.isFinite(n) && n > 0 ? onsetDateFor(n, nextUnit) : "");
     };
 
-    // Search the admin list by name or description; with nothing typed, offer the first few.
-    const pq = patternQuery.trim().toLowerCase();
-    const patternSuggestions = patterns
-      .filter((p) => !selected.includes(p.label) && (!pq || p.label.toLowerCase().includes(pq) || (p.description || "").toLowerCase().includes(pq)))
-      .slice(0, pq ? 12 : 6)
-      .map((p) => ({ id: p.label, label: p.label, description: p.description }));
     const addOtherPattern = (text: string) => {
       const match = patterns.find((p) => p.label.toLowerCase() === text.toLowerCase());
       const label = match ? match.label : text;
@@ -144,120 +137,144 @@ export const OnsetChronologyPanel = forwardRef<OnsetChronologyPanelHandle, { vis
       );
     }
 
+    const tableRows = selected.map((label) => {
+      const pt = patterns.find((x) => x.label === label);
+      return { id: label, label, description: pt?.description ?? null, custom: !pt };
+    });
+
     return (
       <Card className="p-5 border-border/50 bg-card/60">
         <SectionHeading icon={Hourglass} title={t3("chrono_title")} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="@container min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-sm font-medium">{t3("how_start")}</p>
-              {selected.length > 0 && <Badge variant="outline" className="text-[11px] font-normal shrink-0">{t3("n_selected", { count: selected.length })}</Badge>}
-            </div>
-            <div className="pt-1.5">
-              <FloatingMultiSelect
-                id="onsetPatternSearch"
-                label={t3("pattern_search")}
-                placeholder={t3("pattern_ph")}
-                openOnFocus
-                emptyHint={patterns.length > 6 ? t3("pattern_common", { count: patterns.length }) : t3("patterns")}
-                selected={selected.map((label) => {
-                  const pt = patterns.find((x) => x.label === label);
-                  return { id: label, label, description: pt ? pt.description : t3("added_by_doctor") };
-                })}
-                onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))}
-                query={patternQuery}
-                onQueryChange={setPatternQuery}
-                results={patternSuggestions}
-                describe={(pt) => pt.description}
-                renderIcon={(pt) => { const Icon = patternIcon(pt.label); return <Icon className="h-3.5 w-3.5 shrink-0" />; }}
-                onPick={(label) => toggle(label)}
-                onCreate={addOtherPattern}
-                createLabel={(q) => t3("add_pattern", { q })}
-              />
-            </div>
+        {/* How it started — Add button + table, same pattern as Main Complaints */}
+        <div className="mt-4">
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              {t3("how_start")}
+              {selected.length > 0 && <Badge variant="outline" className="text-[11px] font-normal">{t3("n_selected", { count: selected.length })}</Badge>}
+            </p>
+            <FindingAddButton
+              label={t3("add_pattern_btn")}
+              options={patterns.filter((p) => !selected.includes(p.label)).map((p) => ({ id: p.label, label: p.label, description: p.description }))}
+              onPick={toggle}
+              onCreate={addOtherPattern}
+              createLabel={(q) => t3("add_pattern", { q })}
+              searchPh={t3("pattern_ph")}
+            />
+          </div>
+          <FindingTable rows={tableRows} nameHeading={t3("col_pattern")} empty={t3("no_patterns")}
+            iconFor={(r) => patternIcon(r.label)}
+            onRemove={(label) => setSelected((cur) => cur.filter((x) => x !== label))} />
+        </div>
+
+        {/* How long — duration on the left, what it means (course of illness) on the right */}
+        <div className="mt-5 border-t border-border pt-5">
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">{t3("how_long")}</p>
+            {shown.value && (
+              <Badge variant="outline" className={cn("text-[11px] font-normal", source === "auto" ? "border-primary/40 text-primary" : "text-muted-foreground")}>
+                {source === "auto" ? t3("from_complaints") : t3("set_by_you")}
+              </Badge>
+            )}
           </div>
 
-          <div className="min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-sm font-medium">{t3("how_long")}</p>
-              {shown.value && (
-                <Badge variant="outline" className={cn("text-[11px] font-normal shrink-0", source === "auto" ? "border-primary/40 text-primary" : "text-muted-foreground")}>
-                  {source === "auto" ? t3("from_complaints") : t3("set_by_you")}
-                </Badge>
-              )}
-            </div>
-            <div className="pt-1.5">
-              <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
-                <input
-                  id="chronology-duration"
-                  type="number" min={0} inputMode="decimal"
-                  value={shown.value}
-                  onChange={(e) => editDuration(e.target.value, shown.unit)}
-                  placeholder=" "
-                  className="peer h-full flex-1 min-w-0 bg-transparent ps-3.5 text-base font-medium outline-none"
-                />
-                <label
-                  htmlFor="chronology-duration"
-                  className={cn(
-                    "pointer-events-none absolute start-3 bg-card px-1.5 whitespace-nowrap transition-all duration-150 text-muted-foreground",
-                    "top-1/2 -translate-y-1/2 text-base font-medium",
-                    "peer-focus:top-0 peer-focus:text-sm peer-focus:font-semibold peer-focus:text-primary",
-                    "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:text-sm peer-[&:not(:placeholder-shown)]:font-semibold",
-                  )}
-                >
-                  {t3("duration")}
-                </label>
-                <div className="h-8 w-px bg-border/70" aria-hidden />
-                <Select value={shown.unit} onValueChange={(u) => editDuration(shown.value, u)}>
-                  <SelectTrigger className="h-full border-0 shadow-none focus-visible:ring-0 w-44 shrink-0 bg-transparent"><SelectValue /></SelectTrigger>
-                  <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{t3(`du_${u.value}`)}</SelectItem>)}</SelectContent>
-                </Select>
+          <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-3">
+              <div>
+                <label htmlFor="chronology-duration" className="mb-1 block text-xs font-medium text-muted-foreground">{t3("duration")}</label>
+                <div className="flex h-12 items-stretch overflow-hidden rounded-lg border border-input bg-background transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+                  <input
+                    id="chronology-duration"
+                    type="number" min={0} inputMode="decimal"
+                    value={shown.value}
+                    onChange={(e) => editDuration(e.target.value, shown.unit)}
+                    placeholder="0"
+                    className="w-20 min-w-0 bg-transparent px-3 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-xl font-semibold tabular-nums outline-none placeholder:text-muted-foreground/40"
+                  />
+                  <div className="w-px bg-border" aria-hidden />
+                  <Select value={shown.unit} onValueChange={(u) => editDuration(shown.value, u)}>
+                    <SelectTrigger className="h-full! flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>{DURATION_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{t3(`du_${u.value}`)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-            {/* What the duration means: course type + approximate start */}
-            {course && (
-              <div className={cn("mt-3 rounded-xl border px-3.5 py-3", course.style.border, course.style.bg)}>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className={cn("text-sm font-semibold", course.style.text)}>{t3(`course_${course.key}`)} <span className="font-normal opacity-80">({course.unani})</span></span>
-                  {shown.date && <span className="text-xs text-muted-foreground">{t3.rich("started_around", { date: longDate(shown.date), b: (c) => <span className="font-medium text-foreground">{c}</span> })}</span>}
-                </div>
-                <div className="mt-2.5 relative">
-                  <div className="flex h-1.5 overflow-hidden rounded-full">
-                    {COURSES.map((c) => <div key={c.key} className={cn("flex-1", c.style.bar, c.key === course.key ? "opacity-100" : "opacity-30")} />)}
-                  </div>
-                  <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
-                </div>
-                <div className="mt-1.5 grid grid-cols-3 text-[11px] text-muted-foreground">
-                  {COURSES.map((c, i) => <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>{t3(`course_${c.key}_range`)}</span>)}
-                </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">{t3(`course_${course.key}_hint`)}</p>
-              </div>
-            )}
-
-            <div className="mt-2 space-y-1.5 text-[13px] text-muted-foreground">
-              {source === "auto" && longest ? (
-                <p>{t3.rich("from_longest", { label: longest.label, b: (c) => <span className="font-medium text-foreground/80">{c}</span> })}</p>
-              ) : source === "manual" && longest ? (
-                <p className="flex items-center gap-1.5 flex-wrap">
+              <div className="text-[13px] text-muted-foreground">
+                {source === "auto" && longest ? (
+                  <p>{t3.rich("from_longest", { label: longest.label, b: (c) => <span className="font-medium text-foreground/80">{c}</span> })}</p>
+                ) : source === "manual" && longest ? (
                   <button type="button" onClick={() => setSource("auto")} className="inline-flex items-center gap-1 text-primary hover:underline">
                     <RotateCcw className="h-3 w-3" /> {t3("use_complaint", { value: fmt(longest.value!, longest.unit) })}
                   </button>
-                </p>
-              ) : !longest && !shown.value ? (
-                <p>{t3("fills_auto")}</p>
-              ) : null}
+                ) : !longest && !shown.value ? (
+                  <p>{t3("fills_auto")}</p>
+                ) : null}
+              </div>
+
               {withDurations.length > 1 && (
-                <p className="flex flex-wrap gap-1.5">
-                  {withDurations.map((d) => (
-                    <span key={d.label} className={cn("rounded-full border px-2 py-0.5", d.label === longest?.label ? "border-primary/40 text-primary" : "border-border/60")}>
-                      {d.label}: {fmt(d.value!, d.unit)}
-                    </span>
-                  ))}
-                </p>
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("per_complaint")}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {withDurations.map((d) => {
+                      const isLongest = d.label === longest?.label;
+                      const active = shown.value === String(d.value) && shown.unit === d.unit;
+                      return (
+                        <button key={d.label} type="button"
+                          onClick={() => (isLongest ? setSource("auto") : editDuration(String(d.value), d.unit))}
+                          className={cn("rounded-full border px-2.5 py-0.5 text-xs transition-colors hover:border-primary/50 hover:bg-primary/5",
+                            active ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground")}>
+                          <span className="font-medium text-foreground/90">{d.label}</span> · {fmt(d.value!, d.unit)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
+
+            {/* What the duration means: course type + approximate start */}
+            {course ? (
+              <div className={cn("min-w-0 rounded-xl border p-4", course.style.border, course.style.bg)}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("course_label")}</p>
+                    <p className={cn("font-serif text-xl font-semibold leading-tight", course.style.text)}>
+                      {t3(`course_${course.key}`)} <span className="text-sm font-normal opacity-80">· {course.unani}</span>
+                    </p>
+                  </div>
+                  <div className="flex gap-4 text-end">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("duration")}</p>
+                      <p className="text-sm font-semibold tabular-nums">{fmt(Number(shown.value), shown.unit)}</p>
+                    </div>
+                    {shown.date && (
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t3("approx_start")}</p>
+                        <p className="text-sm font-semibold">{longDate(shown.date)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="relative mt-4">
+                  <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
+                    {COURSES.map((c) => <div key={c.key} className={cn("flex-1", c.style.bar, c.key === course.key ? "opacity-100" : "opacity-25")} />)}
+                  </div>
+                  <div className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow" style={{ left: `${course.pos}%`, background: course.style.dot }} aria-hidden />
+                </div>
+                <div className="mt-2 grid grid-cols-3 text-[11px] text-muted-foreground">
+                  {COURSES.map((c, i) => (
+                    <span key={c.key} className={cn(i === 1 && "text-center", i === 2 && "text-end", c.key === course.key && "font-semibold text-foreground")}>
+                      {t3(`course_${c.key}`)} · {t3(`course_${c.key}_range`)}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-3 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">{t3(`course_${course.key}_hint`)}</p>
+              </div>
+            ) : (
+              <div className="flex min-w-0 items-center justify-center rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                {t3("course_empty")}
+              </div>
+            )}
           </div>
         </div>
         <NoticeSlot state={msg} className="mt-4" />
