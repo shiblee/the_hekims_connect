@@ -229,12 +229,13 @@
       radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--primary) 22%, transparent) 1px, transparent 0);
     background-size: 16px 16px;
   }
-  /* Facility profile setup: small print one notch larger (covers shared fields/chips inside it too). */
-  .setup-text-up .text-\[11px\] { font-size: 12.5px; }
-  .setup-text-up .text-xs { font-size: 13.5px; line-height: 1.25rem; }
-  .setup-text-up .text-sm { font-size: 15px; line-height: 1.375rem; }
+  /* Small print one notch larger inside a page (profile setup, patient record) — covers shared fields/chips too. */
+  .text-up .text-\[10px\] { font-size: 11.5px; }
+  .text-up .text-\[11px\] { font-size: 12.5px; }
+  .text-up .text-xs { font-size: 13.5px; line-height: 1.25rem; }
+  .text-up .text-sm { font-size: 15px; line-height: 1.375rem; }
   @media (min-width: 48rem) {
-    .setup-text-up .md\:text-sm { font-size: 15px; line-height: 1.375rem; }
+    .text-up .md\:text-sm { font-size: 15px; line-height: 1.375rem; }
   }
   .animate-float {
     animation: float 6s ease-in-out infinite;
