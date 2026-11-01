@@ -151,40 +151,67 @@ export function GhizaAdmin() {
       </div>
       <p className="text-xs text-muted-foreground">{shown.length} shown · {foods.filter((f) => f.reviewStatus === "approved" && f.active).length} in use · {foods.filter((f) => f.reviewStatus === "draft").length} awaiting review</p>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {shown.map((f) => {
-          const r = parseRule(f.appliesTo);
-          const good = [...(r.good?.conditions || []).map((k) => conditions.find((c) => c.key === k)?.label ?? k), ...(r.good?.symptoms || [])];
-          const bad = [...(r.avoid?.conditions || []).map((k) => conditions.find((c) => c.key === k)?.label ?? k), ...(r.avoid?.symptoms || [])];
-          return (
-            <Card key={f.id} className={cn("overflow-hidden border-border/50 bg-card/60 p-0 gap-0", !f.active && "opacity-50")}>
-              <div className="relative h-40 w-full shrink-0 overflow-hidden bg-muted">
-                {f.imageUrl
-                  ? <img src={foodThumb(f.imageUrl) ?? f.imageUrl} alt={f.label} title={f.imageCredit || undefined} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-                  : <div className="flex h-full items-center justify-center text-muted-foreground"><Utensils className="h-8 w-8" /></div>}
-                <Badge variant="outline" className={cn("absolute left-2 top-2 text-[10px] capitalize backdrop-blur", STATUS[f.reviewStatus])}>{f.reviewStatus}</Badge>
-                {f.foodMizaj && <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">{f.foodMizaj}</span>}
-              </div>
-              <div className="p-3 space-y-1.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold leading-snug">{f.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{f.category || "No group"}</p>
-                  </div>
-                  <span className="flex items-center gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => open(f)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Switch checked={f.active} onCheckedChange={(v) => patch(f.id, { active: v })} />
-                  </span>
-                </div>
-                {f.description && <p className="text-xs text-muted-foreground line-clamp-2">{f.description}</p>}
-                {good.length > 0 && <p className="text-[11px] text-emerald-700 dark:text-emerald-400 line-clamp-1" title={good.join(", ")}>✓ {good.join(", ")}</p>}
-                {bad.length > 0 && <p className="text-[11px] text-destructive line-clamp-1" title={bad.join(", ")}>✕ {bad.join(", ")}</p>}
-                {f.reviewStatus === "draft" && <Button size="sm" variant="outline" className="h-7 w-full border-emerald-500/40 text-emerald-700 dark:text-emerald-400" onClick={() => patch(f.id, { reviewStatus: "approved" })}>Approve</Button>}
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+      <Card className="overflow-hidden border-border bg-card/60 p-0 gap-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40">
+              <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="w-12 px-3 py-2.5 text-right">S.No</th>
+                <th className="px-3 py-2.5">Food</th>
+                <th className="px-3 py-2.5">Temperament</th>
+                <th className="px-3 py-2.5">Unani action · how to take</th>
+                <th className="px-3 py-2.5">Suits / avoid in</th>
+                <th className="px-3 py-2.5">Status</th>
+                <th className="px-3 py-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {shown.length === 0 && <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">No foods match these filters.</td></tr>}
+              {shown.map((f, i) => {
+                const r = parseRule(f.appliesTo);
+                const good = [...(r.good?.conditions || []).map((k) => conditions.find((c) => c.key === k)?.label ?? k), ...(r.good?.symptoms || [])];
+                const bad = [...(r.avoid?.conditions || []).map((k) => conditions.find((c) => c.key === k)?.label ?? k), ...(r.avoid?.symptoms || [])];
+                return (
+                  <tr key={f.id} className={cn("align-top transition-colors hover:bg-primary/[0.03]", !f.active && "opacity-50")}>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{i + 1}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        {f.imageUrl
+                          ? <img src={foodThumb(f.imageUrl) ?? f.imageUrl} alt={f.label} title={f.imageCredit || undefined} loading="lazy" decoding="async" className="h-10 w-10 shrink-0 rounded-lg bg-muted object-cover" />
+                          : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Utensils className="h-4 w-4" /></span>}
+                        <div className="min-w-0">
+                          <p className="font-semibold leading-snug">{f.label}</p>
+                          <p className="text-xs text-muted-foreground">{f.category || "No group"}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5">{f.foodMizaj ? <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">{f.foodMizaj}</span> : <span className="text-muted-foreground">—</span>}</td>
+                    <td className="max-w-[20rem] px-3 py-2.5">
+                      {r.action && <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">{r.action}</p>}
+                      {r.use && <p className="text-xs text-muted-foreground">{r.use}</p>}
+                      {r.harm && <p className="text-xs text-destructive/90">✕ {r.harm}</p>}
+                      {!r.action && !r.use && !r.harm && (f.description ? <p className="text-xs text-muted-foreground">{f.description}</p> : <span className="text-muted-foreground">—</span>)}
+                    </td>
+                    <td className="max-w-[18rem] px-3 py-2.5">
+                      {good.length > 0 && <p className="text-[11px] text-emerald-700 dark:text-emerald-400 line-clamp-2" title={good.join(", ")}>✓ {good.join(", ")}</p>}
+                      {bad.length > 0 && <p className="text-[11px] text-destructive line-clamp-2" title={bad.join(", ")}>✕ {bad.join(", ")}</p>}
+                      {!good.length && !bad.length && <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5"><Badge variant="outline" className={cn("text-[11px] capitalize", STATUS[f.reviewStatus])}>{f.reviewStatus}</Badge></td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {f.reviewStatus === "draft" && <Button size="sm" variant="outline" className="h-7 border-emerald-500/40 text-emerald-700 dark:text-emerald-400" onClick={() => patch(f.id, { reviewStatus: "approved" })}>Approve</Button>}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" aria-label={`Edit ${f.label}`} onClick={() => open(f)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Switch checked={f.active} onCheckedChange={(v) => patch(f.id, { active: v })} aria-label={`${f.active ? "Switch off" : "Switch on"} ${f.label}`} />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       <Dialog open={draft !== null} onOpenChange={(o) => { if (!o) setDraft(null); }}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
