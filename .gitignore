@@ -55,5 +55,7 @@ server.log
 # stray local db files (project uses external PostgreSQL, nothing should create these)
 *.db
 *.db-journal
+# server-side DB backups (dev.db.bak.<timestamp>) — also keeps Tailwind's source scan off them
+*.db.bak*
 # book PDFs (local development storage)
 /storage/
