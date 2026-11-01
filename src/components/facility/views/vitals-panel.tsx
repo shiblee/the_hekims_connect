@@ -424,7 +424,7 @@ export function VitalsPanel({
         onClick={() => openDetail(t.key)}
         onKeyDown={(e) => { if (e.key === "Enter") openDetail(t.key); }}
         className={cn(
-          "group relative flex flex-col gap-2.5 rounded-xl border p-3.5 cursor-pointer outline-none transition-all",
+          "@container/tile group relative flex flex-col gap-2.5 rounded-xl border p-3 @[14rem]/tile:p-3.5 cursor-pointer outline-none transition-all",
           "hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40",
           tone && t.status!.tone !== "ok" ? cn(tone.border, tone.bg) : "border-border bg-card shadow-xs hover:border-primary/50",
         )}
@@ -465,7 +465,7 @@ export function VitalsPanel({
             {/* Value + status */}
             <div className="flex items-end justify-between gap-2 flex-wrap">
               <p className="flex items-baseline gap-1 min-w-0">
-                <span className={cn("font-bold leading-none tracking-tight", t.key === "heightCm" ? "text-xl" : "text-3xl", tone && t.status!.tone !== "ok" && tone.text)}>
+                <span className={cn("font-bold leading-none tracking-tight", t.key === "heightCm" ? "text-lg @[13rem]/tile:text-xl" : "text-2xl @[13rem]/tile:text-3xl", tone && t.status!.tone !== "ok" && tone.text)}>
                   {formatValue(t.key, t.latest!)}
                 </span>
                 {t.key === "temperatureF" ? (
@@ -501,14 +501,14 @@ export function VitalsPanel({
             ) : null}
 
             {/* Change + when */}
-            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground mt-auto pt-0.5">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-muted-foreground mt-auto pt-0.5">
               {t.status && tone ? (
                 <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold whitespace-nowrap", tone.text, tone.bg, tone.border)}>
                   {t.status.tone === "urgent" ? <AlertTriangle className="h-3 w-3" /> : t.status.tone === "check" ? <HelpCircle className="h-3 w-3" /> : <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />}
                   {t.status.label}
                 </span>
               ) : <span />}
-              {t.latestVisit && <span className="truncate text-end group-hover:hidden" title={when(t.latestVisit.visitDate)}>{whenShort(t.latestVisit.visitDate)}</span>}
+              {t.latestVisit && <span className="whitespace-nowrap text-end group-hover:hidden" title={when(t.latestVisit.visitDate)}>{whenShort(t.latestVisit.visitDate)}</span>}
               <span className="hidden group-hover:flex items-center gap-0.5 text-primary font-medium whitespace-nowrap">{tr("view_details")} <ChevronRight className="h-3 w-3" /></span>
             </div>
           </>
@@ -538,8 +538,11 @@ export function VitalsPanel({
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+      {/* One row of six when the panel is wide enough (container query), otherwise 3 / 2 / 1 per row. */}
+      <div className="@container">
+      <div className="grid grid-cols-1 gap-3 @sm:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-6">
         {tiles.map(renderTile)}
+      </div>
       </div>
     </Card>
 
