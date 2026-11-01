@@ -88,7 +88,6 @@ export function PermissionsView() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-xl font-bold flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" /> {t("title")}</h2>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="inline-flex rounded-lg border border-border bg-background/60 p-0.5">
           {([["roles", t("by_role"), Users], ["people", t("by_person"), UserRound]] as const).map(([k, l, Icon]) => (
