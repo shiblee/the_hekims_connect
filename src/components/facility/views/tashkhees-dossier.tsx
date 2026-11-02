@@ -29,7 +29,7 @@ import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
   ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
-  Ban, Clock, Droplet, Compass, CircleCheck, ChevronDown, BarChart3,
+  Ban, Clock, Droplet, CircleCheck, ChevronDown, BarChart3,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -957,23 +957,6 @@ function FoodThumb({ src, alt, credit, className }: { src?: string | null; alt: 
 
 /** "Barid-Ratab 2" → "Barid-Ratab · D2" (compact temperament tag). */
 const mizajTag = (m: string) => { const d = m.match(/[1-4]/)?.[0]; return d ? `${m.replace(/\s*[1-4]\s*/, "").trim()} · D${d}` : m; };
-/** Present dyscrasia → the opposite qualities the diet must bring (Ilaj bil Zid). */
-const OPPOSITE: Record<string, [string, string]> = {
-  Safrawi: ["Barid-Ratab", "Cold & Moist"], Damawi: ["Barid-Yabis", "Cold & Dry"], Balghami: ["Haar-Yabis", "Hot & Dry"], Saudawi: ["Haar-Ratab", "Hot & Moist"],
-  Haar: ["Barid", "Cooling"], Barid: ["Haar", "Warming"], Ratab: ["Yabis", "Drying"], Yabis: ["Ratab", "Moistening"],
-};
-function RegimenDirective({ suMizaj, grade }: { suMizaj: string | null; grade: number | null }) {
-  const td = useTranslations("clinic.dossier");
-  const o = suMizaj ? OPPOSITE[suMizaj] : undefined;
-  return (
-    <span title={td("g_directive_hint")} className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs", o ? "border-primary/30 bg-primary/5" : "border-dashed border-border text-muted-foreground")}>
-      <Compass className="h-3.5 w-3.5 text-primary" />
-      <span className="text-muted-foreground">{td("g_directive")}:</span>
-      {o ? <span className="font-semibold text-primary">{o[0]} <span className="font-normal">({o[1]}{grade ? ` · ${td("g_darja", { n: grade })}` : ""})</span></span> : <span>{td("g_directive_none")}</span>}
-    </span>
-  );
-}
-
 /**
  * "+ Add food" / "+ Add to Parhez": one list — this patient's suggestions for that side first
  * (with why), then every other food (General), filtered by what's typed.
@@ -1056,12 +1039,11 @@ function FiveRowList({ count, children }: { count?: number; children: ReactNode 
 }
 
 /** One of the three diet columns. */
-function DietColumn({ tone, icon: Icon, title, sub, count, add, children }: { tone: "rec" | "avoid"; icon: typeof Ban; title: string; sub: string; count: number; add: ReactNode; children: ReactNode }) {
+function DietColumn({ tone, icon: Icon, title, count, add, children }: { tone: "rec" | "avoid"; icon: typeof Ban; title: string; count: number; add: ReactNode; children: ReactNode }) {
   return (
     <section className={cn("flex flex-col rounded-xl border p-3", tone === "rec" ? "border-emerald-500/25 bg-emerald-500/[0.04]" : "border-destructive/25 bg-destructive/[0.04]")}>
       <header className="mb-2">
         <p className={cn("flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide", tone === "rec" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}><Icon className="h-4 w-4 shrink-0" />{title}<span className="ms-auto rounded-full bg-background/80 px-1.5 text-[11px] tabular-nums">{count}</span></p>
-        <p className="text-[11px] text-muted-foreground">{sub}</p>
       </header>
       <FiveRowList count={count}>{children}</FiveRowList>
       <div className="mt-2">{add}</div>
@@ -1103,7 +1085,6 @@ function MealRulesColumn({ state, basis }: { state: TashkheesState; basis: { suM
     <section className="flex flex-col rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-3 @2xl:col-span-2 @5xl:col-span-1">
       <header className="mb-2">
         <p className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"><Clock className="h-4 w-4 shrink-0" />{td("g_timing")}<span className="ms-auto rounded-full bg-background/80 px-1.5 text-[11px] tabular-nums">{chosen.length}</span></p>
-        <p className="text-[11px] text-muted-foreground">{td("g_timing_sub")}</p>
       </header>
       <FiveRowList>
         {chosen.map((r) => <RuleRow key={r.id} r={r} on onToggle={() => toggle(r.label)} />)}
@@ -1175,16 +1156,9 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 text-xs text-muted-foreground">
-          {failed ? td.rich("diet_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })
-            : !p ? td("rerunning") : <>
-              {td("based_on")} {p.basis.suMizaj ? <span className="font-medium text-foreground">{p.basis.suMizaj}</span> : td("no_su")}
-              {p.basis.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("suggested")}</span>}
-              {p.basis.conditions.length > 0 && <> · {td("history")} <span className="font-medium text-foreground">{p.basis.conditions.join(", ")}</span></>}
-              {p.basis.allergies.length > 0 && <> · {td("allergies")} <span className="font-medium text-destructive">{p.basis.allergies.join(", ")}</span></>}
-            </>}
+          {failed && td.rich("diet_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })}
         </p>
         <span className="flex flex-wrap items-center gap-2">
-          <RegimenDirective suMizaj={d.suMizajQuality ?? p?.basis.suMizaj ?? null} grade={d.suMizajGrade} />
           <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
           {p && leftToAccept && <Button size="sm" className="h-7" onClick={acceptAll}><Sparkles className="h-3.5 w-3.5" /> {td("accept_all")}</Button>}
         </span>
@@ -1194,7 +1168,7 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
       {/* Container query: three columns only when the panel itself is wide enough. */}
       <div className="@container">
       <div className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
-        <DietColumn tone="rec" icon={CircleCheck} title={td("g_prescribed")} sub={td("g_prescribed_sub")} count={d.ghizaRecommended.length}
+        <DietColumn tone="rec" icon={CircleCheck} title={td("g_prescribed")} count={d.ghizaRecommended.length}
           add={<FoodAddPicker where="rec" label={td("g_add_food")} suggested={suggested("rec")} foods={foods} rec={d.ghizaRecommended} avoid={d.ghizaAvoid} onPick={(l) => setFood(l, "rec")} />}>
           {d.ghizaRecommended.length === 0 ? <li className="px-1 py-2 text-[13px] text-muted-foreground">{td("g_empty_rec")}</li> : d.ghizaRecommended.map((l) => {
             const f = byLabel(l);
@@ -1215,7 +1189,7 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
           })}
         </DietColumn>
 
-        <DietColumn tone="avoid" icon={Ban} title={td("parhez_avoid")} sub={td("g_parhez_sub")} count={d.ghizaAvoid.length}
+        <DietColumn tone="avoid" icon={Ban} title={td("parhez_avoid")} count={d.ghizaAvoid.length}
           add={<FoodAddPicker where="avoid" label={td("g_add_avoid")} suggested={suggested("avoid")} foods={foods} rec={d.ghizaRecommended} avoid={d.ghizaAvoid} onPick={(l) => setFood(l, "avoid")} />}>
           {d.ghizaAvoid.length === 0 ? <li className="px-1 py-2 text-[13px] text-muted-foreground">{td("g_empty_avoid")}</li> : d.ghizaAvoid.map((l) => {
             const f = byLabel(l);
@@ -1461,8 +1435,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
   return (
     <div className="space-y-5">
       {/* Ilaj-bil-Ghiza */}
-      <Panel icon={Utensils} tour="dossier.ghiza" title={td("ghiza_title")}
-        aside={<Badge variant="outline" className="mt-1 shrink-0">{td("g_summary", { rec: d.ghizaRecommended.length, avoid: d.ghizaAvoid.length, rules: d.ghizaRules.length })}</Badge>}>
+      <Panel icon={Utensils} tour="dossier.ghiza" title={td("ghiza_title")}>
         <GhizaPicker state={state} visitId={visitId} />
       </Panel>
 
