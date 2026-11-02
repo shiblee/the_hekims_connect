@@ -467,6 +467,13 @@ interface EngSuggestion {
   organs: { label: string; reason: string; score: number }[];
   insufficient: string[];
 }
+/** Soft tints for the humour bars (the leading humour a shade stronger) — easier on the eye than solid colour. */
+const HUMOUR_TINT: Record<string, { soft: string; strong: string }> = {
+  safra: { soft: "bg-amber-400/15", strong: "bg-amber-400/35" },
+  dam: { soft: "bg-red-500/10", strong: "bg-red-500/25" },
+  balgham: { soft: "bg-sky-400/15", strong: "bg-sky-400/35" },
+  sauda: { soft: "bg-violet-500/10", strong: "bg-violet-500/25" },
+};
 const CONF_STYLE = {
   strong: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   moderate: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
@@ -604,7 +611,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
     },
   ] : [];
   const TK = "grid grid-cols-1 gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,1fr)]";
-  const HM = "grid grid-cols-[minmax(0,18.5rem)_3.5rem_minmax(0,1fr)] items-center gap-x-3";
+  const HM = "grid grid-cols-[minmax(0,20rem)_3.5rem_minmax(0,1fr)_minmax(0,9rem)] items-center gap-x-3";
 
   return (
     <div className="space-y-3">
@@ -620,33 +627,42 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
         <p className="text-sm text-muted-foreground">{td.rich("engine_failed", { retry: (c) => <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !s ? <Loading /> : (
         <>
-          {/* The three humoral readings — one line each: reading · weight · one stacked bar (Safra · Dam · Balgham · Sauda) */}
+          {/* The three humoral readings — one line each: reading · weight · one soft stacked bar · the leading humour */}
           <div className="overflow-hidden rounded-xl border border-border">
             <div className={cn(HM, "border-b border-border bg-muted/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
               <span>{td("tk_reading")}</span><span className="text-end">{td("tk_weight")}</span>
-              <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                {AKHLAT.map((h) => <span key={h.key} className={cn("inline-flex items-center gap-1", h.text)}><span className={cn("h-2 w-2 rounded-full", h.bar)} />{h.label}</span>)}
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 normal-case tracking-normal">
+                {AKHLAT.map((h) => <span key={h.key} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground"><span className={cn("h-2.5 w-2.5 rounded-sm", HUMOUR_TINT[h.key].strong)} />{h.label}</span>)}
               </span>
+              <span>{td("tk_leading")}</span>
             </div>
             <div className="divide-y divide-border/60">
               {s.sources.map((r) => {
                 const vals = AKHLAT.map((h) => ({ h, v: r.percent ? Math.round(r.percent[h.key] * 10) / 10 : 0 }));
                 const top = Math.max(...vals.map((x) => x.v));
+                const leads = top > 0 ? vals.filter((x) => x.v === top).map((x) => x.h) : [];
                 return (
                   <div key={r.key} className={cn(HM, "px-3 py-1.5 text-[13px]")}>
                     <span className="truncate" title={r.label}>{r.label}</span>
                     <span className="text-end text-xs tabular-nums text-muted-foreground">{r.percent ? `×${r.weight}` : "—"}</span>
                     {r.percent ? (
-                      <span className="flex h-5 min-w-0 overflow-hidden rounded-full bg-muted" role="img"
+                      <span className="flex h-6 min-w-0 gap-0.5 overflow-hidden rounded-md" role="img"
                         aria-label={vals.map(({ h, v }) => `${h.label} ${v}%`).join(", ")}>
                         {vals.filter(({ v }) => v > 0).map(({ h, v }) => (
                           <span key={h.key} title={`${h.label} ${v}%`} style={{ width: `${v}%` }}
-                            className={cn("flex items-center justify-center overflow-hidden border-e border-background/70 text-[11px] font-semibold tabular-nums text-white last:border-e-0", h.bar, v === top && "brightness-95")}>
-                            {v >= 9 && <span className="truncate px-1">{h.label} {v}%</span>}
+                            className={cn("flex min-w-0 items-center justify-center overflow-hidden text-[11px] font-semibold tabular-nums",
+                              h.text, v === top ? HUMOUR_TINT[h.key].strong : HUMOUR_TINT[h.key].soft)}>
+                            {v >= 9 && <span className="truncate px-1">{v >= 18 ? `${h.label} ` : ""}{v}%</span>}
                           </span>
                         ))}
                       </span>
                     ) : <span className="text-xs text-muted-foreground">{td("not_recorded")}</span>}
+                    {leads.length ? (
+                      <span className="text-[13px] font-semibold leading-tight" title={`${leads.map((h) => h.label).join(" = ")} · ${top}%`}>
+                        {leads.map((h, i) => <span key={h.key} className={h.text}>{i > 0 && <span className="text-muted-foreground"> = </span>}{h.label}</span>)}
+                        <span className="font-normal tabular-nums text-muted-foreground"> {top}%</span>
+                      </span>
+                    ) : <span className="text-muted-foreground/60">—</span>}
                   </div>
                 );
               })}
