@@ -166,14 +166,10 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
 
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-sm font-semibold">{t("title")} <span className="text-destructive">*</span></p>
-      </div>
-
       {/* The Hakim's diagnoses */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[15px] font-semibold">{t("yours")}</p>
+          <p className="text-[15px] font-semibold">{t("yours")} <span className="text-destructive">*</span></p>
           <span className="flex items-center gap-3">
           {ddx.failed ? (
             <span className="text-xs text-muted-foreground">{t.rich("failed", { retry: (c) => <button type="button" onClick={() => ddx.retry()} className="text-primary font-medium hover:underline">{c}</button> })}</span>
