@@ -29,7 +29,7 @@ import { sortLabels } from "@/lib/sort-options";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
   ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
-  Ban, Clock, Droplet, Compass, CircleCheck, ChevronDown,
+  Ban, Clock, Droplet, Compass, CircleCheck, ChevronDown, BarChart3,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -494,6 +494,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
   const [why, setWhy] = useState<string | null>(null);
+  const [readingsOpen, setReadingsOpen] = useState(false);
   const td = useTranslations("clinic.dossier");
   const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, description: [o.localName, o.description].filter(Boolean).join(" — ") || null }));
 
@@ -611,13 +612,16 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
     },
   ] : [];
   const TK = "grid grid-cols-1 gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,1fr)]";
-  const HM = "grid grid-cols-[minmax(0,20rem)_3.5rem_minmax(0,1fr)_minmax(0,9rem)] items-center gap-x-3";
+  const HM = "grid grid-cols-[minmax(0,17rem)_3rem_minmax(0,1fr)_minmax(0,10rem)] items-center gap-x-3";
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("engine")}</p>
         <span className="flex items-center gap-2">
+          {s && <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={() => setReadingsOpen(true)}>
+            <BarChart3 className="h-3.5 w-3.5" />{td("tk_readings_btn")}<span className="text-muted-foreground">· {s.sources.length}</span>
+          </Button>}
           <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
           {canApplyAll && <Button size="sm" className="h-7" onClick={applyAll}>{td("accept_all")}</Button>}
         </span>
@@ -627,48 +631,6 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
         <p className="text-sm text-muted-foreground">{td.rich("engine_failed", { retry: (c) => <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !s ? <Loading /> : (
         <>
-          {/* The three humoral readings — one line each: reading · weight · one soft stacked bar · the leading humour */}
-          <div className="overflow-hidden rounded-xl border border-border">
-            <div className={cn(HM, "border-b border-border bg-muted/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
-              <span>{td("tk_reading")}</span><span className="text-end">{td("tk_weight")}</span>
-              <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 normal-case tracking-normal">
-                {AKHLAT.map((h) => <span key={h.key} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground"><span className={cn("h-2.5 w-2.5 rounded-sm", HUMOUR_TINT[h.key].strong)} />{h.label}</span>)}
-              </span>
-              <span>{td("tk_leading")}</span>
-            </div>
-            <div className="divide-y divide-border/60">
-              {s.sources.map((r) => {
-                const vals = AKHLAT.map((h) => ({ h, v: r.percent ? Math.round(r.percent[h.key] * 10) / 10 : 0 }));
-                const top = Math.max(...vals.map((x) => x.v));
-                const leads = top > 0 ? vals.filter((x) => x.v === top).map((x) => x.h) : [];
-                return (
-                  <div key={r.key} className={cn(HM, "px-3 py-1.5 text-[13px]")}>
-                    <span className="truncate" title={r.label}>{r.label}</span>
-                    <span className="text-end text-xs tabular-nums text-muted-foreground">{r.percent ? `×${r.weight}` : "—"}</span>
-                    {r.percent ? (
-                      <span className="flex h-6 min-w-0 gap-0.5 overflow-hidden rounded-md" role="img"
-                        aria-label={vals.map(({ h, v }) => `${h.label} ${v}%`).join(", ")}>
-                        {vals.filter(({ v }) => v > 0).map(({ h, v }) => (
-                          <span key={h.key} title={`${h.label} ${v}%`} style={{ width: `${v}%` }}
-                            className={cn("flex min-w-0 items-center justify-center overflow-hidden text-[11px] font-semibold tabular-nums",
-                              h.text, v === top ? HUMOUR_TINT[h.key].strong : HUMOUR_TINT[h.key].soft)}>
-                            {v >= 9 && <span className="truncate px-1">{v >= 18 ? `${h.label} ` : ""}{v}%</span>}
-                          </span>
-                        ))}
-                      </span>
-                    ) : <span className="text-xs text-muted-foreground">{td("not_recorded")}</span>}
-                    {leads.length ? (
-                      <span className="text-[13px] font-semibold leading-tight" title={`${leads.map((h) => h.label).join(" = ")} · ${top}%`}>
-                        {leads.map((h, i) => <span key={h.key} className={h.text}>{i > 0 && <span className="text-muted-foreground"> = </span>}{h.label}</span>)}
-                        <span className="font-normal tabular-nums text-muted-foreground"> {top}%</span>
-                      </span>
-                    ) : <span className="text-muted-foreground/60">—</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Finding · what the engine suggests (Accept) · the Hakim's Tashkhees */}
           <div className="overflow-hidden rounded-xl border border-border">
             <div className={cn(TK, "hidden border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid")}>
@@ -693,6 +655,55 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
               ))}
             </div>
           </div>
+                    {/* The humoral readings behind the engine, in a pop-up — one line each: reading · weight · one soft stacked bar · the leading humour */}
+          <Dialog open={readingsOpen} onOpenChange={setReadingsOpen}>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-5xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" />{td("tk_readings_btn")}</DialogTitle>
+                <p className="text-sm text-muted-foreground">{td("tk_readings_hint")}</p>
+              </DialogHeader>
+              <div className="overflow-hidden rounded-xl border border-border">
+                <div className={cn(HM, "border-b border-border bg-muted/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
+                  <span>{td("tk_reading")}</span><span className="text-end">{td("tk_weight")}</span>
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 normal-case tracking-normal">
+                    {AKHLAT.map((h) => <span key={h.key} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground"><span className={cn("h-2.5 w-2.5 rounded-sm", HUMOUR_TINT[h.key].strong)} />{h.label}</span>)}
+                  </span>
+                  <span>{td("tk_leading")}</span>
+                </div>
+                <div className="divide-y divide-border/60">
+                  {s.sources.map((r) => {
+                    const vals = AKHLAT.map((h) => ({ h, v: r.percent ? Math.round(r.percent[h.key] * 10) / 10 : 0 }));
+                    const top = Math.max(...vals.map((x) => x.v));
+                    const leads = top > 0 ? vals.filter((x) => x.v === top).map((x) => x.h) : [];
+                    return (
+                      <div key={r.key} className={cn(HM, "px-3 py-1.5 text-[13px]")}>
+                        <span className="truncate" title={r.label}>{r.label}</span>
+                        <span className="text-end text-xs tabular-nums text-muted-foreground">{r.percent ? `×${r.weight}` : "—"}</span>
+                        {r.percent ? (
+                          <span className="flex h-6 min-w-0 gap-0.5 overflow-hidden rounded-md" role="img"
+                            aria-label={vals.map(({ h, v }) => `${h.label} ${v}%`).join(", ")}>
+                            {vals.filter(({ v }) => v > 0).map(({ h, v }) => (
+                              <span key={h.key} title={`${h.label} ${v}%`} style={{ width: `${v}%` }}
+                                className={cn("flex min-w-0 items-center justify-center overflow-hidden text-[11px] font-semibold tabular-nums",
+                                  h.text, v === top ? HUMOUR_TINT[h.key].strong : HUMOUR_TINT[h.key].soft)}>
+                                {v >= 9 && <span className="truncate px-1">{v >= 18 ? `${h.label} ` : ""}{v}%</span>}
+                              </span>
+                            ))}
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">{td("not_recorded")}</span>}
+                        {leads.length ? (
+                          <span className="text-[13px] font-semibold leading-tight" title={`${leads.map((h) => h.label).join(" = ")} · ${top}%`}>
+                            {leads.map((h, i) => <span key={h.key} className={h.text}>{i > 0 && <span className="text-muted-foreground"> = </span>}{h.label}</span>)}
+                            <span className="font-normal tabular-nums text-muted-foreground"> {top}%</span>
+                          </span>
+                        ) : <span className="text-muted-foreground/60">—</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
