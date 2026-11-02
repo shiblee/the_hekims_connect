@@ -604,7 +604,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
     },
   ] : [];
   const TK = "grid grid-cols-1 gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,1fr)]";
-  const HM = "grid grid-cols-[minmax(0,1.7fr)_3.5rem_repeat(4,minmax(0,1fr))] items-center gap-x-3";
+  const HM = "grid grid-cols-[minmax(0,18.5rem)_3.5rem_minmax(0,1fr)] items-center gap-x-3";
 
   return (
     <div className="space-y-3">
@@ -620,33 +620,36 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
         <p className="text-sm text-muted-foreground">{td.rich("engine_failed", { retry: (c) => <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !s ? <Loading /> : (
         <>
-          {/* The three humoral readings, as one small grid: reading · weight · Safra · Dam · Balgham · Sauda */}
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <div className="min-w-[34rem]">
-              <div className={cn(HM, "border-b border-border bg-muted/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
-                <span>{td("tk_reading")}</span><span className="text-end">{td("tk_weight")}</span>
-                {AKHLAT.map((h) => <span key={h.key} className={cn("text-end", h.text)}>{h.label}</span>)}
-              </div>
-              <div className="divide-y divide-border/60">
-                {s.sources.map((r) => {
-                  const top = r.percent ? Math.max(...AKHLAT.map((h) => r.percent![h.key])) : 0;
-                  return (
-                    <div key={r.key} className={cn(HM, "px-3 py-1.5 text-[13px]")}>
-                      <span className="truncate" title={r.label}>{r.label}</span>
-                      <span className="text-end text-xs tabular-nums text-muted-foreground">{r.percent ? `×${r.weight}` : "—"}</span>
-                      {r.percent ? AKHLAT.map((h) => {
-                        const v = Math.round(r.percent![h.key] * 10) / 10;
-                        return (
-                          <span key={h.key} className="min-w-0">
-                            <span className={cn("block text-end tabular-nums", v === top && v > 0 ? cn("font-semibold", h.text) : v === 0 ? "text-muted-foreground/60" : "")}>{v}%</span>
-                            <span className="mt-0.5 block h-1 overflow-hidden rounded-full bg-muted"><span className={cn("block h-full rounded-full", h.bar)} style={{ width: `${Math.min(100, v)}%` }} /></span>
+          {/* The three humoral readings — one line each: reading · weight · one stacked bar (Safra · Dam · Balgham · Sauda) */}
+          <div className="overflow-hidden rounded-xl border border-border">
+            <div className={cn(HM, "border-b border-border bg-muted/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
+              <span>{td("tk_reading")}</span><span className="text-end">{td("tk_weight")}</span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                {AKHLAT.map((h) => <span key={h.key} className={cn("inline-flex items-center gap-1", h.text)}><span className={cn("h-2 w-2 rounded-full", h.bar)} />{h.label}</span>)}
+              </span>
+            </div>
+            <div className="divide-y divide-border/60">
+              {s.sources.map((r) => {
+                const vals = AKHLAT.map((h) => ({ h, v: r.percent ? Math.round(r.percent[h.key] * 10) / 10 : 0 }));
+                const top = Math.max(...vals.map((x) => x.v));
+                return (
+                  <div key={r.key} className={cn(HM, "px-3 py-1.5 text-[13px]")}>
+                    <span className="truncate" title={r.label}>{r.label}</span>
+                    <span className="text-end text-xs tabular-nums text-muted-foreground">{r.percent ? `×${r.weight}` : "—"}</span>
+                    {r.percent ? (
+                      <span className="flex h-5 min-w-0 overflow-hidden rounded-full bg-muted" role="img"
+                        aria-label={vals.map(({ h, v }) => `${h.label} ${v}%`).join(", ")}>
+                        {vals.filter(({ v }) => v > 0).map(({ h, v }) => (
+                          <span key={h.key} title={`${h.label} ${v}%`} style={{ width: `${v}%` }}
+                            className={cn("flex items-center justify-center overflow-hidden border-e border-background/70 text-[11px] font-semibold tabular-nums text-white last:border-e-0", h.bar, v === top && "brightness-95")}>
+                            {v >= 9 && <span className="truncate px-1">{h.label} {v}%</span>}
                           </span>
-                        );
-                      }) : <span className="col-span-4 text-end text-xs text-muted-foreground">{td("not_recorded")}</span>}
-                    </div>
-                  );
-                })}
-              </div>
+                        ))}
+                      </span>
+                    ) : <span className="text-xs text-muted-foreground">{td("not_recorded")}</span>}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
