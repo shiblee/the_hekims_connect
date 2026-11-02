@@ -753,21 +753,13 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
   const [data, setData] = useState<{ plan: UsoolPlanData; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
-  const [tab, setTab] = useState<"plan" | "other">("plan");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
   const fetchPlan = useCallback(() =>
     api.get<{ plan: UsoolPlanData; method: string }>(`/api/facility/visits/${visitId}/usool-engine`)
       .then((r) => { setData(r); setFailed(false); })
       .catch(() => setFailed(true)), [visitId]);
   useEffect(() => { fetchPlan(); }, [fetchPlan]);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
   const rerun = async () => { setRunning(true); try { await state.save(false); await fetchPlan(); } finally { setRunning(false); } };
   const record = (labels: string[]) => { if (labels.length) api.post(`/api/facility/visits/${visitId}/usool-engine`, { accepted: labels }).catch(() => {}); };
 
@@ -792,85 +784,116 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
   const planRows: Row[] = planItems.map((x) => ({ label: x.label, description: x.description, phase: x.phase, reason: x.reason, caution: x.caution }));
   const otherRows: Row[] = all.filter((o) => !inPlan.has(o.label)).map((o) => ({ label: o.label, description: o.description, phase: o.phase ?? 6, reason: null }))
     .sort((a, b2) => a.phase - b2.phase || a.label.localeCompare(b2.label));
-  const rows = (tab === "plan" ? planRows : otherRows).filter(match);
-  const chosen = [...d.usool].sort((a, b2) => phaseOf(a) - phaseOf(b2));
+  const groups = [
+    { key: "plan", title: td("usool_tab_plan"), rows: planRows.filter(match), total: planRows.length },
+    { key: "other", title: td("usool_tab_other"), rows: otherRows.filter(match), total: otherRows.length },
+  ];
+  const chosen = [...d.usool].sort((a, b2) => phaseOf(a) - phaseOf(b2)).map((label) => {
+    const fromPlan = planItems.find((x) => x.label === label);
+    return { label, phase: phaseOf(label), description: fromPlan?.description ?? all.find((o) => o.label === label)?.description ?? null, reason: fromPlan?.reason ?? null, caution: fromPlan?.caution };
+  });
+  const US = "grid grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1.2fr)_2rem] items-center gap-x-3";
 
-  return (
-    <Panel icon={ClipboardCheck} tour="dossier.usool" title={td("usool_title")}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 text-xs text-muted-foreground">
-          {failed ? td.rich("plan_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })
-            : !p ? td("rerunning") : <>
-              {td("based_on")} {b?.suMizaj ? <span className="font-medium text-foreground">Su-e-Mizaj {[b.type, b.suMizaj, b.darja ? td("darja_n", { n: b.darja }) : null].filter(Boolean).join(" · ")}</span> : td("no_diagnosis")}
-              {b && b.organs.length > 0 && <> · {td("organs_word")} <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
-              {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("from_engine")}</span>}
-            </>}
-        </p>
-        <span className="flex items-center gap-2">
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
-          {missing.length > 0 && <Button size="sm" className="h-7" onClick={acceptPlan}><Sparkles className="h-3.5 w-3.5" /> {td("accept_plan", { count: missing.length })}</Button>}
-        </span>
-      </div>
-
-      <div ref={boxRef} className="relative">
-        <div className="mb-1.5 inline-flex rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
-          {(["plan", "other"] as const).map((k) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setOpen(true); }}
-              className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-              {k === "plan" ? td("usool_tab_plan") : td("usool_tab_other")}
-              <span className="ms-1.5 text-[11px] opacity-80">{k === "plan" ? (p ? planRows.length : "") : otherRows.length}</span>
-            </button>
+  // The one "Add principles" dropdown: the suggested treatment plan first, then every other principle.
+  const picker = (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ(""); }}>
+      <PopoverTrigger asChild>
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> {td("usool_add")}<ChevronDown className="h-3.5 w-3.5 opacity-80" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(34rem,calc(100vw-2rem))] p-1.5">
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={td("usool_search")} className="mb-1.5 h-9 text-sm" />
+        <div className="max-h-[26rem] overflow-y-auto">
+          {groups.map((g) => (
+            <div key={g.key}>
+              <p className="sticky top-0 z-10 flex items-center justify-between bg-popover px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className={cn(g.key === "plan" && "text-primary")}>{g.key === "plan" && <Sparkles className="me-1 inline h-3 w-3" />}{g.title}</span>
+                <span className="tabular-nums">{g.key === "plan" && !p ? "…" : g.total}</span>
+              </p>
+              {g.rows.length === 0 && <p className="px-2.5 py-1.5 text-xs text-muted-foreground">{ql ? td("no_food", { q }) : td("no_suggestion")}</p>}
+              {g.rows.map((r) => {
+                const on = d.usool.includes(r.label);
+                return (
+                  <div key={r.label} className={cn("flex items-center gap-2.5 rounded-md px-2.5 py-1.5 hover:bg-muted/50", r.caution && "bg-amber-500/5")}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary" title={stepName(r.phase)}>{r.phase}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug">{r.label} <span className="text-[11px] font-normal text-muted-foreground">· {stepName(r.phase)}</span></p>
+                      {r.caution ? <p className="truncate text-xs font-medium text-amber-700 dark:text-amber-400" title={r.caution}>{r.caution}</p>
+                        : r.reason ? <p className="truncate text-xs text-emerald-700 dark:text-emerald-400" title={r.reason}>{r.reason}</p>
+                        : r.description && <p className="truncate text-xs text-muted-foreground" title={r.description}>{r.description}</p>}
+                    </div>
+                    <button type="button" onClick={() => toggle(r.label)} aria-pressed={on}
+                      className={cn("shrink-0 rounded-md border px-2.5 py-0.5 text-xs font-medium",
+                        on ? "border-emerald-500/60 bg-emerald-600 text-white" : r.caution ? "border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10" : "border-primary/40 text-primary hover:bg-primary/10")}>
+                      {on ? <><Check className="me-0.5 inline h-3 w-3" />{td("added")}</> : r.caution ? td("add_anyway") : td("add")}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           ))}
         </div>
-        <FloatingField id="usoolSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
-          label={tab === "plan" ? td("usool_search_plan", { count: planRows.length }) : td("usool_search_other", { count: otherRows.length })}
-          onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
-          onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
-        {open && (
-          <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[380px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
-            {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{ql ? td("no_food", { q }) : td("no_suggestion")}</p>}
-            {rows.map((r) => {
-              const on = d.usool.includes(r.label);
-              return (
-                <div key={r.label} className={cn("flex items-center gap-3 px-3 py-2", r.caution && "bg-amber-500/5")}>
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary" title={stepName(r.phase)}>{r.phase}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-snug">{r.label} <span className="text-[11px] font-normal text-muted-foreground">· {stepName(r.phase)}</span></p>
-                    {r.description && <p className="truncate text-xs text-muted-foreground">{r.description}</p>}
-                    {r.caution ? <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{r.caution}</p>
-                      : r.reason && <p className="truncate text-xs text-emerald-700 dark:text-emerald-400">{r.reason}</p>}
-                  </div>
-                  <button type="button" onClick={() => toggle(r.label)} aria-pressed={on}
-                    className={cn("shrink-0 rounded-md border px-3 py-1 text-xs font-medium",
-                      on ? "border-emerald-500/60 bg-emerald-600 text-white" : r.caution ? "border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10" : "border-primary/40 text-primary hover:bg-primary/10")}>
-                    {on ? <><Check className="me-0.5 inline h-3 w-3" />{td("added")}</> : r.caution ? td("add_anyway") : td("add")}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      </PopoverContent>
+    </Popover>
+  );
 
-      {/* The chosen plan, in classical order */}
-      {chosen.length === 0 ? <p className="text-[13px] text-muted-foreground">{td("usool_none")}</p> : (
-        <div className="flex flex-wrap gap-1.5" aria-label={td("usool_yours")}>
-          {chosen.map((l) => {
-            const n = phaseOf(l);
-            return (
-              <button key={l} type="button" onClick={() => toggle(l)} title={stepName(n)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 ps-1 pe-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-semibold text-white">{n}</span>
-                {l} <X className="h-3 w-3" />
-              </button>
-            );
-          })}
+  return (
+    <Panel icon={ClipboardCheck} tour="dossier.usool" title={td("usool_title")} aside={
+      <span className="flex items-center gap-2">
+        <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
+        {missing.length > 0 && <Button size="sm" variant="outline" className="h-8 border-primary/40 text-primary hover:bg-primary/10" onClick={acceptPlan}><Sparkles className="h-3.5 w-3.5" /> {td("accept_plan", { count: missing.length })}</Button>}
+        {picker}
+      </span>
+    }>
+      <p className="-mt-2 text-xs text-muted-foreground">
+        {failed ? td.rich("plan_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })
+          : !p ? td("rerunning") : <>
+            {td("based_on")} {b?.suMizaj ? <span className="font-medium text-foreground">Su-e-Mizaj {[b.type, b.suMizaj, b.darja ? td("darja_n", { n: b.darja }) : null].filter(Boolean).join(" · ")}</span> : td("no_diagnosis")}
+            {b && b.organs.length > 0 && <> · {td("organs_word")} <span className="font-medium text-foreground">{b.organs.join(", ")}</span></>}
+            {b?.fromEngine && <span className="text-amber-700 dark:text-amber-400">{td("from_engine")}</span>}
+          </>}
+      </p>
+
+      {/* The chosen plan, in classical order: step · principle · why · remove */}
+      {chosen.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground">{td("usool_none")}</p>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border" aria-label={td("usool_yours")}>
+          <div className={cn(US, "border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
+            <span>{td("us_col_step")}</span><span>{td("us_col_principle")}</span><span>{td("us_col_why")}</span><span />
+          </div>
+          <ul className="divide-y divide-border">
+            {chosen.map((c) => (
+              <li key={c.label} className={cn(US, "px-3 py-2", c.caution && "bg-amber-500/5")}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-semibold text-white">{c.phase}</span>
+                  <span className="truncate text-xs text-muted-foreground" title={stepName(c.phase)}>{c.phase >= 1 && c.phase <= 6 ? td(`phase_${c.phase}`) : ""}</span>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{c.label}</p>
+                  {c.description && <p className="truncate text-xs text-muted-foreground" title={c.description}>{c.description}</p>}
+                </div>
+                <p className="min-w-0 text-xs">
+                  {c.caution ? <span className="font-medium text-amber-700 dark:text-amber-400">{c.caution}</span>
+                    : c.reason ? <span className="text-emerald-700 dark:text-emerald-400">{c.reason}</span>
+                    : <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-px font-medium text-amber-700 dark:text-amber-400">{td("us_mine")}</span>}
+                </p>
+                <button type="button" onClick={() => toggle(c.label)} aria-label={`${td("remove")} ${c.label}`} title={`${td("remove")} ${c.label}`}
+                  className="justify-self-end rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-4 w-4" /></button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {p?.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
 
-      <FloatingTextarea id="usool-note" label={td("plan_note")} rows={2} value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })}
-        title={td("plan_note_eg")} />
+      {/* The plan note — one line */}
+      <div className="flex items-center gap-3">
+        <label htmlFor="usool-note" className="shrink-0 text-[15px] font-semibold">{td("plan_note")}</label>
+        <Input id="usool-note" value={d.usoolNote ?? ""} onChange={(e) => set({ usoolNote: e.target.value })}
+          placeholder={td("plan_note_eg")} title={d.usoolNote || td("plan_note_eg")} className="h-10" />
+      </div>
     </Panel>
   );
 }
