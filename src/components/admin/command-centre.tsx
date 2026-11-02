@@ -186,7 +186,6 @@ export function CommandCentre() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{greet}, {admin.name}</h1>
-          <p className="mt-1 text-muted-foreground">Everything happening across The Hekim's Connect — the last {periodLabel} against the {periodLabel} before.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-border/60 bg-card/60 p-0.5" role="group" aria-label="Period">
