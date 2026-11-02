@@ -199,6 +199,18 @@ export function PatientsView() {
             const st = p.stage ? stageOf(p.stage) : null;
             const age = formatAge(p.dob);
             const step = p.stage && IN_PROGRESS.includes(p.stage) ? IN_PROGRESS.indexOf(p.stage) + 1 : p.stage === "done" ? IN_PROGRESS.length : 0;
+            const hasFlags = !!((p.lastAmaDecline && !p.lastReferral) || p.mizaj || p.bloodGroup);
+            const flags = (
+              <>
+                {p.lastAmaDecline && !p.lastReferral && (
+                  <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 text-[10px] gap-1">
+                    <ShieldQuestion className="h-2.5 w-2.5" /> {t("declined")}
+                  </Badge>
+                )}
+                {p.mizaj && <Badge variant="outline" className={cn("border text-[10px]", mizajBadge(p.mizaj))}>{p.mizaj}</Badge>}
+                {p.bloodGroup && <Badge variant="outline" className="text-red-600 dark:text-red-300 border-red-500/30 bg-red-500/10 text-[10px]">{p.bloodGroup}</Badge>}
+              </>
+            );
             return (
               <div
                 key={p.id}
@@ -218,21 +230,17 @@ export function PatientsView() {
                     <p className="font-medium truncate group-hover:text-primary transition-colors">{p.name}</p>
                     {p.patientCode && <span className="font-mono text-[11px] text-amber-700 dark:text-amber-400 bg-amber-400/10 rounded px-1.5 py-0.5 shrink-0">{p.patientCode}</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1.5">
+                  <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5">
                     {[val(p.gender), age !== "—" ? age : null].filter(Boolean).join(" · ")}
-                    {p.phone && <><span className="text-border">·</span><Phone className="h-3 w-3" />{p.phone}</>}
+                    {p.phone && <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><span className="text-border">·</span><Phone className="h-3 w-3 shrink-0" />{p.phone}</span>}
                   </p>
+                  {/* No room for the Flags column: they sit here instead. */}
+                  {hasFlags && <div className="mt-1 flex flex-wrap items-center gap-1.5 xl:hidden">{flags}</div>}
                 </div>
 
                 {/* Flags */}
-                <div className="hidden md:flex items-center gap-1.5 flex-wrap w-44">
-                  {p.lastAmaDecline && !p.lastReferral && (
-                    <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 text-[10px] gap-1">
-                      <ShieldQuestion className="h-2.5 w-2.5" /> {t("declined")}
-                    </Badge>
-                  )}
-                  {p.mizaj && <Badge variant="outline" className={cn("border text-[10px]", mizajBadge(p.mizaj))}>{p.mizaj}</Badge>}
-                  {p.bloodGroup && <Badge variant="outline" className="text-red-600 dark:text-red-300 border-red-500/30 bg-red-500/10 text-[10px]">{p.bloodGroup}</Badge>}
+                <div className="hidden xl:flex items-center gap-1.5 flex-wrap w-44">
+                  {flags}
                 </div>
 
                 {/* Last visit */}
@@ -251,7 +259,7 @@ export function PatientsView() {
                 </div>
 
                 {/* Stage + next action */}
-                <div className="flex items-center gap-2 sm:w-[19rem] sm:justify-end ms-auto">
+                <div className="flex items-center gap-2 sm:justify-end xl:w-[19rem] ms-auto">
                   {st ? (
                     <>
                       <span className="flex flex-col items-end gap-1">
