@@ -277,7 +277,7 @@ export function CommandCentre() {
                     <defs><linearGradient id="dashFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--color-primary, #10b981)" stopOpacity={0.35} /><stop offset="100%" stopColor="var(--color-primary, #10b981)" stopOpacity={0} /></linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} className="fill-muted-foreground" tickLine={false} axisLine={false} minTickGap={24} />
-                    <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickLine={false} axisLine={false} allowDecimals={false} tickFormatter={(v) => (metric === "revenue" ? compact(v) : String(v))} />
+                    <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickLine={false} axisLine={false} allowDecimals={false} tickFormatter={(v) => (metric === "revenue" ? `₹${compact(v)}` : String(v))} />
                     <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12 }} formatter={(v: number) => [metric === "revenue" ? inr(v) : v, metric === "visits" ? "Visits" : metric === "patients" ? "New patients" : "Collections"]} />
                     <Area type="monotone" dataKey="value" stroke="var(--color-primary, #10b981)" strokeWidth={2} fill="url(#dashFill)" />
                   </AreaChart>
