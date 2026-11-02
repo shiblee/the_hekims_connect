@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
@@ -1030,6 +1030,31 @@ function FoodAddPicker({ where, label, suggested, foods, rec, avoid, onPick }: {
   );
 }
 
+/** A diet list showing its first five rows, however tall each is; the rest scroll inside it. */
+function FiveRowList({ count, children }: { count?: number; children: ReactNode }) {
+  const ref = useRef<HTMLUListElement>(null);
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fifth = el.children.length > 5 ? el.children[4] as HTMLElement : null;
+    el.style.maxHeight = fifth ? `${fifth.offsetTop + fifth.offsetHeight}px` : "";
+  }, []);
+  useLayoutEffect(measure);
+  useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, [measure]);
+  // A food just added goes to the end of the list: bring it into view (not when the saved list first loads).
+  const lastCount = useRef(count);
+  useEffect(() => {
+    if (count && lastCount.current && count > lastCount.current) ref.current?.scrollTo({ top: ref.current.scrollHeight });
+    lastCount.current = count;
+  }, [count]);
+  return <ul ref={ref} className="relative space-y-1.5 overflow-y-auto">{children}</ul>;
+}
+
 /** One of the three diet columns. */
 function DietColumn({ tone, icon: Icon, title, sub, count, add, children }: { tone: "rec" | "avoid"; icon: typeof Ban; title: string; sub: string; count: number; add: ReactNode; children: ReactNode }) {
   return (
@@ -1038,7 +1063,7 @@ function DietColumn({ tone, icon: Icon, title, sub, count, add, children }: { to
         <p className={cn("flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide", tone === "rec" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}><Icon className="h-4 w-4 shrink-0" />{title}<span className="ms-auto rounded-full bg-background/80 px-1.5 text-[11px] tabular-nums">{count}</span></p>
         <p className="text-[11px] text-muted-foreground">{sub}</p>
       </header>
-      <ul className="space-y-1.5">{children}</ul>
+      <FiveRowList count={count}>{children}</FiveRowList>
       <div className="mt-2">{add}</div>
     </section>
   );
@@ -1080,7 +1105,7 @@ function MealRulesColumn({ state, basis }: { state: TashkheesState; basis: { suM
         <p className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"><Clock className="h-4 w-4 shrink-0" />{td("g_timing")}<span className="ms-auto rounded-full bg-background/80 px-1.5 text-[11px] tabular-nums">{chosen.length}</span></p>
         <p className="text-[11px] text-muted-foreground">{td("g_timing_sub")}</p>
       </header>
-      <ul className="space-y-1.5">
+      <FiveRowList>
         {chosen.map((r) => <RuleRow key={r.id} r={r} on onToggle={() => toggle(r.label)} />)}
         {suggested.length > 0 && <li className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-primary">{td("g_rules_suggested")}</li>}
         {suggested.map((r) => <RuleRow key={r.id} r={r} on={false} hint onToggle={() => toggle(r.label)} />)}
@@ -1088,7 +1113,7 @@ function MealRulesColumn({ state, basis }: { state: TashkheesState; basis: { suM
           <li><button type="button" onClick={() => setMore((v) => !v)} className="flex items-center gap-1 px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">{td("g_rules_more")} · {rest.length}<ChevronDown className={cn("h-3 w-3 transition-transform", more && "rotate-180")} /></button></li>
         )}
         {more && rest.map((r) => <RuleRow key={r.id} r={r} on={false} onToggle={() => toggle(r.label)} />)}
-      </ul>
+      </FiveRowList>
       <div className="mt-2">
         <FloatingTextarea id="ghiza-note" label={td("g_note_ph")} rows={2} value={d.ghizaNote ?? ""} onChange={(e) => set({ ghizaNote: e.target.value })} title={td("meal_note_eg")} />
       </div>
@@ -1177,12 +1202,12 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
               <li key={l} className="group flex items-start gap-2.5 rounded-lg border border-emerald-500/20 bg-background/70 p-2">
                 <FoodThumb src={f?.imageUrl} alt={l} credit={f?.imageCredit} className="h-9 w-9" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-snug">{l}</p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                    {f?.foodMizaj && <span className="rounded bg-sky-500/10 px-1.5 py-px text-[11px] font-medium text-sky-700 dark:text-sky-300">{mizajTag(f.foodMizaj)}</span>}
-                    {f?.action && <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{f.action}</span>}
+                  <p className="truncate text-sm font-semibold leading-snug" title={l}>{l}</p>
+                  <p className="mt-0.5 flex items-center gap-1.5">
+                    {f?.foodMizaj && <span className="shrink-0 rounded bg-sky-500/10 px-1.5 py-px text-[11px] font-medium text-sky-700 dark:text-sky-300">{mizajTag(f.foodMizaj)}</span>}
+                    {f?.action && <span title={f.action} className="min-w-0 truncate text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{f.action}</span>}
                   </p>
-                  {f?.use && <p className="mt-0.5 text-xs text-muted-foreground">{f.use}</p>}
+                  {f?.use && <p title={f.use} className="mt-0.5 truncate text-xs text-muted-foreground">{f.use}</p>}
                 </div>
                 <button type="button" onClick={() => setFood(l, "rec")} aria-label={td("remove_x", { label: l })} className="rounded p-0.5 text-muted-foreground opacity-60 hover:bg-muted hover:text-destructive group-hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
               </li>
@@ -1199,10 +1224,10 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
               <li key={l} className="group flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-background/70 p-2">
                 <FoodThumb src={f?.imageUrl} alt={l} credit={f?.imageCredit} className="h-9 w-9" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-snug">{l}</p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                    {f?.foodMizaj && <span className="rounded bg-destructive/10 px-1.5 py-px text-[11px] font-medium text-destructive">{mizajTag(f.foodMizaj)}</span>}
-                    {(hardWhy || f?.harm) && <span className={cn("text-[11px]", hardWhy ? "font-semibold text-destructive" : "text-destructive/90")}>{hardWhy || f?.harm}</span>}
+                  <p className="truncate text-sm font-semibold leading-snug" title={l}>{l}</p>
+                  <p className={cn("mt-0.5 flex items-center gap-1.5", hardWhy && "flex-wrap")}>
+                    {f?.foodMizaj && <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-px text-[11px] font-medium text-destructive">{mizajTag(f.foodMizaj)}</span>}
+                    {(hardWhy || f?.harm) && <span title={hardWhy || f?.harm || undefined} className={cn("text-[11px]", hardWhy ? "font-semibold text-destructive" : "min-w-0 truncate text-destructive/90")}>{hardWhy || f?.harm}</span>}
                   </p>
                 </div>
                 <button type="button" onClick={() => setFood(l, "avoid")} aria-label={td("remove_x", { label: l })} className="rounded p-0.5 text-muted-foreground opacity-60 hover:bg-muted hover:text-destructive group-hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
