@@ -35,16 +35,11 @@ interface CallRow {
 const RANGES = [{ v: "7", l: "7 days" }, { v: "30", l: "30 days" }, { v: "90", l: "90 days" }, { v: "all", l: "All time" }];
 const n = (v: number) => v.toLocaleString("en-IN");
 const compact = (v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M` : v >= 1000 ? `${(v / 1000).toFixed(v >= 10_000 ? 0 : 1)}k` : String(v));
-/** Small amounts keep enough decimals to be meaningful ($0.0004, not $0.00). */
-function usd(v: number) {
-  if (v === 0) return "$0.00";
-  const digits = v >= 1 ? 2 : v >= 0.01 ? 3 : 5;
-  return `$${v.toLocaleString("en-US", { minimumFractionDigits: Math.min(2, digits), maximumFractionDigits: digits })}`;
-}
-function inr(v: number, rate: number) {
-  const x = v * rate;
+/** Costs are stored in USD (Google's prices) and shown in rupees. Small amounts keep enough decimals to be meaningful (₹0.0004, not ₹0). */
+function inr(usd: number, rate: number) {
+  const x = usd * rate;
   if (x === 0) return "₹0";
-  return `₹${x.toLocaleString("en-IN", { maximumFractionDigits: x >= 100 ? 0 : x >= 1 ? 2 : 4 })}`;
+  return `₹${x.toLocaleString("en-IN", { maximumFractionDigits: x >= 100 ? 0 : x >= 1 ? 2 : x >= 0.01 ? 3 : 5 })}`;
 }
 const STATUS_LABEL: Record<string, string> = { ok: "OK", error: "Error", quota: "Quota / credits", timeout: "Timed out" };
 
@@ -86,14 +81,14 @@ export function GeminiUsageDashboard() {
       </div>
       <p className="flex items-start gap-2 rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
         <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-        Every Gemini request this app makes is counted here — tokens as reported by Google, cost from the prices below. Requests made before tracking started aren&apos;t included, and Google&apos;s invoice (taxes, other apps using the same key) is the final word.
+        Every Gemini request this app makes is counted here — tokens as reported by Google, cost from the prices below, shown in rupees at ₹{rate} to 1 USD. Requests made before tracking started aren&apos;t included, and Google&apos;s invoice (taxes, other apps using the same key) is the final word.
       </p>
 
       {/* Headline totals */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Tile label="Total cost to date" value={usd(data.allTime.costUsd)} sub={`${inr(data.allTime.costUsd, rate)} · ${n(data.allTime.calls)} calls`} strong />
-        <Tile label="This month" value={usd(data.month.costUsd)} sub={`${inr(data.month.costUsd, rate)} · ${n(data.month.calls)} calls`} />
-        <Tile label="Today" value={usd(data.today.costUsd)} sub={`${inr(data.today.costUsd, rate)} · ${n(data.today.calls)} calls`} />
+        <Tile label="Total cost to date" value={inr(data.allTime.costUsd, rate)} sub={`${n(data.allTime.calls)} calls`} strong />
+        <Tile label="This month" value={inr(data.month.costUsd, rate)} sub={`${n(data.month.calls)} calls`} />
+        <Tile label="Today" value={inr(data.today.costUsd, rate)} sub={`${n(data.today.calls)} calls`} />
         <Tile label="Google Search this month" value={`${n(data.searchMonth.used)} / ${n(data.searchMonth.free)}`} sub={data.searchMonth.billed ? `${n(data.searchMonth.billed)} billed beyond the free allowance` : "within the free allowance"} />
       </div>
 
@@ -111,11 +106,11 @@ export function GeminiUsageDashboard() {
       </div>
 
       <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-5", loading && "opacity-60")}>
-        <Tile label="Cost" value={usd(r.costUsd)} sub={inr(r.costUsd, rate)} />
+        <Tile label="Cost" value={inr(r.costUsd, rate)} />
         <Tile label="Calls" value={n(r.calls)} sub={`${n(r.ok)} OK · ${n(r.failed)} failed${r.quota ? ` (${n(r.quota)} quota)` : ""}`} />
         <Tile label="Input tokens" value={compact(r.inputTokens)} sub={r.cachedTokens ? `${compact(r.cachedTokens)} from cache` : "sent to Gemini"} />
         <Tile label="Output tokens" value={compact(r.outputTokens + r.thinkingTokens)} sub={`${compact(r.thinkingTokens)} of them thinking`} />
-        <Tile label="Average per call" value={r.calls ? usd(r.costUsd / r.calls) : "—"} sub={r.calls ? `${(r.avgMs / 1000).toFixed(1)} s · ${compact(Math.round(r.totalTokens / r.calls))} tokens` : "no calls"} />
+        <Tile label="Average per call" value={r.calls ? inr(r.costUsd / r.calls, rate) : "—"} sub={r.calls ? `${(r.avgMs / 1000).toFixed(1)} s · ${compact(Math.round(r.totalTokens / r.calls))} tokens` : "no calls"} />
       </div>
 
       {r.calls === 0 ? (
@@ -124,11 +119,11 @@ export function GeminiUsageDashboard() {
         </p>
       ) : (
         <>
-          <ChartCard title="Cost per day (USD)">
+          <ChartCard title="Cost per day (₹)">
             <BarChart data={data.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap={2}>
               <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.6} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickFormatter={shortDate} minTickGap={24} />
-              <YAxis tickLine={false} axisLine={false} width={56} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickFormatter={(v) => usd(v)} />
+              <YAxis tickLine={false} axisLine={false} width={56} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickFormatter={(v) => inr(v, rate)} />
               <Tooltip cursor={{ fill: "var(--muted)", opacity: 0.4 }} content={<DayTooltip rate={rate} />} />
               <Bar dataKey="costUsd" name="Cost" fill="var(--viz-1)" radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>
@@ -149,7 +144,7 @@ export function GeminiUsageDashboard() {
         </>
       )}
 
-      <CallsLog key={days} />
+      <CallsLog key={days} rate={rate} />
       <PricingEditor pricing={data.pricing} onSaved={load} />
     </div>
   );
@@ -191,7 +186,7 @@ function DayTooltip({ active, payload, rate }: { active?: boolean; payload?: { p
   return (
     <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
       <p className="mb-1 font-semibold">{new Date(`${d.date}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}</p>
-      <p className="tabular-nums">Cost <strong>{usd(d.costUsd)}</strong> · {inr(d.costUsd, rate)}</p>
+      <p className="tabular-nums">Cost <strong>{inr(d.costUsd, rate)}</strong></p>
       <p className="tabular-nums">{n(d.calls)} calls{d.failed ? ` (${n(d.failed)} failed)` : ""}</p>
       <p className="tabular-nums"><span className="inline-block h-2 w-2 rounded-sm me-1" style={{ background: "var(--viz-1)" }} />Input {n(d.inputTokens)} · <span className="inline-block h-2 w-2 rounded-sm mx-1" style={{ background: "var(--viz-2)" }} />Output {n(d.outputTokens)}</p>
     </div>
@@ -225,7 +220,7 @@ function FeatureTable({ rows, total, rate }: { rows: FeatureRow[]; total: number
                   <td className="px-4 py-2 text-right tabular-nums">{n(f.calls)}{f.failed ? <span className="block text-xs text-destructive">{n(f.failed)} failed</span> : null}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{compact(f.inputTokens)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{compact(f.outputTokens)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums font-semibold">{usd(f.costUsd)}<span className="block text-xs font-normal text-muted-foreground">{inr(f.costUsd, rate)}</span></td>
+                  <td className="px-4 py-2 text-right tabular-nums font-semibold">{inr(f.costUsd, rate)}</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 flex-1 rounded-full bg-muted"><div className="h-1.5 rounded-full" style={{ width: `${Math.max(share * 100, share > 0 ? 2 : 0)}%`, background: "var(--viz-1)" }} /></div>
@@ -244,7 +239,7 @@ function FeatureTable({ rows, total, rate }: { rows: FeatureRow[]; total: number
   );
 }
 
-function CallsLog() {
+function CallsLog({ rate }: { rate: number }) {
   const [calls, setCalls] = useState<CallRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -300,7 +295,7 @@ function CallsLog() {
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{n(c.inputTokens + c.cachedTokens)}{c.cachedTokens ? <span className="block text-xs text-muted-foreground">{n(c.cachedTokens)} cached</span> : null}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{n(c.outputTokens + c.thinkingTokens)}{c.thinkingTokens ? <span className="block text-xs text-muted-foreground">{n(c.thinkingTokens)} thinking</span> : null}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{usd(c.costUsd)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{inr(c.costUsd, rate)}</td>
                   <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{(c.durationMs / 1000).toFixed(1)} s</td>
                 </tr>
               ))}
@@ -327,6 +322,7 @@ function PricingEditor({ pricing, onSaved }: { pricing: GeminiPricing; onSaved: 
   const [saving, setSaving] = useState(false);
   const setPeriod = (i: number, patch: Partial<PricePeriod>) => setForm((f) => ({ ...f, periods: f.periods.map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
   const num = (v: string) => (v === "" ? NaN : Number(v));
+  const inRupees = (usd: number) => (Number.isFinite(usd) && Number.isFinite(form.usdToInr) ? <span className="mt-0.5 block text-[11px] tabular-nums">= {inr(usd, form.usdToInr)}</span> : null);
 
   const save = async () => {
     setSaving(true);
@@ -344,7 +340,7 @@ function PricingEditor({ pricing, onSaved }: { pricing: GeminiPricing; onSaved: 
       <div>
         <h3 className="font-serif text-base font-semibold">Prices</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          USD per 1 million tokens, from Google&apos;s <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noreferrer" className="text-primary hover:underline">Gemini price list</a>. Each call is priced when it is made, with the period in force that day. Output includes thinking tokens.
+          In USD per 1 million tokens, as Google publishes and bills them, from Google&apos;s <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noreferrer" className="text-primary hover:underline">Gemini price list</a>. Each call is priced when it is made, with the period in force that day. Output includes thinking tokens.
         </p>
       </div>
       <div className="space-y-2">
@@ -356,12 +352,15 @@ function PricingEditor({ pricing, onSaved }: { pricing: GeminiPricing; onSaved: 
             </label>
             <label className="text-xs text-muted-foreground">Input
               <Input type="number" step="any" min={0} value={Number.isFinite(p.input) ? p.input : ""} onChange={(e) => setPeriod(i, { input: num(e.target.value) })} className="mt-1" />
+              {inRupees(p.input)}
             </label>
             <label className="text-xs text-muted-foreground">Cached input
               <Input type="number" step="any" min={0} value={Number.isFinite(p.cachedInput) ? p.cachedInput : ""} onChange={(e) => setPeriod(i, { cachedInput: num(e.target.value) })} className="mt-1" />
+              {inRupees(p.cachedInput)}
             </label>
             <label className="text-xs text-muted-foreground">Output
               <Input type="number" step="any" min={0} value={Number.isFinite(p.output) ? p.output : ""} onChange={(e) => setPeriod(i, { output: num(e.target.value) })} className="mt-1" />
+              {inRupees(p.output)}
             </label>
             <Button variant="ghost" size="icon" aria-label="Remove this period" disabled={p.from === null} onClick={() => setForm((f) => ({ ...f, periods: f.periods.filter((_, j) => j !== i) }))}><Trash2 className="h-4 w-4" /></Button>
           </div>
@@ -376,6 +375,7 @@ function PricingEditor({ pricing, onSaved }: { pricing: GeminiPricing; onSaved: 
         </label>
         <label className="text-xs text-muted-foreground">Then, USD per 1,000 searches
           <Input type="number" step="any" min={0} value={Number.isFinite(form.searchPer1000) ? form.searchPer1000 : ""} onChange={(e) => setForm((f) => ({ ...f, searchPer1000: num(e.target.value) }))} className="mt-1" />
+          {inRupees(form.searchPer1000)}
         </label>
         <label className="text-xs text-muted-foreground">1 USD in rupees (for ₹ figures)
           <Input type="number" step="any" min={0} value={Number.isFinite(form.usdToInr) ? form.usdToInr : ""} onChange={(e) => setForm((f) => ({ ...f, usdToInr: num(e.target.value) }))} className="mt-1" />
