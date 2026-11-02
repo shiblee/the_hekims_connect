@@ -1233,6 +1233,7 @@ interface CdsData {
 
 const CDS_COLS = "grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_9rem_minmax(0,1.8fr)_7rem_9.5rem] items-center gap-x-3";
 const CDS_EXCL = "grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-center gap-x-3";
+const RX_COLS = "grid grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_1.75rem] items-center gap-x-2";
 const CDS_HEAD = "border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
 /**
@@ -1453,37 +1454,49 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
             action={<Button size="sm" variant="outline" onClick={() => setCheckTick((n) => n + 1)}>{td("check_again")}</Button>} />
         )}
         {d.prescriptions.length === 0 ? <p className="text-sm text-muted-foreground">{td("no_meds")}</p> : (
-          <div className="space-y-3">
-            {d.prescriptions.map((p, i) => {
-              const w = p.tagId ? warnings[p.tagId] || [] : [];
-              const formOptions = [...new Set([...(herbs.find((h) => h.id === p.tagId)?.forms || []), ...forms])];
-              return (
-                <div key={i} className={cn("rounded-xl border p-3 space-y-2.5", w.some((x) => x.level === "high") ? "border-destructive/40 bg-card" : "border-border/50 bg-card")}>
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-[15px] font-semibold flex flex-wrap items-center gap-1.5">{herbs.find((h) => h.id === p.tagId)?.kind === "medication" ? <Pill className="h-4 w-4 text-sky-600" /> : <Leaf className="h-4 w-4 text-primary" />}{p.name}{p.tagId && (w.length > 0
-                      ? <MedicineInfoButton tagId={p.tagId} name={p.name} patientNotes={w}
-                          className={cn("ms-1 inline-flex items-center gap-1.5 text-[13px] font-medium", noteTone(w))}>
-                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: w.length })}
-                        </MedicineInfoButton>
-                      : <MedicineInfoButton tagId={p.tagId} name={p.name} />)}{!p.tagId && <Badge variant="outline" className="text-[11px] font-normal">{td("not_catalogue")}</Badge>}</p>
-                    <button type="button" onClick={() => set({ prescriptions: d.prescriptions.filter((_, n) => n !== i) })} aria-label={td("remove_x", { label: p.name })} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                  {/* One line where there's room (six fields), otherwise three per row. */}
-                  <div className="@container"><div className="grid grid-cols-2 @min-[28rem]:grid-cols-3 @min-[34rem]:grid-cols-[0.9fr_0.75fr_1.3fr_0.95fr_0.95fr_1.2fr] gap-x-2 gap-y-4 pt-2">
-                    <FloatingSelect id={`rx-form-${i}`} label={td("form")} value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })} placeholder={td("choose")}>
-                      {sortLabels(formOptions).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                    </FloatingSelect>
-                    <FloatingField id={`rx-dose-${i}`} label={td("dose")} value={p.dose} onChange={(e) => updRx(i, { dose: e.target.value })} title={td("dose_eg")} />
-                    <FloatingSelect id={`rx-timing-${i}`} label={td("timing")} value={p.timing || ""} onValueChange={(v) => updRx(i, { timing: v })} placeholder={td("choose")}>
-                      {timings.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                    </FloatingSelect>
-                    <FloatingField id={`rx-duration-${i}`} label={td("duration")} value={p.duration} onChange={(e) => updRx(i, { duration: e.target.value })} title={td("duration_eg")} />
-                    <FloatingField id={`rx-with-${i}`} label={td("badraqa")} value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title={td("badraqa_eg")} />
-                    <FloatingField id={`rx-instr-${i}`} label={td("instructions")} maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} title={p.instructions || td("instructions")} />
-                  </div></div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <div className="min-w-[60rem]">
+              <div className={cn(RX_COLS, CDS_HEAD)}>
+                <span>{td("cds_col_medicine")}</span><span>{td("form")}</span><span>{td("dose")}</span><span>{td("timing")}</span><span>{td("duration")}</span><span>{td("badraqa")}</span><span>{td("instructions")}</span><span />
+              </div>
+              <FiveRowList count={d.prescriptions.length} className="divide-y divide-border">
+                {d.prescriptions.map((p, i) => {
+                  const w = p.tagId ? warnings[p.tagId] || [] : [];
+                  const formOptions = [...new Set([...(herbs.find((h) => h.id === p.tagId)?.forms || []), ...forms])];
+                  return (
+                    <li key={i} className={cn(RX_COLS, "px-3 py-2", w.some((x) => x.level === "high") && "bg-destructive/5")}>
+                      <div className="min-w-0">
+                        <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold leading-snug">
+                          {herbs.find((h) => h.id === p.tagId)?.kind === "medication" ? <Pill className="h-4 w-4 shrink-0 text-sky-600" /> : <Leaf className="h-4 w-4 shrink-0 text-primary" />}
+                          <span className="truncate" title={p.name}>{p.name}</span>
+                          {p.tagId && w.length === 0 && <MedicineInfoButton tagId={p.tagId} name={p.name} />}
+                        </p>
+                        {p.tagId && w.length > 0 && (
+                          <MedicineInfoButton tagId={p.tagId} name={p.name} patientNotes={w}
+                            className={cn("mt-0.5 inline-flex items-center gap-1 text-start text-xs font-medium", noteTone(w))}>
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: w.length })}
+                          </MedicineInfoButton>
+                        )}
+                        {!p.tagId && <Badge variant="outline" className="mt-0.5 text-[11px] font-normal">{td("not_catalogue")}</Badge>}
+                      </div>
+                      <Select value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })}>
+                        <SelectTrigger aria-label={`${td("form")} — ${p.name}`} title={p.form || undefined} className="h-8 w-full min-w-0 bg-background/60 px-2"><SelectValue placeholder={td("choose")} /></SelectTrigger>
+                        <SelectContent>{sortLabels(formOptions).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input aria-label={`${td("dose")} — ${p.name}`} value={p.dose} onChange={(e) => updRx(i, { dose: e.target.value })} title={td("dose_eg")} className="h-8 bg-background/60 px-2" />
+                      <Select value={p.timing || ""} onValueChange={(v) => updRx(i, { timing: v })}>
+                        <SelectTrigger aria-label={`${td("timing")} — ${p.name}`} title={p.timing || undefined} className="h-8 w-full min-w-0 bg-background/60 px-2"><SelectValue placeholder={td("choose")} /></SelectTrigger>
+                        <SelectContent>{timings.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input aria-label={`${td("duration")} — ${p.name}`} value={p.duration} onChange={(e) => updRx(i, { duration: e.target.value })} title={td("duration_eg")} className="h-8 bg-background/60 px-2" />
+                      <Input aria-label={`${td("badraqa")} — ${p.name}`} value={p.adjuvant} onChange={(e) => updRx(i, { adjuvant: e.target.value })} title={td("badraqa_eg")} className="h-8 bg-background/60 px-2" />
+                      <Input aria-label={`${td("instructions")} — ${p.name}`} maxLength={500} value={p.instructions} onChange={(e) => updRx(i, { instructions: e.target.value })} title={p.instructions || td("instructions")} className="h-8 bg-background/60 px-2" />
+                      <button type="button" onClick={() => set({ prescriptions: d.prescriptions.filter((_, n) => n !== i) })} aria-label={td("remove_x", { label: p.name })} className="justify-self-end rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </li>
+                  );
+                })}
+              </FiveRowList>
+            </div>
           </div>
         )}
       </Panel>
