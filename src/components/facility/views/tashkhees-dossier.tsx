@@ -1440,35 +1440,66 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
 
 // ---------------------------------------------------------------- tab 5: Prognosis & handover
 
+const HANDOVER_CAP = "mb-1 text-xs font-semibold text-muted-foreground";
+/** Today + n days as a date input's yyyy-mm-dd, in local time. */
+const dateInDays = (n: number) => { const x = new Date(); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+
 function HandoverTab({ state }: { state: TashkheesState }) {
   const { dossier: d, set, options } = state;
   const td = useTranslations("clinic.dossier");
   const dl = useDateLocale();
+  const fuDays = d.followUpDate ? Math.round((new Date(`${d.followUpDate}T00:00`).getTime() - new Date(`${dateInDays(0)}T00:00`).getTime()) / 86_400_000) : null;
   return (
     <Panel icon={CalendarDays} tour="dossier.handover" title={td("handover_title")}
       aside={d.status === "finalized" ? <Badge variant="outline" className="mt-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">{td("finalised")}</Badge> : undefined}>
-      <QuestionRow question={<Q>{td("prognosis")}</Q>}>
-        <OptionDropdown id="prognosis" options={(options?.prognosis || []).map((o) => ({ label: o.label, description: o.description }))} value={d.prognosis ? [d.prognosis] : []}
-          onChange={(v) => set({ prognosis: v[0] ?? null })} placeholder={td("choose_one")} />
-      </QuestionRow>
-      <div className="grid sm:grid-cols-[220px_1fr] gap-3 pt-1">
-        <div className="relative h-14 rounded-lg border border-input focus-within:border-primary flex items-center transition-colors">
-          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0 ms-3.5" />
-          <input id="followup-date" type="date" value={d.followUpDate ?? ""} onChange={(e) => set({ followUpDate: e.target.value || null })}
-            className="peer h-full flex-1 min-w-0 bg-transparent ps-2.5 pe-3 text-base font-medium outline-none" />
-          {/* A date box always shows its dd/mm/yyyy mask, so the label sits on the border. */}
-          <label htmlFor="followup-date" className="pointer-events-none absolute start-3 top-0 -translate-y-1/2 bg-card px-1.5 whitespace-nowrap text-sm font-semibold text-muted-foreground peer-focus:text-primary">{td("followup_date")}</label>
+      {/* Container query: all four on one line only when the panel itself is wide enough. */}
+      <div className="@container space-y-3">
+        <div className="grid items-start gap-3 @xl:grid-cols-2 @4xl:grid-cols-[minmax(0,1.1fr)_18rem_minmax(0,1.5fr)_auto]">
+          <div className="min-w-0">
+            <p className={HANDOVER_CAP}>{td("prognosis")}</p>
+            <OptionDropdown id="prognosis" options={(options?.prognosis || []).map((o) => ({ label: o.label, description: o.description }))} value={d.prognosis ? [d.prognosis] : []}
+              onChange={(v) => set({ prognosis: v[0] ?? null })} placeholder={td("choose_one")} />
+          </div>
+          <div className="min-w-0">
+            <div className={cn(HANDOVER_CAP, "flex items-center gap-1.5")}>
+              <label htmlFor="followup-date" className="min-w-0 truncate">
+                {td("followup_date")}
+                {fuDays !== null && <span className={cn("ms-1 font-normal", fuDays < 0 ? "text-amber-700 dark:text-amber-400" : "text-primary")}>· {fuDays < 0 ? td("fu_ago", { days: -fuDays }) : fuDays === 0 ? td("fu_today") : td("fu_in", { days: fuDays })}</span>}
+              </label>
+              <span className="ms-auto flex shrink-0 gap-0.5">
+                {[7, 14, 30].map((n) => <button key={n} type="button" onClick={() => set({ followUpDate: dateInDays(n) })} title={td("fu_add", { n })} aria-label={td("fu_add", { n })} className="rounded px-1 text-[11px] font-medium text-primary hover:bg-primary/10">+{n}</button>)}
+              </span>
+            </div>
+            <div className="flex h-11 items-center rounded-lg border border-input transition-colors focus-within:border-primary">
+              <CalendarDays className="ms-3 h-4 w-4 shrink-0 text-muted-foreground" />
+              <input id="followup-date" type="date" value={d.followUpDate ?? ""} onChange={(e) => set({ followUpDate: e.target.value || null })}
+                className="h-full min-w-0 flex-1 bg-transparent ps-2 pe-2 text-sm font-medium outline-none" />
+            </div>
+          </div>
+          <div className="min-w-0">
+            <label htmlFor="followup-note" className={cn(HANDOVER_CAP, "block")}>{td("followup_plan")}</label>
+            <Input id="followup-note" maxLength={500} value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })} placeholder={td("followup_eg")} title={d.followUpNote || td("followup_eg")} className="h-11" />
+          </div>
+          <div>
+            <p className={HANDOVER_CAP}>{td("priority")}</p>
+            <div className="inline-flex h-11 items-center rounded-lg border border-border/60 bg-background/40 p-0.5" role="group" aria-label={td("priority")}>
+              {PRIORITIES.map((o) => (
+                <button key={o.value} type="button" aria-pressed={d.priority === o.value} onClick={() => set({ priority: o.value })}
+                  className={cn("h-full rounded-md px-2.5 text-[13px] font-medium transition-colors", d.priority !== o.value ? "text-muted-foreground hover:text-foreground" : o.value === "urgent" ? "bg-destructive text-white" : o.value === "priority" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground")}>
+                  {td(`pr_${o.value}`)}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <FloatingField id="followup-note" label={td("followup_plan")} maxLength={500} value={d.followUpNote ?? ""} onChange={(e) => set({ followUpNote: e.target.value })}
-          title={td("followup_eg")} />
+        {/* The two text boxes, side by side. */}
+        <div className="grid gap-3 @2xl:grid-cols-2">
+          <FloatingTextarea id="urgent-directives" label={td("urgent_directives")} rows={2} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })}
+            title={td("urgent_eg")} className="min-h-14 text-sm" />
+          <FloatingTextarea id="handover-note" label={td("handover_note")} rows={2} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })}
+            title={td("handover_eg")} className="min-h-14 text-sm" />
+        </div>
       </div>
-      <QuestionRow question={<Q>{td("priority")}</Q>}>
-        <Segmented value={d.priority} options={PRIORITIES.map((o) => ({ value: o.value, label: td(`pr_${o.value}`) }))} onChange={(v) => set({ priority: v ?? "routine" })} />
-      </QuestionRow>
-      <FloatingTextarea id="urgent-directives" label={td("urgent_directives")} rows={2} value={d.urgentDirectives ?? ""} onChange={(e) => set({ urgentDirectives: e.target.value })}
-        title={td("urgent_eg")} />
-      <FloatingTextarea id="handover-note" label={td("handover_note")} rows={4} value={d.handoverNote ?? ""} onChange={(e) => set({ handoverNote: e.target.value })}
-        title={td("handover_eg")} />
       {d.status === "finalized" && d.finalizedByName && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-emerald-500" /> {td("finalised_by", { name: d.finalizedByName })}{d.finalizedAt && ` · ${new Date(d.finalizedAt).toLocaleString(dl)}`}</p>
       )}
