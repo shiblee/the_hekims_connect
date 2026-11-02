@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { FloatingField, FloatingMultiSelect, FloatingSelect, FloatingTextarea } from "@/components/shared/floating-field";
+import { FloatingField, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { sortLabels } from "@/lib/sort-options";
 import {
@@ -903,7 +903,7 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
  * (with why, and any safety notes) first, then every other medicine A–Z. A medicine excluded for
  * safety shows the reason, and one already on the prescription can't be added twice.
  */
-function HerbPicker({ herbs, cds, added, onPick }: { herbs: Herb[]; cds: CdsData | null; added: (string | null)[]; onPick: (h: { id: string | null; label: string; forms: string[] }, suggestion?: CdsCand) => void }) {
+function HerbPicker({ herbs, cds, failed, onOpen, onRetry, added, onPick }: { herbs: Herb[]; cds: CdsData | null; failed: boolean; onOpen: () => void; onRetry: () => void; added: (string | null)[]; onPick: (h: { id: string | null; label: string; forms: string[] }, suggestion?: CdsCand) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"unani" | "allo">("unani");
@@ -921,9 +921,9 @@ function HerbPicker({ herbs, cds, added, onPick }: { herbs: Herb[]; cds: CdsData
   const head = (t: string, tone: string) => <p className={cn("sticky top-0 z-[1] bg-popover px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide", tone)}>{t}</p>;
   const addedMark = <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3 w-3" />{td("added")}</span>;
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) onOpen(); }}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_medicine")}</Button>
+        <Button data-tour="dossier.cds" size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_medicine")}</Button>
       </PopoverTrigger>
       <PopoverContent className="w-[min(30rem,calc(100vw-2rem))] p-2" align="end">
         <div className="mb-2 grid grid-cols-2 rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
@@ -936,6 +936,7 @@ function HerbPicker({ herbs, cds, added, onPick }: { herbs: Herb[]; cds: CdsData
         </div>
         <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "unani" ? td("search_medicines") : td("search_allo")} className="h-9 mb-1" />
         <div className="max-h-[24rem] overflow-y-auto">
+          {failed && <p className="mt-1 px-2 py-1 text-xs text-muted-foreground">{td.rich("picker_failed", { retry: (c) => <button type="button" onClick={onRetry} className="text-primary font-medium hover:underline">{c}</button> })}</p>}
           {tab === "allo" && suggested.length > 0 && <p className="mt-1 rounded-md bg-amber-500/5 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-400">{td("cds_allo_note")}</p>}
           {suggested.length > 0 && head(td("picker_suggested", { count: suggested.length }), "text-emerald-700 dark:text-emerald-400")}
           {suggested.map((c) => {
@@ -1269,7 +1270,7 @@ interface CdsData {
   decisions?: { tagId: string; action: string; reason: string | null }[];
 }
 
-/** This patient's decision-support result, shared by its panel and "Add medicine"; decide() records what the doctor did. */
+/** This patient's decision-support result (doctors only, pilot switch in Admin) for "Add medicine"; decide() records what the doctor did. */
 function useCds(visitId: string) {
   const [data, setData] = useState<CdsData | null>(null);
   const [failed, setFailed] = useState(false);
@@ -1288,173 +1289,8 @@ function useCds(visitId: string) {
   return { data, failed, fetchCds, decide };
 }
 
-const CDS_COLS = "grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_9rem_minmax(0,1.8fr)_7rem_9.5rem] items-center gap-x-3";
-const CDS_EXCL = "grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-center gap-x-3";
 const RX_COLS = "grid grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_1.75rem] items-center gap-x-2";
-const CDS_HEAD = "border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
-
-/**
- * "Clinical Decision Support — Medicines & Supplements" (doctors only).
- * Candidates from the clinic's own database that may be worth evaluating,
- * after safety checks — each with why it was found, its evidence and
- * verification status and any precautions. Each tab is a table showing five
- * rows that scroll (like the diet); Add appends the medicine to Ilaj-bil-Dawa below.
- */
-function CdsPanel({ state, cds }: { state: TashkheesState; cds: ReturnType<typeof useCds> }) {
-  const { dossier: d, set, herbs } = state;
-  const { data, failed, fetchCds, decide: act } = cds;
-  const [tab, setTab] = useState<"unani" | "allopathic" | "supplements" | "safety" | "info">("unani");
-  const [running, setRunning] = useState(false);
-  const [rejecting, setRejecting] = useState<{ tagId: string; reason: string } | null>(null);
-  const [q, setQ] = useState("");
-  const [safetyOpen, setSafetyOpen] = useState(false);
-  const td = useTranslations("clinic.dossier");
-  const tc = useTranslations("common");
-  if (!data && !failed) return null;
-  if (data && !data.enabled) return null; // pilot off, or not a doctor
-  const rerun = async () => { setRunning(true); try { await state.save(false); await fetchCds(); } finally { setRunning(false); } };
-
-  const r = data?.result;
-  const last = (tagId: string) => [...(data?.decisions || [])].reverse().find((x) => x.tagId === tagId);
-  const addToRx = (c: CdsCand) => {
-    if (d.prescriptions.some((p) => p.tagId === c.tagId)) return;
-    const forms = herbs.find((h) => h.id === c.tagId)?.forms || [];
-    set({ prescriptions: [...d.prescriptions, { tagId: c.tagId, name: c.label, form: forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] });
-    act(c, "added_to_prescription");
-  };
-
-  const SafetyLink = ({ c }: { c: CdsCand }) => (c.safety.length === 0
-    ? <span className="inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>
-    : <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
-        className={cn("inline-flex items-center gap-1 align-middle text-start text-xs font-medium", noteTone(c.safety))}>
-        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
-      </MedicineInfoButton>);
-
-  /** One suggested medicine as a table row: Add puts it in Ilaj-bil-Dawa. */
-  const renderRow = (c: CdsCand) => {
-    const dec = last(c.tagId);
-    const inRx = d.prescriptions.some((p) => p.tagId === c.tagId);
-    const rejected = dec?.action === "rejected" && !inRx;
-    return (
-      <li key={c.tagId} className={cn(CDS_COLS, "px-3 py-2", rejected && "opacity-60", inRx && "bg-emerald-500/5")}>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold leading-snug" title={c.label}>{c.label}</p>
-          {c.unaniName && c.unaniName !== c.label && <p className="truncate text-xs text-muted-foreground" title={c.unaniName}>{c.unaniName}</p>}
-        </div>
-        <div className="min-w-0 text-xs text-muted-foreground">
-          {c.herbType && <p className="truncate" title={c.herbType}>{c.herbType}</p>}
-          {c.mizaj && <p className="truncate" title={c.mizaj}>{c.mizaj}</p>}
-        </div>
-        <p className="flex flex-wrap items-center gap-1">
-          {c.evidence.traditional && <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{td("traditional")}</Badge>}
-          {c.evidence.clinical && <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">{td("clinical")}</Badge>}
-          <Badge variant="outline" className={cn("h-4 px-1.5 text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? td("verified") : td("unverified")}</Badge>
-        </p>
-        <p className="line-clamp-2 min-w-0 text-xs text-emerald-700 dark:text-emerald-400" title={c.reasons.join(" · ") || undefined}>{c.reasons.join(" · ")}</p>
-        <div className="min-w-0"><SafetyLink c={c} /></div>
-        <div className="flex items-center justify-end gap-1">
-          {inRx ? <span className="flex items-center gap-1 rounded-md border border-emerald-500/60 bg-emerald-600 px-3 py-1 text-xs font-medium text-white"><Check className="h-3 w-3" />{td("added")}</span>
-            : <button type="button" onClick={() => addToRx(c)} className="rounded-md border border-emerald-500/50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">{td("add")}</button>}
-          {!inRx && !rejected && rejecting?.tagId !== c.tagId && (
-            <button type="button" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })} className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10">{td("reject_more")}</button>
-          )}
-          {rejected && <span className="text-xs text-muted-foreground">{td("dec_rejected")}</span>}
-        </div>
-        {rejecting?.tagId === c.tagId && (
-          <span className="col-span-full flex items-center justify-end gap-1.5">
-            <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder={td("reject_reason")} className="h-7 w-56 text-xs" />
-            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!rejecting.reason.trim()} onClick={() => { act(c, "rejected", rejecting.reason); setRejecting(null); }}>{td("reject")}</Button>
-            <button type="button" className="text-xs text-muted-foreground" onClick={() => setRejecting(null)}>{tc("cancel")}</button>
-          </span>
-        )}
-      </li>
-    );
-  };
-
-  const counts = { unani: r?.unani.length ?? 0, allopathic: r?.allopathic?.length ?? 0, supplements: r?.supplements.length ?? 0, safety: (r?.excluded.length ?? 0), info: r?.infoNeeded.length ?? 0 };
-  return (
-    <Panel icon={ShieldAlert} tour="dossier.cds" title={td("cds_title")}
-      aside={
-        <span className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">{td("pilot")}</Badge>
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rechecking") : td("recheck")}</button>
-        </span>
-      }>
-      {failed || !r ? (
-        failed ? <p className="text-sm text-muted-foreground">{td.rich("cds_failed", { retry: (c) => <button type="button" onClick={() => fetchCds()} className="text-primary font-medium hover:underline">{c}</button> })}</p> : <Loading />
-      ) : (
-        <>
-          {r.urgent.map((u) => (
-            <p key={u} className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />{u}</p>
-          ))}
-          <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
-            {([["unani", td("tab_unani", { count: counts.unani })], ["allopathic", td("tab_allo", { count: counts.allopathic })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { if (k === "safety") { setSafetyOpen(true); return; } setTab(k); }}
-                className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? (k === "safety" ? "bg-destructive text-white" : k === "info" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>{l}</button>
-            ))}
-          </div>
-
-          {(tab === "unani" || tab === "allopathic" || tab === "supplements") && (() => {
-            const list = tab === "unani" ? r.unani : tab === "allopathic" ? (r.allopathic ?? []) : r.supplements;
-            const ql = q.trim().toLowerCase();
-            const rows = list.filter((c) => !ql || `${c.label} ${c.unaniName ?? ""} ${c.herbType ?? ""} ${c.reasons.join(" ")}`.toLowerCase().includes(ql));
-            return (
-              <>
-                <FloatingField id="cdsSearch" icon={Search} autoComplete="off" value={q}
-                  label={tab === "unani" ? td("cds_search_unani", { count: list.length }) : tab === "allopathic" ? td("cds_search_allo", { count: list.length }) : td("cds_search_supp", { count: list.length })}
-                  onChange={(e) => setQ(e.target.value)} />
-                {tab === "allopathic" && <p className="rounded-lg bg-amber-500/5 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400">{td("cds_allo_note")}</p>}
-                {rows.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground">{list.length === 0 ? (tab === "unani" ? td("no_unani") : tab === "allopathic" ? td("no_allo") : td("no_supp")) : td("cds_no_match", { q })}</p>
-                ) : (
-                  <div className="overflow-x-auto rounded-xl border border-border">
-                    <div className="min-w-[56rem]">
-                      <div className={cn(CDS_COLS, CDS_HEAD)}>
-                        <span>{td("cds_col_medicine")}</span><span>{td("cds_col_type")}</span><span>{td("cds_col_evidence")}</span><span>{td("us_col_why")}</span><span>{td("safety")}</span><span />
-                      </div>
-                      <FiveRowList className="divide-y divide-border">{rows.map(renderRow)}</FiveRowList>
-                    </div>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-          <Dialog open={safetyOpen} onOpenChange={setSafetyOpen}>
-            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-              <DialogHeader><DialogTitle>{td("tab_safety", { count: counts.safety })}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{td("current_meds")}</p>
-                {r.currentMeds.length ? (
-                  <div className="flex flex-wrap gap-1.5">{r.currentMeds.map((m) => <span key={m.label} className={cn("rounded-full border px-2.5 py-0.5 text-sm", m.matched ? "border-border/60" : "border-amber-500/50 text-amber-700 dark:text-amber-400")} title={m.matched ? td("med_matched") : td("med_unmatched")}>{m.label}{!m.matched && " ⚠"}</span>)}</div>
-                ) : <p className="text-sm text-muted-foreground">{td("none_recorded")}</p>}
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{td("excluded", { count: r.excluded.length })}</p>
-                {r.excluded.length ? (
-                  <div className="overflow-hidden rounded-xl border border-border">
-                    <div className={cn(CDS_EXCL, CDS_HEAD)}><span>{td("cds_col_medicine")}</span><span>{td("cds_col_excluded")}</span></div>
-                    <FiveRowList className="divide-y divide-border">{r.excluded.map((e) => (
-                      <li key={e.tagId} className={cn(CDS_EXCL, "px-3 py-2 text-sm")}><span className="min-w-0 font-semibold">{e.label}</span><span className="min-w-0"><span className="text-destructive">{e.reason}</span>{!e.verified && <span className="text-muted-foreground">{td("unverified_paren")}</span>}</span></li>
-                    ))}</FiveRowList>
-                  </div>
-                ) : <p className="text-sm text-muted-foreground">{td("nothing_excluded")}</p>}
-              </div>
-            </div>
-            </DialogContent>
-          </Dialog>
-          {tab === "info" && (r.infoNeeded.length ? (
-            <div className="overflow-hidden rounded-xl border border-border">
-              <div className={CDS_HEAD}>{td("cds_col_needed")}</div>
-              <FiveRowList className="divide-y divide-border">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 px-3 py-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</FiveRowList>
-            </div>
-          ) : <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground">{td("nothing_missing")}</p>)}
-
-        </>
-      )}
-    </Panel>
-  );
-}
+const RX_HEAD = "border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
 function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const { dossier: d, set, options, herbs } = state;
@@ -1488,12 +1324,10 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       {/* Ilaj-bil-Ghiza */}
       <GhizaPicker state={state} visitId={visitId} />
 
-      {/* Clinical decision support — doctors only, pilot switch in Admin */}
-      <CdsPanel state={state} cds={cds} />
-
       {/* Ilaj-bil-Dawa */}
       <Panel icon={Pill} tour="dossier.dawa" title={td("dawa_title")}
-        aside={<HerbPicker herbs={herbs} cds={cds.data} added={d.prescriptions.map((p) => p.tagId)} onPick={(h, suggestion) => {
+        aside={<HerbPicker herbs={herbs} cds={cds.data} failed={cds.failed} onRetry={cds.fetchCds}
+          onOpen={async () => { if (state.dirty) await state.save(false); cds.fetchCds(); }} added={d.prescriptions.map((p) => p.tagId)} onPick={(h, suggestion) => {
           set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] });
           if (suggestion) cds.decide(suggestion, "added_to_prescription");
         }} />}>
@@ -1504,7 +1338,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
         {d.prescriptions.length === 0 ? <p className="text-sm text-muted-foreground">{td("no_meds")}</p> : (
           <div className="overflow-x-auto rounded-xl border border-border">
             <div className="min-w-[60rem]">
-              <div className={cn(RX_COLS, CDS_HEAD)}>
+              <div className={cn(RX_COLS, RX_HEAD)}>
                 <span>{td("cds_col_medicine")}</span><span>{td("form")}</span><span>{td("dose")}</span><span>{td("timing")}</span><span>{td("duration")}</span><span>{td("badraqa")}</span><span>{td("instructions")}</span><span />
               </div>
               <FiveRowList count={d.prescriptions.length} className="divide-y divide-border">
