@@ -1299,7 +1299,43 @@ function useCds(visitId: string) {
 }
 
 const RX_COLS = "grid grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_1.75rem] items-center gap-x-2";
+const TD_COLS = "grid grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.5fr)_1.75rem] items-center gap-x-2";
 const RX_HEAD = "border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+
+/** "Add regimen": every regimen A–Z with what it is; one already added can't be picked again. */
+function TadbeerPicker({ options, added, onPick }: { options: TashkheesOptionRow[]; added: string[]; onPick: (label: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const td = useTranslations("clinic.dossier");
+  const ql = q.trim().toLowerCase();
+  const rows = options.filter((o) => !ql || `${o.label} ${o.description ?? ""}`.toLowerCase().includes(ql)).sort((a, b) => a.label.localeCompare(b.label));
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ(""); }}>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_regimen")}</Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[min(30rem,calc(100vw-2rem))] p-2" align="end">
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={td("search_regimens")} className="h-9 mb-1" />
+        <div className="max-h-[24rem] overflow-y-auto">
+          {rows.map((o) => {
+            const on = added.includes(o.label);
+            return (
+              <button key={o.id} type="button" disabled={on} onClick={() => { onPick(o.label); setOpen(false); setQ(""); }}
+                className={cn("flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start", on ? "cursor-default opacity-60" : "hover:bg-muted/60")}>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm leading-snug">{o.label}</span>
+                  {o.description && <span className="block text-[11px] text-muted-foreground">{o.description}</span>}
+                </span>
+                {on && <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3 w-3" />{td("added")}</span>}
+              </button>
+            );
+          })}
+          {rows.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">{td("no_regimen_match", { q })}</p>}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patientId: string; visitId: string }) {
   const { dossier: d, set, options, herbs } = state;
@@ -1394,27 +1430,31 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
 
       {/* Ilaj-bil-Tadbeer */}
       <Panel icon={HeartPulse} tour="dossier.tadbeer" title={td("tadbeer_title")}
-        aside={
-          <Select value="" onValueChange={(v) => set({ tadbeer: [...d.tadbeer, { label: v, frequency: "", duration: "", notes: "" }] })}>
-            <SelectTrigger className="h-9 w-48 bg-background/60"><SelectValue placeholder={td("add_regimen")} /></SelectTrigger>
-            <SelectContent>{(options?.tadbeer || []).filter((o) => !d.tadbeer.some((t) => t.label === o.label)).map((o) => <SelectItem key={o.id} value={o.label}>{o.label}{o.description ? ` — ${o.description}` : ""}</SelectItem>)}</SelectContent>
-          </Select>
-        }>
+        aside={<TadbeerPicker options={options?.tadbeer || []} added={d.tadbeer.map((t) => t.label)} onPick={(v) => set({ tadbeer: [...d.tadbeer, { label: v, frequency: "", duration: "", notes: "" }] })} />}>
         {d.tadbeer.length === 0 ? <p className="text-sm text-muted-foreground">{td("no_regimens")}</p> : (
-          <div className="space-y-2">
-            {d.tadbeer.map((t, i) => (
-              <div key={t.label} className="rounded-xl border border-border/50 bg-card p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[15px] font-semibold">{t.label} <span className="text-[13px] font-normal text-muted-foreground">{options?.tadbeer?.find((o) => o.label === t.label)?.description}</span></p>
-                  <button type="button" onClick={() => set({ tadbeer: d.tadbeer.filter((_, n) => n !== i) })} aria-label={td("remove_x", { label: t.label })} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
-                </div>
-                <div className="grid sm:grid-cols-3 gap-2 pt-2">
-                  <FloatingField id={`td-freq-${i}`} label={td("frequency")} value={t.frequency} onChange={(e) => updTd(i, { frequency: e.target.value })} title={td("frequency_eg")} />
-                  <FloatingField id={`td-dur-${i}`} label={td("duration")} value={t.duration} onChange={(e) => updTd(i, { duration: e.target.value })} title={td("sessions_eg")} />
-                  <FloatingField id={`td-notes-${i}`} label={td("site_notes")} value={t.notes} onChange={(e) => updTd(i, { notes: e.target.value })} />
-                </div>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <div className="min-w-[40rem]">
+              <div className={cn(TD_COLS, RX_HEAD)}>
+                <span>{td("col_regimen")}</span><span>{td("frequency")}</span><span>{td("duration")}</span><span>{td("site_notes")}</span><span />
               </div>
-            ))}
+              <FiveRowList count={d.tadbeer.length} className="divide-y divide-border">
+                {d.tadbeer.map((t, i) => {
+                  const about = options?.tadbeer?.find((o) => o.label === t.label)?.description;
+                  return (
+                    <li key={t.label} className={cn(TD_COLS, "px-3 py-2")}>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold leading-snug" title={t.label}>{t.label}</p>
+                        {about && <p className="truncate text-xs text-muted-foreground" title={about}>{about}</p>}
+                      </div>
+                      <Input aria-label={`${td("frequency")} — ${t.label}`} value={t.frequency} onChange={(e) => updTd(i, { frequency: e.target.value })} title={td("frequency_eg")} className="h-8 bg-background/60 px-2" />
+                      <Input aria-label={`${td("duration")} — ${t.label}`} value={t.duration} onChange={(e) => updTd(i, { duration: e.target.value })} title={td("sessions_eg")} className="h-8 bg-background/60 px-2" />
+                      <Input aria-label={`${td("site_notes")} — ${t.label}`} value={t.notes} onChange={(e) => updTd(i, { notes: e.target.value })} title={t.notes || td("site_notes")} className="h-8 bg-background/60 px-2" />
+                      <button type="button" onClick={() => set({ tadbeer: d.tadbeer.filter((_, n) => n !== i) })} aria-label={td("remove_x", { label: t.label })} className="justify-self-end rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </li>
+                  );
+                })}
+              </FiveRowList>
+            </div>
           </div>
         )}
       </Panel>
