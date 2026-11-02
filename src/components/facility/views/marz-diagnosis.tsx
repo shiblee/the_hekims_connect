@@ -76,7 +76,10 @@ function DiagnosisPicker({ amraz, ddx, chosen, onSuggest, onPick, onFree }: {
   return (
     <Popover open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {t("add_dx")}</Button>
+        {/* Same button as Add a cause / Main Complaints */}
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> {t("add_dx")}
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-[min(36rem,calc(100vw-2rem))] p-2" align="end">
         <div className="relative mb-1">
@@ -171,7 +174,7 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
       {/* The Hakim's diagnoses */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[15px] font-semibold">{t("yours")} <span className="text-destructive">*</span></p>
+          <p className="text-[15px] font-semibold">{t("yours")} <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">· {d.diagnoses.length}</span></p>
           <span className="flex items-center gap-3">
           {ddx.failed ? (
             <span className="text-xs text-muted-foreground">{t.rich("failed", { retry: (c) => <button type="button" onClick={() => ddx.retry()} className="text-primary font-medium hover:underline">{c}</button> })}</span>
@@ -187,7 +190,7 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
             : null)} onFree={(label) => addDx({ marzId: null, label, localName: null, role: d.diagnoses.some((y) => y.role === "working") ? "differential" : "working", certainty: null, evidenceFor: [], evidenceAgainst: [], note: null, source: "hakim" })} />
           </span>
         </div>
-        {d.diagnoses.length === 0 ? <p className="text-[13px] text-muted-foreground">{t("empty")}</p> : (
+        {d.diagnoses.length === 0 ? <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground">{t("empty")}</p> : (
           <div className="overflow-hidden rounded-xl border border-border bg-card">
             {/* One header for all rows */}
             <div className={cn("hidden gap-3 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid", DX_COLS)}>
