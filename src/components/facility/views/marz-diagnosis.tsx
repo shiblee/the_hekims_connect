@@ -270,17 +270,6 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
             </ul>
           </div>
         )}
-        {sababSuggest.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="me-1 flex items-center gap-1 text-xs font-medium text-primary"><Sparkles className="h-3 w-3" /> {t("sabab_suggested")}:</span>
-            {sababSuggest.map((s) => (
-              <button key={s} type="button" onClick={() => toggleSabab(s)} title={linkedTo(s).length ? t("sabab_from", { list: linkedTo(s).join(", ") }) : undefined}
-                className="inline-flex items-center gap-1 rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
-                <Plus className="h-3 w-3" /> {s}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Optional biomedical diagnosis */}
