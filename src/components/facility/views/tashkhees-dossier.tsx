@@ -898,21 +898,34 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
   );
 }
 
-function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string | null; label: string; forms: string[] }) => void }) {
+/**
+ * "Add medicine": Unani / Allopathic tabs. Each lists the medicines suggested for this patient
+ * (with why, and any safety notes) first, then every other medicine A–Z. A medicine excluded for
+ * safety shows the reason, and one already on the prescription can't be added twice.
+ */
+function HerbPicker({ herbs, cds, added, onPick }: { herbs: Herb[]; cds: CdsData | null; added: (string | null)[]; onPick: (h: { id: string | null; label: string; forms: string[] }, suggestion?: CdsCand) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"unani" | "allo">("unani");
   const td = useTranslations("clinic.dossier");
   const ql = q.trim().toLowerCase();
-  const results = herbs
-    .filter((h) => (tab === "allo") === (h.kind === "medication"))
-    .filter((h) => !ql || `${h.label} ${h.generic ?? ""}`.toLowerCase().includes(ql)).slice(0, 60);
+  const r = cds?.result;
+  const list = (tab === "allo" ? r?.allopathic ?? [] : [...(r?.unani ?? []), ...(r?.supplements ?? [])]);
+  const listed = new Set(list.map((c) => c.tagId));
+  const suggested = list.filter((c) => !ql || `${c.label} ${c.unaniName ?? ""} ${c.herbType ?? ""} ${c.reasons.join(" ")}`.toLowerCase().includes(ql));
+  const others = herbs
+    .filter((h) => (tab === "allo") === (h.kind === "medication") && !listed.has(h.id))
+    .filter((h) => !ql || `${h.label} ${h.generic ?? ""}`.toLowerCase().includes(ql))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const pick = (h: { id: string | null; label: string; forms: string[] }, c?: CdsCand) => { onPick(h, c); setOpen(false); setQ(""); };
+  const head = (t: string, tone: string) => <p className={cn("sticky top-0 z-[1] bg-popover px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide", tone)}>{t}</p>;
+  const addedMark = <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3 w-3" />{td("added")}</span>;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_medicine")}</Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-2" align="end">
+      <PopoverContent className="w-[min(30rem,calc(100vw-2rem))] p-2" align="end">
         <div className="mb-2 grid grid-cols-2 rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
           {(["unani", "allo"] as const).map((k) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
@@ -921,17 +934,42 @@ function HerbPicker({ herbs, onPick }: { herbs: Herb[]; onPick: (h: { id: string
             </button>
           ))}
         </div>
-        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "unani" ? td("search_medicines") : td("search_allo")} className="h-9 mb-2" />
-        <div className="max-h-64 overflow-y-auto space-y-0.5">
-          {results.map((h) => (
-            <button key={h.id} type="button" onClick={() => { onPick({ id: h.id, label: h.label, forms: h.forms }); setOpen(false); setQ(""); }}
-              className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60">
-              {h.label}{h.generic && h.generic.toLowerCase() !== h.label.toLowerCase() && <span className="ms-1.5 text-xs text-muted-foreground">{h.generic}</span>}
-              {h.category && <span className="block text-[11px] text-muted-foreground">{h.category}</span>}
-            </button>
-          ))}
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "unani" ? td("search_medicines") : td("search_allo")} className="h-9 mb-1" />
+        <div className="max-h-[24rem] overflow-y-auto">
+          {tab === "allo" && suggested.length > 0 && <p className="mt-1 rounded-md bg-amber-500/5 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-400">{td("cds_allo_note")}</p>}
+          {suggested.length > 0 && head(td("picker_suggested", { count: suggested.length }), "text-emerald-700 dark:text-emerald-400")}
+          {suggested.map((c) => {
+            const on = added.includes(c.tagId);
+            return (
+              <button key={c.tagId} type="button" disabled={on} onClick={() => pick({ id: c.tagId, label: c.label, forms: herbs.find((h) => h.id === c.tagId)?.forms || [] }, c)}
+                className={cn("flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start", on ? "cursor-default opacity-60" : "hover:bg-emerald-500/10")}>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}</span>
+                  {c.reasons.length > 0 && <span className="block truncate text-xs text-emerald-700 dark:text-emerald-400" title={c.reasons.join(" · ")}>{c.reasons.join(" · ")}</span>}
+                  {c.safety.length > 0 && <span className={cn("mt-0.5 flex items-center gap-1 text-xs font-medium", noteTone(c.safety))}><AlertTriangle className="h-3 w-3 shrink-0" />{td("rx_notes", { count: c.safety.length })}</span>}
+                </span>
+                {on && addedMark}
+              </button>
+            );
+          })}
+          {others.length > 0 && <div className={cn(suggested.length > 0 && "mt-1 border-t border-border")}>{head(td("picker_other", { count: others.length }), "text-muted-foreground")}</div>}
+          {others.map((h) => {
+            const on = added.includes(h.id);
+            const excluded = r?.excluded.find((e) => e.tagId === h.id);
+            return (
+              <button key={h.id} type="button" disabled={on} onClick={() => pick({ id: h.id, label: h.label, forms: h.forms })}
+                className={cn("flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start", on ? "cursor-default opacity-60" : "hover:bg-muted/60")}>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm leading-snug">{h.label}{h.generic && h.generic.toLowerCase() !== h.label.toLowerCase() && <span className="ms-1.5 text-xs text-muted-foreground">{h.generic}</span>}</span>
+                  {h.category && <span className="block text-[11px] text-muted-foreground">{h.category}</span>}
+                  {excluded && <span className="mt-0.5 flex items-start gap-1 text-xs font-medium text-destructive"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{excluded.reason}</span>}
+                </span>
+                {on && addedMark}
+              </button>
+            );
+          })}
           {q.trim() && !herbs.some((h) => h.label.toLowerCase() === ql) && (
-            <button type="button" onClick={() => { onPick({ id: null, label: q.trim(), forms: [] }); setOpen(false); setQ(""); }}
+            <button type="button" onClick={() => pick({ id: null, label: q.trim(), forms: [] })}
               className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60 text-primary">{td("add_not_catalogue", { q: q.trim() })}</button>
           )}
         </div>
@@ -1231,6 +1269,25 @@ interface CdsData {
   decisions?: { tagId: string; action: string; reason: string | null }[];
 }
 
+/** This patient's decision-support result, shared by its panel and "Add medicine"; decide() records what the doctor did. */
+function useCds(visitId: string) {
+  const [data, setData] = useState<CdsData | null>(null);
+  const [failed, setFailed] = useState(false);
+  const fetchCds = useCallback(() =>
+    api.get<CdsData>(`/api/facility/visits/${visitId}/cds`)
+      .then((r) => { setData(r); setFailed(false); })
+      .catch((e: any) => { if (e?.status === 403 || /doctors only/i.test(e?.message || "")) setData({ enabled: false }); else setFailed(true); }), [visitId]);
+  useEffect(() => { fetchCds(); }, [fetchCds]);
+  const decide = async (c: CdsCand, action: string, reason?: string) => {
+    if (!data?.sessionId) return;
+    try {
+      await api.post(`/api/facility/visits/${visitId}/cds`, { sessionId: data.sessionId, tagId: c.tagId, label: c.label, action, reason });
+      setData((cur) => (cur ? { ...cur, decisions: [...(cur.decisions || []), { tagId: c.tagId, action, reason: reason ?? null }] } : cur));
+    } catch { /* stays as it was */ }
+  };
+  return { data, failed, fetchCds, decide };
+}
+
 const CDS_COLS = "grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_9rem_minmax(0,1.8fr)_7rem_9.5rem] items-center gap-x-3";
 const CDS_EXCL = "grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-center gap-x-3";
 const RX_COLS = "grid grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_1.75rem] items-center gap-x-2";
@@ -1243,35 +1300,22 @@ const CDS_HEAD = "border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-
  * verification status and any precautions. Each tab is a table showing five
  * rows that scroll (like the diet); Add appends the medicine to Ilaj-bil-Dawa below.
  */
-function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }) {
+function CdsPanel({ state, cds }: { state: TashkheesState; cds: ReturnType<typeof useCds> }) {
   const { dossier: d, set, herbs } = state;
-  const [data, setData] = useState<CdsData | null>(null);
+  const { data, failed, fetchCds, decide: act } = cds;
   const [tab, setTab] = useState<"unani" | "allopathic" | "supplements" | "safety" | "info">("unani");
   const [running, setRunning] = useState(false);
   const [rejecting, setRejecting] = useState<{ tagId: string; reason: string } | null>(null);
-  const [failed, setFailed] = useState(false);
   const [q, setQ] = useState("");
   const [safetyOpen, setSafetyOpen] = useState(false);
   const td = useTranslations("clinic.dossier");
   const tc = useTranslations("common");
-  const fetchCds = useCallback(() =>
-    api.get<CdsData>(`/api/facility/visits/${visitId}/cds`)
-      .then((r) => { setData(r); setFailed(false); })
-      .catch((e: any) => { if (e?.status === 403 || /doctors only/i.test(e?.message || "")) setData({ enabled: false }); else setFailed(true); }), [visitId]);
-  useEffect(() => { fetchCds(); }, [fetchCds]);
   if (!data && !failed) return null;
   if (data && !data.enabled) return null; // pilot off, or not a doctor
   const rerun = async () => { setRunning(true); try { await state.save(false); await fetchCds(); } finally { setRunning(false); } };
 
   const r = data?.result;
   const last = (tagId: string) => [...(data?.decisions || [])].reverse().find((x) => x.tagId === tagId);
-  const act = async (c: CdsCand, action: string, reason?: string) => {
-    if (!data?.sessionId) return;
-    try {
-      await api.post(`/api/facility/visits/${visitId}/cds`, { sessionId: data.sessionId, tagId: c.tagId, label: c.label, action, reason });
-      setData((cur) => (cur ? { ...cur, decisions: [...(cur.decisions || []), { tagId: c.tagId, action, reason: reason ?? null }] } : cur));
-    } catch { /* stays as it was */ }
-  };
   const addToRx = (c: CdsCand) => {
     if (d.prescriptions.some((p) => p.tagId === c.tagId)) return;
     const forms = herbs.find((h) => h.id === c.tagId)?.forms || [];
@@ -1420,6 +1464,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
   const reqRef = useRef(0);
   const td = useTranslations("clinic.dossier");
   const { setSafety } = state;
+  const cds = useCds(visitId);
 
   // Safety check whenever the set of catalogue medicines changes. A failed check is shown —
   // never mistaken for "no warnings" — and finalising waits until it has run.
@@ -1444,11 +1489,14 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
       <GhizaPicker state={state} visitId={visitId} />
 
       {/* Clinical decision support — doctors only, pilot switch in Admin */}
-      <CdsPanel state={state} visitId={visitId} />
+      <CdsPanel state={state} cds={cds} />
 
       {/* Ilaj-bil-Dawa */}
       <Panel icon={Pill} tour="dossier.dawa" title={td("dawa_title")}
-        aside={<HerbPicker herbs={herbs} onPick={(h) => set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] })} />}>
+        aside={<HerbPicker herbs={herbs} cds={cds.data} added={d.prescriptions.map((p) => p.tagId)} onPick={(h, suggestion) => {
+          set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] });
+          if (suggestion) cds.decide(suggestion, "added_to_prescription");
+        }} />}>
         {state.safety === "failed" && (
           <InlineNotice tone="error" title={td("safety_failed")} detail={td("safety_failed_hint")}
             action={<Button size="sm" variant="outline" onClick={() => setCheckTick((n) => n + 1)}>{td("check_again")}</Button>} />
