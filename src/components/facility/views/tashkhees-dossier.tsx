@@ -1153,16 +1153,13 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
   const foods = options?.ghiza || [];
   const byLabel = (l: string) => foods.find((f) => f.label === l);
   return (
+    <Panel icon={Utensils} tour="dossier.ghiza" title={td("ghiza_title")}
+      aside={<span className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
+        {p && leftToAccept && <Button size="sm" className="h-7" onClick={acceptAll}><Sparkles className="h-3.5 w-3.5" /> {td("accept_all")}</Button>}
+      </span>}>
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 text-xs text-muted-foreground">
-          {failed && td.rich("diet_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })}
-        </p>
-        <span className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={rerun} disabled={running} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">{running ? td("rerunning") : td("rerun")}</button>
-          {p && leftToAccept && <Button size="sm" className="h-7" onClick={acceptAll}><Sparkles className="h-3.5 w-3.5" /> {td("accept_all")}</Button>}
-        </span>
-      </div>
+      {failed && <p className="text-xs text-muted-foreground">{td.rich("diet_failed", { retry: (c) => <button type="button" onClick={() => fetchPlan()} className="text-primary font-medium hover:underline">{c}</button> })}</p>}
 
       {/* Three columns: Prescribed · Parhez · Meal timing & hydration */}
       {/* Container query: three columns only when the panel itself is wide enough. */}
@@ -1215,6 +1212,7 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
       </div>
       {p?.insufficient.map((n) => <p key={n} className="text-xs text-muted-foreground">{n}</p>)}
     </div>
+    </Panel>
   );
 }
 
@@ -1435,9 +1433,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
   return (
     <div className="space-y-5">
       {/* Ilaj-bil-Ghiza */}
-      <Panel icon={Utensils} tour="dossier.ghiza" title={td("ghiza_title")}>
-        <GhizaPicker state={state} visitId={visitId} />
-      </Panel>
+      <GhizaPicker state={state} visitId={visitId} />
 
       {/* Clinical decision support — doctors only, pilot switch in Admin */}
       <CdsPanel state={state} visitId={visitId} />
