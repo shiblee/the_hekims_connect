@@ -1030,14 +1030,14 @@ function FoodAddPicker({ where, label, suggested, foods, rec, avoid, onPick }: {
   );
 }
 
-/** A diet list showing its first five rows, however tall each is; the rest scroll inside it. */
+/** A diet list sized to its first five rows, however tall each is; the rest scroll inside it. It grows when its box stretches to match the next column. */
 function FiveRowList({ count, children }: { count?: number; children: ReactNode }) {
   const ref = useRef<HTMLUListElement>(null);
   const measure = useCallback(() => {
     const el = ref.current;
     if (!el) return;
     const fifth = el.children.length > 5 ? el.children[4] as HTMLElement : null;
-    el.style.maxHeight = fifth ? `${fifth.offsetTop + fifth.offsetHeight}px` : "";
+    el.style.height = fifth ? `${fifth.offsetTop + fifth.offsetHeight}px` : "";
   }, []);
   useLayoutEffect(measure);
   useEffect(() => {
@@ -1052,7 +1052,7 @@ function FiveRowList({ count, children }: { count?: number; children: ReactNode 
     if (count && lastCount.current && count > lastCount.current) ref.current?.scrollTo({ top: ref.current.scrollHeight });
     lastCount.current = count;
   }, [count]);
-  return <ul ref={ref} className="relative space-y-1.5 overflow-y-auto">{children}</ul>;
+  return <ul ref={ref} className="relative min-h-0 grow space-y-1.5 overflow-y-auto">{children}</ul>;
 }
 
 /** One of the three diet columns. */
@@ -1193,7 +1193,7 @@ function GhizaPicker({ state, visitId }: { state: TashkheesState; visitId: strin
       {/* Three columns: Prescribed · Parhez · Meal timing & hydration */}
       {/* Container query: three columns only when the panel itself is wide enough. */}
       <div className="@container">
-      <div className="grid items-start gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
+      <div className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
         <DietColumn tone="rec" icon={CircleCheck} title={td("g_prescribed")} sub={td("g_prescribed_sub")} count={d.ghizaRecommended.length}
           add={<FoodAddPicker where="rec" label={td("g_add_food")} suggested={suggested("rec")} foods={foods} rec={d.ghizaRecommended} avoid={d.ghizaAvoid} onPick={(l) => setFood(l, "rec")} />}>
           {d.ghizaRecommended.length === 0 ? <li className="px-1 py-2 text-[13px] text-muted-foreground">{td("g_empty_rec")}</li> : d.ghizaRecommended.map((l) => {
