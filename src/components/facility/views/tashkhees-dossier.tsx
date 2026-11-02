@@ -1014,7 +1014,7 @@ function FoodAddPicker({ where, label, suggested, foods, rec, avoid, onPick }: {
 }
 
 /** A diet list sized to its first five rows, however tall each is; the rest scroll inside it. It grows when its box stretches to match the next column. */
-function FiveRowList({ count, children }: { count?: number; children: ReactNode }) {
+function FiveRowList({ count, className = "space-y-1.5", children }: { count?: number; className?: string; children: ReactNode }) {
   const ref = useRef<HTMLUListElement>(null);
   const measure = useCallback(() => {
     const el = ref.current;
@@ -1035,7 +1035,7 @@ function FiveRowList({ count, children }: { count?: number; children: ReactNode 
     if (count && lastCount.current && count > lastCount.current) ref.current?.scrollTo({ top: ref.current.scrollHeight });
     lastCount.current = count;
   }, [count]);
-  return <ul ref={ref} className="relative min-h-0 grow space-y-1.5 overflow-y-auto">{children}</ul>;
+  return <ul ref={ref} className={cn("relative min-h-0 grow overflow-y-auto", className)}>{children}</ul>;
 }
 
 /** One of the three diet columns. */
@@ -1231,12 +1231,16 @@ interface CdsData {
   decisions?: { tagId: string; action: string; reason: string | null }[];
 }
 
+const CDS_COLS = "grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_9rem_minmax(0,1.8fr)_7rem_9.5rem] items-center gap-x-3";
+const CDS_EXCL = "grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-center gap-x-3";
+const CDS_HEAD = "border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+
 /**
  * "Clinical Decision Support — Medicines & Supplements" (doctors only).
  * Candidates from the clinic's own database that may be worth evaluating,
  * after safety checks — each with why it was found, its evidence and
- * verification status and any precautions. They sit in a search box with a
- * drop-down (like the diet); Add appends the medicine to Ilaj-bil-Dawa below.
+ * verification status and any precautions. Each tab is a table showing five
+ * rows that scroll (like the diet); Add appends the medicine to Ilaj-bil-Dawa below.
  */
 function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }) {
   const { dossier: d, set, herbs } = state;
@@ -1246,19 +1250,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
   const [rejecting, setRejecting] = useState<{ tagId: string; reason: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      const t = e.target as Element;
-      // Clicks inside the medicine pop-up (a dialog outside this box) keep the list open.
-      if (boxRef.current && !boxRef.current.contains(t) && !t.closest?.("[role=dialog]")) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
   const td = useTranslations("clinic.dossier");
   const tc = useTranslations("common");
   const fetchCds = useCallback(() =>
@@ -1287,47 +1279,50 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
   };
 
   const SafetyLink = ({ c }: { c: CdsCand }) => (c.safety.length === 0
-    ? <span className="ms-1 inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>
+    ? <span className="inline-block align-middle"><MedicineInfoButton tagId={c.tagId} name={c.label} /></span>
     : <MedicineInfoButton tagId={c.tagId} name={c.label} patientNotes={c.safety}
-        className={cn("ms-1.5 inline-flex items-center gap-1 align-middle text-xs font-medium", noteTone(c.safety))}>
+        className={cn("inline-flex items-center gap-1 align-middle text-start text-xs font-medium", noteTone(c.safety))}>
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{td("rx_notes", { count: c.safety.length })}
       </MedicineInfoButton>);
 
-  /** One suggested medicine as a drop-down row: Add puts it in Ilaj-bil-Dawa. */
+  /** One suggested medicine as a table row: Add puts it in Ilaj-bil-Dawa. */
   const renderRow = (c: CdsCand) => {
     const dec = last(c.tagId);
     const inRx = d.prescriptions.some((p) => p.tagId === c.tagId);
     const rejected = dec?.action === "rejected" && !inRx;
     return (
-      <div key={c.tagId} className={cn("px-3 py-2.5 space-y-1", rejected && "opacity-60", inRx && "bg-emerald-500/5")}>
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-snug">{c.label}{c.unaniName && c.unaniName !== c.label && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{c.unaniName}</span>}<SafetyLink c={c} /></p>
-            <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-              {[c.herbType, c.mizaj].filter(Boolean).join(" · ")}
-              {c.evidence.traditional && <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{td("traditional")}</Badge>}
-              {c.evidence.clinical && <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">{td("clinical")}</Badge>}
-              <Badge variant="outline" className={cn("h-4 px-1.5 text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? td("verified") : td("unverified")}</Badge>
-            </p>
-            {c.reasons.length > 0 && <p className="text-xs text-emerald-700 dark:text-emerald-400">{c.reasons.join(" · ")}</p>}
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {inRx ? <span className="flex items-center gap-1 rounded-md border border-emerald-500/60 bg-emerald-600 px-3 py-1 text-xs font-medium text-white"><Check className="h-3 w-3" />{td("added")}</span>
-              : <button type="button" onClick={() => addToRx(c)} className="rounded-md border border-emerald-500/50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">{td("add")}</button>}
-            {!inRx && !rejected && rejecting?.tagId !== c.tagId && (
-              <button type="button" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })} className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10">{td("reject_more")}</button>
-            )}
-            {rejected && <span className="text-xs text-muted-foreground">{td("dec_rejected")}</span>}
-          </div>
+      <li key={c.tagId} className={cn(CDS_COLS, "px-3 py-2", rejected && "opacity-60", inRx && "bg-emerald-500/5")}>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold leading-snug" title={c.label}>{c.label}</p>
+          {c.unaniName && c.unaniName !== c.label && <p className="truncate text-xs text-muted-foreground" title={c.unaniName}>{c.unaniName}</p>}
+        </div>
+        <div className="min-w-0 text-xs text-muted-foreground">
+          {c.herbType && <p className="truncate" title={c.herbType}>{c.herbType}</p>}
+          {c.mizaj && <p className="truncate" title={c.mizaj}>{c.mizaj}</p>}
+        </div>
+        <p className="flex flex-wrap items-center gap-1">
+          {c.evidence.traditional && <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{td("traditional")}</Badge>}
+          {c.evidence.clinical && <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-sky-500/40 text-sky-700 dark:text-sky-400">{td("clinical")}</Badge>}
+          <Badge variant="outline" className={cn("h-4 px-1.5 text-[10px]", c.evidence.verified ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" : "border-amber-500/40 text-amber-700 dark:text-amber-400")}>{c.evidence.verified ? td("verified") : td("unverified")}</Badge>
+        </p>
+        <p className="line-clamp-2 min-w-0 text-xs text-emerald-700 dark:text-emerald-400" title={c.reasons.join(" · ") || undefined}>{c.reasons.join(" · ")}</p>
+        <div className="min-w-0"><SafetyLink c={c} /></div>
+        <div className="flex items-center justify-end gap-1">
+          {inRx ? <span className="flex items-center gap-1 rounded-md border border-emerald-500/60 bg-emerald-600 px-3 py-1 text-xs font-medium text-white"><Check className="h-3 w-3" />{td("added")}</span>
+            : <button type="button" onClick={() => addToRx(c)} className="rounded-md border border-emerald-500/50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400">{td("add")}</button>}
+          {!inRx && !rejected && rejecting?.tagId !== c.tagId && (
+            <button type="button" onClick={() => setRejecting({ tagId: c.tagId, reason: "" })} className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10">{td("reject_more")}</button>
+          )}
+          {rejected && <span className="text-xs text-muted-foreground">{td("dec_rejected")}</span>}
         </div>
         {rejecting?.tagId === c.tagId && (
-          <span className="flex items-center justify-end gap-1.5">
+          <span className="col-span-full flex items-center justify-end gap-1.5">
             <Input autoFocus value={rejecting.reason} onChange={(e) => setRejecting({ tagId: c.tagId, reason: e.target.value })} placeholder={td("reject_reason")} className="h-7 w-56 text-xs" />
             <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!rejecting.reason.trim()} onClick={() => { act(c, "rejected", rejecting.reason); setRejecting(null); }}>{td("reject")}</Button>
             <button type="button" className="text-xs text-muted-foreground" onClick={() => setRejecting(null)}>{tc("cancel")}</button>
           </span>
         )}
-      </div>
+      </li>
     );
   };
 
@@ -1349,7 +1344,7 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
           ))}
           <div className="inline-flex flex-wrap rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
             {([["unani", td("tab_unani", { count: counts.unani })], ["allopathic", td("tab_allo", { count: counts.allopathic })], ["supplements", td("tab_supp", { count: counts.supplements })], ["safety", td("tab_safety", { count: counts.safety })], ["info", td("tab_info", { count: counts.info })]] as const).map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { if (k === "safety") { setSafetyOpen(true); return; } setTab(k); setOpen(k === "unani" || k === "allopathic" || k === "supplements"); }}
+              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => { if (k === "safety") { setSafetyOpen(true); return; } setTab(k); }}
                 className={cn("rounded-md px-3 py-1 text-[13px] font-medium transition-colors", tab === k ? (k === "safety" ? "bg-destructive text-white" : k === "info" ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground") : "text-muted-foreground hover:text-foreground")}>{l}</button>
             ))}
           </div>
@@ -1359,20 +1354,24 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
             const ql = q.trim().toLowerCase();
             const rows = list.filter((c) => !ql || `${c.label} ${c.unaniName ?? ""} ${c.herbType ?? ""} ${c.reasons.join(" ")}`.toLowerCase().includes(ql));
             return (
-              <div ref={boxRef} className="relative">
-                <FloatingField id="cdsSearch" icon={Search} autoComplete="off" value={q} aria-expanded={open}
+              <>
+                <FloatingField id="cdsSearch" icon={Search} autoComplete="off" value={q}
                   label={tab === "unani" ? td("cds_search_unani", { count: list.length }) : tab === "allopathic" ? td("cds_search_allo", { count: list.length }) : td("cds_search_supp", { count: list.length })}
-                  onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onClick={() => setOpen(true)}
-                  onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} />
-                {open && (
-                  <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[420px] overflow-y-auto rounded-xl border border-border/60 bg-popover shadow-xl divide-y divide-border/40">
-                    <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("cds_dropdown_hint")}</p>
-                    {tab === "allopathic" && <p className="px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/5">{td("cds_allo_note")}</p>}
-                    {rows.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">{list.length === 0 ? (tab === "unani" ? td("no_unani") : tab === "allopathic" ? td("no_allo") : td("no_supp")) : td("cds_no_match", { q })}</p>}
-                    {rows.map(renderRow)}
+                  onChange={(e) => setQ(e.target.value)} />
+                {tab === "allopathic" && <p className="rounded-lg bg-amber-500/5 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400">{td("cds_allo_note")}</p>}
+                {rows.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground">{list.length === 0 ? (tab === "unani" ? td("no_unani") : tab === "allopathic" ? td("no_allo") : td("no_supp")) : td("cds_no_match", { q })}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-border">
+                    <div className="min-w-[56rem]">
+                      <div className={cn(CDS_COLS, CDS_HEAD)}>
+                        <span>{td("cds_col_medicine")}</span><span>{td("cds_col_type")}</span><span>{td("cds_col_evidence")}</span><span>{td("us_col_why")}</span><span>{td("safety")}</span><span />
+                      </div>
+                      <FiveRowList className="divide-y divide-border">{rows.map(renderRow)}</FiveRowList>
+                    </div>
                   </div>
                 )}
-              </div>
+              </>
             );
           })()}
           <Dialog open={safetyOpen} onOpenChange={setSafetyOpen}>
@@ -1388,15 +1387,23 @@ function CdsPanel({ state, visitId }: { state: TashkheesState; visitId: string }
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{td("excluded", { count: r.excluded.length })}</p>
                 {r.excluded.length ? (
-                  <ul className="space-y-1.5">{r.excluded.map((e) => (
-                    <li key={e.tagId} className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm"><span className="font-semibold">{e.label}</span> <span className="text-destructive">— {e.reason}</span>{!e.verified && <span className="text-muted-foreground">{td("unverified_paren")}</span>}</li>
-                  ))}</ul>
+                  <div className="overflow-hidden rounded-xl border border-border">
+                    <div className={cn(CDS_EXCL, CDS_HEAD)}><span>{td("cds_col_medicine")}</span><span>{td("cds_col_excluded")}</span></div>
+                    <FiveRowList className="divide-y divide-border">{r.excluded.map((e) => (
+                      <li key={e.tagId} className={cn(CDS_EXCL, "px-3 py-2 text-sm")}><span className="min-w-0 font-semibold">{e.label}</span><span className="min-w-0"><span className="text-destructive">{e.reason}</span>{!e.verified && <span className="text-muted-foreground">{td("unverified_paren")}</span>}</span></li>
+                    ))}</FiveRowList>
+                  </div>
                 ) : <p className="text-sm text-muted-foreground">{td("nothing_excluded")}</p>}
               </div>
             </div>
             </DialogContent>
           </Dialog>
-          {tab === "info" && (r.infoNeeded.length ? <ul className="space-y-1.5">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</ul> : <p className="text-sm text-muted-foreground">{td("nothing_missing")}</p>)}
+          {tab === "info" && (r.infoNeeded.length ? (
+            <div className="overflow-hidden rounded-xl border border-border">
+              <div className={CDS_HEAD}>{td("cds_col_needed")}</div>
+              <FiveRowList className="divide-y divide-border">{r.infoNeeded.map((x) => <li key={x} className="flex gap-2 px-3 py-2 text-sm"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />{x}</li>)}</FiveRowList>
+            </div>
+          ) : <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground">{td("nothing_missing")}</p>)}
 
         </>
       )}
