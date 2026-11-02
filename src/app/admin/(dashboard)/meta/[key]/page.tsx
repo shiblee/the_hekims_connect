@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { UNANI_GROUPS, UNANI_GROUP_CATEGORY, unaniGroup, type UnaniGroup } from "@/lib/unani-groups";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { Card } from "@/components/ui/card";
@@ -81,7 +82,7 @@ const FACTOR_META: Record<FactorKind, { title: string; muted: string; placeholde
 interface OnsetRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean }
 interface RegionRow { id: string; label: string; localTerms: string | null; icon: string; gender: string; bodyZone: string | null; sortOrder: number; active: boolean }
 interface AllergyRow { id: string; label: string; sortOrder: number; active: boolean; patientCount: number; patientPercent: number }
-interface MedicationRow { id: string; kind: string; label: string; sortOrder: number; active: boolean; patientCount: number; patientPercent: number }
+interface MedicationRow { id: string; kind: string; label: string; category: string | null; sortOrder: number; active: boolean; patientCount: number; patientPercent: number }
 interface RedFlagRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean; updatedAt?: string }
 interface AcuteSymptomRow { id: string; label: string; description: string | null; sortOrder: number; active: boolean; updatedAt?: string }
 
@@ -101,6 +102,8 @@ function LastUpdated({ rows }: { rows: { updatedAt?: string }[] }) {
     </p>
   );
 }
+
+const UNANI_GROUP_LABELS: Record<UnaniGroup, string> = { murakkab: "Unani Medicine — Murakkab", mufrad: "Unani Medicine — Mufrad", other: "Unani Medicine — Other" };
 
 const SCREENING_TABS = ["complaints", "asbab", "tashkhees", "allergies", "supplements", "medications", "aggravating", "relieving", "redflags", "symptoms", "regions", "onset"] as const;
 // Allergies, Supplements & Herbs, Medications and Red Flags are reachable from
@@ -152,6 +155,8 @@ export default function MetaSectionPage() {
   const [loadingOptions, setLoadingOptions] = useState(false);
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const typeParam = useSearchParams().get("type");
+  const activeUnaniGroup: UnaniGroup = UNANI_GROUPS.find((g) => g === typeParam) ?? "murakkab";
 
   const [newOption, setNewOption] = useState("");
   const [addingOption, setAddingOption] = useState(false);
@@ -562,7 +567,7 @@ export default function MetaSectionPage() {
   // Rows for Supplements & Herbs (shown inside the Patient sidebar) and
   // Medications (its own tab) — one renderer so both stay identical.
   const renderMedicationRows = (kind: "supplement" | "medication") => {
-    const list = medications.filter((m) => m.kind === kind);
+    const list = medications.filter((m) => m.kind === kind && (kind !== "supplement" || unaniGroup(m.category) === activeUnaniGroup));
     return (
       <div className="space-y-1.5">
         {sortByLabel(list).map((m) => (
@@ -615,7 +620,7 @@ export default function MetaSectionPage() {
     if (!label.trim()) { toast.error("Enter a label"); return; }
     setSavingMedication(kind);
     try {
-      await adminApi.post("/api/admin/medications", { kind, label });
+      await adminApi.post("/api/admin/medications", { kind, label, category: kind === "supplement" ? UNANI_GROUP_CATEGORY[activeUnaniGroup] : undefined });
       setNewMedicationLabel((v) => ({ ...v, [kind]: "" }));
       setAddMedicationDialogOpen(false);
       loadMedications();
@@ -1324,7 +1329,7 @@ export default function MetaSectionPage() {
 
       <SupplementProfileDialog
         tagId={profileTagId}
-        onOpenChange={(open) => { if (!open) setProfileTagId(null); }}
+        onOpenChange={(open) => { if (!open) { setProfileTagId(null); loadMedications(); } }}
         onEnriched={loadProfileStatuses}
       />
 
@@ -1332,7 +1337,7 @@ export default function MetaSectionPage() {
       <Dialog open={addMedicationDialogOpen} onOpenChange={setAddMedicationDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{addMedicationKind === "supplement" ? "Add Unani Medicine" : "Add Allopathic Medicine"}</DialogTitle>
+            <DialogTitle>{addMedicationKind === "supplement" ? `Add ${UNANI_GROUP_LABELS[activeUnaniGroup]}` : "Add Allopathic Medicine"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <FloatingField
@@ -1525,26 +1530,30 @@ export default function MetaSectionPage() {
                     </Badge>
                   </button>
                 )}
-                {sidebarCategory === "Patient" && (
-                  <button
-                    onClick={() => router.push("/admin/meta/supplements")}
-                    className={cn(
-                      "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
-                      activeCategory === "supplements" ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
-                    )}
-                  >
-                    <span className="flex items-center gap-2 min-w-0">
-                      <Leaf className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">Unani Medicine</span>
-                    </span>
-                    <Badge
-                      variant={activeCategory === "supplements" ? "outline" : "secondary"}
-                      className={cn("shrink-0", activeCategory === "supplements" && "border-primary-foreground/40 text-primary-foreground")}
+                {sidebarCategory === "Patient" && UNANI_GROUPS.map((g) => {
+                  const on = activeCategory === "supplements" && activeUnaniGroup === g;
+                  return (
+                    <button
+                      key={g}
+                      onClick={() => router.push(`/admin/meta/supplements?type=${g}`)}
+                      className={cn(
+                        "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-colors",
+                        on ? "bg-primary text-primary-foreground font-medium" : "text-foreground hover:bg-background/60"
+                      )}
                     >
-                      {medications.filter((m) => m.kind === "supplement").length}
-                    </Badge>
-                  </button>
-                )}
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Leaf className="h-3.5 w-3.5 shrink-0" />
+                        <span>{UNANI_GROUP_LABELS[g]}</span>
+                      </span>
+                      <Badge
+                        variant={on ? "outline" : "secondary"}
+                        className={cn("shrink-0", on && "border-primary-foreground/40 text-primary-foreground")}
+                      >
+                        {medications.filter((m) => m.kind === "supplement" && unaniGroup(m.category) === g).length}
+                      </Badge>
+                    </button>
+                  );
+                })}
                 {sidebarCategory === "Patient" && (
                   <button
                     onClick={() => router.push("/admin/meta/medications")}
@@ -1869,7 +1878,7 @@ export default function MetaSectionPage() {
               </>
             ) : activeCategory === "supplements" ? (
               <>
-                <h2 className="font-serif text-lg font-semibold">Unani Medicine</h2>
+                <h2 className="font-serif text-lg font-semibold">{UNANI_GROUP_LABELS[activeUnaniGroup]}</h2>
                 {renderMedicationRows("supplement")}
               </>
             ) : activeCategory === "medications" ? (

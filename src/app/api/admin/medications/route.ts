@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { enrichSupplementTags } from "@/lib/supplement-enrichment";
+import { UNANI_GROUP_CATEGORY } from "@/lib/unani-groups";
 
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const [medications, intakes] = await Promise.all([
-    db.medicationTag.findMany({ orderBy: [{ kind: "asc" }, { sortOrder: "asc" }] }),
+    db.medicationTag.findMany({ orderBy: [{ kind: "asc" }, { sortOrder: "asc" }], include: { profile: { select: { herbType: true } } } }),
     db.visitIntake.findMany({ select: { medications: true, visit: { select: { patientId: true } } } }),
   ]);
 
@@ -30,10 +31,10 @@ export async function GET(req: NextRequest) {
   }
 
   const totalPatients = patientsWithIntake.size;
-  const withStats = medications.map((m) => {
+  const withStats = medications.map(({ profile, ...m }) => {
     const key = `${m.kind}|${m.label.trim().toLowerCase()}`;
     const patientCount = patientsByKey.get(key)?.size || 0;
-    return { ...m, patientCount, patientPercent: totalPatients > 0 ? Math.round((patientCount / totalPatients) * 1000) / 10 : 0 };
+    return { ...m, category: profile?.herbType ?? null, patientCount, patientPercent: totalPatients > 0 ? Math.round((patientCount / totalPatients) * 1000) / 10 : 0 };
   });
 
   return NextResponse.json({ medications: withStats, totalPatients });
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const { kind, label } = await req.json();
+  const { kind, label, category } = await req.json();
   if (kind !== "supplement" && kind !== "medication") {
     return NextResponse.json({ error: "kind must be \"supplement\" or \"medication\"" }, { status: 400 });
   }
@@ -58,6 +59,10 @@ export async function POST(req: NextRequest) {
   const medication = await db.medicationTag.create({
     data: { kind, label: String(label).trim(), sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
   });
+  // Added from a Unani group's list: it starts in that group.
+  if (kind === "supplement" && Object.values(UNANI_GROUP_CATEGORY).includes(category)) {
+    await db.supplementProfile.create({ data: { tagId: medication.id, herbType: category } });
+  }
   // Build its Unani profile in the background — the response doesn't wait,
   // and the assistant's scheduled backfill retries it if this fails.
   // Build its search-backed reference profile in the background.

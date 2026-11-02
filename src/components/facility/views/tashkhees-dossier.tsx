@@ -26,6 +26,7 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { FloatingField, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { sortLabels } from "@/lib/sort-options";
+import { UNANI_GROUPS, unaniGroup, type UnaniGroup } from "@/lib/unani-groups";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
   ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
@@ -899,24 +900,31 @@ function UsoolTab({ state, visitId }: { state: TashkheesState; visitId: string }
 }
 
 /**
- * "Add medicine": Unani / Allopathic tabs. Each lists the medicines suggested for this patient
+ * "Add medicine": Unani Murakkab / Mufrad / Other and Allopathic tabs. Each lists the medicines suggested for this patient
  * (with why, and any safety notes) first, then every other medicine A–Z. A medicine excluded for
  * safety shows the reason, and one already on the prescription can't be added twice.
  */
 function HerbPicker({ herbs, cds, failed, onOpen, onRetry, added, onPick }: { herbs: Herb[]; cds: CdsData | null; failed: boolean; onOpen: () => void; onRetry: () => void; added: (string | null)[]; onPick: (h: { id: string | null; label: string; forms: string[] }, suggestion?: CdsCand) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState<"unani" | "allo">("unani");
+  const [tab, setTab] = useState<UnaniGroup | "allo">("murakkab");
   const td = useTranslations("clinic.dossier");
   const ql = q.trim().toLowerCase();
   const r = cds?.result;
-  const list = (tab === "allo" ? r?.allopathic ?? [] : [...(r?.unani ?? []), ...(r?.supplements ?? [])]);
+  const inTab = (k: UnaniGroup | "allo", h: Herb) => k === "allo" ? h.kind === "medication" : h.kind !== "medication" && unaniGroup(h.category) === k;
+  const hitHerb = (h: Herb) => !ql || `${h.label} ${h.generic ?? ""}`.toLowerCase().includes(ql);
+  const list = (tab === "allo" ? r?.allopathic ?? [] : [...(r?.unani ?? []), ...(r?.supplements ?? [])].filter((c) => unaniGroup(c.herbType) === tab));
   const listed = new Set(list.map((c) => c.tagId));
   const suggested = list.filter((c) => !ql || `${c.label} ${c.unaniName ?? ""} ${c.herbType ?? ""} ${c.reasons.join(" ")}`.toLowerCase().includes(ql));
   const others = herbs
-    .filter((h) => (tab === "allo") === (h.kind === "medication") && !listed.has(h.id))
-    .filter((h) => !ql || `${h.label} ${h.generic ?? ""}`.toLowerCase().includes(ql))
+    .filter((h) => inTab(tab, h) && !listed.has(h.id))
+    .filter(hitHerb)
     .sort((a, b) => a.label.localeCompare(b.label));
+  const TABS = [...UNANI_GROUPS, "allo"] as const;
+  const tabLabel = (k: UnaniGroup | "allo") => td(k === "other" ? "picker_other_group" : `picker_${k}`);
+  const hitsIn = (k: UnaniGroup | "allo") => herbs.filter((h) => inTab(k, h) && hitHerb(h)).length;
+  // Nothing here but it's under another tab: send them there rather than to "not in catalogue".
+  const elsewhere = ql && !suggested.length && !others.length ? TABS.find((k) => k !== tab && hitsIn(k) > 0) : undefined;
   const pick = (h: { id: string | null; label: string; forms: string[] }, c?: CdsCand) => { onPick(h, c); setOpen(false); setQ(""); };
   const head = (t: string, tone: string) => <p className={cn("sticky top-0 z-[1] bg-popover px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide", tone)}>{t}</p>;
   const addedMark = <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3 w-3" />{td("added")}</span>;
@@ -925,16 +933,16 @@ function HerbPicker({ herbs, cds, failed, onOpen, onRetry, added, onPick }: { he
       <PopoverTrigger asChild>
         <Button data-tour="dossier.cds" size="sm" variant="outline"><Plus className="h-3.5 w-3.5" /> {td("add_medicine")}</Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(30rem,calc(100vw-2rem))] p-2" align="end">
-        <div className="mb-2 grid grid-cols-2 rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
-          {(["unani", "allo"] as const).map((k) => (
+      <PopoverContent className="w-[min(36rem,calc(100vw-2rem))] p-2" align="end">
+        <div className="mb-2 grid grid-cols-4 rounded-lg border border-border/60 bg-background/40 p-0.5" role="tablist">
+          {TABS.map((k) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-              className={cn("rounded-md px-2 py-1 text-[13px] font-medium transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-              {k === "unani" ? td("picker_unani") : td("picker_allo")}
+              className={cn("rounded-md px-1 py-1 text-xs font-medium transition-colors", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+              {tabLabel(k)}{ql && ` · ${hitsIn(k)}`}
             </button>
           ))}
         </div>
-        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "unani" ? td("search_medicines") : td("search_allo")} className="h-9 mb-1" />
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "allo" ? td("search_allo") : td("search_medicines")} className="h-9 mb-1" />
         <div className="max-h-[24rem] overflow-y-auto">
           {failed && <p className="mt-1 px-2 py-1 text-xs text-muted-foreground">{td.rich("picker_failed", { retry: (c) => <button type="button" onClick={onRetry} className="text-primary font-medium hover:underline">{c}</button> })}</p>}
           {tab === "allo" && suggested.length > 0 && <p className="mt-1 rounded-md bg-amber-500/5 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-400">{td("cds_allo_note")}</p>}
@@ -969,7 +977,8 @@ function HerbPicker({ herbs, cds, failed, onOpen, onRetry, added, onPick }: { he
               </button>
             );
           })}
-          {q.trim() && !herbs.some((h) => h.label.toLowerCase() === ql) && (
+          {elsewhere && <button type="button" onClick={() => setTab(elsewhere)} className="w-full text-start rounded-md px-2 py-1.5 text-sm font-medium text-primary hover:bg-muted/60">{td("picker_found", { tab: tabLabel(elsewhere), count: hitsIn(elsewhere) })}</button>}
+          {q.trim() && !herbs.some(hitHerb) && (
             <button type="button" onClick={() => pick({ id: null, label: q.trim(), forms: [] })}
               className="w-full text-start rounded-md px-2 py-1.5 text-sm hover:bg-muted/60 text-primary">{td("add_not_catalogue", { q: q.trim() })}</button>
           )}
