@@ -82,7 +82,6 @@ export default function AdminBooksPage() {
           <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-primary" /> Books
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Urdu books and their PDFs — translate each PDF into English, proofread it and confirm it.</p>
         </div>
         <Button size="lg" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-4 w-4" /> Add book</Button>
       </div>
