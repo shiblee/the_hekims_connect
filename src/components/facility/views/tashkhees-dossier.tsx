@@ -486,15 +486,9 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
   const [data, setData] = useState<{ suggestion: EngSuggestion; method: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const [running, setRunning] = useState(false);
-  const [open, setOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
+  const [why, setWhy] = useState<string | null>(null);
   const td = useTranslations("clinic.dossier");
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+  const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, description: [o.localName, o.description].filter(Boolean).join(" — ") || null }));
 
   const fetchEngine = useCallback(() =>
     api.get<{ suggestion: EngSuggestion; method: string }>(`/api/facility/visits/${visitId}/tashkhees-engine`)
@@ -554,8 +548,66 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
     ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> {td("applied")}</span>
     : <Button size="sm" variant="outline" className="h-7" onClick={onClick}>{label}</Button>;
 
+  const ok = (applied: boolean, onClick: () => void, label = td("accept")) => <Apply applied={applied} onClick={onClick} label={label} />;
+  const muted = (text: string) => <span className="text-[13px] text-muted-foreground">{text}</span>;
+  const insuff = (key: string) => <span className="text-xs leading-snug text-muted-foreground">{s?.insufficient.find((x) => x.includes(key)) || td("no_suggestion")}</span>;
+  const asliWhy = asli?.label ? <>{asli.note && <p className="text-xs text-muted-foreground">{asli.note}</p>}<Why t={asli} /><Ev items={asli.evidence} /></> : null;
+  const suWhy = su?.label ? <>
+    {su.type === "Maddi" && su.maddiSigns.length > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">{td("maddi_signs", { items: su.maddiSigns.slice(0, 3).join("; ") })}</p>}
+    {su.note && <p className="text-xs text-amber-700 dark:text-amber-400">{su.note}</p>}
+    <Why t={su} /><Ev items={su.evidence} />
+  </> : su?.conflict ? <>
+    <p className="text-xs text-amber-700 dark:text-amber-400">{td("conflict_leans", { items: su.conflict.leans.map((l) => td("lean_item", { source: td(`src_${l.source}`), humour: humourName(l.humour) })).join(" · ") })}</p>
+    {su.cap && <p className="text-xs text-muted-foreground">{td(`cap_${su.cap}`)}</p>}
+  </> : null;
+  const organWhy = s?.organs.length ? <ul className="space-y-0.5">{s.organs.map((o) => <li key={o.label} className="text-xs text-muted-foreground">• <span className="font-medium text-foreground/80">{o.label}</span> — {o.reason}</li>)}</ul> : null;
+
+  // Each finding: what the engine suggests (with Accept) beside the Hakim's own answer.
+  const rows: { key: string; finding: ReactNode; engine: ReactNode; action?: ReactNode; why?: ReactNode; answer: ReactNode }[] = s ? [
+    {
+      key: "asli", finding: <Q required>{td("asli_label")}</Q>,
+      engine: asli?.label ? <span className="flex flex-wrap items-center gap-1.5"><span className="text-sm font-semibold">{asli.label}</span>{local(asli.label) && <span className="text-xs text-muted-foreground">{local(asli.label)}</span>}<Conf c={asli.confidence} /></span> : insuff("Mizaj-e-Asli"),
+      action: asli?.label ? ok(asliApplied, applyAsli) : null, why: asliWhy,
+      answer: <OptionDropdown compact id="mizajAsli" options={mizaj} value={d.mizajAsli ? [d.mizajAsli] : []} onChange={(v) => set({ mizajAsli: v[0] ?? null })} placeholder={td("choose_one")} />,
+    },
+    {
+      key: "su_type", finding: <><Q required>{td("su_label")}</Q><Sub>{td("su_type")}</Sub></>,
+      engine: su?.label ? <span className="text-sm font-semibold">{su.type}</span> : su?.conflict ? <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">{td("undetermined")}</span> : insuff("Su-e-Mizaj"),
+      action: su?.label ? ok(d.suMizajType === su.type, () => { set({ suMizajType: su.type }); record("suMizaj"); }) : null, why: suWhy,
+      answer: <OptionDropdown compact id="suMizajType" options={SU_MIZAJ_TYPES.map((t) => ({ label: t.value, description: td(t.value === "Sada" ? "sada_desc" : "maddi_desc") }))}
+        value={d.suMizajType ? [d.suMizajType] : []} onChange={(v) => set({ suMizajType: (v[0] as typeof d.suMizajType) ?? null })} placeholder={td("su_default")} />,
+    },
+    {
+      key: "su_quality", finding: <Sub>{td("su_quality")}</Sub>,
+      engine: su?.label ? <span className="flex flex-wrap items-center gap-1.5"><span className="text-sm font-semibold">{su.label}</span>{local(su.label) && <span className="text-xs text-muted-foreground">{local(su.label)}</span>}<Conf c={su.confidence} /></span> : muted("—"),
+      action: su?.label ? ok(d.suMizajQuality === su.label, () => { set({ suMizajQuality: su.label }); record("suMizaj"); }) : null,
+      answer: <OptionDropdown compact id="suMizajQuality" options={mizaj} value={d.suMizajQuality ? [d.suMizajQuality] : []} onChange={(v) => set({ suMizajQuality: v[0] ?? null })} placeholder={td("choose_quality")} />,
+    },
+    {
+      key: "darja", finding: <Sub>{td("darja")}</Sub>,
+      engine: su?.label && su.darja ? <span className="text-sm font-semibold">{td("darja_n", { n: su.darja })}</span> : muted("—"),
+      action: su?.label && su.darja ? ok(d.suMizajGrade === su.darja, () => { set({ suMizajGrade: su.darja }); record("suMizaj"); }) : null,
+      answer: <Segmented value={d.suMizajGrade} options={DARJA.map((n) => ({ value: n, label: `${n}` }))} onChange={(v) => set({ suMizajGrade: v })} />,
+    },
+    {
+      key: "organs", finding: <Q>{td("organs_label")}</Q>,
+      engine: s.organs.length ? (
+        <span className="flex flex-wrap gap-1">
+          {s.organs.map((o) => (
+            <span key={o.label} title={o.reason} className={cn("rounded-full border px-2 py-px text-xs", d.organs.includes(o.label) ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-primary/30 bg-primary/5")}>{o.label}</span>
+          ))}
+        </span>
+      ) : insuff("organ"),
+      action: s.organs.length ? ok(newOrgans.length === 0, applyOrgans, td("add_n", { count: newOrgans.length })) : null, why: organWhy,
+      answer: <OptionDropdown compact id="organs" multiple options={(options?.organ || []).map((o) => ({ label: o.label, description: o.description }))} value={d.organs}
+        onChange={(v) => set({ organs: v })} placeholder={td("choose_many")} />,
+    },
+  ] : [];
+  const TK = "grid grid-cols-1 gap-x-4 gap-y-1.5 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,1fr)]";
+  const HM = "grid grid-cols-[minmax(0,1.7fr)_3.5rem_repeat(4,minmax(0,1fr))] items-center gap-x-3";
+
   return (
-    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-[13px] font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {td("engine")}</p>
         <span className="flex items-center gap-2">
@@ -568,95 +620,59 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
         <p className="text-sm text-muted-foreground">{td.rich("engine_failed", { retry: (c) => <button type="button" onClick={() => fetchEngine()} className="text-primary font-medium hover:underline">{c}</button> })}</p>
       ) : !s ? <Loading /> : (
         <>
-          {/* The three humoral readings and how much each counts */}
-          <div className="grid sm:grid-cols-3 gap-2.5">
-            {s.sources.map((r) => (
-              <div key={r.key} className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-                <p className="text-xs text-muted-foreground leading-snug">{r.label}</p>
-                <p className="text-[11px] text-muted-foreground/80 mb-1.5">{r.percent ? td("counts", { w: r.weight }) : td("not_recorded")}</p>
-                {r.percent && <HumourBars pct={r.percent} compact />}
+          {/* The three humoral readings, as one small grid: reading · weight · Safra · Dam · Balgham · Sauda */}
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <div className="min-w-[34rem]">
+              <div className={cn(HM, "border-b border-border bg-muted/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground")}>
+                <span>{td("tk_reading")}</span><span className="text-end">{td("tk_weight")}</span>
+                {AKHLAT.map((h) => <span key={h.key} className={cn("text-end", h.text)}>{h.label}</span>)}
               </div>
-            ))}
+              <div className="divide-y divide-border/60">
+                {s.sources.map((r) => {
+                  const top = r.percent ? Math.max(...AKHLAT.map((h) => r.percent![h.key])) : 0;
+                  return (
+                    <div key={r.key} className={cn(HM, "px-3 py-1.5 text-[13px]")}>
+                      <span className="truncate" title={r.label}>{r.label}</span>
+                      <span className="text-end text-xs tabular-nums text-muted-foreground">{r.percent ? `×${r.weight}` : "—"}</span>
+                      {r.percent ? AKHLAT.map((h) => {
+                        const v = Math.round(r.percent![h.key] * 10) / 10;
+                        return (
+                          <span key={h.key} className="min-w-0">
+                            <span className={cn("block text-end tabular-nums", v === top && v > 0 ? cn("font-semibold", h.text) : v === 0 ? "text-muted-foreground/60" : "")}>{v}%</span>
+                            <span className="mt-0.5 block h-1 overflow-hidden rounded-full bg-muted"><span className={cn("block h-full rounded-full", h.bar)} style={{ width: `${Math.min(100, v)}%` }} /></span>
+                          </span>
+                        );
+                      }) : <span className="col-span-4 text-end text-xs text-muted-foreground">{td("not_recorded")}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          {/* Suggestions — a box with the summary that opens the three suggestions (like the other drop-downs) */}
-          <div ref={boxRef} className="relative">
-          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-            className={cn("flex min-h-12 w-full items-center justify-between gap-2 rounded-lg border bg-background/50 px-3.5 py-2 text-start transition-colors", open ? "border-primary" : "border-input hover:border-primary/40")}>
-            <span className="min-w-0">
-              <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{td("engine_suggests")}</span>
-              <span className="block truncate text-sm font-medium">
-                {[asli?.label, su?.label ? [su.type, su.label, su.darja ? `Darja ${su.darja}` : null].filter(Boolean).join(" · ") : null, s.organs.length ? td("n_organs", { count: s.organs.length }) : null].filter(Boolean).join("  |  ") || td("no_suggestion")}
-              </span>
-            </span>
-            <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </button>
-          {open && (
-          <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[460px] overflow-y-auto divide-y divide-border/40 rounded-xl border border-border/60 bg-popover shadow-xl">
-            <div className="flex items-start justify-between gap-3 p-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{td("asli_head")}</p>
-                {asli?.label ? (
-                  <>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-2"><span className="text-base font-semibold">{asli.label}</span>{local(asli.label) && <span className="text-xs text-muted-foreground">{local(asli.label)}</span>}<Conf c={asli.confidence} /></p>
-                    {asli.note && <p className="mt-1 text-xs text-muted-foreground">{asli.note}</p>}
-                    <Why t={asli} />
-                    <Ev items={asli.evidence} />
-                  </>
-                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Mizaj-e-Asli")) || td("no_suggestion")}</p>}
-              </div>
-              {asli?.label && <Apply applied={asliApplied} onClick={applyAsli} />}
+          {/* Finding · what the engine suggests (Accept) · the Hakim's Tashkhees */}
+          <div className="overflow-hidden rounded-xl border border-border">
+            <div className={cn(TK, "hidden border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid")}>
+              <span>{td("tk_col_finding")}</span><span className="flex items-center gap-1 text-primary"><Sparkles className="h-3 w-3" />{td("tk_col_engine")}</span><span>{td("tk_col_yours")}</span>
             </div>
-
-            <div className="flex items-start justify-between gap-3 p-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{td("su_head")}</p>
-                {su?.label ? (
-                  <>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-2">
-                      <span className="text-base font-semibold">{su.type} · {su.label}{su.darja ? ` · ${td("darja_n", { n: su.darja })}` : ""}</span>
-                      {local(su.label) && <span className="text-xs text-muted-foreground">{local(su.label)}</span>}
-                      <Conf c={su.confidence} />
-                    </p>
-                    {su.type === "Maddi" && su.maddiSigns.length > 0 && (
-                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{td("maddi_signs", { items: su.maddiSigns.slice(0, 3).join("; ") })}</p>
-                    )}
-                    {su.note && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{su.note}</p>}
-                    <Why t={su} />
-                    <Ev items={su.evidence} />
-                  </>
-                ) : su?.conflict ? (
-                  <>
-                    <p className="mt-0.5 text-base font-semibold text-amber-700 dark:text-amber-400">{td("undetermined")}</p>
-                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{td("conflict_leans", { items: su.conflict.leans.map((l) => td("lean_item", { source: td(`src_${l.source}`), humour: humourName(l.humour) })).join(" · ") })}</p>
-                    {su.cap && <p className="mt-1 text-xs text-muted-foreground">{td(`cap_${su.cap}`)}</p>}
-                  </>
-                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("Su-e-Mizaj")) || td("no_suggestion")}</p>}
-              </div>
-              {su?.label && <Apply applied={suApplied} onClick={applySu} />}
-            </div>
-
-            <div className="flex items-start justify-between gap-3 p-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{td("organs_head")}</p>
-                {s.organs.length ? (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {s.organs.map((o) => {
-                      const desc = (options?.organ || []).find((x) => x.label === o.label)?.description;
-                      return (
-                        <span key={o.label} title={o.reason} className={cn("rounded-full border px-2.5 py-0.5 text-xs", d.organs.includes(o.label) ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-primary/30 bg-primary/5")}>
-                          {o.label}{desc && <span className="text-muted-foreground"> · {desc}</span>}
-                        </span>
-                      );
-                    })}
+            <div className="divide-y divide-border/60">
+              {rows.map((r) => (
+                <div key={r.key} className="px-3 py-2">
+                  <div className={cn(TK, "items-center")}>
+                    <div className="min-w-0 [&>p]:pt-0">{r.finding}</div>
+                    <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-primary/[0.04] px-2 py-1.5">
+                      <div className="min-w-0">{r.engine}</div>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {r.why && <button type="button" onClick={() => setWhy(why === r.key ? null : r.key)} aria-expanded={why === r.key} className="text-xs font-medium text-primary hover:underline">{why === r.key ? td("tk_hide") : td("tk_why")}</button>}
+                        {r.action}
+                      </span>
+                    </div>
+                    <div className="min-w-0">{r.answer}</div>
                   </div>
-                ) : <p className="mt-0.5 text-sm text-muted-foreground">{s.insufficient.find((x) => x.includes("organ")) || td("no_suggestion")}</p>}
-                {s.organs.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{s.organs[0].reason}{s.organs.length > 1 ? td("hover_organ") : ""}</p>}
-              </div>
-              {s.organs.length > 0 && <Apply applied={newOrgans.length === 0} onClick={applyOrgans} label={td("add_n", { count: newOrgans.length })} />}
+                  {why === r.key && r.why && <div className="mt-1.5 space-y-0.5 md:ms-[calc(17rem+1rem)]">{r.why}</div>}
+                </div>
+              ))}
             </div>
-          </div>
-          )}
           </div>
         </>
       )}
@@ -665,8 +681,7 @@ function EngineCard({ state, visitId }: { state: TashkheesState; visitId: string
 }
 
 function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: string }) {
-  const { dossier: d, set, options } = state;
-  const mizaj = (options?.mizaj || []).map((o) => ({ label: o.label, description: [o.localName, o.description].filter(Boolean).join(" — ") || null }));
+  const { dossier: d, set } = state;
   const td = useTranslations("clinic.dossier");
   return (
     <Panel icon={FileSignature} tour="dossier.diagnosis" title={td("tashkhees_title")}>
@@ -676,29 +691,12 @@ function TashkheesTab({ state, visitId }: { state: TashkheesState; visitId: stri
       <MarzSection visitId={visitId} d={d} set={set} amraz={state.amraz} rerun={() => state.save(false)} />
       <div className="border-t border-border/50" />
       <EngineCard state={state} visitId={visitId} />
-      {/* Each question on the left, its answer box on the right — the box opens the answer cards */}
-      <QuestionRow question={<Q required>{td("asli_label")}</Q>}>
-        <OptionDropdown id="mizajAsli" options={mizaj} value={d.mizajAsli ? [d.mizajAsli] : []} onChange={(v) => set({ mizajAsli: v[0] ?? null })} placeholder={td("choose_one")} />
-      </QuestionRow>
-      <div className="space-y-2.5">
-        <Q required>{td("su_label")}</Q>
-        <QuestionRow question={<Sub>{td("su_type")}</Sub>}>
-          <OptionDropdown id="suMizajType" options={SU_MIZAJ_TYPES.map((t) => ({ label: t.value, description: td(t.value === "Sada" ? "sada_desc" : "maddi_desc") }))}
-            value={d.suMizajType ? [d.suMizajType] : []} onChange={(v) => set({ suMizajType: (v[0] as typeof d.suMizajType) ?? null })} placeholder={td("su_default")} />
-        </QuestionRow>
-        <QuestionRow question={<Sub>{td("su_quality")}</Sub>}>
-          <OptionDropdown id="suMizajQuality" options={mizaj} value={d.suMizajQuality ? [d.suMizajQuality] : []} onChange={(v) => set({ suMizajQuality: v[0] ?? null })} placeholder={td("choose_quality")} />
-        </QuestionRow>
-        <QuestionRow question={<Sub>{td("darja")}</Sub>}>
-          <Segmented value={d.suMizajGrade} options={DARJA.map((n) => ({ value: n, label: `${n}` }))} onChange={(v) => set({ suMizajGrade: v })} />
-        </QuestionRow>
+      {/* The statement — one line */}
+      <div className="flex items-center gap-3">
+        <label htmlFor="tashkhees-statement" className="shrink-0 text-[15px] font-semibold">{td("statement")}</label>
+        <Input id="tashkhees-statement" maxLength={500} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })}
+          placeholder={td("statement_eg")} title={d.diagnosisNote || td("statement_eg")} className="h-10" />
       </div>
-      <QuestionRow question={<Q>{td("organs_label")}</Q>}>
-        <OptionDropdown id="organs" multiple options={(options?.organ || []).map((o) => ({ label: o.label, description: o.description }))} value={d.organs}
-          onChange={(v) => set({ organs: v })} placeholder={td("choose_many")} />
-      </QuestionRow>
-      <FloatingTextarea id="tashkhees-statement" label={td("statement")} rows={3} value={d.diagnosisNote ?? ""} onChange={(e) => set({ diagnosisNote: e.target.value })}
-        title={td("statement_eg")} />
     </Panel>
   );
 }

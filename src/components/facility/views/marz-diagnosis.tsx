@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FloatingField } from "@/components/shared/floating-field";
+import { FindingAddButton } from "@/components/facility/views/finding-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DifferentialResult, Differential } from "@/lib/differential-engine";
 
@@ -143,7 +144,6 @@ function DiagnosisPicker({ amraz, ddx, chosen, onSuggest, onPick, onFree }: {
 /** Marz & Sabab block of the Tashkhees section: the differential, the Hakim's diagnoses, causes and an optional ICD diagnosis. */
 export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string; d: MarzState; set: (p: Partial<MarzState>) => void; amraz: AmrazOption[]; rerun: () => Promise<unknown> }) {
   const t = useTranslations("clinic.marz");
-  const [sababDraft, setSababDraft] = useState("");
   const [icdOpen, setIcdOpen] = useState(!!(d.icdCode || d.icdLabel));
   const ddx = useDifferential(visitId, rerun);
 
@@ -162,6 +162,8 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
   };
   const sorted = d.diagnoses.map((x, i) => ({ x, i })).sort((a, b) => ROLES.indexOf(a.x.role) - ROLES.indexOf(b.x.role));
   const sababSuggest = [...new Set(d.diagnoses.filter((x) => x.role === "working" || x.role === "secondary").flatMap((x) => amraz.find((m) => m.id === x.marzId)?.sabab ?? []))].filter((s) => !d.sabab.includes(s));
+  // Which of the chosen diagnoses list this cause (Admin → Amraz).
+  const linkedTo = (s: string) => d.diagnoses.filter((x) => x.role !== "ruled_out" && amraz.find((m) => m.id === x.marzId)?.sabab.includes(s)).map((x) => x.label);
   const toggleSabab = (s: string) => set({ sabab: d.sabab.includes(s) ? d.sabab.filter((x) => x !== s) : [...d.sabab, s] });
 
   return (
@@ -234,26 +236,51 @@ export function MarzSection({ visitId, d, set, amraz, rerun }: { visitId: string
         )}
       </div>
 
-      {/* Sabab */}
-      <div className="space-y-2.5 border-t border-border/50 pt-4">
-        <p className="text-[15px] font-semibold">{t("sabab")}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {d.sabab.map((s) => (
-            <button key={s} type="button" onClick={() => toggleSabab(s)} className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-300">
-              {s} <X className="h-3 w-3" />
-            </button>
-          ))}
-          {sababSuggest.map((s) => (
-            <button key={s} type="button" onClick={() => toggleSabab(s)} className="inline-flex items-center gap-1 rounded-full border border-dashed border-border/70 px-2.5 py-1 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
-              <Plus className="h-3 w-3" /> {s}
-            </button>
-          ))}
+      {/* Sabab — Add a cause (suggestions from the chosen diagnoses first) + the causes as a table */}
+      <div className="space-y-2 border-t border-border/50 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[15px] font-semibold">{t("sabab")} <span className="text-xs font-normal text-muted-foreground">· {d.sabab.length}</span></p>
+          <FindingAddButton label={t("sabab_add")} searchPh={t("sabab_search")} createLabel={(q) => t("sabab_add_q", { q })}
+            options={sababSuggest.map((s) => ({ id: s, label: s, description: linkedTo(s).length ? t("sabab_from", { list: linkedTo(s).join(", ") }) : null }))}
+            onPick={(s) => toggleSabab(s)} onCreate={(q) => { if (!d.sabab.includes(q)) set({ sabab: [...d.sabab, q] }); }} />
         </div>
-        <div className="flex items-end gap-2">
-          <div className="flex-1 min-w-0"><FloatingField id="sababAdd" label={t("sabab_hint")} value={sababDraft} onChange={(e) => setSababDraft(e.target.value)} maxLength={160}
-            onKeyDown={(e) => { if (e.key === "Enter" && sababDraft.trim()) { e.preventDefault(); if (!d.sabab.includes(sababDraft.trim())) set({ sabab: [...d.sabab, sababDraft.trim()] }); setSababDraft(""); } }} /></div>
-          <Button size="sm" variant="outline" disabled={!sababDraft.trim()} onClick={() => { if (!d.sabab.includes(sababDraft.trim())) set({ sabab: [...d.sabab, sababDraft.trim()] }); setSababDraft(""); }}>{t("add_btn")}</Button>
-        </div>
+        {d.sabab.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-sm text-muted-foreground">{t("sabab_none")}</p>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border">
+            <div className="grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,1.3fr)_2rem] gap-3 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="text-end">#</span><span>{t("sabab_col")}</span><span>{t("sabab_from_col")}</span><span />
+            </div>
+            <ul className="divide-y divide-border">
+              {d.sabab.map((s, i) => {
+                const from = linkedTo(s);
+                return (
+                  <li key={s} className="grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,1.3fr)_2rem] items-center gap-x-3 px-3 py-2">
+                    <span className="text-end text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                    <p className="text-sm font-semibold">{s}</p>
+                    <p className="min-w-0 text-xs text-muted-foreground">
+                      {from.length ? from.map((x) => <span key={x} className="me-1 inline-block rounded-full border border-border bg-muted/40 px-2 py-px">{x}</span>)
+                        : <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-px font-medium text-amber-700 dark:text-amber-400">{t("sabab_mine")}</span>}
+                    </p>
+                    <button type="button" onClick={() => toggleSabab(s)} aria-label={`${t("remove")} ${s}`} title={`${t("remove")} ${s}`}
+                      className="justify-self-end rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-4 w-4" /></button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {sababSuggest.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="me-1 flex items-center gap-1 text-xs font-medium text-primary"><Sparkles className="h-3 w-3" /> {t("sabab_suggested")}:</span>
+            {sababSuggest.map((s) => (
+              <button key={s} type="button" onClick={() => toggleSabab(s)} title={linkedTo(s).length ? t("sabab_from", { list: linkedTo(s).join(", ") }) : undefined}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
+                <Plus className="h-3 w-3" /> {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Optional biomedical diagnosis */}
