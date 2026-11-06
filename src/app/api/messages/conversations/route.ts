@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       } else {
         partner = await db.patient.findUnique({
           where: { id: c.partnerId },
-          select: { id: true, name: true, avatarColor: true, mizaj: true },
+          select: { id: true, name: true, avatarColor: true, photo: true, mizaj: true },
         });
       }
       return { ...c, partner };

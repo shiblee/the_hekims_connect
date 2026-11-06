@@ -68,7 +68,7 @@ export interface FacilityInsights {
   reasons: { key: string; text: string; good: boolean; points: number; max: number }[];
   checklist: { key: string; label: string; done: boolean }[];
   locked: boolean; failedLoginAttempts: number;
-  staff: { id: string; name: string; role: string | null; designation: string | null; employeeType: string; active: boolean; lastLoginAt: string | null; createdAt: string }[];
+  staff: { id: string; name: string; photo: string | null; role: string | null; designation: string | null; employeeType: string; active: boolean; lastLoginAt: string | null; createdAt: string }[];
   events: { id: string; actorType: string; actorName: string; action: string; summary: string; outcome: string; createdAt: string }[];
   logins: { id: string; displayName: string; status: string; browser: string | null; os: string | null; device: string | null; ip: string | null; staffId: string | null; createdAt: string }[];
 }

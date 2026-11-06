@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     select: {
       id: true, patientCode: true, name: true, titlePrefix: true, relationship: true,
       gender: true, dob: true, dobApprox: true, maritalStatus: true,
-      phone: true, email: true, avatarColor: true,
+      phone: true, email: true, avatarColor: true, photo: true,
       address: true, state: true, city: true,
       emergencyContact: true, emergencyContactName: true,
     },
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     if (byCode) exact.push(byCode);
   }
   const elsewhere = await Promise.all(exact.filter((p, i, arr) => !here.has(p.id) && arr.findIndex((x) => x.id === p.id) === i).map(async (p) => ({
-    id: p.id, patientCode: p.patientCode, name: p.name, gender: p.gender, dob: p.dob, avatarColor: p.avatarColor,
+    id: p.id, patientCode: p.patientCode, name: p.name, gender: p.gender, dob: p.dob, avatarColor: p.avatarColor, photo: null,
     phone: p.phone ? `${p.phone.slice(0, 2)}••••••${p.phone.slice(-2)}` : null,
     titlePrefix: null, relationship: null, maritalStatus: null, email: null, address: null, state: null, city: null, emergencyContact: null, emergencyContactName: null,
     lastVisitAt: null, matchScore: 100, otherClinic: true,

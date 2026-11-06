@@ -27,7 +27,7 @@ async function assertOwnedVisit(id: string, facilityId: string) {
       patient: {
         select: {
           id: true, patientCode: true, name: true, gender: true, dob: true,
-          dobApprox: true, bloodGroup: true, phone: true, avatarColor: true,
+          dobApprox: true, bloodGroup: true, phone: true, avatarColor: true, photo: true,
           maritalStatus: true, occupation: true, address: true, state: true, city: true,
           emergencyContact: true, emergencyContactName: true, emergencyRelationship: true,
         },

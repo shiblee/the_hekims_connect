@@ -18,7 +18,7 @@ async function assertOwnedVisit(id: string, facilityId: string) {
     where: { id, facilityId },
     select: {
       id: true, patientId: true, visitCode: true, visitDate: true,
-      patient: { select: { id: true, patientCode: true, name: true, gender: true, dob: true, bloodGroup: true, phone: true, avatarColor: true, mizaj: true } },
+      patient: { select: { id: true, patientCode: true, name: true, gender: true, dob: true, bloodGroup: true, phone: true, avatarColor: true, photo: true, mizaj: true } },
     },
   });
 }

@@ -7,7 +7,7 @@ import {
   MapPin, Siren, Sparkles, Stethoscope, Users, XCircle, Ambulance, ShieldAlert, ArrowRight, Leaf,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { DAY_ORDER, HEALTH_STYLE, parseList, useFacilityDetail, type FacilityDetail } from "./facility-detail-context";
 import { DAY, ScoreRing, Trend, ago, inr } from "./detail-ui";
@@ -215,7 +215,7 @@ export function OverviewDashboard() {
             <ul className="-mx-1 max-h-80 space-y-1 overflow-y-auto">
               {insights.staff.map((s) => (
                 <li key={s.id} className={cn("flex items-center gap-3 rounded-lg px-1 py-1.5", !s.active && "opacity-50")}>
-                  <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-bold text-white", avatarGradient(null))}>{initials(s.name)}</span>
+                  <EntityAvatar name={s.name} photo={s.photo} size="sm" className="text-[10px] shadow-none ring-0" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{s.name}</span>
                     <span className="block truncate text-xs text-muted-foreground">{s.designation || s.role || s.employeeType}{!s.active && " · inactive"}</span>

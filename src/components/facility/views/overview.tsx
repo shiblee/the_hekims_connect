@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import {
 
 interface Appointment {
   id: string; date: string; time: string; type: string; reason: string; status: string;
-  patient: { id: string; name: string; avatarColor: string; mizaj: string; bloodGroup: string };
+  patient: { id: string; name: string; avatarColor: string; photo?: string | null; mizaj: string; bloodGroup: string };
 }
 
 export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: any) => void }) {
@@ -124,9 +125,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
                       <span className="font-serif text-sm font-bold">{a.time}</span>
                       <span className="text-[10px] text-muted-foreground">{a.date.slice(5)}</span>
                     </div>
-                    <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarGradient(a.patient.avatarColor))}>
-                      {initials(a.patient.name)}
-                    </div>
+                    <EntityAvatar name={a.patient.name} photo={a.patient.photo} avatarColor={a.patient.avatarColor} size="sm" className="h-9 w-9 text-xs shadow-none ring-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{a.patient.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{a.type}{a.reason ? ` · ${a.reason}` : ""}</p>
@@ -195,9 +194,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
           </div>
           <div className="flex -space-x-2">
             {recentPatients.slice(0, 5).map((p) => (
-              <div key={p.id} className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white ring-2 ring-card", avatarGradient(p.avatarColor))} title={p.name}>
-                {initials(p.name)}
-              </div>
+              <span key={p.id} title={p.name} className="shrink-0"><EntityAvatar name={p.name} photo={p.photo} avatarColor={p.avatarColor} size="sm" className="h-9 w-9 text-xs shadow-none ring-2 ring-card" /></span>
             ))}
             {recentPatients.length === 0 && <p className="text-xs text-muted-foreground">{t("no_active")}</p>}
           </div>

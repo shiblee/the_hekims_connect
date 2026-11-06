@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         select: { id: true, facilityName: true, specialization: true, avatarColor: true },
       },
       patient: {
-        select: { id: true, name: true, phone: true, avatarColor: true, mizaj: true, bloodGroup: true, gender: true, dob: true },
+        select: { id: true, name: true, phone: true, avatarColor: true, photo: true, mizaj: true, bloodGroup: true, gender: true, dob: true },
       },
     },
   });
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         facility: { select: { id: true, facilityName: true, specialization: true, avatarColor: true } },
-        patient: { select: { id: true, name: true, phone: true, avatarColor: true } },
+        patient: { select: { id: true, name: true, phone: true, avatarColor: true, photo: true } },
       },
     });
 

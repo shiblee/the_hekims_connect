@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const [visits, payments, staff, events, logins, upcoming] = await Promise.all([
     db.visit.findMany({ where: { facilityId: id }, select: { patientId: true, createdAt: true } }),
     db.payment.findMany({ where: { visit: { facilityId: id } }, select: { amount: true, status: true, refundAmount: true, mode: true, createdAt: true } }),
-    db.staff.findMany({ where: { facilityId: id }, orderBy: [{ active: "desc" }, { name: "asc" }], select: { id: true, name: true, role: true, designation: true, employeeType: true, active: true, lastLoginAt: true, createdAt: true } }),
+    db.staff.findMany({ where: { facilityId: id }, orderBy: [{ active: "desc" }, { name: "asc" }], select: { id: true, name: true, photo: true, role: true, designation: true, employeeType: true, active: true, lastLoginAt: true, createdAt: true } }),
     db.facilityAuditEvent.findMany({ where: { facilityId: id }, orderBy: { createdAt: "desc" }, take: 12, select: { id: true, actorType: true, actorName: true, action: true, summary: true, outcome: true, createdAt: true } }),
     db.loginEvent.findMany({ where: { facilityId: id }, orderBy: { createdAt: "desc" }, take: 6, select: { id: true, displayName: true, status: true, browser: true, os: true, device: true, ip: true, staffId: true, createdAt: true } }),
     db.appointment.count({ where: { facilityId: id, date: { gte: today }, status: { notIn: ["cancelled", "completed"] } } }),

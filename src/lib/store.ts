@@ -39,6 +39,7 @@ export interface PatientUser {
   lifestyle: string | null;
   mizaj: string | null;
   avatarColor: string;
+  photo?: string | null;
 }
 
 export interface StaffUser {

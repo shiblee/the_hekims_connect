@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { LanguageSelector } from "@/components/shared/language-selector";
 import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,9 +95,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-2.5 p-2 rounded-lg">
-            <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(patient.avatarColor))}>
-              {initials(patient.name)}
-            </div>
+            <EntityAvatar name={patient.name} photo={patient.photo} avatarColor={patient.avatarColor} size="sm" className="h-9 w-9 text-xs shadow-none ring-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{patient.name}</p>
               <p className="text-xs text-muted-foreground truncate">{t("patient")}</p>

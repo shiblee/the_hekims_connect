@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     include: {
       facility: { select: { id: true, facilityName: true, avatarColor: true } },
-      patient: { select: { id: true, name: true, avatarColor: true } },
+      patient: { select: { id: true, name: true, avatarColor: true, photo: true } },
     },
   });
 

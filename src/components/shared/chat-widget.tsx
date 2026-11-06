@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,15 +144,16 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
     c.partner?.name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // The open conversation's partner (photo/colour), when the list is loaded.
+  const partnerInfo = activePartner ? conversations.find((c) => c.partnerId === activePartner.id)?.partner : null;
+
   // Single-partner compact mode (right panel mini chat)
   if (partnerId && activePartner) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
           <div className="flex items-center gap-2">
-            <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(activePartner.name === "Dr. Aliam Colter" ? "teal" : "amber"))}>
-              {initials(activePartner.name)}
-            </div>
+            <EntityAvatar name={activePartner.name} photo={partnerInfo?.photo} avatarColor={partnerInfo?.avatarColor ?? "amber"} size="sm" className="h-8 w-8 text-xs shadow-none ring-0" />
             <div>
               <p className="text-sm font-medium leading-none">{activePartner.name}</p>
               <p className="text-[10px] text-emerald-400 mt-0.5 flex items-center gap-1">
@@ -235,9 +236,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
                       activePartner?.id === c.partnerId ? "bg-primary/10" : "hover:bg-muted/50"
                     )}
                   >
-                    <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarGradient(c.partner?.avatarColor))}>
-                      {initials(c.partner?.name)}
-                    </div>
+                    <EntityAvatar name={c.partner?.name ?? ""} photo={c.partner?.photo} avatarColor={c.partner?.avatarColor} size="sm" className="h-9 w-9 text-xs shadow-none ring-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium truncate">{c.partner?.name}</p>
@@ -259,9 +258,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
           <>
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div className="flex items-center gap-2.5">
-                <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(activePartner.name?.includes("Dr") ? "teal" : "amber"))}>
-                  {initials(activePartner.name)}
-                </div>
+                <EntityAvatar name={activePartner.name} photo={partnerInfo?.photo} avatarColor={partnerInfo?.avatarColor ?? "amber"} size="sm" className="h-9 w-9 text-xs shadow-none ring-0" />
                 <div>
                   <p className="text-sm font-medium leading-none">{activePartner.name}</p>
                   <p className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1">
@@ -286,9 +283,7 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
                   return (
                     <div key={m.id} className={cn("flex gap-2 items-end", mine ? "justify-end" : "justify-start")}>
                       {!mine && (
-                        <div className={cn("h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-[10px] font-semibold text-white shrink-0", avatarGradient("amber"), !showAvatar && "opacity-0")}>
-                          {initials(activePartner.name)}
-                        </div>
+                        <EntityAvatar name={activePartner.name} photo={partnerInfo?.photo} avatarColor={partnerInfo?.avatarColor ?? "amber"} size="sm" className={cn("h-6 w-6 text-[10px] shadow-none ring-0", !showAvatar && "opacity-0")} />
                       )}
                       <div className={cn(
                         "max-w-[70%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed",

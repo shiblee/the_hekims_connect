@@ -7,6 +7,7 @@ import { FeeAmountFields, newPaymentKey, useFeesAndModes } from "@/components/fa
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { formatAge, ageFromDob, daysAgo, estimateDobFromAgeValue, type AgeUnit } from "@/lib/age";
@@ -60,7 +61,7 @@ interface MetaSections {
 interface Candidate {
   id: string; patientCode: string | null; name: string; titlePrefix: string | null;
   relationship: string | null; gender: string | null; dob: string | null; dobApprox?: boolean;
-  maritalStatus: string | null; phone: string | null; email: string | null; avatarColor: string;
+  maritalStatus: string | null; phone: string | null; email: string | null; avatarColor: string; photo?: string | null;
   address: string | null; state: string | null; city: string | null;
   emergencyContact: string | null; emergencyContactName: string | null;
   lastVisitAt: string | null; matchScore?: number;
@@ -984,9 +985,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           onClick={() => selectCandidate(c)}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={cn("h-10 w-10 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(c.avatarColor))}>
-                              {initials(c.name)}
-                            </div>
+                            <EntityAvatar name={c.name} photo={c.photo} avatarColor={c.avatarColor} size="sm" className="h-10 w-10 text-sm shadow-none ring-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{c.name}</p>
                               {c.otherClinic && <p className="text-xs text-sky-700 dark:text-sky-400">{t("other_clinic")}</p>}

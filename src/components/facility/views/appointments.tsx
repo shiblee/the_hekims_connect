@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useDateLocale } from "@/lib/i18n/use-date-locale";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
 import { Card } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import { CalendarDays, Clock, Check, X, Loader2, Search, Phone, Droplet } from "
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string; notes: string | null;
-  patient: { id: string; name: string; avatarColor: string; mizaj: string; bloodGroup: string; phone: string | null };
+  patient: { id: string; name: string; avatarColor: string; photo?: string | null; mizaj: string; bloodGroup: string; phone: string | null };
 }
 
 export function AppointmentsView() {
@@ -106,9 +107,7 @@ export function AppointmentsView() {
                     <span className="font-serif text-xl font-bold leading-none">{new Date(a.date).getDate()}</span>
                     <span className="text-[10px] text-primary mt-0.5">{a.time}</span>
                   </div>
-                  <div className={cn("h-10 w-10 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarGradient(a.patient.avatarColor))}>
-                    {initials(a.patient.name)}
-                  </div>
+                  <EntityAvatar name={a.patient.name} photo={a.patient.photo} avatarColor={a.patient.avatarColor} size="sm" className="h-10 w-10 text-xs shadow-none ring-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium">{a.patient.name}</p>

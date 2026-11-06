@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
 import { api } from "@/lib/api";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { avatarGradient, initials } from "@/lib/avatar";
 import { formatAge } from "@/lib/age";
@@ -25,7 +26,7 @@ import {
 
 interface Patient {
   id: string; patientCode: string | null; name: string; gender: string | null; dob: string | null;
-  bloodGroup: string | null; phone: string | null; avatarColor: string;
+  bloodGroup: string | null; phone: string | null; avatarColor: string; photo?: string | null;
   maritalStatus: string | null; occupation: string | null; address: string | null; state: string | null; city: string | null;
   emergencyContact: string | null; emergencyContactName: string | null; emergencyRelationship: string | null;
 }
@@ -151,9 +152,7 @@ export function ConsultationForm({ visitId }: { visitId: string }) {
       </div>
 
       <Card className="p-3 mb-5 border-primary/30 bg-primary/5 flex flex-row items-center gap-3 overflow-x-auto">
-        <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarGradient(patient.avatarColor))}>
-          {initials(patient.name)}
-        </div>
+        <EntityAvatar name={patient.name} photo={patient.photo} avatarColor={patient.avatarColor} size="sm" className="h-9 w-9 text-xs shadow-none ring-0" />
         <p className="text-sm font-semibold whitespace-nowrap shrink-0">{patient.name}</p>
         {patient.patientCode && (
           <Badge className="bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30 font-mono text-[10px] flex items-center gap-1 shrink-0">

@@ -8,7 +8,8 @@ import { useAppStore } from "@/lib/store";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageSelector } from "@/components/shared/language-selector";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +76,16 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
     })();
     return () => { alive = false; };
   }, []);
+
+  // A signed-in staff member's name/photo can be changed by the clinic owner too —
+  // refresh it from the server so the sidebar never shows a stale picture.
+  const setStaff = useAppStore((s) => s.setStaff);
+  useEffect(() => {
+    if (!asStaff) return;
+    api.get<{ staff: { name: string; photo: string | null } }>("/api/facility/account")
+      .then((r) => { const cur = useAppStore.getState().staff; if (cur) setStaff({ ...cur, name: r.staff.name, photo: r.staff.photo }); })
+      .catch(() => {});
+  }, [asStaff]);
 
   const go = (tab: string) => { router.push(`/facility/${tab}`); setMobileNav(false); };
   const pageAllowed = can(pathname);
@@ -151,9 +162,13 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
               pathname.startsWith(asStaff ? "/facility/profile/account" : "/facility/profile") ? "bg-sidebar-accent" : "hover:bg-sidebar-accent"
             )}
           >
-            <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(facility.avatarColor))}>
-              {initials(asStaff ? staff!.name : facility.facilityName)}
-            </div>
+            <EntityAvatar
+              name={asStaff ? staff!.name : facility.facilityName}
+              photo={asStaff ? staff!.photo : null}
+              avatarColor={facility.avatarColor}
+              size="sm"
+              className="h-9 w-9 text-xs ring-0 shadow-none"
+            />
             <div className="flex-1 min-w-0 text-start">
               <p className="text-sm font-medium truncate">{asStaff ? staff!.name : facility.facilityName}</p>
               <p className="text-xs text-muted-foreground truncate">{asStaff ? `${staffRole ?? t("staff")} · ${facility.facilityName}` : facility.specialization}</p>
