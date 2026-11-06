@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
-import { avatarGradient, initials } from "@/lib/avatar";
 import { formatAge, ageFromDob, daysAgo, estimateDobFromAgeValue, type AgeUnit } from "@/lib/age";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

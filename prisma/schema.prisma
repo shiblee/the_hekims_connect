@@ -90,6 +90,8 @@ model Facility {
   rating              Float     @default(5.0)
   bio                 String?
   avatarColor         String    @default("teal")
+  // Clinic photo/logo (data URL), shown wherever the clinic appears.
+  photo               String?
   verified            Boolean   @default(false)
   active              Boolean   @default(true)
   failedLoginAttempts Int       @default(0)

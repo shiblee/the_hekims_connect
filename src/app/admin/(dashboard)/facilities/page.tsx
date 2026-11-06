@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FilterMultiSelect } from "@/components/admin/filter-multi-select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { compareLabels, sortLabels } from "@/lib/sort-options";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
@@ -24,7 +24,7 @@ import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
 type Health = "thriving" | "steady" | "at_risk" | "dormant";
 type Plan = "trial" | "premium" | "expired" | "none";
 interface Row {
-  id: string; facilityName: string; email: string | null; phone: string | null; avatarColor: string;
+  id: string; facilityName: string; email: string | null; phone: string | null; avatarColor: string; photo: string | null;
   facilityType: string | null; city: string | null; state: string | null; hfrNumber: string | null;
   verified: boolean; active: boolean; locked: boolean; profileCompleted: boolean; profileCompletedAt: string | null;
   is24x7: boolean; emergencyServices: boolean; ambulanceAvailable: boolean; bedCapacity: number | null; dailyOpdCount: number | null;
@@ -377,7 +377,7 @@ export default function FacilityListPage() {
                       <td className="px-2.5 py-3 text-right tabular-nums text-muted-foreground">{(current - 1) * pageSize + i + 1}</td>
                       <td className="px-2.5 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br", avatarGradient(r.avatarColor))}><span className="text-[11px] font-bold text-white">{initials(r.facilityName)}</span></div>
+                          <EntityAvatar name={r.facilityName} photo={r.photo} avatarColor={r.avatarColor} size="sm" className="h-9 w-9 text-[11px] shadow-none ring-0" />
                           <div className="min-w-0">
                             <p className="max-w-[12rem] truncate font-semibold" title={r.facilityName}>{r.facilityName}</p>
                             <p className="max-w-[12rem] truncate text-xs text-muted-foreground" title={[r.email, r.phone].filter(Boolean).join(" · ")}>{r.facilityType || "Type not set"}</p>

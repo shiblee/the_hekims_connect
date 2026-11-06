@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -163,9 +162,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
         {/* Profile card */}
         <Card className="p-5 border-border/50 bg-card/60">
           <div className="flex flex-col items-center text-center">
-            <div className={cn("h-16 w-16 rounded-full bg-gradient-to-br flex items-center justify-center font-semibold text-white text-lg", avatarGradient(facility.avatarColor))}>
-              {initials(facility.facilityName)}
-            </div>
+            <EntityAvatar name={facility.facilityName} photo={facility.photo} avatarColor={facility.avatarColor} size="sm" className="h-16 w-16 text-lg shadow-none ring-0" />
             <p className="font-serif font-semibold mt-3">{facility.facilityName}</p>
             <p className="text-xs text-muted-foreground">{facility.specialization}</p>
             <div className="grid grid-cols-3 gap-2 mt-4 w-full">

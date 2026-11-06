@@ -102,6 +102,7 @@ export async function fetchFacility(id: string) {
       rating: true,
       license: true,
       avatarColor: true,
+      photo: true,
       bio: true,
       verified: true,
       profileCompleted: true,

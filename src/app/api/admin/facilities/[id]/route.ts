@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin, logAdminActivity } from "@/lib/admin-auth";
+import { isValidPhoto } from "@/lib/photo";
 import { getClientIp } from "@/lib/request-info";
 import { normalizeContact } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/notifications";
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     select: {
       id: true, facilityName: true, email: true, phone: true, license: true, specialization: true,
-      experience: true, rating: true, bio: true, avatarColor: true,
+      experience: true, rating: true, bio: true, avatarColor: true, photo: true,
       verified: true, active: true, lastLoginAt: true, createdAt: true, updatedAt: true,
       registeredFacilityName: true, facilityType: true, hfrNumber: true, establishmentDate: true,
       alternateContactNumber: true, addressLine1: true, addressLine2: true, locality: true,
@@ -98,8 +99,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     contactUpdate = isEmail ? { email: normalized, phone: null } : { email: null, phone: normalized };
   }
 
+  if (body.photo !== undefined && !isValidPhoto(body.photo)) {
+    return NextResponse.json({ error: "Invalid photo" }, { status: 400 });
+  }
+
   const data: Record<string, unknown> = {};
   if (contactUpdate) Object.assign(data, contactUpdate);
+  if (body.photo !== undefined) data.photo = body.photo;
   const str = (key: string) => { if (body[key] !== undefined) data[key] = body[key] || null; };
   const bool = (key: string) => { if (body[key] !== undefined) data[key] = !!body[key]; };
   const int = (key: string) => {
@@ -227,7 +233,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     select: {
       id: true, facilityName: true, email: true, phone: true, license: true, specialization: true,
-      experience: true, rating: true, bio: true, avatarColor: true,
+      experience: true, rating: true, bio: true, avatarColor: true, photo: true,
       verified: true, active: true, lastLoginAt: true, createdAt: true, updatedAt: true,
       registeredFacilityName: true, facilityType: true, hfrNumber: true, establishmentDate: true,
       alternateContactNumber: true, addressLine1: true, addressLine2: true, locality: true,

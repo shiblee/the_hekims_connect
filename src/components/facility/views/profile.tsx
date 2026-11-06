@@ -14,7 +14,7 @@ import { GroupMultiSelect } from "@/components/facility/service-group-picker";
 import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect } from "@/components/shared/floating-field";
 import {
-  Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee, Lock, GraduationCap, CircleUserRound,
+  Camera, Loader2, Save, LayoutGrid, MapPin, Gauge, Stethoscope, UserCog, KeyRound, History, IndianRupee, Lock, GraduationCap, CircleUserRound,
 } from "lucide-react";
 import { TeamView } from "./team";
 import { PermissionsView } from "./permissions";
@@ -24,6 +24,8 @@ import { canOpenPage } from "@/lib/staff-permissions";
 import { useAppStore } from "@/lib/store";
 import { LearningCenter } from "@/components/guidance/learning-center";
 import { MyAccount } from "@/components/staff/my-account";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
+import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
@@ -47,7 +49,7 @@ interface OperatingHourRow {
 }
 
 interface FacilityProfile {
-  id: string; facilityName: string; facilityType: string | null; hfrNumber: string | null;
+  id: string; facilityName: string; photo: string | null; facilityType: string | null; hfrNumber: string | null;
   establishmentDate: string | null; alternateContactNumber: string | null;
   addressLine1: string | null; addressLine2: string | null; locality: string | null;
   city: string | null; district: string | null; state: string | null; country: string | null;
@@ -211,6 +213,18 @@ export function ProfileView({ section }: { section: string }) {
     }
   };
 
+  // Clinic photo: saved straight from the upload dialog, and mirrored into the
+  // signed-in store so the sidebar picks it up at once.
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const storeFacility = useAppStore((st) => st.facility);
+  const setStoreFacility = useAppStore((st) => st.setFacility);
+  const savePhoto = async (photo: string | null) => {
+    const res = await api.patch<{ facility: FacilityProfile }>("/api/facility/profile", { photo });
+    setFacility(res.facility);
+    if (storeFacility) setStoreFacility({ ...storeFacility, photo: res.facility.photo });
+    msg.success(photo ? t("photo_saved") : t("photo_removed"));
+  };
+
   const SaveButton = ({ onClick }: { onClick: () => void }) => (
     <>
     <NoticeSlot state={msg} />
@@ -285,7 +299,24 @@ export function ProfileView({ section }: { section: string }) {
 
         {section === "overview" && (
           <Card className="p-6 border-border/50 bg-card/60">
-            <div>
+            <div className="flex items-center gap-4">
+              <button type="button" onClick={() => setPhotoOpen(true)} className="group relative shrink-0 rounded-full" aria-label={t("change_clinic_photo")} title={t("change_clinic_photo")}>
+                <EntityAvatar name={facility?.facilityName || facilityName} photo={facility?.photo} avatarColor={storeFacility?.avatarColor} size="lg" className="shadow-lg ring-4 ring-background" />
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 transition-colors group-hover:bg-black/40">
+                  <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                </span>
+              </button>
+              <div className="min-w-0">
+                <p className="font-serif text-lg font-semibold">{t("clinic_photo")}</p>
+                <p className="text-sm text-muted-foreground">{t("clinic_photo_hint")}</p>
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setPhotoOpen(true)}>
+                  <Camera className="me-1.5 h-3.5 w-3.5" /> {t("change_clinic_photo")}
+                </Button>
+              </div>
+            </div>
+            <PhotoUploadDialog open={photoOpen} onOpenChange={setPhotoOpen} currentPhoto={facility?.photo} title={t("change_clinic_photo")} onSave={(d) => savePhoto(d)} onRemove={() => savePhoto(null)} />
+
+            <div className="mt-6 border-t border-border pt-6">
               <h2 className="font-serif text-lg font-semibold mb-4">{t("identity")}</h2>
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-6">
                 <FloatingField id="facilityName" label={t("facility_name")} value={facilityName} onChange={(e) => setFacilityName(e.target.value)} />

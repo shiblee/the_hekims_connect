@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
-import { avatarGradient, initials } from "@/lib/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,9 +84,7 @@ export function PatientPrescriptionsView() {
               <Card key={pr.id} className="p-5 border-border/50 bg-card/60 hover:border-primary/40 transition-colors">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className={cn("h-10 w-10 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white", avatarGradient(pr.facility?.avatarColor))}>
-                      {initials(pr.facility?.facilityName)}
-                    </div>
+                    <EntityAvatar name={pr.facility.facilityName} photo={pr.facility.photo} avatarColor={pr.facility.avatarColor} size="sm" className="h-10 w-10 text-xs shadow-none ring-0" />
                     <div>
                       <p className="font-medium">{pr.facility?.facilityName}</p>
                       <p className="text-[11px] text-muted-foreground">{new Date(pr.createdAt).toLocaleDateString(dl)}</p>

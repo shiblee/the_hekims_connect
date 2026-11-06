@@ -9,7 +9,6 @@ import { setFlash } from "@/lib/flash";
 import { api } from "@/lib/api";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
-import { avatarGradient, initials } from "@/lib/avatar";
 import { formatAge, daysAgo } from "@/lib/age";
 import { isOutOfRange, toCelsiusRange } from "@/lib/vitals-ranges";
 import { useVitalsRangeConfig } from "@/lib/use-vitals-ranges";

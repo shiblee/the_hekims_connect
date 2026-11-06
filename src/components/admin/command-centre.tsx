@@ -12,13 +12,13 @@ import { adminApi } from "@/lib/admin-api";
 import { useAdminStore } from "@/lib/admin-store";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import type { Insight } from "@/lib/admin-insights";
 
 // ---------------------------------------------------------------- types (mirror /api/admin/dashboard)
 type NP = { now: number; prev: number };
 type LN = { label: string; n: number };
-interface ClinicRow { id: string; name: string; avatarColor: string; city: string | null; state: string | null; active: boolean; visits: number; visitsPrev: number; patients: number; revenue: number; score: number; health: "thriving" | "steady" | "at_risk" | "dormant"; plan: string; daysLeft: number | null; lastActivity: string | null }
+interface ClinicRow { id: string; name: string; avatarColor: string; photo: string | null; city: string | null; state: string | null; active: boolean; visits: number; visitsPrev: number; patients: number; revenue: number; score: number; health: "thriving" | "steady" | "at_risk" | "dormant"; plan: string; daysLeft: number | null; lastActivity: string | null }
 interface Dash {
   days: number; generatedAt: string; health: number;
   kpis: {
@@ -321,7 +321,7 @@ export function CommandCentre() {
                     <tr key={c.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30">
                       <td className="py-2.5">
                         <Link href={`/admin/facilities/${c.id}`} className="flex items-center gap-2.5">
-                          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white", avatarGradient(c.avatarColor))}>{initials(c.name)}</span>
+                          <EntityAvatar name={c.name} photo={c.photo} avatarColor={c.avatarColor} size="sm" className="text-[11px] shadow-none ring-0" />
                           <span className="min-w-0"><span className="block truncate font-medium hover:text-primary">{c.name}</span><span className="block truncate text-xs text-muted-foreground">{[c.city, c.state].filter(Boolean).join(", ") || "—"}</span></span>
                         </Link>
                       </td>

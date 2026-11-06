@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
       experience: true,
       rating: true,
       avatarColor: true,
+      photo: true,
       bio: true,
     },
     orderBy: { rating: "desc" },

@@ -80,11 +80,18 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
   // A signed-in staff member's name/photo can be changed by the clinic owner too —
   // refresh it from the server so the sidebar never shows a stale picture.
   const setStaff = useAppStore((s) => s.setStaff);
+  const setFacility = useAppStore((s) => s.setFacility);
   useEffect(() => {
-    if (!asStaff) return;
-    api.get<{ staff: { name: string; photo: string | null } }>("/api/facility/account")
-      .then((r) => { const cur = useAppStore.getState().staff; if (cur) setStaff({ ...cur, name: r.staff.name, photo: r.staff.photo }); })
-      .catch(() => {});
+    if (asStaff) {
+      api.get<{ staff: { name: string; photo: string | null } }>("/api/facility/account")
+        .then((r) => { const cur = useAppStore.getState().staff; if (cur) setStaff({ ...cur, name: r.staff.name, photo: r.staff.photo }); })
+        .catch(() => {});
+    } else if (facility) {
+      // Same for the clinic photo, which Admin can also change.
+      api.get<{ facility: { facilityName: string; photo: string | null } }>("/api/facility/profile")
+        .then((r) => { const cur = useAppStore.getState().facility; if (cur) setFacility({ ...cur, facilityName: r.facility.facilityName, photo: r.facility.photo }); })
+        .catch(() => {});
+    }
   }, [asStaff]);
 
   const go = (tab: string) => { router.push(`/facility/${tab}`); setMobileNav(false); };
@@ -164,7 +171,7 @@ export function FacilityShell({ children }: { children: React.ReactNode }) {
           >
             <EntityAvatar
               name={asStaff ? staff!.name : facility.facilityName}
-              photo={asStaff ? staff!.photo : null}
+              photo={asStaff ? staff!.photo : facility.photo}
               avatarColor={facility.avatarColor}
               size="sm"
               className="h-9 w-9 text-xs ring-0 shadow-none"

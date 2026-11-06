@@ -5,7 +5,8 @@ import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
+import { mizajBadge } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import {
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string;
-  facility: { id: string; facilityName: string; specialization: string; avatarColor: string };
+  facility: { id: string; facilityName: string; specialization: string; avatarColor: string; photo?: string | null };
 }
 
 export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }) {
@@ -104,9 +105,7 @@ export function PatientOverview({ onNavigate }: { onNavigate: (v: any) => void }
                   <span className="font-serif text-2xl font-bold text-primary leading-none">{new Date(nextAppt.date).getDate()}</span>
                   <span className="text-[10px] text-muted-foreground mt-1">{nextAppt.time}</span>
                 </div>
-                <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(nextAppt.facility.avatarColor))}>
-                  {initials(nextAppt.facility.facilityName)}
-                </div>
+                <EntityAvatar name={nextAppt.facility.facilityName} photo={nextAppt.facility.photo} avatarColor={nextAppt.facility.avatarColor} size="sm" className="h-11 w-11 text-sm shadow-none ring-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium">{nextAppt.facility.facilityName}</p>
                   <p className="text-xs text-muted-foreground">{nextAppt.facility.specialization}</p>

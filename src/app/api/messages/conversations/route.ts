@@ -57,9 +57,9 @@ export async function GET(req: NextRequest) {
       if (c.partnerType === "facility") {
         const f = await db.facility.findUnique({
           where: { id: c.partnerId },
-          select: { id: true, facilityName: true, specialization: true, avatarColor: true },
+          select: { id: true, facilityName: true, specialization: true, avatarColor: true, photo: true },
         });
-        partner = f ? { id: f.id, name: f.facilityName, specialization: f.specialization, avatarColor: f.avatarColor } : null;
+        partner = f ? { id: f.id, name: f.facilityName, specialization: f.specialization, avatarColor: f.avatarColor, photo: f.photo } : null;
       } else {
         partner = await db.patient.findUnique({
           where: { id: c.partnerId },

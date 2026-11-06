@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
-import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { sortByLabel } from "@/lib/sort-options";
 
 interface Appt {
   id: string; date: string; time: string; type: string; reason: string; status: string;
-  facility: { id: string; facilityName: string; specialization: string; avatarColor: string };
+  facility: { id: string; facilityName: string; specialization: string; avatarColor: string; photo?: string | null };
 }
 
 const TYPES = ["Consultation", "Mizaj Assessment", "Follow-up", "Pharmacy Refill", "Emergency"];
@@ -116,9 +116,7 @@ export function PatientAppointmentsView() {
                   <span className="font-serif text-xl font-bold text-accent leading-none">{new Date(a.date).getDate()}</span>
                   <span className="text-[10px] text-muted-foreground mt-0.5">{a.time}</span>
                 </div>
-                <div className={cn("h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center text-sm font-semibold text-white shrink-0", avatarGradient(a.facility.avatarColor))}>
-                  {initials(a.facility.facilityName)}
-                </div>
+                <EntityAvatar name={a.facility.facilityName} photo={a.facility.photo} avatarColor={a.facility.avatarColor} size="sm" className="h-11 w-11 text-sm shadow-none ring-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium">{a.facility.facilityName}</p>
                   <p className="text-xs text-muted-foreground">{a.facility.specialization}</p>
@@ -155,9 +153,7 @@ export function PatientAppointmentsView() {
                       form.facilityId === h.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/40 bg-background/40"
                     )}
                   >
-                    <div className={cn("h-10 w-10 rounded-full bg-gradient-to-br flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarGradient(h.avatarColor))}>
-                      {initials(h.facilityName)}
-                    </div>
+                    <EntityAvatar name={h.facilityName} photo={h.photo} avatarColor={h.avatarColor} size="sm" className="h-10 w-10 text-xs shadow-none ring-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{h.facilityName}</p>
                       <p className="text-xs text-muted-foreground truncate">{h.specialization}</p>

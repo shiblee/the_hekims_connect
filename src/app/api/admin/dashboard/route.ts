@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     db.facility.findMany({
       select: {
-        id: true, facilityName: true, avatarColor: true, active: true, verified: true, profileCompleted: true, lastLoginAt: true, createdAt: true, city: true, state: true,
+        id: true, facilityName: true, avatarColor: true, photo: true, active: true, verified: true, profileCompleted: true, lastLoginAt: true, createdAt: true, city: true, state: true,
         subscriptions: { orderBy: { endDate: "desc" }, take: 1, select: { plan: true, status: true, endDate: true } },
         staff: { select: { active: true } },
       },
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
     if (plan === "expired" && f.active) expired++;
     if (daysLeft !== null && daysLeft >= 0 && daysLeft <= 14) expiringSoon++;
     return {
-      id: f.id, name: f.facilityName, avatarColor: f.avatarColor, city: f.city, state: f.state, active: f.active, verified: f.verified,
+      id: f.id, name: f.facilityName, avatarColor: f.avatarColor, photo: f.photo, city: f.city, state: f.state, active: f.active, verified: f.verified,
       visits: a?.visits ?? 0, visitsPrev: a?.visitsPrev ?? 0, patients: a?.patients.size ?? 0, revenue: Math.round(a?.revenue ?? 0),
       score, health, plan, daysLeft, lastActivity: lastActivity ? new Date(lastActivity).toISOString() : null,
     };

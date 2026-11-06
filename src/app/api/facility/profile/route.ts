@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { logClinicEvent } from "@/lib/clinic-audit";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
+import { isValidPhoto } from "@/lib/photo";
 
 // ABDM Health Facility Registry ID format: "IN" followed by 10 digits (e.g. IN0123456789).
 const HFR_PATTERN = /^IN\d{10}$/i;
@@ -16,7 +17,7 @@ interface OperatingHourInput {
 }
 
 const SELECT = {
-  id: true, facilityName: true, facilityType: true, hfrNumber: true, establishmentDate: true,
+  id: true, facilityName: true, photo: true, facilityType: true, hfrNumber: true, establishmentDate: true,
   alternateContactNumber: true,
   addressLine1: true, addressLine2: true, locality: true, city: true, district: true,
   state: true, country: true, pincode: true,
@@ -74,7 +75,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Facility name is required" }, { status: 400 });
   }
 
+  if (body.photo !== undefined && !isValidPhoto(body.photo)) {
+    return NextResponse.json({ error: "Invalid photo" }, { status: 400 });
+  }
+
   const data: Record<string, unknown> = {};
+  if (body.photo !== undefined) data.photo = body.photo;
   const str = (key: string) => { if (body[key] !== undefined) data[key] = body[key] || null; };
   const bool = (key: string) => { if (body[key] !== undefined) data[key] = !!body[key]; };
   const int = (key: string) => {

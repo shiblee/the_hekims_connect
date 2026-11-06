@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, ShieldCheck, ShieldAlert, Loader2, Ban, Undo2, LayoutGrid, IdCard, MapPin, Gauge, Stethoscope, Sparkles,
   Mail, Phone, Hash, CalendarDays, History, Users, Activity, IndianRupee, CalendarClock, Lock, CircleCheck, CircleDashed,
-  BadgeCheck,
+  BadgeCheck, Camera,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
@@ -16,7 +16,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoginHistoryDialog } from "@/components/admin/login-history-dialog";
-import { avatarGradient, initials } from "@/lib/avatar";
+import { EntityAvatar } from "@/components/shared/entity-avatar";
+import { PhotoUploadDialog } from "@/components/shared/photo-upload-dialog";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { FacilityDetailContext, HEALTH_STYLE, type FacilityDetail, type FacilityInsights } from "./facility-detail-context";
 import { DAY, ScoreRing, Trend, ago, inr } from "./detail-ui";
@@ -106,6 +107,13 @@ export default function FacilityDetailLayout({ children }: { children: ReactNode
     } finally { setUpdating(""); setConfirm(""); }
   };
 
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const savePhoto = async (photo: string | null) => {
+    const res = await adminApi.patch<{ facility: FacilityDetail }>(`/api/admin/facilities/${id}`, { photo });
+    setFacility(res.facility);
+    toast.success(photo ? "Clinic photo saved" : "Clinic photo removed");
+  };
+
   if (loading && !facility) {
     return <div className="mx-auto max-w-[1680px] px-4 py-10 sm:px-6 lg:px-16"><div className="flex items-center gap-2 py-16 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading facility…</div></div>;
   }
@@ -143,9 +151,12 @@ export default function FacilityDetailLayout({ children }: { children: ReactNode
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/[0.03] to-transparent" />
         <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-4">
-            <div className={cn("flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg ring-4 ring-background sm:h-20 sm:w-20", avatarGradient(facility.avatarColor))}>
-              <span className="font-serif text-xl font-bold text-white sm:text-2xl">{initials(facility.facilityName)}</span>
-            </div>
+            <button type="button" onClick={() => setPhotoOpen(true)} className="group relative shrink-0 rounded-2xl" aria-label="Change clinic photo" title="Change clinic photo">
+              <EntityAvatar name={facility.facilityName} photo={facility.photo} avatarColor={facility.avatarColor} size="lg" className="h-16 w-16 rounded-2xl text-xl shadow-lg ring-4 ring-background sm:h-20 sm:w-20 sm:text-2xl" />
+              <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/0 transition-colors group-hover:bg-black/40">
+                <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+              </span>
+            </button>
             <div className="min-w-0">
               <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{facility.facilityName}</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
@@ -224,6 +235,7 @@ export default function FacilityDetailLayout({ children }: { children: ReactNode
           <FacilityDetailContext.Provider value={{ facility, setFacility, reload, insights, reloadInsights }}>
             {children}
           </FacilityDetailContext.Provider>
+          <PhotoUploadDialog open={photoOpen} onOpenChange={setPhotoOpen} currentPhoto={facility.photo} title="Change clinic photo" onSave={(d) => savePhoto(d)} onRemove={() => savePhoto(null)} />
         </div>
       </div>
 

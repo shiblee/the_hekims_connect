@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const [facilities, visits, payments] = await Promise.all([
     db.facility.findMany({
       select: {
-        id: true, facilityName: true, email: true, phone: true, avatarColor: true, verified: true, active: true,
+        id: true, facilityName: true, email: true, phone: true, avatarColor: true, photo: true, verified: true, active: true,
         lastLoginAt: true, createdAt: true, facilityType: true, city: true, state: true, hfrNumber: true,
         profileCompleted: true, profileCompletedAt: true, is24x7: true, emergencyServices: true, ambulanceAvailable: true,
         bedCapacity: true, dailyOpdCount: true, lockedUntil: true,
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     });
 
     return {
-      id: f.id, facilityName: f.facilityName, email: f.email, phone: f.phone, avatarColor: f.avatarColor,
+      id: f.id, facilityName: f.facilityName, email: f.email, phone: f.phone, avatarColor: f.avatarColor, photo: f.photo,
       facilityType: f.facilityType, city: f.city, state: f.state, hfrNumber: f.hfrNumber,
       verified: f.verified, active: f.active, locked: !!f.lockedUntil && f.lockedUntil.getTime() > now,
       profileCompleted: f.profileCompleted, profileCompletedAt: f.profileCompletedAt,

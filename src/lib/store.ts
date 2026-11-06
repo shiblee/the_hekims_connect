@@ -13,6 +13,7 @@ export interface FacilityUser {
   rating: number;
   license: string | null;
   avatarColor: string;
+  photo?: string | null;
   bio: string | null;
   profileCompleted: boolean;
 }

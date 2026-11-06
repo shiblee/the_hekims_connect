@@ -23,7 +23,7 @@ export interface SubscriptionRow {
 export interface FacilityDetail {
   id: string; facilityName: string; email: string; phone: string; license: string | null;
   specialization: string; experience: number; rating: number; bio: string | null;
-  avatarColor: string; verified: boolean; active: boolean;
+  avatarColor: string; photo: string | null; verified: boolean; active: boolean;
   lastLoginAt: string | null; createdAt: string; updatedAt: string;
   registeredFacilityName: string | null; facilityType: string | null; hfrNumber: string | null;
   establishmentDate: string | null; alternateContactNumber: string | null;

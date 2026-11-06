@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useDateLocale } from "@/lib/i18n/use-date-locale";
 import { EntityAvatar } from "@/components/shared/entity-avatar";
 import { cn } from "@/lib/utils";
-import { avatarGradient, initials, mizajBadge } from "@/lib/avatar";
+import { mizajBadge } from "@/lib/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
