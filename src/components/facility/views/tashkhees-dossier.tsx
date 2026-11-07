@@ -9,7 +9,8 @@ import { AKHLAT, isAnswered, questionVisible, type AsbabAnswer, type AsbabQuesti
 import { DARJA, PRIORITIES, SU_MIZAJ_TYPES, type PrescriptionLine, type TadbeerLine, type TashkheesOptionRow } from "@/lib/tashkhees";
 import { useAsbabAssessment } from "@/components/facility/views/asbab-assessment";
 import { Card } from "@/components/ui/card";
-import { InlineNotice, LoadFailed, useNotice } from "@/components/shared/inline-notice";
+import { InlineNotice, LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
+import { MamoolPicker, applyRegimen, type Regimen } from "@/components/facility/views/mamool-picker";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { OptionDropdown, QuestionRow } from "@/components/shared/option-dropdown";
 import { MedicineInfoButton } from "@/components/facility/views/medicine-info";
@@ -31,7 +32,7 @@ import { UNANI_GROUPS, unaniGroup, type UnaniGroup } from "@/lib/unani-groups";
 import {
   Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ClipboardCheck, FileSignature, HeartPulse, Leaf, Loader2, Pill, Plus,
   ChevronsUpDown, Search, ShieldAlert, ShieldCheck, Sparkles, Stethoscope, Trash2, Utensils, X,
-  Ban, Clock, Droplet, CircleCheck, ChevronDown, BarChart3,
+  Ban, Clock, Droplet, CircleCheck, ChevronDown, BarChart3, BookMarked,
 } from "lucide-react";
 
 // ---------------------------------------------------------------- state
@@ -1320,8 +1321,21 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
   const tagKey = d.prescriptions.map((p) => p.tagId).filter(Boolean).join(",");
   const reqRef = useRef(0);
   const td = useTranslations("clinic.dossier");
+  const tm = useTranslations("clinic.mamool");
   const { setSafety } = state;
   const cds = useCds(visitId);
+  const rxNotice = useNotice(9000);
+
+  // Mamool-e-Matab: add the regimen's medicines as separate lines (never replacing what's there).
+  const onApplyRegimen = (r: Regimen) => {
+    const res = applyRegimen(d.prescriptions, r);
+    set({ prescriptions: res.lines });
+    const extra = [res.skippedSame ? tm("skipped_same", { count: res.skippedSame }) : "", res.skippedUnavailable ? tm("skipped_unavail", { count: res.skippedUnavailable }) : ""].filter(Boolean).join(" ");
+    (res.skippedUnavailable ? rxNotice.warning : rxNotice.success)(tm("added_msg", { count: res.added, name: r.name }), extra || undefined);
+    api.post("/api/facility/mamool/apply", { visitId, regimenId: r.id, version: r.version, added: res.added, skipped: res.skippedSame + res.skippedUnavailable }).catch(() => {});
+  };
+  // The same medicine twice (e.g. from two regimens with different instructions) — flagged, never merged.
+  const tagCounts = d.prescriptions.reduce<Record<string, number>>((m, p) => { if (p.tagId) m[p.tagId] = (m[p.tagId] ?? 0) + 1; return m; }, {});
 
   // Safety check whenever the set of catalogue medicines changes. A failed check is shown —
   // never mistaken for "no warnings" — and finalising waits until it has run.
@@ -1347,11 +1361,15 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
 
       {/* Ilaj-bil-Dawa */}
       <Panel icon={Pill} tour="dossier.dawa" title={td("dawa_title")}
-        aside={<HerbPicker herbs={herbs} cds={cds.data} failed={cds.failed} onRetry={cds.fetchCds}
-          onOpen={async () => { if (state.dirty) await state.save(false); cds.fetchCds(); }} added={d.prescriptions.map((p) => p.tagId)} onPick={(h, suggestion) => {
-          set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] });
-          if (suggestion) cds.decide(suggestion, "added_to_prescription");
-        }} />}>
+        aside={<div className="flex flex-wrap items-center gap-2">
+          <HerbPicker herbs={herbs} cds={cds.data} failed={cds.failed} onRetry={cds.fetchCds}
+            onOpen={async () => { if (state.dirty) await state.save(false); cds.fetchCds(); }} added={d.prescriptions.map((p) => p.tagId)} onPick={(h, suggestion) => {
+            set({ prescriptions: [...d.prescriptions, { tagId: h.id, name: h.label, form: h.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "" }] });
+            if (suggestion) cds.decide(suggestion, "added_to_prescription");
+          }} />
+          <MamoolPicker visitId={visitId} onApply={onApplyRegimen} />
+        </div>}>
+        <NoticeSlot state={rxNotice} />
         {state.safety === "failed" && (
           <InlineNotice tone="error" title={td("safety_failed")} detail={td("safety_failed_hint")}
             action={<Button size="sm" variant="outline" onClick={() => setCheckTick((n) => n + 1)}>{td("check_again")}</Button>} />
@@ -1367,7 +1385,7 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                   const w = p.tagId ? warnings[p.tagId] || [] : [];
                   const formOptions = [...new Set([...(herbs.find((h) => h.id === p.tagId)?.forms || []), ...forms])];
                   return (
-                    <li key={i} className={cn(RX_COLS, "px-3 py-2", w.some((x) => x.level === "high") && "bg-destructive/5")}>
+                    <li key={i} className={cn(RX_COLS, "px-3 py-2", w.some((x) => x.level === "high") ? "bg-destructive/5" : p.tagId && tagCounts[p.tagId] > 1 && "bg-amber-500/5")}>
                       <div className="min-w-0">
                         <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold leading-snug">
                           {herbs.find((h) => h.id === p.tagId)?.kind === "medication" ? <Pill className="h-4 w-4 shrink-0 text-sky-600" /> : <Leaf className="h-4 w-4 shrink-0 text-primary" />}
@@ -1381,6 +1399,14 @@ function IlajTab({ state, patientId, visitId }: { state: TashkheesState; patient
                           </MedicineInfoButton>
                         )}
                         {!p.tagId && <Badge variant="outline" className="mt-0.5 text-[11px] font-normal">{td("not_catalogue")}</Badge>}
+                        {p.sourceRegimenName && (
+                          <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] text-primary" title={`${p.sourceRegimenName} · v${p.sourceRegimenVersion ?? "?"}`}>
+                            <BookMarked className="h-3 w-3 shrink-0" /><span className="truncate">{tm("from_regimen", { name: p.sourceRegimenName })}</span>
+                          </span>
+                        )}
+                        {p.tagId && tagCounts[p.tagId] > 1 && (
+                          <span className="mt-0.5 flex items-start gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{tm("dup_line")}</span>
+                        )}
                       </div>
                       <Select value={p.form || ""} onValueChange={(v) => updRx(i, { form: v })}>
                         <SelectTrigger aria-label={`${td("form")} — ${p.name}`} title={p.form || undefined} className="h-8 w-full min-w-0 bg-background/60 px-2"><SelectValue placeholder={td("choose")} /></SelectTrigger>

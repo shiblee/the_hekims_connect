@@ -33,7 +33,7 @@ function serialize(d: NonNullable<Awaited<ReturnType<typeof load>>>) {
     usool: parse<string[]>(d.usool, []), usoolNote: d.usoolNote,
     ghizaRecommended: parse<string[]>(d.ghizaRecommended, []), ghizaAvoid: parse<string[]>(d.ghizaAvoid, []), ghizaNote: d.ghizaNote, ghizaRules: parse<string[]>(d.ghizaRules, []),
     tadbeer: parse<unknown[]>(d.tadbeer, []),
-    prescriptions: d.prescriptions.map((p) => ({ tagId: p.tagId, name: p.name, form: p.form ?? "", dose: p.dose ?? "", timing: p.timing ?? "", duration: p.duration ?? "", adjuvant: p.adjuvant ?? "", instructions: p.instructions ?? "" })),
+    prescriptions: d.prescriptions.map((p) => ({ tagId: p.tagId, name: p.name, form: p.form ?? "", dose: p.dose ?? "", timing: p.timing ?? "", duration: p.duration ?? "", adjuvant: p.adjuvant ?? "", instructions: p.instructions ?? "", sourceRegimenId: p.sourceRegimenId ?? null, sourceRegimenName: p.sourceRegimenName ?? null, sourceRegimenVersion: p.sourceRegimenVersion ?? null })),
     prognosis: d.prognosis, followUpDate: d.followUpDate, followUpNote: d.followUpNote,
     urgentDirectives: d.urgentDirectives, priority: d.priority, handoverNote: d.handoverNote,
     revision: d.revision, submittedAt: d.submittedAt, submittedByName: d.submittedByName, returnNote: d.returnNote, prescriptionId: d.prescriptionId,
@@ -92,6 +92,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .map((p: any, i: number) => ({
       tagId: str(p.tagId, 60), name: str(p.name, 200)!, form: str(p.form, 80), dose: str(p.dose, 120), timing: str(p.timing, 120),
       duration: str(p.duration, 80), adjuvant: str(p.adjuvant, 160), instructions: str(p.instructions, 1000), sortOrder: i,
+      // Where the line came from (Mamool-e-Matab regimen + approved version), kept for the record.
+      sourceRegimenId: str(p.sourceRegimenId, 60), sourceRegimenName: str(p.sourceRegimenName, 160),
+      sourceRegimenVersion: Number.isInteger(p.sourceRegimenVersion) && p.sourceRegimenVersion > 0 ? p.sourceRegimenVersion : null,
     }));
 
   const ROLES = ["working", "secondary", "differential", "ruled_out"], CERT = ["suspected", "probable", "confirmed"], SRC = ["hakim", "engine", "ai"];

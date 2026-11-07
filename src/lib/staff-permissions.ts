@@ -110,6 +110,8 @@ export function requiredPermission(path: string, method: string): Need {
   if (/^\/api\/appointments(\/|$)/.test(path)) return ["appointments"];
   if (/^\/api\/messages(\/|$)/.test(path)) return ["messages"];
   if (/^\/api\/pharmacy(\/|$)/.test(path)) return ["pharmacy"];
+  // Mamool-e-Matab regimens are a prescribing aid: whoever writes the prescription may read and apply them.
+  if (/^\/api\/facility\/mamool(\/|$)/.test(path)) return ["prescribe", "diagnosis"];
   // Asking for a new master-list term (e.g. a chief complaint) — whoever records complaints may ask.
   if (R("/api/facility/master-requests").test(path)) return rw(["patients.view"], ["patients.register", "triage", "diagnosis"]);
   if (/^\/api\/(facility|visits)(\/|$)/.test(path)) return read ? ["patients.view"] : "deny";

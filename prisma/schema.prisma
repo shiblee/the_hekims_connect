@@ -840,6 +840,10 @@ model DossierPrescription {
   adjuvant     String? // Badraqa / vehicle
   instructions String?
   sortOrder    Int     @default(0)
+  // Set when the line came from a Mamool-e-Matab regimen (the doctor may have edited it since).
+  sourceRegimenId      String?
+  sourceRegimenName    String?
+  sourceRegimenVersion Int?
 
   dossier TashkheesDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
 }
@@ -1120,6 +1124,7 @@ model ChiefComplaint {
   updatedAt  DateTime @updatedAt
 
   manifestations  ComplaintManifestation[]
+  mamoolRegimens  MamoolRegimenComplaint[]
   supplementLinks SupplementComplaintLink[]
 }
 
@@ -1490,6 +1495,7 @@ model MedicationTag {
   profile            SupplementProfile?
   ingredientOf       SupplementIngredient[] @relation("IngredientTag")
   interactionsAsDrug SupplementSafetyItem[] @relation("InteractionDrug")
+  mamoolLines        MamoolRegimenMedicine[]
 
   @@unique([kind, label])
 }
@@ -2498,4 +2504,100 @@ model MasterDataRequestUse {
 
   @@unique([requestId, visitId])
   @@index([visitId])
+}
+
+// ---------- Mamool-e-Matab — Treatment Regimens ----------
+// A predefined, clinically reviewed set of medicines (from the existing medicine
+// master, MedicationTag) linked to chief complaints. Doctors apply one in the
+// Diagnosis & Plan step: its medicines are added as separate, editable
+// prescription lines. Doctors always get the last APPROVED version (a frozen
+// snapshot), so editing a regimen never changes what clinics see until the edit
+// is approved, and past prescriptions never change. No AI creates or approves these.
+model MamoolRegimen {
+  id              String   @id @default(cuid())
+  code            String   @unique // MM-0001
+  name            String
+  description     String?
+  clinicalNotes   String?
+  status          String   @default("draft") // draft | pending | approved | rejected — of the working copy
+  active          Boolean  @default(true)
+  version         Int      @default(1) // working-copy version
+  approvedVersion Int? // latest approved version doctors get (null = never approved)
+  createdByName   String
+  updatedByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  complaints MamoolRegimenComplaint[]
+  medicines  MamoolRegimenMedicine[]
+  reviews    MamoolRegimenReview[]
+  versions   MamoolRegimenVersion[]
+
+  @@index([active, approvedVersion])
+}
+
+// Which chief complaints a regimen is for. `required`: when any complaint of a
+// regimen is required, ALL its required ones must be present to suggest it;
+// otherwise one matching complaint is enough.
+model MamoolRegimenComplaint {
+  id          String  @id @default(cuid())
+  regimenId   String
+  complaintId String
+  required    Boolean @default(false)
+
+  regimen   MamoolRegimen  @relation(fields: [regimenId], references: [id], onDelete: Cascade)
+  complaint ChiefComplaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@unique([regimenId, complaintId])
+  @@index([complaintId])
+}
+
+// One medicine line of the working copy — same fields as a prescription line.
+model MamoolRegimenMedicine {
+  id           String  @id @default(cuid())
+  regimenId    String
+  tagId        String // MedicationTag (existing medicine master)
+  form         String?
+  dose         String?
+  timing       String?
+  duration     String?
+  adjuvant     String? // Badraqa / vehicle
+  instructions String?
+  notes        String? // reviewer-facing note on why it's in the regimen
+  sortOrder    Int     @default(0)
+
+  regimen MamoolRegimen @relation(fields: [regimenId], references: [id], onDelete: Cascade)
+  tag     MedicationTag @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@index([regimenId])
+}
+
+// History: created, edited, submitted, approved, rejected, activated, deactivated, duplicated.
+model MamoolRegimenReview {
+  id        String   @id @default(cuid())
+  regimenId String
+  version   Int
+  action    String
+  byName    String
+  comment   String?
+  createdAt DateTime @default(now())
+
+  regimen MamoolRegimen @relation(fields: [regimenId], references: [id], onDelete: Cascade)
+
+  @@index([regimenId, createdAt])
+}
+
+// Frozen copy of each APPROVED version — what doctors see and apply.
+model MamoolRegimenVersion {
+  id             String   @id @default(cuid())
+  regimenId      String
+  version        Int
+  snapshot       String // JSON: name, description, clinicalNotes, complaints[], medicines[]
+  approvedByName String
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  regimen MamoolRegimen @relation(fields: [regimenId], references: [id], onDelete: Cascade)
+
+  @@unique([regimenId, version])
 }

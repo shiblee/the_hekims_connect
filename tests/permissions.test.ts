@@ -16,6 +16,11 @@ describe("receptionist: register a patient and collect a fee", () => {
   for (const [method, path] of steps) it(`${method} ${path}`, () => assert.equal(can("Receptionist", method, path), true));
 });
 
+describe("Mamool-e-Matab", () => {
+  it("prescribers can see and apply regimens", () => { assert.equal(can("Hakim", "GET", "/api/facility/mamool?visitId=v1"), true); assert.equal(can("Hakim", "POST", "/api/facility/mamool/apply"), true); });
+  it("reception can't", () => assert.equal(can("Receptionist", "GET", "/api/facility/mamool"), false));
+});
+
 describe("asking for a new chief complaint", () => {
   it("reception can ask while registering", () => assert.equal(can("Receptionist", "POST", "/api/facility/master-requests"), true));
   it("nurses can ask at triage", () => assert.equal(can("Staff Nurse", "POST", "/api/facility/master-requests"), true));

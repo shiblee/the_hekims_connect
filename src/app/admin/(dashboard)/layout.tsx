@@ -8,7 +8,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, LogOut, User, ListChecks, LogIn, ChevronDown, Lock, Bell,
-  Stethoscope, HeartPulse, Settings, Database, UserCog, Wallet, Flame, GraduationCap, BookOpen, Inbox } from "lucide-react";
+  Stethoscope, HeartPulse, Settings, Database, UserCog, Wallet, Flame, GraduationCap, BookOpen, Inbox, BookMarked } from "lucide-react";
 import { adminApi, restoreAdminSession } from "@/lib/admin-api";
 import { useAdminStore } from "@/lib/admin-store";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -41,6 +41,7 @@ const navLinks = [
   { href: "/admin/humor", label: "Humoral Matrix", icon: Flame },
   { href: "/admin/payments", label: "Payments", icon: Wallet },
   { href: "/admin/books", label: "Books", icon: BookOpen },
+  { href: "/admin/mamool", label: "Mamool-e-Matab", icon: BookMarked },
   { href: "/admin/meta", label: "Meta", icon: Database },
   { href: "/admin/requests", label: "Requests", icon: Inbox },
   { href: "/admin/settings", label: "Settings", icon: Settings },

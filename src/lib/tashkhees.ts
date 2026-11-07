@@ -38,4 +38,8 @@ export interface TashkheesOptionRow {
   phase?: number;
 }
 export interface TadbeerLine { label: string; frequency: string; duration: string; notes: string }
-export interface PrescriptionLine { tagId: string | null; name: string; form: string; dose: string; timing: string; duration: string; adjuvant: string; instructions: string }
+export interface PrescriptionLine {
+  tagId: string | null; name: string; form: string; dose: string; timing: string; duration: string; adjuvant: string; instructions: string;
+  /** Set when the line was added from a Mamool-e-Matab regimen (the Hakim may have edited it since). */
+  sourceRegimenId?: string | null; sourceRegimenName?: string | null; sourceRegimenVersion?: number | null;
+}
