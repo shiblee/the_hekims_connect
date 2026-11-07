@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { recordComplaintRequestUses } from "@/lib/master-requests";
 import { getAuthUser } from "@/lib/api-auth";
 import { recomputeHumoralAssessment, syncVisitIntakeToLabels, clearClinicalRoutingInsight } from "@/lib/complaint-sync";
 
@@ -87,6 +88,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     db.complaintAssessment.deleteMany({ where: { visitId: id } }),
     ...(rows.length ? [db.complaintAssessment.createMany({ data: rows })] : []),
   ]);
+  // Complaints the doctor added that are still waiting for review — remember this visit used them.
+  await recordComplaintRequestUses(facilityId, id, rows.filter((r) => !r.chiefComplaintId).map((r) => r.chiefComplaintLabel));
 
   // Keep the Registration wizard's simple selector (VisitIntake) in step
   // with whatever the doctor just added/removed here — these two surfaces

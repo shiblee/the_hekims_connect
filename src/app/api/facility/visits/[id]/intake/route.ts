@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { recordComplaintRequestUses } from "@/lib/master-requests";
 import { getAuthUser } from "@/lib/api-auth";
 import { syncComplaintAssessmentsToLabels, recomputeHumoralAssessment, clearClinicalRoutingInsight } from "@/lib/complaint-sync";
 
@@ -56,12 +57,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ? body.medications.filter((m: unknown): m is { label: string; kind: string } => !!m && typeof m === "object" && typeof (m as any).label === "string" && (m as any).label.trim())
     : [];
 
-  const complaints = chiefComplaintIds.length
-    ? await db.chiefComplaint.findMany({ where: { id: { in: chiefComplaintIds } }, select: { label: true } })
-    : [];
+  // "req:<id>" = this clinic's own complaint that's waiting for review — kept as its exact words.
+  const masterIds = chiefComplaintIds.filter((i) => typeof i === "string" && !i.startsWith("req:"));
+  const requestIds = chiefComplaintIds.filter((i) => typeof i === "string" && i.startsWith("req:")).map((i) => i.slice(4));
+  const [complaints, requests] = await Promise.all([
+    masterIds.length ? db.chiefComplaint.findMany({ where: { id: { in: masterIds } }, select: { id: true, label: true } }) : [],
+    requestIds.length ? db.masterDataRequest.findMany({ where: { id: { in: requestIds }, facilityId, listKey: "chief_complaint" }, select: { id: true, term: true, status: true, resolvedLabel: true } }) : [],
+  ]);
+  const labelById = new Map<string, string>([
+    ...complaints.map((c) => [c.id, c.label] as [string, string]),
+    // Already reviewed meanwhile? Use the approved name.
+    ...requests.map((r) => [`req:${r.id}`, r.status !== "rejected" && r.resolvedLabel ? r.resolvedLabel : r.term] as [string, string]),
+  ]);
 
   const recordedById = auth.staffId ?? null;
-  const complaintLabels = complaints.map((c) => c.label);
+  // Keep the order the clinician picked them in.
+  const complaintLabels = [...new Set(chiefComplaintIds.map((i) => labelById.get(i)).filter((l): l is string => !!l))];
 
   const data = {
     chiefComplaints: JSON.stringify(complaintLabels),
@@ -84,6 +95,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // in step with whatever reception/the doctor just picked here — these two
   // surfaces are one list, viewed two ways, not two independent lists.
   await syncComplaintAssessmentsToLabels(id, complaintLabels, recordedById);
+  await recordComplaintRequestUses(facilityId, id, complaintLabels);
   await recomputeHumoralAssessment(id);
   await clearClinicalRoutingInsight(id);
 

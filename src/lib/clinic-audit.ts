@@ -42,7 +42,7 @@ export interface AuditInput {
 }
 
 /** Who is acting: the clinic owner, or a staff member working for the clinic. */
-async function actorOf(auth: Pick<AuthUser, "id" | "type" | "staffId">) {
+export async function actorOf(auth: Pick<AuthUser, "id" | "type" | "staffId">) {
   if (auth.staffId) {
     const s = await db.staff.findUnique({ where: { id: auth.staffId }, select: { name: true, staffCode: true } });
     return { actorType: "staff", actorId: auth.staffId, actorName: s ? `${s.name} (${s.staffCode})` : "Staff member" };

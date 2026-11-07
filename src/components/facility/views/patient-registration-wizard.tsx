@@ -17,7 +17,8 @@ import { SelectItem } from "@/components/ui/select";
 import { FloatingField, FloatingSelect, FloatingSplitField, FieldError, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
-import { InlineNotice, type Notice } from "@/components/shared/inline-notice";
+import { InlineNotice, NoticeSlot, useNotice, type Notice } from "@/components/shared/inline-notice";
+import { canRequestNew, complaintResults, pickableComplaints, requestNewComplaint, useComplaintPickerText, type ComplaintConfigResponse, type PickComplaint } from "@/components/facility/complaint-picker";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { setFlash } from "@/lib/flash";
 import {
@@ -70,7 +71,6 @@ interface Candidate {
 
 interface Doctor { id: string; name: string; staffCode: string; designation: string | null }
 
-interface ComplaintOption { id: string; label: string; active: boolean }
 interface AllergyOption { id: string; label: string }
 interface MedicationOption { id: string; kind: string; label: string }
 interface MedicationEntry { label: string; kind: "supplement" | "medication" }
@@ -173,7 +173,10 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
   const [doctorId, setDoctorId] = useState("");
 
   // Chief Complaint (front-desk intake)
-  const [complaintOptions, setComplaintOptions] = useState<ComplaintOption[]>([]);
+  const [complaintOptions, setComplaintOptions] = useState<PickComplaint[]>([]);
+  const [frequentComplaints, setFrequentComplaints] = useState<string[]>([]);
+  const complaintNotice = useNotice();
+  const cp = useComplaintPickerText();
   const [chiefComplaintIds, setChiefComplaintIds] = useState<string[]>([]);
   const [complaintSearch, setComplaintSearch] = useState("");
   const [narrative, setNarrative] = useState("");
@@ -223,8 +226,13 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     api.get<{ staff: Doctor[] }>("/api/facility/staff?employeeType=Hakim%20(Unani%20Physician)&active=true")
       .then((res) => setDoctors(res.staff || []))
       .catch(() => {});
-    api.get<{ complaints: ComplaintOption[] }>("/api/facility/screening/config")
-      .then((res) => setComplaintOptions((res.complaints || []).filter((c) => c.active)))
+    api.get<ComplaintConfigResponse>("/api/facility/screening/config")
+      .then((res) => {
+        const opts = pickableComplaints(res);
+        // Keep any unlisted complaint already on this visit (it may have been loaded first).
+        setComplaintOptions((prev) => [...opts, ...prev.filter((p) => p.pending && !opts.some((o) => o.id === p.id))]);
+        setFrequentComplaints(res.frequent || []);
+      })
       .catch(() => {});
     api.get<{ allergies: AllergyOption[] }>("/api/facility/allergies")
       .then((res) => setAllergyOptions(res.allergies || []))
@@ -245,7 +253,7 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     };
     visit: { id: string; visitCode: string; doctorId: string | null; lastPayment: { amount: number; mode: string } | null };
     intake: {
-      chiefComplaintIds: string[]; narrative: string | null; onsetTimeline: string | null;
+      chiefComplaintIds: string[]; requestChips?: { id: string; label: string; status: string }[]; narrative: string | null; onsetTimeline: string | null;
       allergies: string; medications: string; mobility: string | null;
     } | null;
   }) => {
@@ -288,6 +296,9 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setDoctorId(nextDoctorId);
     setExistingPayment(res.visit.lastPayment);
     if (res.intake) {
+      // Complaints on this visit that aren't in the master list yet (this clinic's requests).
+      const chips = res.intake.requestChips || [];
+      if (chips.length) setComplaintOptions((prev) => [...prev, ...chips.filter((c) => !prev.some((p) => p.id === c.id)).map((c) => ({ id: c.id, label: c.label, pending: true }))]);
       setChiefComplaintIds(nextChiefComplaintIds);
       setNarrative(nextNarrative);
       setOnsetTimeline(nextOnsetTimeline);
@@ -399,11 +410,15 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  const complaintSearchResults = (() => {
-    const q = complaintSearch.trim().toLowerCase();
-    if (!q) return [];
-    return complaintOptions.filter((c) => !chiefComplaintIds.includes(c.id) && c.label.toLowerCase().includes(q)).slice(0, 8);
-  })();
+  // Searches English, classical Unani and local names, synonyms; typo-tolerant. Empty box: this clinic's usual complaints.
+  const complaintSearchResults = complaintResults(complaintOptions, complaintSearch, (c) => chiefComplaintIds.includes(c.id), frequentComplaints);
+
+  const addNewComplaint = async (term: string) => {
+    const picked = await requestNewComplaint(term, complaintNotice, cp.t);
+    if (!picked) return;
+    setComplaintOptions((prev) => (prev.some((p) => p.id === picked.id) ? prev : [...prev, picked]));
+    setChiefComplaintIds((ids) => (ids.includes(picked.id) ? ids : [...ids, picked.id]));
+  };
 
   // The front-desk handover checklist — spans Sections 1 and 4. Emergency
   // Contact (Section 2), Doctor, and Payment are explicitly optional
@@ -1200,7 +1215,14 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                           onQueryChange={setComplaintSearch}
                           results={complaintSearchResults}
                           onPick={toggleComplaint}
+                          keepOrder
+                          openOnFocus
+                          emptyHint={frequentComplaints.length ? cp.t("often_used") : undefined}
+                          describe={(c) => cp.describe(c, complaintSearch)}
+                          chipClassName={cp.pendingChip}
+                          createOptions={(q) => canRequestNew(q, complaintOptions) ? [{ key: "new", label: cp.t("add_new", { q }), onCreate: () => { addNewComplaint(q); } }] : []}
                         />
+                        <NoticeSlot state={complaintNotice} className="mt-2" />
                       </div>
 
                       <FloatingTextarea

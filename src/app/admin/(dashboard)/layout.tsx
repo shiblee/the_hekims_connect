@@ -8,7 +8,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, LogOut, User, ListChecks, LogIn, ChevronDown, Lock, Bell,
-  Stethoscope, HeartPulse, Settings, Database, UserCog, Wallet, Flame, GraduationCap, BookOpen } from "lucide-react";
+  Stethoscope, HeartPulse, Settings, Database, UserCog, Wallet, Flame, GraduationCap, BookOpen, Inbox } from "lucide-react";
 import { adminApi, restoreAdminSession } from "@/lib/admin-api";
 import { useAdminStore } from "@/lib/admin-store";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -42,6 +42,7 @@ const navLinks = [
   { href: "/admin/payments", label: "Payments", icon: Wallet },
   { href: "/admin/books", label: "Books", icon: BookOpen },
   { href: "/admin/meta", label: "Meta", icon: Database },
+  { href: "/admin/requests", label: "Requests", icon: Inbox },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -55,6 +56,16 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   const logout = useAdminStore((s) => s.logout);
   const [checked, setChecked] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  // Chief complaints clinicians asked to add — badge on the Requests tab.
+  const [pendingRequests, setPendingRequests] = useState(0);
+  useEffect(() => {
+    if (!checked) return;
+    const refresh = () => adminApi.get<{ pending: number }>("/api/admin/master-requests?count=1").then((r) => setPendingRequests(r.pending)).catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    window.addEventListener("master-requests-changed", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("master-requests-changed", refresh); };
+  }, [checked]);
 
   useEffect(() => {
     restoreAdminSession().then((a) => {
@@ -168,6 +179,9 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
                   >
                     <l.icon className={cn("h-3.5 w-3.5 transition-transform duration-300", !active && "group-hover:scale-110")} />
                     {l.label}
+                    {l.href === "/admin/requests" && pendingRequests > 0 && (
+                      <span className={cn("ms-0.5 rounded-full px-1.5 text-[10px] font-bold leading-4", active ? "bg-primary-foreground/25" : "bg-amber-500 text-white")}>{pendingRequests}</span>
+                    )}
                   </Link>
                 );
               })}

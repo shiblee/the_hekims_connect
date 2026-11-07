@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDateLocale, useValueLabel } from "@/lib/i18n/use-date-locale";
 import { useTranslations } from "next-intl";
+import { searchEntries } from "@/lib/complaint-search";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadFailed, NoticeSlot, useNotice } from "@/components/shared/inline-notice";
@@ -105,12 +106,10 @@ export function ScreeningForm({ visitId }: { visitId: string }) {
   // category so a long list stays easy to scan for a receptionist/junior doctor.
   const groupedComplaints = useMemo(() => {
     if (!config) return [];
-    const q = complaintSearch.trim().toLowerCase();
-    const matches = config.complaints.filter((c) => {
-      if (!c.active || selectedComplaintIds.includes(c.id)) return false;
-      if (!q) return true;
-      return c.label.toLowerCase().includes(q) || (c.labelLocal || "").toLowerCase().includes(q);
-    });
+    // Same search as registration (classical/local names, synonyms, typos). Red-flag
+    // screening only takes reviewed complaints, so there's no "add new" here.
+    const pool = config.complaints.filter((c) => c.active && !selectedComplaintIds.includes(c.id));
+    const matches = complaintSearch.trim() ? searchEntries(pool, complaintSearch, 40) : pool;
     const byCategory = new Map<string, ChiefComplaintT[]>();
     for (const c of matches) {
       const list = byCategory.get(c.category) || [];

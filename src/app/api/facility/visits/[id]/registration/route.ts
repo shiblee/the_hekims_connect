@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/api-auth";
+import { normalizeTerm } from "@/lib/complaint-search";
 
 // Everything the Registration wizard needs to re-open pre-filled for an
 // already-registered visit, so a junior doctor can review/correct what
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   let chiefComplaintIds: string[] = [];
+  const requestChips: { id: string; label: string; status: string }[] = [];
   if (visit.intake?.chiefComplaints) {
     const labels: string[] = (() => { try { return JSON.parse(visit.intake!.chiefComplaints); } catch { return []; } })();
     if (labels.length) {
@@ -46,14 +48,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const normalize = (s: string) => s.trim().toLowerCase();
       const wanted = new Set(labels.map(normalize));
       const allComplaints = await db.chiefComplaint.findMany({ select: { id: true, label: true } });
-      const matched = allComplaints.filter((c) => wanted.has(normalize(c.label)));
-      chiefComplaintIds = matched.map((c) => c.id);
+      const byLabel = new Map(allComplaints.map((c) => [normalize(c.label), c.id]));
+      // Words that aren't in the master list yet: this clinic's own requests (pending review).
+      const requests = await db.masterDataRequest.findMany({
+        where: { listKey: "chief_complaint", facilityId: auth.id },
+        select: { id: true, term: true, normalized: true, status: true },
+      });
+      const reqByNorm = new Map(requests.map((r) => [r.normalized, r]));
+      for (const l of labels) {
+        const masterId = byLabel.get(normalize(l));
+        if (masterId) { chiefComplaintIds.push(masterId); continue; }
+        const r = reqByNorm.get(normalizeTerm(l));
+        if (r) { chiefComplaintIds.push(`req:${r.id}`); requestChips.push({ id: `req:${r.id}`, label: r.term, status: r.status }); }
+      }
+      chiefComplaintIds = [...new Set(chiefComplaintIds)];
     }
   }
 
   return NextResponse.json({
     patient: visit.patient,
     visit: { id: visit.id, visitCode: visit.visitCode, doctorId: visit.doctorId, lastPayment: visit.payments[0] || null },
-    intake: visit.intake ? { ...visit.intake, chiefComplaintIds } : null,
+    intake: visit.intake ? { ...visit.intake, chiefComplaintIds, requestChips } : null,
   });
 }

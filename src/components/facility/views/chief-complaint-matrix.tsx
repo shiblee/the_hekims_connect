@@ -12,9 +12,9 @@ import type React from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { BriefcaseMedical, Flag, Loader2, Plus, X } from "lucide-react";
+import { BriefcaseMedical, Clock, Flag, Loader2, Plus, X } from "lucide-react";
+import { canRequestNew, complaintResults, pickableComplaints, requestNewComplaint, useComplaintPickerText, type ComplaintConfigResponse, type PickComplaint } from "@/components/facility/complaint-picker";
 
-interface ChiefComplaintCfg { id: string; label: string }
 interface FactorTagCfg { id: string; kind: string; label: string; active: boolean }
 interface SeverityLabelCfg { level: number; label: string }
 interface SavedComplaintRow {
@@ -54,7 +54,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
 }>(
   function ChiefComplaintMatrix({ visitId, intakeComplaints, onDurationsChange }, ref) {
   const [loading, setLoading] = useState(true);
-  const [complaintOptions, setComplaintOptions] = useState<ChiefComplaintCfg[]>([]);
+  const [complaintOptions, setComplaintOptions] = useState<PickComplaint[]>([]);
   const [factorTags, setFactorTags] = useState<FactorTagCfg[]>([]);
   const [severityLabels, setSeverityLabels] = useState<SeverityLabelCfg[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -69,17 +69,18 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const msg = useNotice();
+  const cp = useComplaintPickerText();
   const t = useTranslations("clinic.complaints");
   const tc = useTranslations("common");
 
   useEffect(() => {
     Promise.all([
-      api.get<{ complaints: ChiefComplaintCfg[] }>("/api/facility/screening/config"),
+      api.get<ComplaintConfigResponse>("/api/facility/screening/config"),
       api.get<{ factorTags: FactorTagCfg[]; severityLabels: SeverityLabelCfg[] }>("/api/facility/humor/config"),
       api.get<{ complaints: SavedComplaintRow[] }>(`/api/facility/visits/${visitId}/complaint-assessments`),
     ])
       .then(([screeningCfg, humorCfg, saved]) => {
-        setComplaintOptions(screeningCfg.complaints || []);
+        setComplaintOptions(pickableComplaints(screeningCfg));
         setFactorTags(humorCfg.factorTags || []);
         setSeverityLabels(humorCfg.severityLabels || []);
 
@@ -99,7 +100,7 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
           const row = byLabel.get(label);
           if (row) {
             next[label] = {
-              chiefComplaintId: row.chiefComplaintId,
+              chiefComplaintId: row.chiefComplaintId ?? match?.id ?? null,
               chiefComplaintLabel: label,
               onsetValue: row.onsetValue != null ? String(row.onsetValue) : "",
               onsetUnit: row.onsetUnit || "days",
@@ -130,7 +131,8 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
     if (!complaintLabels.includes(label)) {
       const match = complaintOptions.find((c) => c.label === label);
       setComplaintLabels((prev) => [...prev, label]);
-      setDrafts((prev) => ({ ...prev, [label]: emptyDraft(match?.id ?? null, label) }));
+      // A complaint still pending review has no master id — nothing rule-driven reads it.
+      setDrafts((prev) => ({ ...prev, [label]: emptyDraft(match && !match.pending ? match.id : null, label) }));
     }
     setComplaintSearch("");
     setAddComplaintOpen(false);
@@ -146,11 +148,18 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
     });
   };
 
-  const addComplaintResults = complaintOptions.filter((c) => {
-    if (complaintLabels.includes(c.label)) return false;
-    const q = complaintSearch.trim().toLowerCase();
-    return !q || c.label.toLowerCase().includes(q);
-  });
+  // Same search as registration; with nothing typed, the whole list A–Z.
+  const addComplaintResults = complaintSearch.trim()
+    ? complaintResults(complaintOptions, complaintSearch, (c) => complaintLabels.includes(c.label), [], 60)
+    : complaintOptions.filter((c) => !complaintLabels.includes(c.label)).sort((a, b) => a.label.localeCompare(b.label));
+  const typed = complaintSearch.trim();
+  const canAddNew = canRequestNew(typed, complaintOptions);
+  const addNewComplaint = async () => {
+    const picked = await requestNewComplaint(typed, msg, cp.t);
+    if (!picked) return;
+    setComplaintOptions((prev) => (prev.some((p) => p.id === picked.id) ? prev : [...prev, picked]));
+    addComplaint(picked.label);
+  };
 
 
   const severityLabelFor = (level: number) => severityLabels.find((s) => s.level === level)?.label || "";
@@ -221,16 +230,26 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-1.5">
                 <Input autoFocus value={complaintSearch} onChange={(e) => setComplaintSearch(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && addComplaintResults[0]) { e.preventDefault(); addComplaint(addComplaintResults[0].label); } }}
+                  onKeyDown={(e) => { if (e.key !== "Enter") return; e.preventDefault(); if (addComplaintResults[0]) addComplaint(addComplaintResults[0].label); else if (canAddNew) addNewComplaint(); }}
                   placeholder={t("search_complaints", { count: addComplaintResults.length })} className="mb-1.5 h-9 text-sm" aria-label={t("add_aria")} />
                 <div className="flex max-h-72 flex-col overflow-y-auto">
-                  {addComplaintResults.slice(0, 60).map((c, i) => (
-                    <button key={c.id} type="button" onClick={() => addComplaint(c.label)}
-                      className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-start text-sm transition-colors hover:bg-muted/60", i === 0 && complaintSearch && "bg-muted/40")}>
-                      <Plus className="h-3 w-3 shrink-0 text-muted-foreground" /> {c.label}
+                  {addComplaintResults.slice(0, 60).map((c, i) => {
+                    const sub = cp.describe(c, complaintSearch);
+                    return (
+                      <button key={c.id} type="button" onClick={() => addComplaint(c.label)}
+                        className={cn("flex items-start gap-1.5 rounded-md px-2.5 py-1.5 text-start text-sm transition-colors hover:bg-muted/60", i === 0 && complaintSearch && "bg-muted/40")}>
+                        {c.pending ? <Clock className="mt-1 h-3 w-3 shrink-0 text-amber-600" /> : <Plus className="mt-1 h-3 w-3 shrink-0 text-muted-foreground" />}
+                        <span className="min-w-0">{c.label}{sub && <span className="block text-[11px] leading-snug text-muted-foreground">{sub}</span>}</span>
+                      </button>
+                    );
+                  })}
+                  {addComplaintResults.length === 0 && <p className="px-2.5 py-1.5 text-[13px] text-muted-foreground">{canAddNew ? cp.t("no_match_add") : t("no_match")}</p>}
+                  {canAddNew && (
+                    <button type="button" onClick={addNewComplaint}
+                      className="mt-1 flex items-start gap-1.5 rounded-md border-t border-border px-2.5 pt-2 pb-1.5 text-start text-sm text-primary transition-colors hover:bg-muted/60">
+                      <Plus className="mt-1 h-3 w-3 shrink-0" /> {cp.t("add_new", { q: typed })}
                     </button>
-                  ))}
-                  {addComplaintResults.length === 0 && <p className="px-2.5 py-1.5 text-[13px] text-muted-foreground">{t("no_match")}</p>}
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
@@ -251,7 +270,14 @@ export const ChiefComplaintMatrix = forwardRef<ChiefComplaintMatrixHandle, {
               if (!d) return null;
               return (
                 <li key={label} className={cn("grid items-start gap-3 px-3 py-2.5", COLS)}>
-                  <p className="pt-1.5 text-sm font-semibold leading-snug">{label}</p>
+                  <div className="pt-1.5">
+                    <p className="text-sm font-semibold leading-snug">{label}</p>
+                    {!d.chiefComplaintId && (
+                      <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400" title={cp.t("pending_row")}>
+                        <Clock className="h-3 w-3" /> {cp.t("pending_short")}
+                      </p>
+                    )}
+                  </div>
                   {/* Duration */}
                   <div className="flex h-8 items-center overflow-hidden rounded-md border border-input bg-background/60 focus-within:border-primary">
                     <input type="number" min={0} inputMode="decimal" value={d.onsetValue} onChange={(e) => update(label, { onsetValue: e.target.value })}

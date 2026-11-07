@@ -16,6 +16,12 @@ describe("receptionist: register a patient and collect a fee", () => {
   for (const [method, path] of steps) it(`${method} ${path}`, () => assert.equal(can("Receptionist", method, path), true));
 });
 
+describe("asking for a new chief complaint", () => {
+  it("reception can ask while registering", () => assert.equal(can("Receptionist", "POST", "/api/facility/master-requests"), true));
+  it("nurses can ask at triage", () => assert.equal(can("Staff Nurse", "POST", "/api/facility/master-requests"), true));
+  it("cashiers can't", () => assert.equal(can("Cashier / Accounts", "POST", "/api/facility/master-requests"), false));
+});
+
 describe("intake rules", () => {
   it("nurses (triage) can still correct the reason for visit", () => assert.equal(can("Staff Nurse", "POST", `${V}/intake`), true));
   it("roles without registration or triage can't change it", () => assert.equal(can("Cashier / Accounts", "POST", `${V}/intake`), false));

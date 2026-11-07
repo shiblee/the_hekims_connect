@@ -110,6 +110,8 @@ export function requiredPermission(path: string, method: string): Need {
   if (/^\/api\/appointments(\/|$)/.test(path)) return ["appointments"];
   if (/^\/api\/messages(\/|$)/.test(path)) return ["messages"];
   if (/^\/api\/pharmacy(\/|$)/.test(path)) return ["pharmacy"];
+  // Asking for a new master-list term (e.g. a chief complaint) — whoever records complaints may ask.
+  if (R("/api/facility/master-requests").test(path)) return rw(["patients.view"], ["patients.register", "triage", "diagnosis"]);
   if (/^\/api\/(facility|visits)(\/|$)/.test(path)) return read ? ["patients.view"] : "deny";
   return "allow"; // public / patient / admin APIs check their own sessions
 }

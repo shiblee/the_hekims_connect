@@ -15,6 +15,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (body.labelLocal !== undefined) data.labelLocal = body.labelLocal || null;
   if (body.category !== undefined) data.category = String(body.category).trim() || "General";
+  if (body.synonyms !== undefined) {
+    const list = Array.isArray(body.synonyms) ? body.synonyms : String(body.synonyms).split(",");
+    data.synonyms = JSON.stringify([...new Set(list.map((x: unknown) => String(x).trim()).filter(Boolean))]);
+  }
   if (body.active !== undefined) data.active = !!body.active;
   if (body.sortOrder !== undefined) data.sortOrder = parseInt(body.sortOrder, 10);
 

@@ -69,7 +69,9 @@ function countNoun(scope: CountScope, n: number): string {
 }
 
 // ---------- L1 Screening types (Chief Complaints / Allergies / Medications & Herbs) ----------
-interface ChiefComplaintRow { id: string; key: string; label: string; labelLocal: string | null; category: string; active: boolean }
+interface ChiefComplaintRow { id: string; key: string; label: string; labelLocal: string | null; category: string; synonyms?: string; active: boolean }
+const synonymsText = (raw?: string) => { try { const v = JSON.parse(raw || "[]"); return Array.isArray(v) ? v.join(", ") : ""; } catch { return ""; } };
+const synonymsList = (text: string) => text.split(",").map((s) => s.trim()).filter(Boolean);
 interface ScreeningConfig { complaints: ChiefComplaintRow[] }
 interface FactorTagRow { id: string; kind: "aggravating" | "relieving"; label: string; sortOrder: number; active: boolean; updatedAt?: string }
 type FactorKind = FactorTagRow["kind"];
@@ -798,6 +800,7 @@ export default function MetaSectionPage() {
   // ---------- Chief Complaints tab ----------
   const [newComplaintLabel, setNewComplaintLabel] = useState("");
   const [newComplaintLocal, setNewComplaintLocal] = useState("");
+  const [newComplaintSynonyms, setNewComplaintSynonyms] = useState("");
   const [newComplaintCategory, setNewComplaintCategory] = useState("");
   const [savingComplaint, setSavingComplaint] = useState(false);
   const [selectedComplaintCategory, setSelectedComplaintCategory] = useState<string | null>(null);
@@ -833,11 +836,11 @@ export default function MetaSectionPage() {
     setSavingComplaint(true);
     try {
       await adminApi.post("/api/admin/screening/complaints", {
-        label: newComplaintLabel, labelLocal: newComplaintLocal || undefined,
+        label: newComplaintLabel, labelLocal: newComplaintLocal || undefined, synonyms: synonymsList(newComplaintSynonyms),
         category,
       });
       if (addingNewCategory && category) setSelectedComplaintCategory(category);
-      setNewComplaintLabel(""); setNewComplaintLocal(""); setNewComplaintCategory("");
+      setNewComplaintLabel(""); setNewComplaintLocal(""); setNewComplaintSynonyms(""); setNewComplaintCategory("");
       setAddComplaintDialogOpen(false);
       loadScreening();
     } catch (e: any) {
@@ -859,12 +862,12 @@ export default function MetaSectionPage() {
   // ---------- Chief Complaint edit dialog ----------
   const [complaintDialogOpen, setComplaintDialogOpen] = useState(false);
   const [editingComplaintId, setEditingComplaintId] = useState<string | null>(null);
-  const [complaintDraft, setComplaintDraft] = useState({ label: "", labelLocal: "", category: "", active: true });
+  const [complaintDraft, setComplaintDraft] = useState({ label: "", labelLocal: "", category: "", synonyms: "", active: true });
   const [savingComplaintEdit, setSavingComplaintEdit] = useState(false);
 
   const openEditComplaint = (c: ChiefComplaintRow) => {
     setEditingComplaintId(c.id);
-    setComplaintDraft({ label: c.label, labelLocal: c.labelLocal || "", category: c.category, active: c.active });
+    setComplaintDraft({ label: c.label, labelLocal: c.labelLocal || "", category: c.category, synonyms: synonymsText(c.synonyms), active: c.active });
     setComplaintDialogOpen(true);
   };
 
@@ -874,7 +877,7 @@ export default function MetaSectionPage() {
     setSavingComplaintEdit(true);
     try {
       await adminApi.patch(`/api/admin/screening/complaints/${editingComplaintId}`, {
-        label: complaintDraft.label, labelLocal: complaintDraft.labelLocal || null, category: complaintDraft.category || "General", active: complaintDraft.active,
+        label: complaintDraft.label, labelLocal: complaintDraft.labelLocal || null, category: complaintDraft.category || "General", synonyms: synonymsList(complaintDraft.synonyms), active: complaintDraft.active,
       });
       setComplaintDialogOpen(false);
       if (complaintDraft.category && complaintDraft.category !== selectedComplaintCategory) {
@@ -1004,6 +1007,13 @@ export default function MetaSectionPage() {
               value={newComplaintLocal}
               onChange={(e) => setNewComplaintLocal(e.target.value)}
             />
+            <FloatingField
+              id="newComplaintSynonyms"
+              label="Other words for it, comma-separated (optional)"
+              value={newComplaintSynonyms}
+              onChange={(e) => setNewComplaintSynonyms(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground -mt-2">Words patients and staff use — e.g. sar dard, chakkar, bukhar. Clinic search finds the complaint by any of them.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddComplaintDialogOpen(false)}>Cancel</Button>
@@ -1040,6 +1050,13 @@ export default function MetaSectionPage() {
               onChange={(e) => setComplaintDraft((d) => ({ ...d, category: e.target.value }))}
               list="screening-categories"
             />
+            <FloatingField
+              id="editComplaintSynonyms"
+              label="Other words for it, comma-separated"
+              value={complaintDraft.synonyms}
+              onChange={(e) => setComplaintDraft((d) => ({ ...d, synonyms: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground -mt-2">Clinic search finds the complaint by any of these. Merged requests are added here automatically.</p>
             <div className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2.5">
               <span className={cn("text-sm font-medium", complaintDraft.active ? "text-emerald-500" : "text-muted-foreground")}>
                 {complaintDraft.active ? "Active" : "Inactive"}

@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const { label, labelLocal, category } = await req.json();
+  const { label, labelLocal, category, synonyms } = await req.json();
   if (!label || !String(label).trim()) {
     return NextResponse.json({ error: "Label is required" }, { status: 400 });
   }
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     data: {
       key, label: String(label).trim(), labelLocal: labelLocal || null,
       category: category && String(category).trim() ? String(category).trim() : "General",
+      synonyms: JSON.stringify([...new Set((Array.isArray(synonyms) ? synonyms : String(synonyms ?? "").split(",")).map((x: unknown) => String(x).trim()).filter(Boolean))]),
       sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
     },
   });

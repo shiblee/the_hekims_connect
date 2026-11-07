@@ -144,6 +144,7 @@ model Facility {
   fees                 FacilityFee[]
   visits               Visit[]
   patientReports       PatientReport[]
+  masterDataRequests   MasterDataRequest[]
 
   @@map("Hakim")
 }
@@ -1109,6 +1110,10 @@ model ChiefComplaint {
   label      String
   labelLocal String?
   category   String   @default("General")
+  // JSON array of other words people use for this complaint (lay / Urdu / Hindi
+  // in Latin script, alternate spellings). Searched at registration; grows
+  // whenever a reviewer merges a clinic's request into this complaint.
+  synonyms   String   @default("[]")
   sortOrder  Int      @default(0)
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -2446,4 +2451,46 @@ model GeminiUsageLog {
 
   @@index([createdAt])
   @@index([feature, createdAt])
+}
+
+// A clinician's request to add a term that isn't in a master list yet (first:
+// chief complaints). The visit keeps the exact words, but nothing rule-driven
+// (red flags, CDS, Dalail, humors, supplements) reads these rows — only an
+// approved master entry does. An Admin reviewer approves it as a new entry,
+// merges it into an existing one (it becomes a synonym), or rejects it.
+model MasterDataRequest {
+  id               String    @id @default(cuid())
+  listKey          String // "chief_complaint" (later: allergy, medication, …)
+  term             String // exactly as the clinician typed it (trimmed)
+  normalized       String // lower-case, accents/punctuation stripped — duplicate check
+  facilityId       String
+  requestedById    String? // staff id; null = clinic owner account
+  requestedByName  String
+  status           String    @default("pending") // pending | approved | merged | rejected
+  resolvedEntityId String? // master row it became / was merged into
+  resolvedLabel    String?
+  reviewNote       String?
+  reviewedByName   String?
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  facility Facility                @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  uses     MasterDataRequestUse[]
+
+  @@unique([listKey, facilityId, normalized])
+  @@index([listKey, status])
+}
+
+// Which visits used a requested term — so approval/merge can re-link them.
+model MasterDataRequestUse {
+  id        String   @id @default(cuid())
+  requestId String
+  visitId   String
+  createdAt DateTime @default(now())
+
+  request MasterDataRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, visitId])
+  @@index([visitId])
 }
