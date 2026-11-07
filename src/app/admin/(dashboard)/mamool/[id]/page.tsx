@@ -15,9 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FloatingField, FloatingMultiSelect, FloatingTextarea } from "@/components/shared/floating-field";
+import { MedicineCategoryPicker } from "@/components/admin/medicine-category-picker";
 
 interface CatComplaint { id: string; label: string; labelLocal: string | null; synonyms: string; category: string }
-interface CatMedicine { id: string; label: string; kind: string; synonyms: string; category: string; forms: string[] }
+interface CatMedicine { id: string; label: string; kind: string; synonyms: string; category: string; herbType: string | null; generic: string | null; forms: string[] }
 interface Catalog { complaints: CatComplaint[]; medicines: CatMedicine[]; forms: string[]; timings: string[] }
 interface MedLine { tagId: string; form: string; dose: string; timing: string; duration: string; adjuvant: string; instructions: string; notes: string }
 interface Draft { name: string; description: string; clinicalNotes: string; complaints: { complaintId: string; required: boolean }[]; medicines: MedLine[] }
@@ -50,7 +51,6 @@ export default function MamoolEditorPage() {
   const [saved, setSaved] = useState<string>(JSON.stringify(EMPTY));
   const [busy, setBusy] = useState(false);
   const [cq, setCq] = useState("");
-  const [mq, setMq] = useState("");
   const [dialog, setDialog] = useState<Pending>(null);
   const [comment, setComment] = useState("");
 
@@ -78,7 +78,6 @@ export default function MamoolEditorPage() {
   });
 
   const complaintResults = cq.trim() ? searchEntries((catalog?.complaints ?? []).filter((c) => !draft.complaints.some((x) => x.complaintId === c.id)), cq, 10) : [];
-  const medResults = mq.trim() ? searchEntries(catalog?.medicines ?? [], mq, 12) : [];
 
   const save = async (reason?: string) => {
     if (!draft.name.trim()) { toast.error("Enter the regimen name"); return false; }
@@ -178,16 +177,11 @@ export default function MamoolEditorPage() {
           </Card>
 
           <Card className="p-5 gap-3 border-border/50">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Which medicines does it contain?</h2>
-            <FloatingMultiSelect
-              id="rgMedSearch" label="Add a medicine from the medicine list"
-              selected={[]} onRemove={() => {}}
-              query={mq} onQueryChange={setMq} keepOrder
-              results={medResults.map((m) => ({ id: m.id, label: m.label, kind: m.kind, category: m.category, synonyms: m.synonyms }))}
-              renderIcon={(m) => (m.kind === "medication" ? <Pill className="h-3 w-3 text-sky-600" /> : <Leaf className="h-3 w-3 text-primary" />)}
-              describe={(m) => [draft.medicines.some((x) => x.tagId === m.id) ? "Already in this regimen" : null, m.category].filter(Boolean).join(" · ")}
-              onPick={(tid) => { const m = medById.get(tid); upd({ medicines: [...draft.medicines, { tagId: tid, form: m?.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "", notes: "" }] }); }}
-            />
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Which medicines does it contain?</h2>
+              <MedicineCategoryPicker medicines={catalog.medicines} added={draft.medicines.map((m) => m.tagId)}
+                onPick={(m) => upd({ medicines: [...draft.medicines, { tagId: m.id, form: m.forms[0] ?? "", dose: "", timing: "", duration: "", adjuvant: "", instructions: "", notes: "" }] })} />
+            </div>
             {draft.medicines.length === 0 ? <p className="text-sm text-muted-foreground">No medicines yet.</p> : (
               <div className="overflow-x-auto rounded-xl border border-border">
                 <table className="w-full min-w-[68rem] text-sm">

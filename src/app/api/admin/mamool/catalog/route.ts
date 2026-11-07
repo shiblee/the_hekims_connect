@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     db.chiefComplaint.findMany({ where: { active: true }, select: { id: true, label: true, labelLocal: true, synonyms: true, category: true }, orderBy: { label: "asc" } }),
     db.medicationTag.findMany({
       where: { active: true, kind: { in: ["supplement", "medication"] } }, orderBy: { label: "asc" },
-      select: { id: true, label: true, kind: true, synonyms: true, profile: { select: { herbType: true, dosageForms: true } } },
+      select: { id: true, label: true, kind: true, synonyms: true, profile: { select: { herbType: true, dosageForms: true, genericName: true } } },
     }),
     db.tashkheesOption.findMany({ where: { active: true, list: { in: ["dosage_form", "timing"] } }, orderBy: { sortOrder: "asc" }, select: { list: true, label: true } }),
   ]);
@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
     medicines: medicines.map((m) => {
       let forms: string[] = [];
       try { forms = JSON.parse(m.profile?.dosageForms || "[]"); } catch { /* ignore */ }
-      return { id: m.id, label: m.label, kind: m.kind, synonyms: m.synonyms, category: m.kind === "medication" ? "Allopathic" : m.profile?.herbType || "Unani", forms };
+      // herbType decides the Unani tab (Murakkab / Mufrad / Other) — same rule as the prescription picker.
+      return { id: m.id, label: m.label, kind: m.kind, synonyms: m.synonyms, herbType: m.profile?.herbType ?? null, generic: m.profile?.genericName ?? null, category: m.kind === "medication" ? "Allopathic" : m.profile?.herbType || "Unani", forms };
     }),
     forms: options.filter((o) => o.list === "dosage_form").map((o) => o.label),
     timings: options.filter((o) => o.list === "timing").map((o) => o.label),
