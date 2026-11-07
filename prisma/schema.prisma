@@ -1430,6 +1430,8 @@ model ComplaintFactorTag {
 model AllergyTag {
   id        String   @id @default(cuid())
   label     String   @unique
+  // JSON array of other names for this allergen (lay / Urdu / brand words); grows when requests are merged.
+  synonyms  String   @default("[]")
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -1478,6 +1480,8 @@ model MedicationTag {
   id        String   @id @default(cuid())
   kind      String // "supplement" | "medication"
   label     String
+  // JSON array of other names (brand, generic, Urdu/Hindi); grows when requests are merged.
+  synonyms  String   @default("[]")
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -2460,7 +2464,8 @@ model GeminiUsageLog {
 // merges it into an existing one (it becomes a synonym), or rejects it.
 model MasterDataRequest {
   id               String    @id @default(cuid())
-  listKey          String // "chief_complaint" (later: allergy, medication, …)
+  listKey          String // "chief_complaint" | "allergy" | "medication"
+  kind             String? // medication only: "supplement" (Unani) | "medication" (allopathic)
   term             String // exactly as the clinician typed it (trimmed)
   normalized       String // lower-case, accents/punctuation stripped — duplicate check
   facilityId       String

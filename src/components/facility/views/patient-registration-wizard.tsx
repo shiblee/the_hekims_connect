@@ -18,7 +18,8 @@ import { FloatingField, FloatingSelect, FloatingSplitField, FieldError, Floating
 import { FloatingCombobox } from "@/components/shared/combobox";
 import { PatientStageTracker, PATIENT_JOURNEY_STEPS } from "@/components/facility/views/patient-stage-tracker";
 import { InlineNotice, NoticeSlot, useNotice, type Notice } from "@/components/shared/inline-notice";
-import { canRequestNew, complaintResults, pickableComplaints, requestNewComplaint, useComplaintPickerText, type ComplaintConfigResponse, type PickComplaint } from "@/components/facility/complaint-picker";
+import { searchEntries } from "@/lib/complaint-search";
+import { canRequestNew, complaintResults, pickableComplaints, recordUnlistedTerm, requestNewComplaint, useComplaintPickerText, type ComplaintConfigResponse, type PickComplaint } from "@/components/facility/complaint-picker";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { setFlash } from "@/lib/flash";
 import {
@@ -71,8 +72,9 @@ interface Candidate {
 
 interface Doctor { id: string; name: string; staffCode: string; designation: string | null }
 
-interface AllergyOption { id: string; label: string }
-interface MedicationOption { id: string; kind: string; label: string }
+// `pending` = this clinic's own entry still waiting for Admin review (id "req:…").
+interface AllergyOption { id: string; label: string; synonyms?: string; pending?: boolean }
+interface MedicationOption { id: string; kind: string; label: string; synonyms?: string; pending?: boolean }
 interface MedicationEntry { label: string; kind: "supplement" | "medication" }
 
 const ONSET_OPTIONS = [
@@ -234,11 +236,11 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
         setFrequentComplaints(res.frequent || []);
       })
       .catch(() => {});
-    api.get<{ allergies: AllergyOption[] }>("/api/facility/allergies")
-      .then((res) => setAllergyOptions(res.allergies || []))
+    api.get<{ allergies: AllergyOption[]; pending?: { id: string; term: string }[] }>("/api/facility/allergies")
+      .then((res) => setAllergyOptions([...(res.allergies || []), ...(res.pending || []).map((r) => ({ id: `req:${r.id}`, label: r.term, pending: true }))]))
       .catch(() => {});
-    api.get<{ medications: MedicationOption[] }>("/api/facility/medications")
-      .then((res) => setMedicationOptions(res.medications || []))
+    api.get<{ medications: MedicationOption[]; pending?: { id: string; term: string; kind: string | null }[] }>("/api/facility/medications")
+      .then((res) => setMedicationOptions([...(res.medications || []), ...(res.pending || []).map((r) => ({ id: `req:${r.id}`, kind: r.kind || "supplement", label: r.term, pending: true }))]))
       .catch(() => {});
   }, []);
 
@@ -529,11 +531,25 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setAllergyInput("");
   };
 
-  const allergySearchResults = (() => {
-    const q = allergyInput.trim().toLowerCase();
-    if (!q) return [];
-    return allergyOptions.filter((a) => !allergies.some((x) => x.toLowerCase() === a.label.toLowerCase()) && a.label.toLowerCase().includes(q)).slice(0, 6);
-  })();
+  // Listed (reviewed) names — anything else on the visit is the clinician's own words.
+  const listedAllergy = (label: string) => allergyOptions.some((o) => !o.pending && o.label.toLowerCase() === label.toLowerCase());
+  const listedMedication = (label: string, kind: string) => medicationOptions.some((o) => !o.pending && o.kind === kind && o.label.toLowerCase() === label.toLowerCase());
+  const historyNotice = useNotice();
+
+  // Not in the list: record it straight away (medicine safety reads it), then send it for review.
+  const addUnlistedAllergy = async (text: string) => {
+    const v = text.trim();
+    if (!v) return;
+    addAllergy(v);
+    const r = await recordUnlistedTerm("allergy", v, historyNotice, cp.t);
+    if (r.listed && r.label !== v) setAllergies((a) => [...new Set(a.map((x) => (x === v ? r.label : x)))]);
+    else if (!r.listed && !allergyOptions.some((o) => o.label.toLowerCase() === v.toLowerCase())) setAllergyOptions((o) => [...o, { id: `req:new:${v}`, label: v, pending: true }]);
+  };
+
+  // Same search as complaints: synonyms, typos, ranking.
+  const allergySearchResults = allergyInput.trim()
+    ? searchEntries(allergyOptions.filter((a) => !allergies.some((x) => x.toLowerCase() === a.label.toLowerCase())), allergyInput, 6)
+    : [];
 
   const addMedication = (label: string, kind: MedicationEntry["kind"]) => {
     const v = label.trim();
@@ -542,16 +558,22 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
     setMedicationInput("");
   };
 
-  // One search across both catalogs — each suggestion shows whether it's a herb or a medication.
-  const medicationSearchResults = (() => {
-    const q = medicationInput.trim().toLowerCase();
-    if (!q) return [];
-    return medicationOptions.filter((o) =>
+  const addUnlistedMedication = async (text: string, kind: MedicationEntry["kind"]) => {
+    const v = text.trim();
+    if (!v) return;
+    addMedication(v, kind);
+    const r = await recordUnlistedTerm("medication", v, historyNotice, cp.t, kind);
+    if (r.listed && r.label !== v) setMedications((m) => m.map((x) => (x.kind === kind && x.label === v ? { ...x, label: r.label } : x)).filter((x, i, all) => all.findIndex((y) => y.kind === x.kind && y.label === x.label) === i));
+    else if (!r.listed && !medicationOptions.some((o) => o.kind === kind && o.label.toLowerCase() === v.toLowerCase())) setMedicationOptions((o) => [...o, { id: `req:new:${kind}:${v}`, kind, label: v, pending: true }]);
+  };
+
+  // One catalog per tab (Unani / allopathic), same search as complaints.
+  const medicationSearchResults = medicationInput.trim()
+    ? searchEntries(medicationOptions.filter((o) =>
       (o.kind === "medication" ? "medication" : "supplement") === medicationTab &&
-      !medications.some((x) => x.kind === o.kind && x.label.toLowerCase() === o.label.toLowerCase()) &&
-      o.label.toLowerCase().includes(q)
-    ).slice(0, 8);
-  })();
+      !medications.some((x) => x.kind === o.kind && x.label.toLowerCase() === o.label.toLowerCase())), medicationInput, 8)
+    : [];
+  const hasUnlistedHistory = allergies.some((a) => !listedAllergy(a)) || medications.some((m) => !listedMedication(m.label, m.kind));
 
   const clearForm = () => {
     setFormOpen(false);
@@ -1268,8 +1290,10 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         onQueryChange={setAllergyInput}
                         results={allergySearchResults}
                         onPick={(aid) => addAllergy(allergyOptions.find((o) => o.id === aid)?.label)}
-                        onCreate={(text) => addAllergy(text)}
-                        createLabel={(q) => t("allergy_add", { q })}
+                        describe={(o) => ((o as { pending?: boolean }).pending ? cp.t("pending_short") : null)}
+                        keepOrder
+                        chipClassName={(c) => (listedAllergy(c.label) ? undefined : "bg-destructive/10 border-destructive/40 text-destructive border-dashed")}
+                        createOptions={(q) => canRequestNew(q, allergyOptions) ? [{ key: "allergy", label: cp.t("allergy_add_new", { q }), onCreate: () => { addUnlistedAllergy(q); } }] : []}
                       />
 
                       <div className="space-y-2">
@@ -1293,19 +1317,29 @@ export function PatientRegistrationWizard({ visitId, patientId }: { visitId?: st
                         onRemove={(mid) => setMedications((cur) => cur.filter((m) => `${m.kind}:${m.label}` !== mid))}
                         query={medicationInput}
                         onQueryChange={setMedicationInput}
-                        results={medicationSearchResults}
+                        results={medicationSearchResults.map((o) => ({ ...o, kind: o.kind === "medication" ? ("medication" as const) : ("supplement" as const) }))}
                         onPick={(oid) => { const o = medicationOptions.find((x) => x.id === oid); if (o) addMedication(o.label, o.kind === "medication" ? "medication" : "supplement"); }}
                         renderIcon={(m) => m.kind === "medication"
                           ? <Pill className="h-3 w-3 shrink-0 text-primary" />
                           : <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />}
-                        chipClassName={(m) => m.kind === "medication"
+                        chipClassName={(m) => cn(m.kind === "medication"
                           ? "bg-primary/10 border-primary/30 text-primary"
-                          : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"}
-                        createOptions={(q) => [medicationTab === "supplement"
-                          ? { key: "supplement", label: t("add_unani"), icon: <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />, onCreate: () => addMedication(q, "supplement") }
-                          : { key: "medication", label: t("add_allo"), icon: <Pill className="h-3 w-3 shrink-0 text-primary" />, onCreate: () => addMedication(q, "medication") },
+                          : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400",
+                          !listedMedication(m.label, m.kind) && "border-dashed")}
+                        describe={(o) => ((o as { pending?: boolean }).pending ? cp.t("pending_short") : null)}
+                        keepOrder
+                        createOptions={(q) => !canRequestNew(q, medicationOptions.filter((o) => o.kind === medicationTab)) ? [] : [medicationTab === "supplement"
+                          ? { key: "supplement", label: cp.t("unani_add_new", { q }), icon: <Leaf className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />, onCreate: () => { addUnlistedMedication(q, "supplement"); } }
+                          : { key: "medication", label: cp.t("allo_add_new", { q }), icon: <Pill className="h-3 w-3 shrink-0 text-primary" />, onCreate: () => { addUnlistedMedication(q, "medication"); } },
                         ]}
                       />
+                      {hasUnlistedHistory && (
+                        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <span className="mt-1 inline-block h-2.5 w-4 shrink-0 rounded-full border border-dashed border-current" />
+                          {cp.t("item_unlisted")}
+                        </p>
+                      )}
+                      <NoticeSlot state={historyNotice} />
                       </div>
 
                       <div id="reg-mobility" className="scroll-mt-24">

@@ -162,7 +162,7 @@ export const CLINIC_REGISTER = defineStrings("clinic.register", {
   r_gender: ["Gender", "लिंग", "جنس", "الجنس", "جنسیت"],
   r_age: ["Age", "उम्र", "عمر", "العمر", "سن"],
   r_address: ["Address", "पता", "پتہ", "العنوان", "نشانی"],
-  r_symptoms: ["Symptoms", "लक्षण", "علامات", "الأعراض", "علائم"],
+  r_symptoms: ["Main Complaints", "मुख्य शिकायतें", "اہم شکایات", "الشكاوى الرئيسية", "شکایات اصلی"],
   r_onset: ["When it started", "कब शुरू हुआ", "کب شروع ہوا", "متى بدأ", "کی شروع شد"],
   r_mobility: ["How they arrived", "कैसे पहुँचे", "کیسے پہنچے", "كيف وصل", "چگونه آمد"],
   missing: ["{count, plural, one {# required field is still empty} other {# required fields are still empty}}", "{count, plural, one {# ज़रूरी फ़ील्ड अभी ख़ाली है} other {# ज़रूरी फ़ील्ड अभी ख़ाली हैं}}", "{count, plural, one {# ضروری خانہ ابھی خالی ہے} other {# ضروری خانے ابھی خالی ہیں}}", "{count, plural, one {حقل إلزامي # لا يزال فارغًا} other {# حقول إلزامية لا تزال فارغة}}", "{count, plural, one {# فیلد الزامی هنوز خالی است} other {# فیلد الزامی هنوز خالی است}}"],
@@ -242,7 +242,8 @@ export const CLINIC_REGISTER = defineStrings("clinic.register", {
   already: ["Already collected: ₹{amount} ({mode}). Fields below add another payment, if needed.", "पहले ही लिया गया: ₹{amount} ({mode})। ज़रूरत हो तो नीचे के फ़ील्ड एक और भुगतान जोड़ते हैं।", "پہلے ہی وصول: ₹{amount} ({mode})۔ ضرورت ہو تو نیچے کے خانے ایک اور ادائیگی شامل کرتے ہیں۔", "حُصّل سابقًا: ₹{amount} ({mode}). الحقول أدناه تضيف دفعة أخرى عند الحاجة.", "قبلاً دریافت شده: ₹{amount} ({mode}). در صورت نیاز فیلدهای زیر پرداخت دیگری اضافه می‌کنند."],
   mode: ["Payment Mode", "भुगतान का तरीक़ा", "ادائیگی کا طریقہ", "طريقة الدفع", "روش پرداخت"],
   reason: ["Reason for Visit", "विज़िट का कारण", "وزٹ کی وجہ", "سبب الزيارة", "علت مراجعه"],
-  symptoms_q: ["What are the symptoms?", "लक्षण क्या हैं?", "علامات کیا ہیں؟", "ما الأعراض؟", "علائم چیست؟"],
+  // Same name as the doctor's list on the Vitals page and the record — one list, captured here first.
+  symptoms_q: ["Main Complaints", "मुख्य शिकायतें", "اہم شکایات", "الشكاوى الرئيسية", "شکایات اصلی"],
   own_words: ["In the patient's own words", "मरीज़ के अपने शब्दों में", "مریض کے اپنے الفاظ میں", "بكلمات المريض نفسه", "به زبان خود بیمار"],
   when_start: ["When did it start?", "यह कब शुरू हुआ?", "یہ کب شروع ہوا؟", "متى بدأ؟", "کی شروع شد؟"],
   allergies: ["Allergies & sensitivities", "एलर्जी और संवेदनशीलताएँ", "الرجی اور حساسیت", "الحساسية والتحسّس", "حساسیت‌ها"],

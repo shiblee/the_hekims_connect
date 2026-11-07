@@ -60,17 +60,22 @@ export function useComplaintPickerText() {
 }
 
 type RequestResponse =
-  | { kind: "match"; complaint: { id: string; label: string } }
+  | { kind: "match"; entry: { id: string; label: string; kind?: string } }
   | { kind: "request"; request: { id: string; term: string; status: string } }
   | { kind: "rejected"; term: string; note: string | null };
+
+/** Ask for a term that isn't listed (any request list). Throws on network/server error. */
+export function requestTerm(listKey: "chief_complaint" | "allergy" | "medication", term: string, kind?: string) {
+  return api.post<RequestResponse>("/api/facility/master-requests", { listKey, term, kind });
+}
 
 /** Ask for a complaint that isn't listed. Returns what to select, or null (message already shown). */
 export async function requestNewComplaint(term: string, notice: NoticeState, t: ReturnType<typeof useTranslations>): Promise<PickComplaint | null> {
   try {
-    const r = await api.post<RequestResponse>("/api/facility/master-requests", { listKey: "chief_complaint", term });
+    const r = await requestTerm("chief_complaint", term);
     if (r.kind === "match") {
-      notice.info(t("exists", { term, label: r.complaint.label }));
-      return { id: r.complaint.id, label: r.complaint.label };
+      notice.info(t("exists", { term, label: r.entry.label }));
+      return { id: r.entry.id, label: r.entry.label };
     }
     if (r.kind === "request") {
       notice.success(t("sent", { term: r.request.term }));
@@ -84,8 +89,30 @@ export async function requestNewComplaint(term: string, notice: NoticeState, t: 
   }
 }
 
+/**
+ * Allergies and current medicines: the typed words are ALWAYS recorded on the
+ * visit (medicine safety reads them by name), and sent for review in the
+ * background. Returns the label to keep — the listed name when the words
+ * already mean a listed entry.
+ */
+export async function recordUnlistedTerm(listKey: "allergy" | "medication", term: string, notice: NoticeState, t: ReturnType<typeof useTranslations>, kind?: string): Promise<{ label: string; listed: boolean }> {
+  try {
+    const r = await requestTerm(listKey, term, kind);
+    if (r.kind === "match") {
+      if (r.entry.label.toLowerCase() !== term.toLowerCase()) notice.info(t("item_exists", { term, label: r.entry.label }));
+      return { label: r.entry.label, listed: true };
+    }
+    if (r.kind === "request") notice.success(t("item_sent", { term: r.request.term }));
+    else notice.warning(r.note ? t("item_rejected", { term: r.term, note: r.note }) : t("item_rejected_plain", { term: r.term }));
+    return { label: term, listed: false };
+  } catch (e: any) {
+    notice.error(t("item_failed", { term, error: e?.message || "" }));
+    return { label: term, listed: false };
+  }
+}
+
 /** Offer "add as new" only when the typed words don't already mean a listed (or chosen) complaint. */
-export function canRequestNew(query: string, options: PickComplaint[]): boolean {
+export function canRequestNew(query: string, options: { label: string; labelLocal?: string | null; synonyms?: unknown }[]): boolean {
   const q = query.trim();
   return q.length >= 2 && !options.some((c) => isSameTerm(q, c));
 }

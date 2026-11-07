@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { recordComplaintRequestUses } from "@/lib/master-requests";
+import { recordComplaintRequestUses, recordRequestUses } from "@/lib/master-requests";
 import { getAuthUser } from "@/lib/api-auth";
 import { syncComplaintAssessmentsToLabels, recomputeHumoralAssessment, clearClinicalRoutingInsight } from "@/lib/complaint-sync";
 
@@ -96,6 +96,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // surfaces are one list, viewed two ways, not two independent lists.
   await syncComplaintAssessmentsToLabels(id, complaintLabels, recordedById);
   await recordComplaintRequestUses(facilityId, id, complaintLabels);
+  await recordRequestUses("allergy", facilityId, id, allergies);
+  await recordRequestUses("medication", facilityId, id, medications.map((m) => m.label));
   await recomputeHumoralAssessment(id);
   await clearClinicalRoutingInsight(id);
 
