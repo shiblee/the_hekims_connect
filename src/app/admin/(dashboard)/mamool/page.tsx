@@ -133,7 +133,10 @@ export default function MamoolListPage() {
                       <td className="px-3 py-2.5 text-muted-foreground max-w-xs"><span className="line-clamp-2">{r.complaints.join(", ") || "—"}</span></td>
                       <td className="px-3 py-2.5">{r.medicines}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{r.createdByName}</td>
-                      <td className="px-3 py-2.5"><Badge variant="outline" className={st.cls}>{st.label}</Badge></td>
+                      <td className="px-3 py-2.5">
+                        <Badge variant="outline" className={st.cls}>{st.label}</Badge>
+                        {(!r.approvedVersion || !r.active) && <span className="block mt-0.5 text-[11px] text-amber-700 dark:text-amber-400">Not visible to doctors</span>}
+                      </td>
                       <td className="px-3 py-2.5">{r.active ? <span className="text-emerald-600 dark:text-emerald-400">Active</span> : <span className="text-muted-foreground">Inactive</span>}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{formatDate(r.updatedAt)}</td>
                       <td className="px-3 py-2.5 text-end" onClick={(e) => e.stopPropagation()}>

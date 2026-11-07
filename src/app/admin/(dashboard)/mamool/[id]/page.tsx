@@ -85,13 +85,13 @@ export default function MamoolEditorPage() {
     try {
       if (isNew) {
         const r = await adminApi.post<{ regimen: { id: string; code: string } }>("/api/admin/mamool", draft);
-        toast.success(`Saved as draft ${r.regimen.code}`);
+        toast.success(`Saved as draft ${r.regimen.code} — doctors see it once it's approved`);
         router.replace(`/admin/mamool/${r.regimen.id}`);
         return true;
       }
       const r = await adminApi.patch<{ regimen: Full }>(`/api/admin/mamool/${id}`, { ...draft, reason });
       setRegimen(r.regimen); const d = toDraft(r.regimen); setDraft(d); setSaved(JSON.stringify(d));
-      toast.success(status === "approved" ? `Saved as draft v${r.regimen.version} — clinics keep v${r.regimen.approvedVersion} until it's approved` : "Saved as draft");
+      toast.success(status === "approved" ? `Saved as draft v${r.regimen.version} — clinics keep v${r.regimen.approvedVersion} until it's approved` : "Saved as draft — send it for clinical approval when it's ready");
       return true;
     } catch (e: any) { toast.error(e.message || "Could not save"); return false; } finally { setBusy(false); }
   };
@@ -135,6 +135,23 @@ export default function MamoolEditorPage() {
         )}
       </div>
 
+      {/* Saving only stores a draft — say plainly that doctors can't see it yet, and offer the next step. */}
+      {!isNew && !regimen!.approvedVersion && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+          <span>
+            <b>Doctors can’t see this regimen yet.</b>{" "}
+            {status === "pending" ? "It’s waiting for clinical approval — approve it to make it available in the prescription."
+              : status === "rejected" ? "It was rejected — make the changes, then send it for clinical approval again."
+                : "It’s a draft. Next: send it for clinical approval, then approve it."}
+          </span>
+          {!dirty && (status === "draft" || status === "rejected") && <Button size="sm" onClick={() => action("submit")} disabled={busy}><Send className="h-4 w-4" /> Send for clinical approval</Button>}
+          {!dirty && status === "pending" && <Button size="sm" onClick={() => { setComment(""); setDialog({ kind: "approve" }); }} disabled={busy}><CheckCircle2 className="h-4 w-4" /> Approve</Button>}
+          {dirty && <span className="text-xs">Save your changes first.</span>}
+        </div>
+      )}
+      {!isNew && regimen!.approvedVersion && !regimen!.active && (
+        <p className="mb-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"><b>Inactive</b> — doctors don’t see it. Use Activate to make approved v{regimen!.approvedVersion} available again.</p>
+      )}
       {status === "approved" && !isNew && <p className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">Changes are saved as a new draft (v{regimen!.version + 1}). Clinics keep using approved v{regimen!.approvedVersion} until the new version is approved.</p>}
       {status === "rejected" && regimen!.reviews.find((r) => r.action === "rejected")?.comment && (
         <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">Rejected: {regimen!.reviews.find((r) => r.action === "rejected")?.comment}</p>
