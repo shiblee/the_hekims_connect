@@ -37,10 +37,13 @@ interface ChatWidgetProps {
   partnerId?: string;
   partnerType?: string;
   partnerName?: string;
+  /** Single-partner mode: the partner's photo/colour (no conversation list is loaded there). */
+  partnerPhoto?: string | null;
+  partnerAvatarColor?: string;
   compact?: boolean;
 }
 
-export function ChatWidget({ partnerId, partnerType, partnerName, compact }: ChatWidgetProps) {
+export function ChatWidget({ partnerId, partnerType, partnerName, partnerPhoto, partnerAvatarColor, compact }: ChatWidgetProps) {
   const facility = useAppStore((s) => s.facility);
   const patient = useAppStore((s) => s.patient);
   const t = useTranslations("common.widgets");
@@ -145,7 +148,10 @@ export function ChatWidget({ partnerId, partnerType, partnerName, compact }: Cha
   );
 
   // The open conversation's partner (photo/colour), when the list is loaded.
-  const partnerInfo = activePartner ? conversations.find((c) => c.partnerId === activePartner.id)?.partner : null;
+  // In single-partner mode the list isn't loaded, so use the photo/colour passed in.
+  const partnerInfo = activePartner
+    ? (partnerId ? { photo: partnerPhoto, avatarColor: partnerAvatarColor } : conversations.find((c) => c.partnerId === activePartner.id)?.partner)
+    : null;
 
   // Single-partner compact mode (right panel mini chat)
   if (partnerId && activePartner) {

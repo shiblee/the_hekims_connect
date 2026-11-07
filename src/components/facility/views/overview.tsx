@@ -204,7 +204,7 @@ export function Overview({ stats, onNavigate }: { stats: any; onNavigate: (v: an
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("chat_with", { name: lastPatient.name })}</p>
             </div>
             <div className="flex-1 min-h-0">
-              <ChatWidget partnerId={lastPatient.id} partnerType="patient" partnerName={lastPatient.name} />
+              <ChatWidget partnerId={lastPatient.id} partnerType="patient" partnerName={lastPatient.name} partnerPhoto={lastPatient.photo} partnerAvatarColor={lastPatient.avatarColor} />
             </div>
           </Card>
         )}
