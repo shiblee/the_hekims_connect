@@ -1,6 +1,21 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* PT Serif has no proper ₹ glyph (it rendered like ₱). These faces cover ONLY U+20B9,
+   borrowing the rupee sign from Georgia (serif, ships ₹ on macOS + Windows), so serif amounts show a correct ₹. */
+@font-face {
+  font-family: "Rupee Sign";
+  src: local("Georgia"), local("Noto Serif"), local("Roboto"), local("Segoe UI");
+  font-weight: 100 600;
+  unicode-range: U+20B9;
+}
+@font-face {
+  font-family: "Rupee Sign";
+  src: local("Georgia Bold"), local("Georgia-Bold"), local("Noto Serif Bold"), local("Roboto Bold"), local("Segoe UI Bold");
+  font-weight: 700 900;
+  unicode-range: U+20B9;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -8,7 +23,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-pt-serif);
+  --font-serif: "Rupee Sign", var(--font-pt-serif);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -173,7 +188,7 @@
     font-family: var(--font-noto-arabic), var(--font-poppins), sans-serif;
   }
   html[dir="rtl"] .font-serif {
-    font-family: var(--font-noto-arabic), var(--font-pt-serif), serif;
+    font-family: "Rupee Sign", var(--font-noto-arabic), var(--font-pt-serif), serif;
   }
   /* Soft ambient glow is a dark-theme-only treatment for now; light theme stays solid white */
   .dark body {
